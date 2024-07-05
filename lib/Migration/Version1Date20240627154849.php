@@ -114,15 +114,12 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 				'notnull' => false,
 			]);
 			
-			$table->addColumn('created_at', \OCP\DB\Types::DATETIME, [
+			$table->addColumn('created_at', 'string', [
 				'notnull' => true,
-				'default' => 'CURRENT_TIMESTAMP',
 			]);
 	
-			$table->addColumn('updated_at', \OCP\DB\Types::DATETIME, [
+			$table->addColumn('updated_at', 'string', [
 				'notnull' => true,
-				'default' => 'CURRENT_TIMESTAMP',
-
 			]);
 			
 			  $table->setPrimaryKey(['Id_empleados']);
@@ -141,16 +138,14 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 				'notnull' => false,
 			]);
 
-			$table->addColumn('created_at', \OCP\DB\Types::DATE, [
+			$table->addColumn('created_at', 'string', [
 				'notnull' => true,
-				'default' => 'CURRENT_TIMESTAMP',
 			]);
 	
-			$table->addColumn('updated_at', \OCP\DB\Types::DATE, [
+			$table->addColumn('updated_at', 'string', [
 				'notnull' => true,
-				'default' => 'CURRENT_TIMESTAMP',
-
 			]);
+			
 			
 			  $table->setPrimaryKey(['Id_puestos']);
 			  $table->addIndex(['Id_puestos'], 'Id_puestos');
@@ -168,14 +163,12 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 					'notnull' => false,
 				]);
 	
-				$table->addColumn('created_at', \OCP\DB\Types::DATETIME, [
-					'notnull' => true,
-					'default' => 'CURRENT_TIMESTAMP',
+				$table->addColumn('created_at', 'string', [
+				'notnull' => true,
 				]);
 		
-				$table->addColumn('updated_at', \OCP\DB\Types::DATETIME, [
-					'notnull' => true,
-					'default' => 'CURRENT_TIMESTAMP',
+				$table->addColumn('updated_at', 'string', [
+				'notnull' => true,
 				]);
 				
 				$table->setPrimaryKey(['Id_departamento']);
