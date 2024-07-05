@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	  xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+	<id>empleados</id>
+	<name>Empleados</name>
+	<summary>Modulo de gestion de empleados</summary>
+	<description>Modulo de gestion de empleados</description>
+	<version>1.0.0</version>
+	<licence>agpl</licence>
+	<author mail="luis.alvarado@crowe.mx" homepage="https://gossler-torreon.com">Luis angel alvarado hernandez</author>
+	<namespace>Empleados</namespace>
+	<category>organization</category>
+	<bugs>https://gossler-torreon.com</bugs>
+	<dependencies>
+		<nextcloud min-version="27" max-version="29"/>
+	</dependencies>
+	<navigations>
+		<navigation>
+			<id>empleados</id>
+			<name>Empleados</name>
+			<route>empleados.page.index</route>
+			<icon>app.svg</icon>
+			<type>link</type>
+		</navigation>
+	</navigations>
+	<settings>
+        <admin>OCA\Empleados\Settings\settingsAdmin</admin>
+        <admin-section>OCA\Empleados\Sections\settingsAdmin</admin-section>
+    </settings>
+</info>
