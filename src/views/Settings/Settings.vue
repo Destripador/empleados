@@ -34,13 +34,13 @@
 				<tr v-for="(item, index) in Empleados" v-bind="$attrs">
 					<td class="row__cell row__cell--avatar">
 						<NcAvatar :user="item.uid"
-							:display-name="item.displayname"
+							:display-name="item.displayName"
 							:show-user-status-compact="false"
 							:show-user-status="false" />
 					</td>
 
 					<td>
-						{{ item.displayname }}
+						{{ JSON.parse(item.data).displayname.value }}
 					</td>
 
 					<td>
@@ -76,13 +76,13 @@
 				<tr v-for="(item, index) in Usuarios" v-bind="$attrs">
 					<td class="row__cell row__cell--avatar">
 						<NcAvatar :user="item.uid"
-							:display-name="item.displayname"
+							:display-name="item.displayName"
 							:show-user-status-compact="false"
 							:show-user-status="false" />
 					</td>
 
 					<td>
-						{{ item.displayname }}
+						{{ JSON.parse(item.data).displayname.value }}
 					</td>
 
 					<td>
@@ -148,6 +148,7 @@ export default {
 				await axios.get(generateUrl('/apps/empleados/GetUserLists'))
 					.then(
 						(response) => {
+
 							this.Usuarios = []
 							this.Empleados = []
 							this.map = {}

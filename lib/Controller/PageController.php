@@ -1,21 +1,23 @@
 <?php
 
 declare(strict_types=1);
-
 namespace OCA\Empleados\Controller;
 
 use OCA\Empleados\AppInfo\Application;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
+use OCP\AppFramework\Http\Attribute\UseSession;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IRequest;
+use OCP\ISession;
 use OCP\Util;
 use OCP\AppFramework\Http\Response;
 use DateTime;
 use DateTimeZone;
+
 
 #dependencias agregadas
 use OCP\IUserSession;
@@ -41,19 +43,21 @@ class PageController extends Controller {
 	private $userManager;
 	private $empleadosMapper;
 
-	public function __construct(IRequest $request, IUserSession $userSession, IUserManager $userManager, empleadosMapper $empleadosMapper) {
+	private $session;
+
+	public function __construct(IRequest $request, ISession $session, IUserSession $userSession, IUserManager $userManager, empleadosMapper $empleadosMapper) {
 		parent::__construct(Application::APP_ID, $request);
 
 		$this->userSession = $userSession;
 		$this->userManager = $userManager;
 		$this->empleadosMapper = $empleadosMapper;
+
+		$this->ISession = $session;
 		
 	}
 
-	/**
-	* @NoAdminRequired
-	* @NoCSRFRequired
-	*/
+	#[UseSession]
+	#[NoCSRFRequired]
 	public function index(): TemplateResponse {
 		return new TemplateResponse(
 			Application::APP_ID,
@@ -61,10 +65,16 @@ class PageController extends Controller {
 		);
 	}
 
-	/**
-	* @NoAdminRequired
-	* @NoCSRFRequired
-	*/
+	#[UseSession]
+	#[NoCSRFRequired]
+	public function Areas(): TemplateResponse {
+		return new TemplateResponse(
+			Application::APP_ID,
+			'areas',
+		);
+	}
+
+	#[UseSession]
 	public function GetUserLists(): array{
 		$empleados = $this->empleadosMapper->GetUserLists();
 		$users = $this->empleadosMapper->getAllUsers();
@@ -77,10 +87,7 @@ class PageController extends Controller {
 		return $data;
 	}
 
-	/**
-	* @NoAdminRequired
-	* @NoCSRFRequired
-	*/
+	#[UseSession]
 	public function ActivarEmpleado(string $id_user): string {
 		try{
 		
@@ -100,17 +107,12 @@ class PageController extends Controller {
 		}
 	}
 
-	/**
-	* @NoAdminRequired
-	* @NoCSRFRequired
-	*/
+	#[UseSession]
 	public function EliminarEmpleado(int $id_empleados): string {
 		try{
 
-			$user = new empleados();
-			$user->setId_empleados($id_empleados);
+			$this->empleadosMapper->deleteByIdEmpleado($id_empleados);
 
-			$this->empleadosMapper->delete($user);
 			
 			return "ok"; 
 		}

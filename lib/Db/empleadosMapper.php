@@ -25,7 +25,7 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName(), 'o')
-			->innerJoin('o', 'users', 'c', $qb->expr()->eq('uid', 'id_user'));
+			->innerJoin('o', 'accounts', 'c', $qb->expr()->eq('uid', 'id_user'));
 		
 		$result = $qb->execute();
 		$users = $result->fetchAll();
@@ -38,7 +38,8 @@ class empleadosMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('*')
-			->from('users');
+			->from('users', 'o')
+			->innerJoin('o', 'accounts', 'c', $qb->expr()->eq('o.uid', 'c.uid'));
 			
 
 		$result = $qb->execute();
@@ -46,6 +47,16 @@ class empleadosMapper extends QBMapper {
 		$result->closeCursor();
 	
 		return $users;
+	}
+
+	public function deleteByIdEmpleado(int $id_empleados): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
+			
+
+		$result = $qb->execute();
 	}
 
 }

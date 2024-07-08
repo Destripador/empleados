@@ -9,7 +9,7 @@ use OCP\AppFramework\Db\Entity;
 
 class empleados extends Entity {
 
-	protected string $id = '';
+	protected string $id_empleados = '';
 	protected string $id_user = '';
 	protected string $numeroempleado = '';
 	protected string $ingreso = '';
@@ -49,7 +49,7 @@ class empleados extends Entity {
 
 	public function read(): array {
 		return [
-			'Id_empleados' => $this->id,
+			'Id_empleados' => $this->id_empleados,
 			'Id_user' => $this->id_user,
 			'Numero_empleado' => $this->numeroempleado,
 			'Ingreso' => $this->ingreso,
