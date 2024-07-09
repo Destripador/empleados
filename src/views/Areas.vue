@@ -19,6 +19,10 @@ import navigator from './navigator/Sidenavigation.vue'
 // iconos
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
+import { showError /* showSuccess */ } from '@nextcloud/dialogs'
+import { generateUrl } from '@nextcloud/router'
+import axios from '@nextcloud/axios'
+
 import {
 	NcAppContent,
 	NcContent,
@@ -31,6 +35,37 @@ export default {
 		NcAppContent,
 		NcContent,
 		AccountGroup,
+	},
+
+	data() {
+		return {
+			loading: true,
+		}
+	},
+
+	async mounted() {
+		this.getall()
+	},
+
+	methods: {
+		async getall() {
+			this.loading = false
+			try {
+				await axios.get(generateUrl('/apps/empleados/GetAreasList'))
+					.then(
+						(response) => {
+							// eslint-disable-next-line no-console
+							console.log(response)
+							this.loading = false
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+			}
+		},
 	},
 }
 </script>

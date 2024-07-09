@@ -8,7 +8,12 @@ return [
 	'routes' => [
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 		['name' => 'page#GetUserLists', 'url' => '/GetUserLists', 'verb' => 'GET'],
+
+		
+		['name' => 'page#GetEmpleadosList', 'url' => '/GetEmpleadosList', 'verb' => 'GET'],
+		
 		['name' => 'page#Areas', 'url' => '/Areas', 'verb' => 'GET'],
+		['name' => 'page#GetAreasList', 'url' => '/GetAreasList', 'verb' => 'GET'],
 
 		['name' => 'page#ActivarEmpleado', 'url' => '/ActivarEmpleado', 'verb' => 'POST'],
 		['name' => 'page#EliminarEmpleado', 'url' => '/EliminarEmpleado', 'verb' => 'POST'],

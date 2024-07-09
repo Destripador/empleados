@@ -26,12 +26,11 @@ use OCP\IUserManager;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\empleados;
 
+use OCA\Empleados\Db\departamentosMapper;
+use OCA\Empleados\Db\departamentos;
 /*
 use OCA\Empleados\Db\puestosMapper;
 use OCA\Empleados\Db\puestos;
-
-use OCA\Empleados\Db\departamentosMapper;
-use OCA\Empleados\Db\departamentos;
 */
 
 /**
@@ -42,15 +41,17 @@ class PageController extends Controller {
 	private $userSession;
 	private $userManager;
 	private $empleadosMapper;
+	private $departamentosMapper;
 
 	private $session;
 
-	public function __construct(IRequest $request, ISession $session, IUserSession $userSession, IUserManager $userManager, empleadosMapper $empleadosMapper) {
+	public function __construct(IRequest $request, ISession $session, IUserSession $userSession, IUserManager $userManager, empleadosMapper $empleadosMapper, departamentosMapper $departamentosMapper) {
 		parent::__construct(Application::APP_ID, $request);
 
 		$this->userSession = $userSession;
 		$this->userManager = $userManager;
 		$this->empleadosMapper = $empleadosMapper;
+		$this->departamentosMapper = $departamentosMapper;
 
 		$this->ISession = $session;
 		
@@ -88,6 +89,17 @@ class PageController extends Controller {
 	}
 
 	#[UseSession]
+	public function GetEmpleadosList(): array{
+		$empleados = $this->empleadosMapper->GetUserLists();
+		
+		$data = array(
+			'Empleados' => $empleados,
+        );
+
+		return $data;
+	}
+
+	#[UseSession]
 	public function ActivarEmpleado(string $id_user): string {
 		try{
 		
@@ -119,5 +131,13 @@ class PageController extends Controller {
 		catch(Exception $e){
 			return $e;
 		}
+	}
+
+	#[UseSession]
+	#[NoCSRFRequired]
+	public function GetAreasList(): array{
+		$Areas = $this->departamentosMapper->GetAreasList();
+	
+		return $Areas;
 	}
 }
