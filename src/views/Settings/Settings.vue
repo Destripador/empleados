@@ -34,13 +34,16 @@
 				<tr v-for="(item, index) in Empleados" v-bind="$attrs">
 					<td class="row__cell row__cell--avatar">
 						<NcAvatar :user="item.uid"
-							:display-name="item.displayName"
+							:display-name="item.displayname"
 							:show-user-status-compact="false"
 							:show-user-status="false" />
 					</td>
 
-					<td>
-						{{ JSON.parse(item.data).displayname.value }}
+					<td v-if="item.displayname">
+						{{ item.displayname }}
+					</td>
+					<td v-else>
+						{{ item.uid }}
 					</td>
 
 					<td>
@@ -76,7 +79,7 @@
 				<tr v-for="(item, index) in Usuarios" v-bind="$attrs">
 					<td class="row__cell row__cell--avatar">
 						<NcAvatar :user="item.uid"
-							:display-name="item.displayName"
+							:display-name="item.displayname"
 							:show-user-status-compact="false"
 							:show-user-status="false" />
 					</td>
@@ -164,6 +167,12 @@ export default {
 									this.Usuarios.push(response.data.Users[i])
 								}
 							}
+
+							// eslint-disable-next-line no-console
+							console.log('Usuarios: ', this.Usuarios)
+
+							// eslint-disable-next-line no-console
+							console.log('Empleados: ', this.Empleados)
 
 							this.loading = false
 						},

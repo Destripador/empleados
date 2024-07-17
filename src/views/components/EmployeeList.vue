@@ -9,9 +9,11 @@
 	<NcAppContent v-else name="Loading">
 		<!-- contacts list -->
 		<template #list>
-			<ContactsList :list="contactsList"
+			<ContactsList
+				:list="contactsList"
 				:contacts="Empleados"
-				:search-query="searchQuery" />
+				:search-query="searchQuery"
+				:reload-bus="reloadBus" />
 		</template>
 
 		<!-- main contacts details -->
@@ -26,6 +28,7 @@ import ContactsList from './ContactList.vue'
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
+import mitt from 'mitt'
 
 import {
 	NcEmptyContent,
@@ -47,6 +50,8 @@ export default {
 			loading: true,
 			Empleados: [],
 			searchQuery: '',
+			reloadBus: mitt(),
+			contactsList: [],
 		}
 	},
 
@@ -61,7 +66,6 @@ export default {
 		sortedContacts() {
 			return this.$store.getters.getSortedContacts
 		},
-
 		selectedContact() {
 			return this.$route.params.selectedContact
 		},
@@ -74,14 +78,6 @@ export default {
 		 */
 		isRealGroup() {
 			return this.groups.findIndex(group => group.name === this.selectedGroup) > -1
-		},
-		/**
-		 * Is the current group empty
-		 *
-		 * @return {boolean}
-		 */
-		isEmptyGroup() {
-			return this.contactsList.length === 0
 		},
 
 		showDetails() {
@@ -101,9 +97,6 @@ export default {
 						(response) => {
 							this.Empleados = response.data.Empleados
 
-							// eslint-disable-next-line no-console
-							console.log(response.data.Empleados)
-							this.Empleados = response.data.Empleados
 							this.loading = false
 						},
 						(err) => {

@@ -2,15 +2,16 @@
 	<AppContentList class="content-list">
 		<div class="contacts-list__header">
 			<div class="search-contacts-field">
-				<input v-model="query" type="text" :placeholder="t('contacts', 'Search contacts …')">
+				<input v-model="query" type="text" :placeholder="t('empleados', 'Buscar empleados...')">
 			</div>
 		</div>
 		<VirtualList ref="scroller"
 			class="contacts-list"
-			data-key="key"
+			data-key="Id_empleados"
 			:data-sources="filteredList"
 			:data-component="ContactsListItem"
-			:estimate-size="68" />
+			:estimate-size="68"
+			:extra-props="{reloadBus}" />
 	</AppContentList>
 </template>
 
@@ -33,12 +34,16 @@ export default {
 			required: true,
 		},
 		contacts: {
-			type: Object,
+			type: Array,
 			required: true,
 		},
 		searchQuery: {
 			type: String,
 			default: '',
+		},
+		reloadBus: {
+			type: Object,
+			required: true,
 		},
 	},
 
@@ -50,16 +55,14 @@ export default {
 	},
 
 	computed: {
-		selectedContact() {
-			return this.$route.params.selectedContact
-		},
-		selectedGroup() {
-			return this.$route.params.selectedGroup
-		},
 		filteredList() {
-			return this.list
-				.filter(item => this.matchSearch(this.contacts[item.key]))
-				.map(item => this.contacts[item.key])
+
+			// eslint-disable-next-line no-console
+			console.log('Compi: ', this.contacts
+				.filter(item => this.matchSearch(item.displayname)))
+
+			return this.contacts
+				.filter(item => this.matchSearch(item.displayname))
 		},
 	},
 
@@ -123,15 +126,13 @@ export default {
 			}
 		},
 
-		/**
-		 * Is this matching the current search ?
-		 *
-		 * @param {Contact} contact the contact to search
-		 * @return {boolean}
-		 */
-		matchSearch(contact) {
+		matchSearch(contacts) {
+
+			// eslint-disable-next-line no-console
+			console.log('doña: ', contacts.toString().toLowerCase().search(this.query.trim().toLowerCase()))
+
 			if (this.query.trim() !== '') {
-				return contact.searchData.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1
+				return contacts.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1
 			}
 			return true
 		},

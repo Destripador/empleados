@@ -25,7 +25,7 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName(), 'o')
-			->innerJoin('o', 'accounts', 'c', $qb->expr()->eq('uid', 'id_user'));
+			->innerJoin('o', 'users', 'c', $qb->expr()->eq('uid', 'id_user'));
 		
 		$result = $qb->execute();
 		$users = $result->fetchAll();

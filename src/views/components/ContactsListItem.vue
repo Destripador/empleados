@@ -3,21 +3,21 @@
 		:draggable="isDraggable"
 		@dragstart="startDrag($event, source)">
 		<ListItem :id="id"
-			:key="source.key"
+			:key="source.Id_empleados"
 			class="list-item-style envelope"
-			:name="source.displayName"
-			:to="{ name: 'contact', params: { selectedGroup: selectedGroup, selectedContact: source.key } }">
+			:name="JSON.parse(source.data).displayname.value">
+			:to="{ name: 'contact', params: { selectedGroup: selectedGroup, selectedContact: source.Id_empleados } } ">*/
 			<!-- @slot Icon slot -->
 
 			<template #icon>
 				<div class="app-content-list-item-icon">
-					<BaseAvatar :display-name="source.displayName" :url="avatarUrl" :size="40" />
+					<BaseAvatar :display-name="JSON.parse(source.data).displayname.value" :url="avatarUrl" :size="40" />
 				</div>
 			</template>
 			<template #subtitle>
 				<div class="envelope__subtitle">
 					<span class="envelope__subtitle__subject">
-						{{ source.email }}
+						{{ JSON.parse(source.data).email.value }}
 					</span>
 				</div>
 			</template>
@@ -60,9 +60,9 @@ export default {
 	},
 
 	computed: {
-		selectedGroup() {
+		/* selectedGroup() {
 			return this.$route.params.selectedGroup
-		},
+		}, */
 		selectedContact() {
 			return this.$route.params.selectedContact
 		},
@@ -146,7 +146,7 @@ export default {
 			// change url with router
 			this.$router.push({
 				name: 'contact',
-				params: { selectedGroup: this.selectedGroup, selectedContact: this.source.key },
+				params: { selectedContact: this.source.key },
 			})
 		},
 	},
