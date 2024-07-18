@@ -16,6 +16,7 @@
 				:reload-bus="reloadBus" />
 		</template>
 
+		{{ showing }}
 		<!-- main contacts details -->
 		<!--ContactDetails :contact-key="selectedContact" :contacts="sortedContacts" :reload-bus="reloadBus" /-->
 	</NcAppContent>
@@ -29,6 +30,7 @@ import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import mitt from 'mitt'
+import { EventBus } from '../../store/bus.js'
 
 import {
 	NcEmptyContent,
@@ -56,12 +58,12 @@ export default {
 	},
 
 	computed: {
-		// store variables
-		contacts() {
-			return this.$store.getters.getContacts
-		},
-		groups() {
-			return this.$store.getters.getGroups
+		showing() {
+			let show
+			EventBus.$on('EmployeeData', (getdata) => {
+				show = getdata
+			})
+			return show
 		},
 		sortedContacts() {
 			return this.$store.getters.getSortedContacts
@@ -96,7 +98,8 @@ export default {
 					.then(
 						(response) => {
 							this.Empleados = response.data.Empleados
-
+							// eslint-disable-next-line no-console
+							console.log('Ejemplo: ', response.data)
 							this.loading = false
 						},
 						(err) => {

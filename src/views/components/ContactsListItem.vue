@@ -1,31 +1,35 @@
 <template>
-	<div class="contacts-list__item-wrapper"
-		:draggable="isDraggable"
-		@dragstart="startDrag($event, source)">
-		<ListItem :id="id"
+	<div class="contacts-list__item-wrapper">
+		<ListItem
 			:key="source.Id_empleados"
 			class="list-item-style envelope"
-			:name="JSON.parse(source.data).displayname.value">
-			:to="{ name: 'contact', params: { selectedGroup: selectedGroup, selectedContact: source.Id_empleados } } ">*/
+			:name="source.uid">
+			<!-- :to="{ name: 'empleados', params: { selectedContact: source.Id_empleados } } "-->
 			<!-- @slot Icon slot -->
 
 			<template #icon>
 				<div class="app-content-list-item-icon">
-					<BaseAvatar :display-name="JSON.parse(source.data).displayname.value" :url="avatarUrl" :size="40" />
+					<BaseAvatar
+						:display-name="source.uid"
+						:user="source.uid"
+						:show-user-status="false"
+						:size="40" />
 				</div>
 			</template>
-			<template #subtitle>
-				<div class="envelope__subtitle">
-					<span class="envelope__subtitle__subject">
-						{{ JSON.parse(source.data).email.value }}
-					</span>
-				</div>
+			<template v-if="source.displayname" #name>
+				{{ source.displayname }}
+			</template>
+			<template v-else #name>
+				{{ source.uid }}
 			</template>
 		</ListItem>
 	</div>
 </template>
 
 <script>
+// buss adding
+import { EventBus } from '../../store/bus.js'
+
 import {
 	NcListItem as ListItem,
 	NcAvatar as BaseAvatar,
@@ -59,95 +63,11 @@ export default {
 		}
 	},
 
-	computed: {
-		/* selectedGroup() {
-			return this.$route.params.selectedGroup
-		}, */
-		selectedContact() {
-			return this.$route.params.selectedContact
-		},
-		// contact is not draggable when it has not been saved on server as it can't be added to groups/circles before
-		isDraggable() {
-			return !!this.source.dav && this.source.addressbook.id !== 'z-server-generated--system'
-		},
-		// usable and valid html id for scrollTo
-		id() {
-			return window.btoa(this.source.key).slice(0, -2)
-		},
-	},
-
-	created() {
-		this.reloadBus.on('reload-avatar', this.reloadAvatarUrl)
-		this.reloadBus.on('delete-avatar', this.deleteAvatar)
-	},
-	destroyed() {
-		this.reloadBus.off('reload-avatar', this.reloadAvatarUrl)
-		this.reloadBus.off('delete-avatar', this.deleteAvatar)
-	},
-	async mounted() {
-		await this.loadAvatarUrl()
-	},
 	methods: {
-		startDrag(evt, item) {
-			evt.dataTransfer.dropEffect = 'move'
-			evt.dataTransfer.effectAllowed = 'move'
-			evt.dataTransfer.setData('item', JSON.stringify({
-				addressbookId: item.addressbook.id,
-				displayName: item.displayName,
-				groups: item.groups,
-				url: item.url,
-				uid: item.uid,
-			}))
-		},
-
-		/**
-		 * Is called on save in ContactDetails to reload Avatar,
-		 * url does not change, so trigger on source change don't work
-		 *
-		 * @param {string} key from contact
-		 */
-		reloadAvatarUrl(key) {
-			if (key === this.source.key) {
-				this.loadAvatarUrl()
-			}
-		},
-
-		/**
-		 * Is called on save in ContactDetails to delete Avatar,
-		 * somehow the avatarUrl is not unavailable immediately, so we just set undefined
-		 *
-		 * @param {string} key from contact
-		 */
-		deleteAvatar(key) {
-			if (key === this.source.key) {
-				this.avatarUrl = undefined
-			}
-		},
-
-		async loadAvatarUrl() {
-			this.avatarUrl = undefined
-			if (this.source.photo) {
-				const photoUrl = await this.source.getPhotoUrl()
-				if (!photoUrl) {
-					console.warn('contact has an invalid photo')
-					// Invalid photo data
-					return
-				}
-				this.avatarUrl = photoUrl
-			} else if (this.source.url) {
-				this.avatarUrl = `${this.source.url}?photo`
-			}
-		},
-
-		/**
-		 * Select this contact within the list
-		 */
-		selectContact() {
-			// change url with router
-			this.$router.push({
-				name: 'contact',
-				params: { selectedContact: this.source.key },
-			})
+		showDetails(data) {
+			// eslint-disable-next-line vue/custom-event-name-casing
+			EventBus.$emit('EmployeeData', data)
+			this.$root.$refs.A.foo()
 		},
 	},
 }

@@ -10,7 +10,7 @@
 			data-key="Id_empleados"
 			:data-sources="filteredList"
 			:data-component="ContactsListItem"
-			:estimate-size="68"
+			:estimate-size="60"
 			:extra-props="{reloadBus}" />
 	</AppContentList>
 </template>
@@ -56,13 +56,10 @@ export default {
 
 	computed: {
 		filteredList() {
-
 			// eslint-disable-next-line no-console
-			console.log('Compi: ', this.contacts
-				.filter(item => this.matchSearch(item.displayname)))
-
+			// console.log('Compis: ', this.contacts)
 			return this.contacts
-				.filter(item => this.matchSearch(item.displayname))
+				.filter(item => this.matchSearch(item.displayname, item.uid))
 		},
 	},
 
@@ -126,13 +123,16 @@ export default {
 			}
 		},
 
-		matchSearch(contacts) {
+		matchSearch(empleados, uid) {
 
-			// eslint-disable-next-line no-console
-			console.log('doña: ', contacts.toString().toLowerCase().search(this.query.trim().toLowerCase()))
-
-			if (this.query.trim() !== '') {
-				return contacts.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1
+			try {
+				if (this.query.trim() !== '') {
+					return empleados.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1
+				}
+			} catch (error) {
+				if (this.query.trim() !== '') {
+					return uid.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1
+				}
 			}
 			return true
 		},
