@@ -56,28 +56,8 @@ export default {
 
 	computed: {
 		filteredList() {
-			// eslint-disable-next-line no-console
-			// console.log('Compis: ', this.contacts)
 			return this.contacts
 				.filter(item => this.matchSearch(item.displayname, item.uid))
-		},
-	},
-
-	watch: {
-		selectedContact(key) {
-			this.$nextTick(() => {
-				this.scrollToContact(key)
-			})
-		},
-		list(val, old) {
-			// we just loaded the list and the url already have a selected contact
-			// if not, the selectedContact watcher will take over
-			// to select the first entry
-			if (val.length !== 0 && old.length === 0 && this.selectedContact) {
-				this.$nextTick(() => {
-					this.scrollToContact(this.selectedContact)
-				})
-			}
 		},
 	},
 
@@ -86,45 +66,7 @@ export default {
 	},
 
 	methods: {
-		// Select closest contact on deletion
-		selectContact(oldIndex) {
-			if (this.list.length > 0 && oldIndex < this.list.length) {
-				// priority to the one above then the one after
-				const newContact = oldIndex === 0 ? this.list[oldIndex + 1] : this.list[oldIndex - 1]
-				if (newContact) {
-					this.$router.push({ name: 'contact', params: { selectedGroup: this.selectedGroup, selectedContact: newContact.key } })
-				}
-			}
-		},
-
-		/**
-		 * Scroll to the desired contact if in the list and not visible
-		 *
-		 * @param {string} key the contact unique key
-		 */
-		scrollToContact(key) {
-			const item = this.$el.querySelector('#' + btoa(key).slice(0, -2))
-
-			// if the item is not visible in the list or barely visible
-			if (!(item && item.getBoundingClientRect().y > 50)) { // header height
-				const index = this.list.findIndex(contact => contact.key === key)
-				if (index > -1) {
-					this.$refs.scroller.scrollToIndex(index)
-				}
-			}
-
-			// if item is a bit out (bottom) of the list, let's just scroll a bit to the top
-			if (item) {
-				const pos = item.getBoundingClientRect().y + this.itemHeight - (this.$el.offsetHeight + 50)
-				if (pos > 0) {
-					const scroller = this.$refs.scroller.$el
-					scroller.scrollToOffset(scroller.scrollTop + pos)
-				}
-			}
-		},
-
 		matchSearch(empleados, uid) {
-
 			try {
 				if (this.query.trim() !== '') {
 					return empleados.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1

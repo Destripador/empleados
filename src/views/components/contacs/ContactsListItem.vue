@@ -3,10 +3,8 @@
 		<ListItem
 			:key="source.Id_empleados"
 			class="list-item-style envelope"
-			:name="source.uid">
-			<!-- :to="{ name: 'empleados', params: { selectedContact: source.Id_empleados } } "-->
-			<!-- @slot Icon slot -->
-
+			:name="source.uid"
+			@click="showDetails(source)">
 			<template #icon>
 				<div class="app-content-list-item-icon">
 					<BaseAvatar
@@ -27,8 +25,6 @@
 </template>
 
 <script>
-// buss adding
-import { EventBus } from '../../store/bus.js'
 
 import {
 	NcListItem as ListItem,
@@ -57,17 +53,10 @@ export default {
 			required: true,
 		},
 	},
-	data() {
-		return {
-			avatarUrl: undefined,
-		}
-	},
 
 	methods: {
 		showDetails(data) {
-			// eslint-disable-next-line vue/custom-event-name-casing
-			EventBus.$emit('EmployeeData', data)
-			this.$root.$refs.A.foo()
+			this.$root.$emit('send-data', data)
 		},
 	},
 }

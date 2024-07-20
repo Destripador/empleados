@@ -8,7 +8,7 @@
 <script>
 // navigator
 import navigator from './navigator/Sidenavigation.vue'
-import EmployeeList from './components/EmployeeList.vue'
+import EmployeeList from './components/contacs/EmployeeList.vue'
 
 import {
 	NcContent,

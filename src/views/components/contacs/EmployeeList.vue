@@ -16,21 +16,20 @@
 				:reload-bus="reloadBus" />
 		</template>
 
-		{{ showing }}
 		<!-- main contacts details -->
-		<!--ContactDetails :contact-key="selectedContact" :contacts="sortedContacts" :reload-bus="reloadBus" /-->
+		<ContactDetails :data="data_empleado" />
 	</NcAppContent>
 </template>
 
 <script>
 // agregados
 import ContactsList from './ContactList.vue'
+import ContactDetails from './ContactDetails.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import mitt from 'mitt'
-import { EventBus } from '../../store/bus.js'
 
 import {
 	NcEmptyContent,
@@ -45,6 +44,7 @@ export default {
 		NcAppContent,
 		NcLoadingIcon,
 		ContactsList,
+		ContactDetails,
 	},
 
 	data() {
@@ -54,41 +54,15 @@ export default {
 			searchQuery: '',
 			reloadBus: mitt(),
 			contactsList: [],
+			data_empleado: {},
 		}
-	},
-
-	computed: {
-		showing() {
-			let show
-			EventBus.$on('EmployeeData', (getdata) => {
-				show = getdata
-			})
-			return show
-		},
-		sortedContacts() {
-			return this.$store.getters.getSortedContacts
-		},
-		selectedContact() {
-			return this.$route.params.selectedContact
-		},
-
-		/**
-		 * Is this a real group ?
-		 * Aka not a dynamically generated one like `All contacts`
-		 *
-		 * @return {boolean}
-		 */
-		isRealGroup() {
-			return this.groups.findIndex(group => group.name === this.selectedGroup) > -1
-		},
-
-		showDetails() {
-			return !!this.selectedContact
-		},
 	},
 
 	async mounted() {
 		this.getall()
+		this.$root.$on('send-data', (data) => {
+			this.data_empleado = data
+		})
 	},
 
 	methods: {
@@ -98,8 +72,6 @@ export default {
 					.then(
 						(response) => {
 							this.Empleados = response.data.Empleados
-							// eslint-disable-next-line no-console
-							console.log('Ejemplo: ', response.data)
 							this.loading = false
 						},
 						(err) => {
@@ -109,12 +81,6 @@ export default {
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
 			}
-		},
-		onPaginationData(paginationData) {
-			this.$refs.pagination.setPaginationData(paginationData)
-		},
-		onChangePage(page) {
-			this.$refs.vuetable.changePage(page)
 		},
 	},
 }
