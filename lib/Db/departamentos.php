@@ -16,6 +16,7 @@ class departamentos extends Entity {
 
 	public function __construct() {
         $this->addType('Id_departamentos', 'string');
+        $this->addType('Id_padre', 'string');
 		$this->addType('Nombre', 'string');
 		$this->addType('created_at', 'date');
 		$this->addType('updated_at', 'date');

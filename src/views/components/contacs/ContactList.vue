@@ -2,7 +2,47 @@
 	<AppContentList class="content-list">
 		<div class="contacts-list__header">
 			<div class="search-contacts-field">
-				<input v-model="query" type="text" :placeholder="t('empleados', 'Buscar empleados...')">
+				<div class="container-search">
+					<div class="input-container">
+						<input v-model="query" type="text" :placeholder="t('empleados', 'Buscar empleados...')">
+					</div>
+					<div class="button-container">
+						<NcActions>
+							<NcActionButton @click="showMessage('Edit')">
+								<template #icon>
+									<Pencil :size="20" />
+								</template>
+								Exportar listado completo
+							</NcActionButton>
+							<NcActionButtonGroup name="Text alignment">
+								<NcActionButton aria-label="Align left"
+									v-model="alignment"
+									type="radio"
+									value="l">
+									<template #icon>
+										<AlignLeft :size="20" />
+									</template>
+								</NcActionButton>
+								<NcActionButton aria-label="Align center"
+									v-model="alignment"
+									type="radio"
+									value="c">
+									<template #icon>
+										<AlignCenter :size="20" />
+									</template>
+								</NcActionButton>
+								<NcActionButton aria-label="Align right"
+									v-model="alignment"
+									type="radio"
+									value="r">
+									<template #icon>
+										<AlignRight :size="20" />
+									</template>
+								</NcActionButton>
+							</NcActionButtonGroup>
+						</NcActions>
+					</div>
+				</div>
 			</div>
 		</div>
 		<VirtualList ref="scroller"
@@ -16,7 +56,12 @@
 </template>
 
 <script>
-import { NcAppContentList as AppContentList } from '@nextcloud/vue'
+import {
+	NcAppContentList as AppContentList,
+	NcActions,
+	NcActionButton,
+	NcActionButtonGroup,
+} from '@nextcloud/vue'
 import ContactsListItem from './ContactsListItem.vue'
 import VirtualList from 'vue-virtual-scroll-list'
 
@@ -26,6 +71,8 @@ export default {
 	components: {
 		AppContentList,
 		VirtualList,
+		NcActions,
+		NcActionButton,
 	},
 
 	props: {
@@ -109,4 +156,17 @@ export default {
 	padding: 0 4px;
 }
 
+.container-search {
+            display: flex;
+        }
+        .input-container {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .input-container input {
+            width: 100%;
+        }
+        .button-container button {
+            width: 100%;
+        }
 </style>

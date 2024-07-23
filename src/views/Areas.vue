@@ -1,30 +1,28 @@
-<template>
+<template id="content">
 	<NcContent app-name="empleados">
 		<navigator />
-		<NcAppContent>
+		<!--NcAppContent>
 			<div>
 				<h2 class="board-title">
 					<AccountGroup :size="20" decorative class="icon" />
 					<span>{{ t('empleados', 'Areas') }}</span>
 				</h2>
 			</div>
-		</NcAppContent>
+		</NcAppContent-->
+		<areas />
 	</NcContent>
 </template>
 
 <script>
 // navigator
 import navigator from './navigator/Sidenavigation.vue'
-
-// iconos
-import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
+import areas from './components/areas/AreasList.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 
 import {
-	NcAppContent,
 	NcContent,
 } from '@nextcloud/vue'
 
@@ -32,9 +30,8 @@ export default {
 	name: 'Areas',
 	components: {
 		navigator,
-		NcAppContent,
+		areas,
 		NcContent,
-		AccountGroup,
 	},
 
 	data() {

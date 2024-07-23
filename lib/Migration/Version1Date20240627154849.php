@@ -158,7 +158,11 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 					'autoincrement' => true,
 					'notnull' => true,
 				]);
-				
+
+				$table->addColumn('Id_padre', 'integer', [
+					'notnull' => false,
+				]);
+
 				$table->addColumn('Nombre', 'string', [
 					'notnull' => false,
 				]);
