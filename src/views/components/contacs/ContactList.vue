@@ -8,38 +8,34 @@
 					</div>
 					<div class="button-container">
 						<NcActions>
-							<NcActionButton @click="showMessage('Edit')">
+							<template #icon>
+								<Cog :size="20" />
+							</template>
+							<NcActionButton @click="Exportar()">
 								<template #icon>
-									<Pencil :size="20" />
+									<DatabaseExport :size="20" />
 								</template>
-								Exportar listado completo
+								Exportar listado
 							</NcActionButton>
-							<NcActionButtonGroup name="Text alignment">
-								<NcActionButton aria-label="Align left"
-									v-model="alignment"
-									type="radio"
-									value="l">
-									<template #icon>
-										<AlignLeft :size="20" />
-									</template>
-								</NcActionButton>
-								<NcActionButton aria-label="Align center"
-									v-model="alignment"
-									type="radio"
-									value="c">
-									<template #icon>
-										<AlignCenter :size="20" />
-									</template>
-								</NcActionButton>
-								<NcActionButton aria-label="Align right"
-									v-model="alignment"
-									type="radio"
-									value="r">
-									<template #icon>
-										<AlignRight :size="20" />
-									</template>
-								</NcActionButton>
-							</NcActionButtonGroup>
+							<NcActionSeparator />
+							<!--NcActionButton @click="showMessage('Delete')">
+								<template #icon>
+									<Download :size="20" />
+								</template>
+								Exportar plantilla vacia
+							</NcActionButton-->
+							<NcActionButton @click="$refs.file.click()">
+								<template #icon>
+									<Upload :size="20" />
+								</template>
+								Importar datos desde plantilla
+							</NcActionButton>
+							<NcActionLink href="https://nextcloud.com">
+								<template #icon>
+									<Cog :size="20" />
+								</template>
+								Link
+							</NcActionLink>
 						</NcActions>
 					</div>
 				</div>
@@ -52,6 +48,12 @@
 			:data-component="ContactsListItem"
 			:estimate-size="60"
 			:extra-props="{reloadBus}" />
+		<input
+			ref="file"
+			type="file"
+			style="display: none"
+			accept=".xlsx"
+			@change="importar()">
 	</AppContentList>
 </template>
 
@@ -60,10 +62,20 @@ import {
 	NcAppContentList as AppContentList,
 	NcActions,
 	NcActionButton,
-	NcActionButtonGroup,
+	NcActionSeparator,
 } from '@nextcloud/vue'
+
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import ContactsListItem from './ContactsListItem.vue'
 import VirtualList from 'vue-virtual-scroll-list'
+import { generateUrl } from '@nextcloud/router'
+import axios from '@nextcloud/axios'
+// import mitt from 'mitt'
+
+import DatabaseExport from 'vue-material-design-icons/DatabaseExport.vue'
+// import Download from 'vue-material-design-icons/Download.vue'
+import Upload from 'vue-material-design-icons/Upload.vue'
+import Cog from 'vue-material-design-icons/Cog.vue'
 
 export default {
 	name: 'ContactList',
@@ -73,6 +85,11 @@ export default {
 		VirtualList,
 		NcActions,
 		NcActionButton,
+		Cog,
+		Upload,
+		// Download,
+		DatabaseExport,
+		NcActionSeparator,
 	},
 
 	props: {
@@ -125,6 +142,57 @@ export default {
 			}
 			return true
 		},
+		Exportar() {
+			axios.get(
+				generateUrl('/apps/empleados/ExportListEmpleados'),
+				{
+					responseType: 'blob',
+				},
+			).then(
+				(response) => {
+					const url = URL.createObjectURL(new Blob([response.data], {
+						type: 'application/vnd.ms-excel',
+					}))
+
+					const link = document.createElement('a')
+					link.href = url
+					link.setAttribute('download', 'historial.xlsx')
+					document.body.appendChild(link)
+					link.click()
+				},
+				(err) => {
+					showError(t('ahorrosgossler', 'Se ha producido un error ' + err + ', reporte al administrador'))
+					this.exportardata = false
+				},
+			)
+		},
+		async importar() {
+			// eslint-disable-next-line no-console
+			console.log(this.$refs.file.files[0])
+			const formData = new FormData()
+			formData.append('fileXLSX', this.$refs.file.files[0])
+			try {
+				await axios.post(generateUrl('/apps/empleados/ImportListEmpleados'), formData,
+					{
+						headers: {
+							'Content-Type': 'multipart/form-data',
+						},
+					})
+					.then(
+						(response) => {
+							// this.getall()
+							// eslint-disable-next-line no-console
+							console.log('MENSAJE 2.0: ', response)
+							showSuccess(t('empleados', 'Se actualizo la base de datos exitosamente'))
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			}
+		},
 	},
 }
 </script>
@@ -161,7 +229,7 @@ export default {
         }
         .input-container {
             flex: 1;
-            margin-right: 10px;
+            margin-right: 5px;
         }
         .input-container input {
             width: 100%;

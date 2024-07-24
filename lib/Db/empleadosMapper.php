@@ -59,4 +59,48 @@ class empleadosMapper extends QBMapper {
 		$result = $qb->execute();
 	}
 
+	public function updateEmpleado(string $Id_empleados, string $Numero_empleado, string $Ingreso, string $Correo_contacto, string $Id_departamento, string $Id_puesto, string $Id_gerente, string $Id_socio, string $Fondo_clave, string $Numero_cuenta, string $Equipo_asignado, string $Sueldo, string $Fecha_nacimiento, string $Estado): void {
+		try{
+			$timestamp = date('Y-m-d');
+
+			if(empty($Numero_empleado) && $Numero_empleado != 0){ $Numero_empleado = null; }
+			if(empty($Ingreso) && $Ingreso != 0){ $Ingreso = null; }
+			if(empty($Correo_contacto) && $Correo_contacto != 0){ $Correo_contacto = null; }
+			if(empty($Id_departamento) && $Id_departamento != 0){ $Id_departamento = null; }
+			if(empty($Id_puesto) && $Id_puesto != 0){ $Id_puesto = null; }
+			if(empty($Id_gerente) && $Id_gerente != 0){ $Id_gerente = null; }
+			if(empty($Id_socio) && $Id_socio != 0){ $Id_socio = null; }
+			if(empty($Fondo_clave) && $Fondo_clave != 0){ $Fondo_clave = null; }
+			if(empty($Numero_cuenta) && $Numero_cuenta != 0){ $Numero_cuenta = null; }
+			if(empty($Equipo_asignado) && $Equipo_asignado != 0){ $Equipo_asignado = null; }
+			if(empty($Sueldo) && $Sueldo != 0){ $Sueldo = null; }
+			if(empty($Fecha_nacimiento) && $Fecha_nacimiento != 0){ $Fecha_nacimiento = null; }
+			if(empty($Estado) && $Estado != 0){ $Estado = null; }
+	
+			$query = $this->db->getQueryBuilder();
+			$query->update($this->getTableName())
+				->set('Numero_empleado', $query->createNamedParameter($Numero_empleado))
+				->set('Ingreso', $query->createNamedParameter($Ingreso))
+				->set('Correo_contacto', $query->createNamedParameter($Correo_contacto))
+				->set('Id_departamento', $query->createNamedParameter($Id_departamento))
+				->set('Id_puesto', $query->createNamedParameter($Id_puesto))
+				->set('Id_gerente', $query->createNamedParameter($Id_gerente))
+				->set('Id_socio', $query->createNamedParameter($Id_socio))
+				->set('Fondo_clave', $query->createNamedParameter($Fondo_clave))
+				->set('Numero_cuenta', $query->createNamedParameter($Numero_cuenta))
+				->set('Equipo_asignado', $query->createNamedParameter($Equipo_asignado))
+				->set('Sueldo', $query->createNamedParameter($Sueldo))
+				->set('Fecha_nacimiento', $query->createNamedParameter($Fecha_nacimiento))
+				->set('Estado', $query->createNamedParameter($Estado))
+				->set('updated_at', $query->createNamedParameter($timestamp))
+				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
+	
+			$query->execute();
+		}
+		catch(Exception $e){
+			console.log($e);
+		}
+	}
+
+
 }
