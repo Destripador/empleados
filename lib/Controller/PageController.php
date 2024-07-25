@@ -223,11 +223,12 @@ class PageController extends Controller {
 	}
 	
 	public function ImportListEmpleados(): array {
+		/*
 		$file = $this->getUploadedFile('fileXLSX');
-		$userFolder = $this->rootFolder->getUserFolder(getAdminUser());
+		$userFolder = $this->rootFolder->getUserFolder($this->getAdminUser());
 		$userFolder->newFile($file['name'])->putContent(file_get_contents($file['tmp_name']));
 		
-		if ( $xlsx = SimpleXLSX::parse($file['tmp_name']) ) {
+		 if ( $xlsx = SimpleXLSX::parse($file['tmp_name']) ) {
 
 			$rows_info = $xlsx->rows();
 
@@ -241,8 +242,8 @@ class PageController extends Controller {
 			return SimpleXLSX::parseError();
 		}
 
-
-		return null;
+		*/
+		return $this->getAdminUser();
 	}
 
 	private function getUploadedFile(string $key): array {
@@ -270,14 +271,13 @@ class PageController extends Controller {
 
 	public function getAdminUser() {
         $adminGroup = 'admin';  // Nombre del grupo de administradores
-        $adminUsers = $this->userManager->search('', $adminGroup, 10, 0);
+        $adminUsers = $this->userManager->search('admin', $adminGroup, 10, 0);
 
         // Devuelve el primer administrador encontrado
         if (!empty($adminUsers)) {
-            return $adminUsers[0]->getUID();
+            return $adminUsers;
         }
 
         return null;
     }
-
 }

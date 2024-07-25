@@ -20,6 +20,9 @@ return [
 		['name' => 'page#Areas', 'url' => '/Areas', 'verb' => 'GET'],
 		['name' => 'page#GetAreasList', 'url' => '/GetAreasList', 'verb' => 'GET'],
 
+		// CONFIGURACIONES
+		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],
+
 	],
 	
 ];
