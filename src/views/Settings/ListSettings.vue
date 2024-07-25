@@ -17,10 +17,14 @@
 
 		<div class="container">
 			<div class="grid">
+				<NcNoteCard v-if="selected_user" type="warning" heading="ATENCION">
+					<p>Si decide cambiar el usuario gestor de archivos cuando ya haya sido asignado, puede generar perdida de archivos, considere generar un respaldo antes de realizar este proceso</p>
+				</NcNoteCard>
 				<NcSelect v-model="selected_user"
 					input-label="Usuario gestor de datos"
 					:options="options"
-					:user-select="true" />
+					:user-select="true"
+					@change="saveGestor" />
 			</div>
 		</div>
 	</div>
@@ -36,8 +40,8 @@ import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 // import Check from 'vue-material-design-icons/Check'
 
 // imports
-import { /* NcActions, NcActionButton, */ NcLoadingIcon, NcSelect /*, NcAvatar */ } from '@nextcloud/vue'
-import { showError /* showSuccess */ } from '@nextcloud/dialogs'
+import { /* NcActions, NcActionButton, */ NcLoadingIcon, NcSelect, NcNoteCard /*, NcAvatar */ } from '@nextcloud/vue'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 
@@ -47,6 +51,7 @@ export default {
 		// NcAvatar,
 		// NcActions,
 		// NcActionButton,
+		NcNoteCard,
 		NcLoadingIcon,
 		AccountGroup,
 		NcSelect,
@@ -74,12 +79,8 @@ export default {
 				await axios.get(generateUrl('/apps/empleados/GetConfigurations'))
 					.then(
 						(response) => {
-
-							// eslint-disable-next-line no-console
-							console.log('DDDDDD: ', response.data.Configuraciones)
-
 							this.options = response.data.Users
-							this.selected_user = response.data.Configuraciones[0]
+							this.selected_user = response.data.Configuraciones
 							this.loading = false
 						},
 						(err) => {
@@ -127,6 +128,12 @@ export default {
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [02] [' + err + ']'))
 			}
+		},
+
+		saveGestor() {
+			// eslint-disable-next-line no-console
+			console.log('mensaje')
+			showSuccess('correct')
 		},
 	},
 }

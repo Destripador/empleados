@@ -37,13 +37,13 @@ use OCP\IUserManager;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\configuraciones;
 
+
 /**
  * @psalm-suppress UnusedClass
  */
 class ConfiguracionesController extends Controller {
 
 	private $userSession;
-	private $userManager;
 	private $configuracionesMapper;
 
 	
@@ -52,6 +52,10 @@ class ConfiguracionesController extends Controller {
 	private $session;
 	private IL10N $l10n;
 
+    
+    private IUserManager $userManager;
+
+
 	public function __construct(IRequest $request, ISession $session, IUserSession $userSession, IUserManager $userManager, IL10N $l10n, IRootFolder $rootFolder, configuracionesMapper $configuracionesMapper ) {
 		parent::__construct(Application::APP_ID, $request);
 
@@ -59,11 +63,12 @@ class ConfiguracionesController extends Controller {
 		$this->userManager = $userManager;
 		$this->configuracionesMapper = $configuracionesMapper;
 		$this->rootFolder = $rootFolder;
+
 	}
 
+	#[NoCSRFRequired]
+	#[NoAdminRequired]    
 	public function GetConfigurations(): array {
-		
-		$configuraciones = $this->configuracionesMapper->GetConfig();
         $users = $this->userManager->search('');
 
         $userList = [];
@@ -72,18 +77,26 @@ class ConfiguracionesController extends Controller {
                 'id' => $user->getUID(),
                 'displayName' => $user->getDisplayName(),
                 'icon' => $user->getUID(),
+                'user' => $user->getUID(),
+                'showUserStatus' => false,
             ];
         }
 
-        $gestor_datos = $this->userManager->search($configuraciones[0]['Data'],  1, 0);
-        $gestor = [];
-        foreach ($gestor_datos as $user) {
+        $configuraciones = $this->configuracionesMapper->GetConfig();
+        if($configuraciones[0]['Data']) {
+            $gestor_datos = $this->userManager->get($configuraciones[0]['Data']);
             $gestor[] = [
-                'id' => $user->getUID(),
-                'displayName' => $user->getDisplayName(),
-                'icon' => $user->getUID(),
+                'id' => $gestor_datos->getUID(),
+                'displayName' => $gestor_datos->getDisplayName(),
+                'icon' => $gestor_datos->getUID(),
+                'user' => $gestor_datos->getUID(),
+                'showUserStatus' => false,
             ];
         }
+        else{
+            $gestor = null;
+        }
+
         
 		$data = array(
 			'Configuraciones' => $gestor,
