@@ -23,6 +23,7 @@ return [
 		// CONFIGURACIONES
 		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],
 
+		['name' => 'configuraciones#ActualizarGestor', 'url' => '/ActualizarGestor', 'verb' => 'POST'],
 	],
 	
 ];

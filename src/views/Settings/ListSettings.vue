@@ -23,8 +23,14 @@
 				<NcSelect v-model="selected_user"
 					input-label="Usuario gestor de datos"
 					:options="options"
-					:user-select="true"
-					@change="saveGestor" />
+					:user-select="true" />
+
+				<NcButton
+					aria-label="Aplicar cambios"
+					type="primary"
+					@click="saveGestor">
+					Aplicar cambios
+				</NcButton>
 			</div>
 		</div>
 	</div>
@@ -40,7 +46,7 @@ import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 // import Check from 'vue-material-design-icons/Check'
 
 // imports
-import { /* NcActions, NcActionButton, */ NcLoadingIcon, NcSelect, NcNoteCard /*, NcAvatar */ } from '@nextcloud/vue'
+import { /* NcActions, NcActionButton, */ NcButton, NcLoadingIcon, NcSelect, NcNoteCard /*, NcAvatar */ } from '@nextcloud/vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -55,6 +61,7 @@ export default {
 		NcLoadingIcon,
 		AccountGroup,
 		NcSelect,
+		NcButton,
 		// Delete,
 		// Plus,
 	},
@@ -130,10 +137,23 @@ export default {
 			}
 		},
 
-		saveGestor() {
-			// eslint-disable-next-line no-console
-			console.log('mensaje')
-			showSuccess('correct')
+		async saveGestor() {
+			try {
+				await axios.post(generateUrl('/apps/empleados/ActualizarGestor'),
+					{
+						id_gestor: this.selected_user.id,
+					})
+					.then(
+						(response) => {
+							showSuccess('Gestor actualizado')
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			}
 		},
 	},
 }

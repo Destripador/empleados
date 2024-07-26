@@ -30,4 +30,13 @@ class configuracionesMapper extends QBMapper {
 	
 		return $config;
 	}
+
+	public function ActualizarGestor($id_gestor): void {
+		$query = $this->db->getQueryBuilder();
+			$query->update($this->getTableName())
+				->set('Data', $query->createNamedParameter($id_gestor))
+				->where($query->expr()->eq('Id_conf', $query->createNamedParameter("1")));
+	
+			$query->execute();
+	}
 }

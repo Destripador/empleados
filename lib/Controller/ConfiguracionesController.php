@@ -107,5 +107,9 @@ class ConfiguracionesController extends Controller {
         return $data;
 	}
 
-
+    #[NoCSRFRequired]
+	#[NoAdminRequired]    
+	public function ActualizarGestor(string $id_gestor): void{
+        $this->configuracionesMapper->ActualizarGestor($id_gestor);
+	}
 }
