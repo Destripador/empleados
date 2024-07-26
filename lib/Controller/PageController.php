@@ -39,6 +39,9 @@ use OCA\Empleados\Db\empleados;
 
 use OCA\Empleados\Db\departamentosMapper;
 use OCA\Empleados\Db\departamentos;
+
+use OCA\Empleados\Db\configuracionesMapper;
+use OCA\Empleados\Db\configuraciones;
 /*
 use OCA\Empleados\Db\puestosMapper;
 use OCA\Empleados\Db\puestos;
@@ -59,21 +62,21 @@ class PageController extends Controller {
 	private $userManager;
 	private $empleadosMapper;
 	private $departamentosMapper;
+	private $configuracionesMapper;
 
-	
 	protected IRootFolder $rootFolder;
 
 	private $session;
 	private IL10N $l10n;
 
-	public function __construct(IRequest $request, ISession $session, IUserSession $userSession, IUserManager $userManager, empleadosMapper $empleadosMapper, departamentosMapper $departamentosMapper, IL10N $l10n, IRootFolder $rootFolder,) {
+	public function __construct(IRequest $request, ISession $session, IUserSession $userSession, IUserManager $userManager, empleadosMapper $empleadosMapper, departamentosMapper $departamentosMapper, IL10N $l10n, IRootFolder $rootFolder, configuracionesMapper $configuracionesMapper) {
 		parent::__construct(Application::APP_ID, $request);
 
 		$this->userSession = $userSession;
 		$this->userManager = $userManager;
 		$this->empleadosMapper = $empleadosMapper;
 		$this->departamentosMapper = $departamentosMapper;
-
+		$this->configuracionesMapper = $configuracionesMapper;
 		
 		$this->rootFolder = $rootFolder;
 
@@ -243,7 +246,13 @@ class PageController extends Controller {
 		}
 
 		*/
-		return $this->getAdminUser();
+		$gestor = $this->configuracionesMapper->GetGestor();
+		 // Suponiendo que recibes el archivo vía POST
+		$file = $this->getUploadedFile('fileXLSX');
+		$userFolder = $this->rootFolder->getUserFolder("luis");
+		$userFolder->newFile($file['name'])->putContent(file_get_contents($file['tmp_name']));
+
+		return $gestor[0];
 	}
 
 	private function getUploadedFile(string $key): array {

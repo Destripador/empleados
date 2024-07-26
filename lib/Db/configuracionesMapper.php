@@ -39,4 +39,18 @@ class configuracionesMapper extends QBMapper {
 	
 			$query->execute();
 	}
+
+	public function GetGestor(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('Data')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('Id_conf', $qb->createNamedParameter("1")));
+			
+		$result = $qb->execute();
+		$config = $result->fetchAll();
+		$result->closeCursor();
+	
+		return $config;
+	}
 }
