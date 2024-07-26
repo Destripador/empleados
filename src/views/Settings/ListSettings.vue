@@ -138,21 +138,25 @@ export default {
 		},
 
 		async saveGestor() {
-			try {
-				await axios.post(generateUrl('/apps/empleados/ActualizarGestor'),
-					{
-						id_gestor: this.selected_user.id,
-					})
-					.then(
-						(response) => {
-							showSuccess('Gestor actualizado')
-						},
-						(err) => {
-							showError(err)
-						},
-					)
-			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			if (this.selected_user.id == null) {
+				showError('No has realizado ningun cambio')
+			} else {
+				try {
+					await axios.post(generateUrl('/apps/empleados/ActualizarGestor'),
+						{
+							id_gestor: this.selected_user.id,
+						})
+						.then(
+							(response) => {
+								showSuccess('Gestor actualizado')
+							},
+							(err) => {
+								showError(err)
+							},
+						)
+				} catch (err) {
+					showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+				}
 			}
 		},
 	},

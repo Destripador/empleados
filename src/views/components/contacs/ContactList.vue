@@ -180,9 +180,6 @@ export default {
 					})
 					.then(
 						(response) => {
-							// this.getall()
-							// eslint-disable-next-line no-console
-							console.log('MENSAJE 2.0: ', response)
 							showSuccess(t('empleados', 'Se actualizo la base de datos exitosamente'))
 						},
 						(err) => {

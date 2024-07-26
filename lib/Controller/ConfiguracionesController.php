@@ -110,6 +110,29 @@ class ConfiguracionesController extends Controller {
     #[NoCSRFRequired]
 	#[NoAdminRequired]    
 	public function ActualizarGestor(string $id_gestor): void{
-        $this->configuracionesMapper->ActualizarGestor($id_gestor);
+        $gestor = $this->configuracionesMapper->GetGestor();
+
+        if ($gestor[0]['Data'] == null || $gestor[0]['Data'] == null) {
+            $this->configuracionesMapper->ActualizarGestor($id_gestor);
+            $userFolder = $this->rootFolder->getUserFolder($id_gestor);
+            if (!$userFolder->nodeExists("EMPLEADOS")) {
+                $userFolder->newFolder("EMPLEADOS");
+            } 
+        } else {
+            $currentUser = $gestor[0]['Data'];
+            $this->configuracionesMapper->ActualizarGestor($id_gestor);
+            $userFolder = $this->rootFolder->getUserFolder($currentUser);
+            if ($userFolder->nodeExists("EMPLEADOS")) {
+                $sourceNode = $userFolder->get("EMPLEADOS");
+                if ($sourceNode->getType() === \OCP\Files\FileInfo::TYPE_FOLDER) {
+                    $targetUserObject = $this->userManager->get($id_gestor);
+                    if ($targetUserObject) {
+                        $targetUserFolder = $this->rootFolder->getUserFolder($id_gestor);
+                        $sourceNode->move($targetUserFolder->getPath() . '/' . $sourceNode->getName());
+                    } 
+                }
+            }
+        }
+       
 	}
 }

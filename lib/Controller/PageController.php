@@ -225,13 +225,9 @@ class PageController extends Controller {
 		return $books; 
 	}
 	
-	public function ImportListEmpleados(): array {
-		/*
+	public function ImportListEmpleados(): void {
 		$file = $this->getUploadedFile('fileXLSX');
-		$userFolder = $this->rootFolder->getUserFolder($this->getAdminUser());
-		$userFolder->newFile($file['name'])->putContent(file_get_contents($file['tmp_name']));
-		
-		 if ( $xlsx = SimpleXLSX::parse($file['tmp_name']) ) {
+		if ( $xlsx = SimpleXLSX::parse($file['tmp_name']) ) {
 
 			$rows_info = $xlsx->rows();
 
@@ -239,20 +235,7 @@ class PageController extends Controller {
 				$this->empleadosMapper->updateEmpleado(	strval($row[0]), strval($row[2]), strval($row[3]), strval($row[4]), strval($row[5]), strval($row[6]), strval($row[7]), strval($row[8]), strval($row[9]), strval($row[10]), strval($row[11]), strval($row[12]), strval($row[13]), strval($row[14]));
 			}
 
-			return $rows_info;
-			
-		} else {
-			return SimpleXLSX::parseError();
 		}
-
-		*/
-		$gestor = $this->configuracionesMapper->GetGestor();
-		 // Suponiendo que recibes el archivo vía POST
-		$file = $this->getUploadedFile('fileXLSX');
-		$userFolder = $this->rootFolder->getUserFolder("luis");
-		$userFolder->newFile($file['name'])->putContent(file_get_contents($file['tmp_name']));
-
-		return $gestor[0];
 	}
 
 	private function getUploadedFile(string $key): array {
