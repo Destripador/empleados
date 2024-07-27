@@ -180,6 +180,7 @@ export default {
 					})
 					.then(
 						(response) => {
+							this.$root.$emit('getall')
 							showSuccess(t('empleados', 'Se actualizo la base de datos exitosamente'))
 						},
 						(err) => {

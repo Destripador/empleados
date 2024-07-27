@@ -66,7 +66,7 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 				'notnull' => false,
 			]);
 			
-			$table->addColumn('Ingreso', 'date', [
+			$table->addColumn('Ingreso', 'string', [
 				'notnull' => false,
 			]);
 			
@@ -74,19 +74,19 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 				'notnull' => false,
 			]);
 			
-			$table->addColumn('Id_departamento', 'integer', [
+			$table->addColumn('Id_departamento', 'string', [
 				'notnull' => false,
 			]);
 			
-			$table->addColumn('Id_puesto', 'integer', [
+			$table->addColumn('Id_puesto', 'string', [
 				'notnull' => false,
 			]);
 
-			$table->addColumn('Id_gerente', 'integer', [
+			$table->addColumn('Id_gerente', 'string', [
 				'notnull' => false,
 			]);
 
-			$table->addColumn('Id_socio', 'integer', [
+			$table->addColumn('Id_socio', 'string', [
 				'notnull' => false,
 			]);
 
@@ -106,14 +106,42 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 				'notnull' => false,
 			]);
 
-			$table->addColumn('Fecha_nacimiento', 'date', [
+			$table->addColumn('Fecha_nacimiento', 'string', [
 				'notnull' => false,
 			]);
 			
 			$table->addColumn('Estado', 'string', [
 				'notnull' => false,
 			]);
-			
+
+
+			$table->addColumn('Direccion', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Estado_civil', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Telefono_contacto', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Curp', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Rfc', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Imss', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Genero', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Contacto_emergencia', 'string', [
+				'notnull' => false,
+			]);
+			$table->addColumn('Numero_emergencia', 'string', [
+				'notnull' => false,
+			]);
 			$table->addColumn('created_at', 'string', [
 				'notnull' => true,
 			]);

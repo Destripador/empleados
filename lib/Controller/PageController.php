@@ -188,7 +188,16 @@ class PageController extends Controller {
 		'Equipo_asignado', 
 		'Sueldo', 
 		'Fecha_nacimiento', 
-		'Estado', 
+		'Estado',
+		'Direccion',
+		'Estado_civil',
+		'Telefono_contacto',
+		'Curp',
+		'Rfc',
+		'Imss',
+		'Genero',
+		'Contacto_emergencia',
+		'Numero_emergencia',
 		'created_at', 
 		'updated_at', 
 		]];
@@ -211,7 +220,16 @@ class PageController extends Controller {
 					$datas['Equipo_asignado'], 
 					$datas['Sueldo'], 
 					$datas['Fecha_nacimiento'], 
-					$datas['Estado'], 
+					$datas['Estado'],
+					$datas['Direccion'],
+					$datas['Estado_civil'],
+					$datas['Telefono_contacto'],
+					$datas['Curp'],
+					$datas['Rfc'],
+					$datas['Imss'],
+					$datas['Genero'],
+					$datas['Contacto_emergencia'],
+					$datas['Numero_emergencia'],
 					$datas['created_at'], 
 					$datas['updated_at'], 
 				]);
@@ -232,9 +250,9 @@ class PageController extends Controller {
 			$rows_info = $xlsx->rows();
 
 			foreach($rows_info as $row){
-				$this->empleadosMapper->updateEmpleado(	strval($row[0]), strval($row[2]), strval($row[3]), strval($row[4]), strval($row[5]), strval($row[6]), strval($row[7]), strval($row[8]), strval($row[9]), strval($row[10]), strval($row[11]), strval($row[12]), strval($row[13]), strval($row[14]));
+				$this->empleadosMapper->updateEmpleado(	strval($row[0]), strval($row[2]), strval($row[3]), strval($row[4]), strval($row[5]), strval($row[6]), strval($row[7]), strval($row[8]), strval($row[9]), strval($row[10]), strval($row[11]), strval($row[12]), strval($row[13]), strval($row[14]), 
+				strval($row[15]), strval($row[16]) , strval($row[17]) , strval($row[18]) , strval($row[19]) , strval($row[20]) , strval($row[21]) , strval($row[22]) , strval($row[23]));
 			}
-
 		}
 	}
 

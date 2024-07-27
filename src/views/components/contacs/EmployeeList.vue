@@ -63,6 +63,9 @@ export default {
 		this.$root.$on('send-data', (data) => {
 			this.data_empleado = data
 		})
+		this.$root.$on('getall', () => {
+			this.getall()
+		})
 	},
 
 	methods: {

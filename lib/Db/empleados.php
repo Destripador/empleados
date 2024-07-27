@@ -26,6 +26,15 @@ class empleados extends Entity {
 	protected string $estado = '';
 	protected string $created_at = '';
 	protected string $updated_at = '';
+	protected string $direccion = '';
+	protected string $estadocivil = '';
+	protected string $telefonocontacto = '';
+	protected string $curp = '';
+	protected string $rfc = '';
+	protected string $imss = '';
+	protected string $genero = '';
+	protected string $contactoemergencia = '';
+	protected string $numeroemergencia = '';
 
 	public function __construct() {
 		$this->addType('Id_empleados', 'integer');
@@ -45,6 +54,15 @@ class empleados extends Entity {
 		$this->addType('Estado', 'string');
 		$this->addType('created_at', 'string');
 		$this->addType('updated_at', 'string');
+		$this->addType('Direccion', 'string');
+		$this->addType('Estado_civil', 'string');
+		$this->addType('Telefono_contacto', 'string');
+		$this->addType('Curp', 'string');
+		$this->addType('Rfc', 'string');
+		$this->addType('Imss', 'string');
+		$this->addType('Genero', 'string');
+		$this->addType('Contacto_emergencia', 'string');
+		$this->addType('Numero_emergencia', 'string');
 	}
 
 	public function read(): array {
@@ -66,7 +84,15 @@ class empleados extends Entity {
 			'Estado' => $this->estado,
 			'created_at' => $this->created_at,
 			'updated_at' => $this->updated_at,
-
+			'Direccion' => $this->direccion,
+			'Estado_civil' => $this->estadocivil,
+			'Telefono_contacto' => $this->telefonocontacto,
+			'Curp' => $this->curp,
+			'Rfc' => $this->rfc,
+			'Imss' => $this->imss,
+			'Genero' => $this->genero,
+			'Contacto_emergencia' => $this->contactoemergencia,
+			'Numero_emergencia' => $this->numeroemergencia,
 		];
 
 

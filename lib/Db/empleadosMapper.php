@@ -59,7 +59,8 @@ class empleadosMapper extends QBMapper {
 		$result = $qb->execute();
 	}
 
-	public function updateEmpleado(string $Id_empleados, string $Numero_empleado, string $Ingreso, string $Correo_contacto, string $Id_departamento, string $Id_puesto, string $Id_gerente, string $Id_socio, string $Fondo_clave, string $Numero_cuenta, string $Equipo_asignado, string $Sueldo, string $Fecha_nacimiento, string $Estado): void {
+	public function updateEmpleado(string $Id_empleados, string $Numero_empleado, string $Ingreso, string $Correo_contacto, string $Id_departamento, string $Id_puesto, string $Id_gerente, string $Id_socio, string $Fondo_clave, string $Numero_cuenta, string $Equipo_asignado, string $Sueldo, string $Fecha_nacimiento, string $Estado, string $Direccion, string $Estado_civil, string $Telefono_contacto, string $Curp, string $Rfc, string $Imss, string $Genero, string $Contacto_emergencia, string $Numero_emergencia,
+	): void {
 		try{
 			$timestamp = date('Y-m-d');
 
@@ -76,6 +77,15 @@ class empleadosMapper extends QBMapper {
 			if(empty($Sueldo) && $Sueldo != 0){ $Sueldo = null; }
 			if(empty($Fecha_nacimiento) && $Fecha_nacimiento != 0){ $Fecha_nacimiento = null; }
 			if(empty($Estado) && $Estado != 0){ $Estado = null; }
+			if(empty($Direccion) && $Direccion != 0){$Direccion = null; }
+			if(empty($Estado_civil) && $Estado_civil != 0){$Estado_civil = null; }
+			if(empty($Telefono_contacto) && $Telefono_contacto != 0){$Telefono_contacto = null; }
+			if(empty($Curp) && $Curp != 0){$Curp = null; }
+			if(empty($Rfc) && $Rfc != 0){$Rfc = null; }
+			if(empty($Imss) && $Imss != 0){$Imss = null; }
+			if(empty($Genero) && $Genero != 0){$Genero = null; }
+			if(empty($Contacto_emergencia) && $Contacto_emergencia != 0){$Contacto_emergencia = null; }
+			if(empty($Numero_emergencia) && $Numero_emergencia != 0){$Numero_emergencia = null; }
 	
 			$query = $this->db->getQueryBuilder();
 			$query->update($this->getTableName())
@@ -92,6 +102,15 @@ class empleadosMapper extends QBMapper {
 				->set('Sueldo', $query->createNamedParameter($Sueldo))
 				->set('Fecha_nacimiento', $query->createNamedParameter($Fecha_nacimiento))
 				->set('Estado', $query->createNamedParameter($Estado))
+				->set('Direccion', $query->createNamedParameter($Direccion))
+				->set('Estado_civil', $query->createNamedParameter($Estado_civil))
+				->set('Telefono_contacto', $query->createNamedParameter($Telefono_contacto))
+				->set('Curp', $query->createNamedParameter($Curp))
+				->set('Rfc', $query->createNamedParameter($Rfc))
+				->set('Imss', $query->createNamedParameter($Imss))
+				->set('Genero', $query->createNamedParameter($Genero))
+				->set('Contacto_emergencia', $query->createNamedParameter($Contacto_emergencia))
+				->set('Numero_emergencia', $query->createNamedParameter($Numero_emergencia))
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
