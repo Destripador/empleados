@@ -1,3 +1,4 @@
+<!-- eslint-disable object-curly-newline -->
 <template>
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys( data ).length == 0">
@@ -7,6 +8,48 @@
 			</div>
 		</div>
 		<div v-else class="container">
+			<div>
+				<div class="container-search-profile">
+					<div class="button-container-profile">
+						<NcActions>
+							<template #icon>
+								<AccountCog :size="20" />
+							</template>
+							<NcActionButton @click="showEdit">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								Habilitar edicion
+							</NcActionButton>
+							<NcActionSeparator />
+							<NcActionButton @click="showEdit">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								Exportar
+							</NcActionButton>
+							<NcActionButton @click="showEdit">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								Mostrar archivos en explorador
+							</NcActionButton>
+							<NcActionButton @click="showEdit">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								Enviar correo
+							</NcActionButton>
+							<NcActionButton @click="showEdit">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								Deshablitar usuario
+							</NcActionButton>
+						</NcActions>
+					</div>
+				</div>
+			</div>
 			<div class="center">
 				<NcAvatar :user="data.uid" :display-name="data.uid" :size="120" />
 				<div v-if="data.displayname">
@@ -34,134 +77,194 @@
 								<NcTextField
 									:value="data.Numero_empleado"
 									:v-model="Edit.Numero_empleado"
-									label="Numero_empleado" />
+									label="Numero_empleado">
+									<Badgeaccountoutline class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Ingreso"
 									:v-model="Edit.Ingreso"
-									label="Ingreso" />
+									label="Ingreso">
+									<Calendarrange class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Id_departamento"
 									:v-model="Edit.Id_departamento"
-									label="Id_departamento" />
+									label="Id_departamento">
+									<Briefcaseaccount class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Id_puesto"
 									:v-model="Edit.Id_puesto"
-									label="Id_puesto" />
+									label="Id_puesto">
+									<Briefcaseaccount class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Id_gerente"
 									:v-model="Edit.Id_gerente"
-									label="Id_gerente" />
+									label="Id_gerente">
+									<Accountmultiple class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Id_socio"
 									:v-model="Edit.Id_socio"
-									label="Id_socio" />
+									label="Id_socio">
+									<Accountgroup class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Fondo_clave"
 									:v-model="Edit.Fondo_clave"
-									label="Fondo_clave" />
+									label="Fondo_clave">
+									<Piggybankoutline class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Numero_cuenta"
 									:v-model="Edit.Numero_cuenta"
-									label="Numero_cuenta" />
+									label="Numero_cuenta">
+									<Bank class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Equipo_asignado"
 									:v-model="Edit.Equipo_asignado"
-									label="Equipo_asignado" />
+									label="Equipo_asignado">
+									<Laptopaccount class="margin-left-icon" :size="20" />
+								</NcTextField>
 								<NcTextField
 									:value="data.Sueldo"
 									:v-model="Edit.Sueldo"
-									label="Sueldo" />
+									label="Sueldo">
+									<Cash class="margin-left-icon" :size="20" />
+								</NcTextField>
 							</div>
 							<div v-else class="top">
-								<div>
-									<label for="Numero_empleado" class="labeltype">Numero de empleado</label>
-									<input id="Numero_empleado"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Numero_empleado">
-								</div>
+								<div class="box-chart">
+									<div class="chart-child">
+										<div>
+											<label for="Numero_empleado" class="labeltype">
+												<Badgeaccountoutline class="margin-left-icon" :size="20" />
+												Numero de empleado
+											</label>
+											<input id="Numero_empleado"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Numero_empleado">
+										</div>
 
-								<div>
-									<label for="Ingreso" class="labeltype">Fecha de Ingreso</label>
-									<input id="Ingreso"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Ingreso">
-								</div>
+										<div>
+											<label for="Ingreso" class="labeltype">
+												<Calendarrange class="margin-left-icon" :size="20" />
+												Fecha de Ingreso
+											</label>
+											<input id="Ingreso"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Ingreso">
+										</div>
 
-								<div>
-									<label for="Id_departamento" class="labeltype">Departamento</label>
-									<input id="Id_departamento"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Id_departamento">
-								</div>
+										<div>
+											<label for="Id_departamento" class="labeltype">
+												<Briefcaseaccount class="margin-left-icon" :size="20" />
+												Departamento
+											</label>
+											<input id="Id_departamento"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Id_departamento">
+										</div>
 
-								<div>
-									<label for="Id_puesto" class="labeltype">Puesto</label>
-									<input id="Id_puesto"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Id_puesto">
-								</div>
+										<div>
+											<label for="Id_puesto" class="labeltype">
+												<Briefcaseaccount class="margin-left-icon" :size="20" />
+												Puesto
+											</label>
+											<input id="Id_puesto"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Id_puesto">
+										</div>
 
-								<div>
-									<label for="Id_gerente" class="labeltype">Gerente</label>
-									<input id="Id_gerente"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Id_gerente">
-								</div>
+										<div>
+											<label for="Fondo_clave" class="labeltype">
+												<Piggybankoutline class="margin-left-icon" :size="20" />
+												Fondo clave
+											</label>
+											<input id="Fondo_clave"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Fondo_clave">
+										</div>
 
-								<div>
-									<label for="Id_socio" class="labeltype">Socio</label>
-									<input id="Id_socio"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Id_socio">
-								</div>
+										<div>
+											<label for="Numero_cuenta" class="labeltype">
+												<Bank class="margin-left-icon" :size="20" />
+												Numero cuenta bancaria
+											</label>
+											<input id="Numero_cuenta"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Numero_cuenta">
+										</div>
 
-								<div>
-									<label for="Fondo_clave" class="labeltype">Fondo clave</label>
-									<input id="Fondo_clave"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Fondo_clave">
-								</div>
+										<div>
+											<label for="Equipo_asignado" class="labeltype">
+												<Laptopaccount class="margin-left-icon" :size="20" />
+												Equipo asignado
+											</label>
+											<input id="Equipo_asignado"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Equipo_asignado">
+										</div>
 
-								<div>
-									<label for="Numero_cuenta" class="labeltype">Numero cuenta bancaria</label>
-									<input id="Numero_cuenta"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Numero_cuenta">
+										<div>
+											<label for="Sueldo" class="labeltype">
+												<Cash class="margin-left-icon" :size="20" />
+												Sueldo
+											</label>
+											<input id="Sueldo"
+												type="text"
+												disabled="true"
+												class="inputtype"
+												:value="data.Sueldo">
+										</div>
+									</div>
+									<div>
+										<div class="">
+											<OrganizationChart :datasource="generateChar(data.uid, data.Id_gerente, data.Id_socio)">
+												<template slot-scope="{ nodeData }">
+													<div class="title">
+														{{ nodeData.title }}
+													</div>
+													<div class="content">
+														<div class="center">
+															<div class="avatar-chart">
+																<NcAvatar
+																	:user="nodeData.name"
+																	:display-name="nodeData.name"
+																	:size="40"
+																	:show-user-status="false" />
+															</div>
+															<div class="name-chart">
+																{{ nodeData.name }}
+															</div>
+														</div>
+													</div>
+												</template>
+											</OrganizationChart>
+										</div>
+									</div>
 								</div>
-
-								<div>
-									<label for="Equipo_asignado" class="labeltype">Equipo asignado</label>
-									<input id="Equipo_asignado"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Equipo_asignado">
-								</div>
-
-								<div>
-									<label for="Sueldo" class="labeltype">Sueldo</label>
-									<input id="Sueldo"
-										type="text"
-										disabled="true"
-										class="inputtype"
-										:value="data.Sueldo">
-								</div>
+								<br>
+								<NcTextArea class="top"
+									label="NOTAS EMPLEADO"
+									:disabled="true"
+									:value="data.Notas" />
 							</div>
 						</VTab>
 
@@ -179,9 +282,30 @@
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import 'vue-nav-tabs/themes/vue-tabs.css'
 
+import OrganizationChart from 'vue-organization-chart'
+
+// ICONOS
+// import Magnify from 'vue-material-design-icons/Magnify.vue'
+import Badgeaccountoutline from 'vue-material-design-icons/BadgeAccountOutline.vue'
+import Briefcaseaccount from 'vue-material-design-icons/BriefcaseAccount.vue'
+import Piggybankoutline from 'vue-material-design-icons/PiggyBankOutline.vue'
+import Accountmultiple from 'vue-material-design-icons/AccountMultiple.vue'
+import Calendarrange from 'vue-material-design-icons/CalendarRange.vue'
+import Laptopaccount from 'vue-material-design-icons/LaptopAccount.vue'
+import Accountgroup from 'vue-material-design-icons/AccountGroup.vue'
+import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
+import AccountCog from 'vue-material-design-icons/AccountCog.vue'
+import Bank from 'vue-material-design-icons/Bank.vue'
+import Cash from 'vue-material-design-icons/Cash.vue'
+// import Cog from 'vue-material-design-icons/Cog.vue'
+
 import {
 	NcAvatar,
 	NcTextField,
+	NcActions,
+	NcActionButton,
+	NcActionSeparator,
+	NcTextArea,
 	// NcProgressBar,
 } from '@nextcloud/vue'
 
@@ -190,10 +314,26 @@ export default {
 
 	components: {
 		NcAvatar,
-		// NcProgressBar,
 		VueTabs,
 		VTab,
 		NcTextField,
+		NcActionSeparator,
+		NcActions,
+		// Cog,
+		Badgeaccountoutline,
+		Calendarrange,
+		Accountgroup,
+		Briefcaseaccount,
+		Accountmultiple,
+		Bank,
+		Piggybankoutline,
+		Laptopaccount,
+		Cash,
+		AccountCog,
+		AccountEdit,
+		NcActionButton,
+		OrganizationChart,
+		NcTextArea,
 	},
 
 	props: {
@@ -211,6 +351,28 @@ export default {
 	},
 
 	methods: {
+		showEdit() {
+			this.show = !this.show
+		},
+
+		generateChar(user, gerente, socio) {
+			// eslint-disable-next-line comma-spacing
+			return {
+				id: '1',
+				name: socio,
+				title: 'Socio',
+				children: [
+					{
+						id: '2',
+						name: gerente,
+						title: 'Gerente',
+						children: [
+							{ id: '3', name: user, title: 'Empleado' },
+						],
+					},
+				],
+			}
+		},
 	},
 }
 </script>
@@ -307,12 +469,36 @@ export default {
 }
 
 .labeltype{
-	display: inline-block;
+	display: inline-flex;
 	text-align: left;
 	width: 30%;
 }
 
 .top{
 	margin-top: 20px;
+}
+.margin-left-icon{
+	margin-right: 20px;
+}
+
+.button-container-profile{
+	float: right;
+	margin-top: -10px;
+}
+.rsg {
+	padding-top: 16px;
+	padding-bottom: 16px;
+	border: 1px solid rgb(232, 232, 232);
+	border-radius: 3px;
+	display: flex;
+	margin-left: 20px;
+	margin-right: 20px;
+	width: auto;
+}
+.box-chart{
+  display: flex;
+}
+.chart-child{
+	width: 90%;
 }
 </style>

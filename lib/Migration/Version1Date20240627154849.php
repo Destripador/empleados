@@ -106,6 +106,10 @@ class Version1Date20240627154849 extends SimpleMigrationStep {
 				'notnull' => false,
 			]);
 
+			$table->addColumn('Notas', 'text', [
+				'notnull' => false,
+			]);
+
 			$table->addColumn('Fecha_nacimiento', 'string', [
 				'notnull' => false,
 			]);
