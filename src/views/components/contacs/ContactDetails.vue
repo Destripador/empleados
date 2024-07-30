@@ -75,61 +75,61 @@
 
 							<div v-if="show">
 								<NcTextField
-									:value="data.Numero_empleado"
+									:value="checknull(data.Numero_empleado)"
 									:v-model="Edit.Numero_empleado"
 									label="Numero_empleado">
 									<Badgeaccountoutline class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Ingreso"
+									:value="checknull(data.Ingreso)"
 									:v-model="Edit.Ingreso"
 									label="Ingreso">
 									<Calendarrange class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Id_departamento"
+									:value="checknull(data.Id_departamento)"
 									:v-model="Edit.Id_departamento"
 									label="Id_departamento">
 									<Briefcaseaccount class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Id_puesto"
+									:value="checknull(data.Id_puesto)"
 									:v-model="Edit.Id_puesto"
 									label="Id_puesto">
 									<Briefcaseaccount class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Id_gerente"
+									:value="checknull(data.Id_gerente)"
 									:v-model="Edit.Id_gerente"
 									label="Id_gerente">
 									<Accountmultiple class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Id_socio"
+									:value="checknull(data.Id_socio)"
 									:v-model="Edit.Id_socio"
 									label="Id_socio">
 									<Accountgroup class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Fondo_clave"
+									:value="checknull(data.Fondo_clave)"
 									:v-model="Edit.Fondo_clave"
 									label="Fondo_clave">
 									<Piggybankoutline class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Numero_cuenta"
+									:value="checknull(data.Numero_cuenta)"
 									:v-model="Edit.Numero_cuenta"
 									label="Numero_cuenta">
 									<Bank class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Equipo_asignado"
+									:value="checknull(data.Equipo_asignado)"
 									:v-model="Edit.Equipo_asignado"
 									label="Equipo_asignado">
 									<Laptopaccount class="margin-left-icon" :size="20" />
 								</NcTextField>
 								<NcTextField
-									:value="data.Sueldo"
+									:value="checknull(data.Sueldo)"
 									:v-model="Edit.Sueldo"
 									label="Sueldo">
 									<Cash class="margin-left-icon" :size="20" />
@@ -147,7 +147,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Numero_empleado">
+												:value="checknull(data.Numero_empleado)">
 										</div>
 
 										<div>
@@ -159,7 +159,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Ingreso">
+												:value="checknull(data.Ingreso)">
 										</div>
 
 										<div>
@@ -171,7 +171,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Id_departamento">
+												:value="checknull(data.Id_departamento)">
 										</div>
 
 										<div>
@@ -183,7 +183,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Id_puesto">
+												:value="checknull(data.Id_puesto)">
 										</div>
 
 										<div>
@@ -195,7 +195,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Fondo_clave">
+												:value="checknull(data.Fondo_clave)">
 										</div>
 
 										<div>
@@ -207,7 +207,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Numero_cuenta">
+												:value="checknull(data.Numero_cuenta)">
 										</div>
 
 										<div>
@@ -219,7 +219,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Equipo_asignado">
+												:value="checknull(data.Equipo_asignado)">
 										</div>
 
 										<div>
@@ -231,7 +231,7 @@
 												type="text"
 												disabled="true"
 												class="inputtype"
-												:value="data.Sueldo">
+												:value="checknull(data.Sueldo)">
 										</div>
 									</div>
 									<div>
@@ -264,7 +264,7 @@
 								<NcTextArea class="top"
 									label="NOTAS EMPLEADO"
 									:disabled="true"
-									:value="data.Notas" />
+									:value="checknull(data.Notas)" />
 							</div>
 						</VTab>
 
@@ -372,6 +372,13 @@ export default {
 					},
 				],
 			}
+		},
+		checknull(satanizar) {
+			if (satanizar == null) {
+				return ''
+			}
+
+			return satanizar
 		},
 	},
 }
