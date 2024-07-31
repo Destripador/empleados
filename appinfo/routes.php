@@ -10,6 +10,7 @@ return [
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 		['name' => 'page#GetUserLists', 'url' => '/GetUserLists', 'verb' => 'GET'],
 		['name' => 'page#GetEmpleadosList', 'url' => '/GetEmpleadosList', 'verb' => 'GET'],
+		['name' => 'page#GetEmpleadosListFix', 'url' => '/GetEmpleadosListFix', 'verb' => 'GET'],
 		['name' => 'page#ExportListEmpleados', 'url' => '/ExportListEmpleados', 'verb' => 'GET'],
 		
 		['name' => 'page#ActivarEmpleado', 'url' => '/ActivarEmpleado', 'verb' => 'POST'],

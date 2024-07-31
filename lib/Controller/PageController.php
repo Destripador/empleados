@@ -129,6 +129,26 @@ class PageController extends Controller {
 	}
 
 	#[UseSession]
+	public function GetEmpleadosListFix(): array{
+		$empleados = $this->empleadosMapper->GetUserLists();
+		$data = [];
+		foreach($empleados as $empleado){
+			if($empleado['displayname'] == null || $empleado['displayname'] == ""){
+				$empleado['displayname'] = $empleado['uid'];
+			}
+			$datas = array(
+				'id' => $empleado['uid'],
+				'displayName' => $empleado['displayname'],
+				'user' => $empleado['uid'],
+                'showUserStatus' => false,
+			);
+			$data[] = $datas;
+		}
+
+		return $data;
+	}
+
+	#[UseSession]
 	public function ActivarEmpleado(string $id_user): string {
 		try{
 		
