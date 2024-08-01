@@ -10,6 +10,7 @@ return [
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 		['name' => 'page#GetUserLists', 'url' => '/GetUserLists', 'verb' => 'GET'],
 		['name' => 'page#GetEmpleadosList', 'url' => '/GetEmpleadosList', 'verb' => 'GET'],
+		['name' => 'page#GetEmpleadosArea', 'url' => '/GetEmpleadosArea/{id_area}', 'verb' => 'GET'],
 		['name' => 'page#GetEmpleadosListFix', 'url' => '/GetEmpleadosListFix', 'verb' => 'GET'],
 		['name' => 'page#ExportListEmpleados', 'url' => '/ExportListEmpleados', 'verb' => 'GET'],
 		
@@ -20,6 +21,9 @@ return [
 		// AREAS
 		['name' => 'page#Areas', 'url' => '/Areas', 'verb' => 'GET'],
 		['name' => 'page#GetAreasList', 'url' => '/GetAreasList', 'verb' => 'GET'],
+		['name' => 'areas#ExportListAreas', 'url' => '/ExportListAreas', 'verb' => 'GET'],
+
+		['name' => 'areas#ImportListAreas', 'url' => '/ImportListAreas', 'verb' => 'POST'],
 
 		// CONFIGURACIONES
 		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],

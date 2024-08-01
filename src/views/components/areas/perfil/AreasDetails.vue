@@ -3,8 +3,8 @@
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys( data ).length == 0">
 			<div class="emptycontent">
-				<img src="../../../../img/crowesito-think.png" width="170px">
-				<h2>Selecciona un empleado para empezar</h2>
+				<img src="../../../../../img/crowesito-think.png" width="170px">
+				<h2>Selecciona un area para mas detalles</h2>
 			</div>
 		</div>
 		<div v-else class="container">
@@ -51,50 +51,25 @@
 				</div>
 			</div>
 			<div class="center">
-				<NcAvatar :user="data.uid" :display-name="data.uid" :size="120" />
-				<div v-if="data.displayname">
-					<h2>{{ data.displayname }}</h2>
-				</div>
-				<div v-else>
-					<h2>{{ data.uid }}</h2>
-				</div>
-
-				<div>
-					<VueTabs
-						active-tab-color="#fdb913c"
-						active-text-color="white"
-						type="pills"
-						centered>
-						<VTab title="Empleado">
-							<EmpleadoTab :data="data" :show="show" :empleados="Empleados" />
-						</VTab>
-
-						<VTab title="Personal" />
-
-						<VTab title="Archivos" />
-					</VueTabs>
-				</div>
+				<h2>{{ data }}</h2>
+				<p>{{ peopleArea }}</p>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script>
-import EmpleadoTab from './perfil/EmpleadoTab.vue'
-import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
-import 'vue-nav-tabs/themes/vue-tabs.css'
-
 // ICONOS
 import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
 import AccountCog from 'vue-material-design-icons/AccountCog.vue'
 // import Cog from 'vue-material-design-icons/Cog.vue'
 
-import { generateUrl } from '@nextcloud/router'
-import axios from '@nextcloud/axios'
-import { showError /* showSuccess */ } from '@nextcloud/dialogs'
+// import { generateUrl } from '@nextcloud/router'
+// import axios from '@nextcloud/axios'
+// import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 
 import {
-	NcAvatar,
+	// NcAvatar,
 	NcActions,
 	NcActionButton,
 	NcActionSeparator,
@@ -102,13 +77,10 @@ import {
 } from '@nextcloud/vue'
 
 export default {
-	name: 'ContactDetails',
+	name: 'AreasDetails',
 
 	components: {
-		EmpleadoTab,
-		NcAvatar,
-		VueTabs,
-		VTab,
+		// NcAvatar,
 		NcActionSeparator,
 		NcActions,
 		AccountCog,
@@ -118,6 +90,10 @@ export default {
 
 	props: {
 		data: {
+			type: Object,
+			required: true,
+		},
+		peopleArea: {
 			type: Object,
 			required: true,
 		},
@@ -140,25 +116,23 @@ export default {
 		showEdit() {
 			this.show = !this.show
 			if (this.show === true) {
-				this.getall()
-			}
-		},
-
-		async getall() {
-			try {
-				await axios.get(generateUrl('/apps/empleados/GetEmpleadosListFix'))
-					.then(
-						(response) => {
-							this.Empleados = response.data
-						},
-						(err) => {
-							showError(err)
-						},
-					)
-			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+				// eslint-disable-next-line no-console
+				console.log('aaaaaaaaaaaaaaaaa')
+				// this.getall()
 			}
 		},
 	},
 }
 </script>
+<style>
+.button-container-profile {
+  float: right;
+  margin-top: -10px;
+}
+.container {
+  margin-right: 10px;
+  margin-left: 10px;
+  margin-top: 20px;
+  align-items: center;
+}
+</style>

@@ -2,13 +2,11 @@
 	<div class="contacts-list__item-wrapper">
 		<ListItem
 			:key="source.Id_empleados"
+			:compact="true"
 			class="list-item-style envelope"
 			:name="source.Nombre"
-			@click="showDetails(source)">
-			<template #name>
-				{{ source.Nombre }}
-			</template>
-		</ListItem>
+			:counter-number="source.cantidad_empleados"
+			@click="showDetails(source)" />
 	</div>
 </template>
 
@@ -42,7 +40,7 @@ export default {
 
 	methods: {
 		showDetails(data) {
-			this.$root.$emit('send-data', data)
+			this.$root.$emit('send-data-areas', data)
 		},
 	},
 }

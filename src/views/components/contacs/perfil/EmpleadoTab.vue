@@ -31,18 +31,16 @@
 		</NcTextField>
 		<br>
 		-----------------------------------------
-		<NcSelect v-model="Edit.Id_gerente"
-			input-label="Usuario gestor de datos"
+		<NcSelect v-model="gerente"
+			input-label="Gerente"
 			:options="empleados"
 			:user-select="true" />
-		{{ empleados }}
 		<br>
-		<NcTextField
-			:value="checknull(data.Id_socio)"
-			:v-model="Edit.Id_socio"
-			label="Id_socio">
-			<Accountgroup class="margin-left-icon" :size="20" />
-		</NcTextField>
+		<NcSelect v-model="socio"
+			input-label="Socio"
+			:options="empleados"
+			:user-select="true" />
+		<br>
 		-----------------------------------------
 		<br>
 		<NcTextField
@@ -190,7 +188,7 @@
 							</div>
 							<div class="content">
 								<div class="center">
-									<div class="avatar-chart">
+									<div class="avatar-chart mini-top">
 										<NcAvatar
 											:user="nodeData.name"
 											:display-name="nodeData.name"
@@ -227,7 +225,6 @@ import Briefcaseaccount from 'vue-material-design-icons/BriefcaseAccount.vue'
 import Piggybankoutline from 'vue-material-design-icons/PiggyBankOutline.vue'
 import Calendarrange from 'vue-material-design-icons/CalendarRange.vue'
 import Laptopaccount from 'vue-material-design-icons/LaptopAccount.vue'
-import Accountgroup from 'vue-material-design-icons/AccountGroup.vue'
 import Bank from 'vue-material-design-icons/Bank.vue'
 import Cash from 'vue-material-design-icons/Cash.vue'
 // import Cog from 'vue-material-design-icons/Cog.vue'
@@ -248,7 +245,6 @@ export default {
 		// Cog,
 		Badgeaccountoutline,
 		Calendarrange,
-		Accountgroup,
 		Briefcaseaccount,
 		Bank,
 		Piggybankoutline,
@@ -281,11 +277,14 @@ export default {
 	data() {
 		return {
 			Edit: [],
+			gerente: null,
+			socio: null,
 		}
 	},
 
 	mounted() {
-		this.Edit.Id_gerente = this.data.Id_gerente
+		this.gerente = this.data.Id_gerente
+		this.socio = this.data.Id_socio
 	},
 
 	methods: {
@@ -412,7 +411,7 @@ export default {
 }
 
 .inputtype{
-     width: 60%;
+    width: 60%;
 }
 
 .labeltype{
@@ -424,6 +423,10 @@ export default {
 .top{
 	margin-top: 20px;
 }
+.mini-top{
+	margin-top: 5px;
+}
+
 .margin-left-icon{
 	margin-right: 20px;
 }

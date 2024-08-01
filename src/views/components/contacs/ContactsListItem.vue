@@ -57,6 +57,7 @@ export default {
 	methods: {
 		showDetails(data) {
 			this.$root.$emit('send-data', data)
+			this.$root.$emit('show', false)
 		},
 	},
 }

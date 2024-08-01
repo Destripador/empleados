@@ -17,14 +17,14 @@
 		</template>
 
 		<!-- main contacts details -->
-		<!--ContactDetails :data="data_empleado" /-->
+		<AreasDetails :data="data_areas" :people-area="peopleArea" />
 	</NcAppContent>
 </template>
 
 <script>
 // agregados
 import areaslist from './AreasFullList.vue'
-// import ContactDetails from './ContactDetails.vue'
+import AreasDetails from './perfil/AreasDetails.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
@@ -44,8 +44,8 @@ export default {
 		NcEmptyContent,
 		NcAppContent,
 		NcLoadingIcon,
+		AreasDetails,
 		// ContactsList,
-		// ContactDetails,
 	},
 
 	data() {
@@ -56,6 +56,7 @@ export default {
 			reloadBus: mitt(),
 			areasList: [],
 			data_areas: {},
+			peopleArea: {},
 		}
 	},
 
@@ -63,10 +64,33 @@ export default {
 		this.getall()
 		this.$root.$on('send-data-areas', (data) => {
 			this.data_areas = data
+			this.getalldepartament(data.Nombre)
+			// eslint-disable-next-line no-console
+			console.log('memes: ', data.Nombre)
+			// eslint-disable-next-line no-console
+			console.log('memes: ', this.peopleArea)
 		})
 	},
 
 	methods: {
+		async getalldepartament(departamento) {
+			try {
+				await axios.get(generateUrl('/apps/empleados/GetEmpleadosArea/' + departamento))
+					.then(
+						(response) => {
+							// eslint-disable-next-line no-console
+							console.log('Respod: ', response.data)
+							this.peopleArea = response.data
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+			}
+		},
+
 		async getall() {
 			try {
 				await axios.get(generateUrl('/apps/empleados/GetAreasList'))

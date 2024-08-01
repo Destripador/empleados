@@ -121,5 +121,18 @@ class empleadosMapper extends QBMapper {
 		}
 	}
 
+    public function GetEmpleadosArea(string $id_area): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_area)));
+		
+		$result = $qb->execute();
+		$users = $result->fetchAll();
+		$result->closeCursor();
+	
+		return $users;
+	}
 
 }

@@ -56,7 +56,7 @@ use Shuchkin\SimpleXLSX;
 /**
  * @psalm-suppress UnusedClass
  */
-class PageController extends Controller {
+class AreasController extends Controller {
 
 	private $userSession;
 	private $userManager;
@@ -87,24 +87,6 @@ class PageController extends Controller {
 	}
 
 	#[UseSession]
-	#[NoCSRFRequired]
-	public function index(): TemplateResponse {
-		return new TemplateResponse(
-			Application::APP_ID,
-			'index',
-		);
-	}
-
-	#[UseSession]
-	#[NoCSRFRequired]
-	public function Areas(): TemplateResponse {
-		return new TemplateResponse(
-			Application::APP_ID,
-			'areas',
-		);
-	}
-
-	#[UseSession]
 	public function GetUserLists(): array{
 		$empleados = $this->empleadosMapper->GetUserLists();
 		$users = $this->empleadosMapper->getAllUsers();
@@ -123,17 +105,6 @@ class PageController extends Controller {
 		
 		$data = array(
 			'Empleados' => $empleados,
-        );
-
-		return $data;
-	}
-
-	#[UseSession]
-	public function GetEmpleadosArea(string $id_area): array{
-		$area = $this->empleadosMapper->GetEmpleadosArea($id_area);
-		
-		$data = array(
-			'area' => $area,
         );
 
 		return $data;
@@ -201,34 +172,13 @@ class PageController extends Controller {
 		return $Areas;
 	}
 
-	public function ExportListEmpleados(): array{
-		$empleados = $this->empleadosMapper->GetUserLists();
+	public function ExportListAreas(): array{
+		$empleados = $this->departamentosMapper->GetAreasList();
 		
 		$books = [[
-		'Id_empleados', 
-		'Id_user', 
-		'Numero_empleado', 
-		'Ingreso', 
-		'Correo_contacto', 
 		'Id_departamento', 
-		'Id_puesto', 
-		'Id_gerente', 
-		'Id_socio', 
-		'Fondo_clave', 
-		'Numero_cuenta', 
-		'Equipo_asignado', 
-		'Sueldo', 
-		'Fecha_nacimiento', 
-		'Estado',
-		'Direccion',
-		'Estado_civil',
-		'Telefono_contacto',
-		'Curp',
-		'Rfc',
-		'Imss',
-		'Genero',
-		'Contacto_emergencia',
-		'Numero_emergencia',
+		'Id_padre', 
+		'Nombre',
 		'created_at', 
 		'updated_at', 
 		]];
@@ -237,32 +187,11 @@ class PageController extends Controller {
 			array_push(
 				$books, 
 				[
-					$datas['Id_empleados'], 
-					$datas['Id_user'], 
-					$datas['Numero_empleado'], 
-					$datas['Ingreso'], 
-					$datas['Correo_contacto'], 
 					$datas['Id_departamento'], 
-					$datas['Id_puesto'], 
-					$datas['Id_gerente'], 
-					$datas['Id_socio'], 
-					$datas['Fondo_clave'], 
-					$datas['Numero_cuenta'], 
-					$datas['Equipo_asignado'], 
-					$datas['Sueldo'], 
-					$datas['Fecha_nacimiento'], 
-					$datas['Estado'],
-					$datas['Direccion'],
-					$datas['Estado_civil'],
-					$datas['Telefono_contacto'],
-					$datas['Curp'],
-					$datas['Rfc'],
-					$datas['Imss'],
-					$datas['Genero'],
-					$datas['Contacto_emergencia'],
-					$datas['Numero_emergencia'],
+					$datas['Id_padre'], 
+					$datas['Nombre'], 
 					$datas['created_at'], 
-					$datas['updated_at'], 
+					$datas['updated_at'],
 				]);
 		}
 
@@ -274,15 +203,27 @@ class PageController extends Controller {
 		return $books; 
 	}
 	
-	public function ImportListEmpleados(): void {
-		$file = $this->getUploadedFile('fileXLSX');
+	public function ImportListAreas(): void {
+		$file = $this->getUploadedFile('AreafileXLSX');
 		if ( $xlsx = SimpleXLSX::parse($file['tmp_name']) ) {
 
 			$rows_info = $xlsx->rows();
 
 			foreach($rows_info as $row){
-				$this->empleadosMapper->updateEmpleado(	strval($row[0]), strval($row[2]), strval($row[3]), strval($row[4]), strval($row[5]), strval($row[6]), strval($row[7]), strval($row[8]), strval($row[9]), strval($row[10]), strval($row[11]), strval($row[12]), strval($row[13]), strval($row[14]), 
-				strval($row[15]), strval($row[16]) , strval($row[17]) , strval($row[18]) , strval($row[19]) , strval($row[20]) , strval($row[21]) , strval($row[22]) , strval($row[23]));
+                if(strval($row[0])){
+                    $this->departamentosMapper->updateAreas(strval($row[0]), strval($row[1]), strval($row[2]));
+                }
+                else{
+                    $timestamp = date('Y-m-d');
+
+                    $area = new departamentos();
+                    $area->setid_padre(strval($row[1]));
+                    $area->setnombre(strval($row[2]));
+                    $area->setcreated_at($timestamp);
+                    $area->setupdated_at($timestamp);
+
+                    $this->departamentosMapper->insert($area);
+                }
 			}
 		}
 	}
