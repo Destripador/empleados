@@ -64,11 +64,10 @@ export default {
 		this.getall()
 		this.$root.$on('send-data-areas', (data) => {
 			this.data_areas = data
-			this.getalldepartament(data.Nombre)
-			// eslint-disable-next-line no-console
-			console.log('memes: ', data.Nombre)
-			// eslint-disable-next-line no-console
-			console.log('memes: ', this.peopleArea)
+			this.getalldepartament(data.Id_departamento)
+		})
+		this.$root.$on('delete-areas', (data) => {
+			this.getall()
 		})
 	},
 

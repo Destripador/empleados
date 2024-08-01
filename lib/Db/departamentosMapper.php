@@ -31,7 +31,7 @@ class departamentosMapper extends QBMapper {
 		$qb->select('d.Id_departamento', 'd.Id_padre', 'd.Nombre')
 			->selectAlias($qb->createFunction('COUNT(e.Id_empleados)'), 'cantidad_empleados')
 			->from($this->getTableName(), 'd')
-			->leftJoin('d', 'empleados', 'e', 'd.Nombre = e.Id_departamento')
+			->leftJoin('d', 'empleados', 'e', 'd.Id_departamento = e.Id_departamento')
 			->groupBy('d.Id_departamento');
 			
 		$result = $qb->execute();
