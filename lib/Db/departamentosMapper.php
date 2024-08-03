@@ -80,4 +80,13 @@ class departamentosMapper extends QBMapper {
 		$query->execute();
 	}
 
+	public function EliminarArea(string $id_departamento): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_departamento)));
+
+		$result = $qb->execute();
+	}
+
 }

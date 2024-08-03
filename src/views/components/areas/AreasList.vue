@@ -9,7 +9,7 @@
 	<NcAppContent v-else name="Loading">
 		<!-- contacts list -->
 		<template #list>
-			<areaslist
+			<AreasFullList
 				:list="areasList"
 				:contacts="Areas"
 				:search-query="searchQuery"
@@ -23,7 +23,7 @@
 
 <script>
 // agregados
-import areaslist from './AreasFullList.vue'
+import AreasFullList from './AreasFullList.vue'
 import AreasDetails from './perfil/AreasDetails.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
@@ -40,7 +40,7 @@ import {
 export default {
 	name: 'AreasList',
 	components: {
-		areaslist,
+		AreasFullList,
 		NcEmptyContent,
 		NcAppContent,
 		NcLoadingIcon,
@@ -67,6 +67,9 @@ export default {
 			this.getalldepartament(data.Id_departamento)
 		})
 		this.$root.$on('delete-areas', (data) => {
+			this.getall()
+		})
+		this.$root.$on('reload', () => {
 			this.getall()
 		})
 	},

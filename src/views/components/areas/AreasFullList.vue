@@ -190,6 +190,8 @@ export default {
 					.then(
 						(response) => {
 							this.$root.$emit('getall')
+							this.$root.$emit('reload')
+							this.$root.$emit('send-data-areas', [])
 							showSuccess(t('empleados', 'Se actualizo la base de datos exitosamente'))
 						},
 						(err) => {

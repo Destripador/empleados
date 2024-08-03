@@ -15,14 +15,18 @@
 							<template #icon>
 								<AccountCog :size="20" />
 							</template>
-							<NcActionButton @click="showEdit">
+							<NcActionButton
+								:close-after-click="true"
+								@click="showEdit()">
 								<template #icon>
 									<AccountEdit :size="20" />
 								</template>
 								Habilitar edicion
 							</NcActionButton>
 							<NcActionSeparator />
-							<NcActionButton @click="showDialog = true">
+							<NcActionButton
+								:close-after-click="true"
+								@click="showDialog = true">
 								<template #icon>
 									<DeleteAlert :size="20" />
 								</template>
@@ -37,11 +41,36 @@
 				</div>
 			</div>
 			<div class="center">
-				<div>
-					<h2>{{ data.Nombre }}</h2>
+				<div v-if="!show">
+					<div>
+						<h2>{{ data.Nombre }}</h2>
+					</div>
+					<div v-if="data.Id_padre">
+						<h1>{{ data.Id_padre }}</h1>
+					</div>
 				</div>
-				<div v-if="data.Id_padre">
-					<h1>{{ data.Id_padre }}</h1>
+				<div v-else>
+					<div class="wrapper">
+						<NcTextField
+							:value.sync="area"
+							:v-model="area"
+							label="Nombre del area/departamento" />
+					</div>
+					<div>
+						<NcSelect v-model="padre"
+							input-label="Area Padre"
+							:options="options" />
+					</div>
+					<br>
+					<div>
+						<NcButton
+							class="center"
+							aria-label="Guardar cambios"
+							type="primary"
+							@click="guardarcambioarea()">
+							Guardar cambios
+						</NcButton>
+					</div>
 				</div>
 				<div class="rsg-title">
 					<h3>Empleados en departamento</h3>
@@ -74,7 +103,7 @@ import AccountCog from 'vue-material-design-icons/AccountCog.vue'
 
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
-import { showError /* showSuccess */ } from '@nextcloud/dialogs'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 
 import {
 	NcAvatar,
@@ -82,6 +111,9 @@ import {
 	NcActionButton,
 	NcActionSeparator,
 	NcDialog,
+	NcTextField,
+	NcSelect,
+	NcButton,
 	// NcProgressBar,
 } from '@nextcloud/vue'
 
@@ -97,6 +129,9 @@ export default {
 		NcActionButton,
 		DeleteAlert,
 		NcDialog,
+		NcTextField,
+		NcSelect,
+		NcButton,
 	},
 
 	props: {
@@ -113,6 +148,7 @@ export default {
 	data() {
 		return {
 			show: false,
+			options: [],
 			Empleados: [],
 			showDialog: false,
 			buttons: [
@@ -123,12 +159,13 @@ export default {
 				{
 					label: 'Eliminar',
 					type: 'primary',
-					callback: () => { this.eliminarDepartamento(this.data.id_departamento) },
+					callback: () => { this.eliminarDepartamento(this.data.Id_departamento) },
 				},
 			],
+			area: '',
+			padre: null,
 		}
 	},
-
 	mounted() {
 		this.$root.$on('show', (data) => {
 			this.show = data
@@ -140,8 +177,9 @@ export default {
 			this.show = !this.show
 			if (this.show === true) {
 				// eslint-disable-next-line no-console
-				console.log('aaaaaaaaaaaaaaaaa')
-				// this.getall()
+				this.getall()
+				this.padre = this.data.Id_padre
+				this.area = this.data.Nombre
 			}
 		},
 		async eliminarDepartamento(departamento) {
@@ -152,9 +190,68 @@ export default {
 					})
 					.then(
 						(response) => {
+							showSuccess('Area eliminada exitosamente')
+							this.$root.$emit('reload')
+							this.$root.$emit('send-data-areas', {})
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			}
+		},
+
+		checknull(satanizar) {
+			if (satanizar == null) {
+				return ''
+			}
+
+			return satanizar
+		},
+
+		async getall() {
+			try {
+				await axios.get(generateUrl('/apps/empleados/GetAreasFix'))
+					.then(
+						(response) => {
+							// eslint-disable-next-line no-console
+							console.log(response.data)
+							this.options = response.data
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+			}
+		},
+
+		async guardarcambioarea() {
+			if (this.padre.label) {
+				this.padre = this.padre.label
+			}
+			// eslint-disable-next-line no-console
+			console.log('menee: ', this.padre)
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/GuardarCambioArea'),
+					{
+						id_departamento: this.data.Id_departamento,
+						padre: this.padre,
+						nombre: this.area,
+					})
+					.then(
+						(response) => {
+							showSuccess('Area eliminada exitosamente')
+							this.$root.$emit('reload')
+							this.$root.$emit('send-data-areas', {})
 							this.showEdit()
 						},
 						(err) => {
+							this.showEdit()
 							showError(err)
 						},
 					)
@@ -248,5 +345,29 @@ export default {
 h2 {
   font-size: 28px;
   margin-bottom: auto;
+}
+
+.wrapper {
+	display: flex;
+	gap: 4px;
+	align-items: flex-end;
+	flex-wrap: wrap;
+}
+
+.external-label {
+	display: flex;
+	width: 100%;
+	margin-top: 1rem;
+}
+
+.external-label label {
+	padding-top: 7px;
+	padding-right: 14px;
+	white-space: nowrap;
+}
+.grid {
+	display: grid;
+	grid-template-columns: repeat(1, 500px);
+	gap: 10px;
 }
 </style>

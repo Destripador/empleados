@@ -100,6 +100,22 @@ class AreasController extends Controller {
 	}
 
 	#[UseSession]
+	public function GetAreasFix(): array{
+		$Areas = $this->departamentosMapper->GetAreasList();
+		$data = [];
+		foreach($Areas as $area){
+			$datas = array(
+				'value' => $area['Id_departamento'],
+				'label' => $area['Nombre'],
+			);
+			$data[] = $datas;
+		}
+
+		return $data;
+	}
+
+
+	#[UseSession]
 	public function GetEmpleadosList(): array{
 		$empleados = $this->empleadosMapper->GetUserLists();
 		
@@ -262,4 +278,23 @@ class AreasController extends Controller {
 
         return null;
     }
+
+	
+	#[UseSession]
+	public function EliminarArea(int $id_departamento): string {
+		try{
+
+			$this->departamentosMapper->EliminarArea(strval($id_departamento));
+
+			
+			return "ok"; 
+		}
+		catch(Exception $e){
+			return $e;
+		}
+	}
+
+	public function GuardarCambioArea(int $id_departamento, string $padre, string $nombre): void {
+		$this->departamentosMapper->updateAreas(strval($id_departamento), $padre, $nombre);
+	}
 }

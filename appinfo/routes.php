@@ -20,10 +20,13 @@ return [
 
 		// AREAS
 		['name' => 'page#Areas', 'url' => '/Areas', 'verb' => 'GET'],
+		['name' => 'areas#GetAreasFix', 'url' => '/GetAreasFix', 'verb' => 'GET'],
 		['name' => 'page#GetAreasList', 'url' => '/GetAreasList', 'verb' => 'GET'],
 		['name' => 'areas#ExportListAreas', 'url' => '/ExportListAreas', 'verb' => 'GET'],
 
+		['name' => 'areas#GuardarCambioArea', 'url' => '/GuardarCambioArea', 'verb' => 'POST'],
 		['name' => 'areas#ImportListAreas', 'url' => '/ImportListAreas', 'verb' => 'POST'],
+		['name' => 'areas#EliminarArea', 'url' => '/EliminarArea', 'verb' => 'POST'],
 
 		// CONFIGURACIONES
 		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],

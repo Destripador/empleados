@@ -41,6 +41,7 @@ export default {
 	methods: {
 		showDetails(data) {
 			this.$root.$emit('send-data-areas', data)
+			this.$root.$emit('show', false)
 		},
 	},
 }
