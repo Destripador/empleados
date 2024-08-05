@@ -80,8 +80,6 @@ export default {
 				await axios.get(generateUrl('/apps/empleados/GetEmpleadosArea/' + departamento))
 					.then(
 						(response) => {
-							// eslint-disable-next-line no-console
-							console.log('Respod: ', response.data)
 							this.peopleArea = response.data
 						},
 						(err) => {
@@ -99,8 +97,6 @@ export default {
 					.then(
 						(response) => {
 							this.Areas = response.data
-							// eslint-disable-next-line no-console
-							console.log(response.data)
 							this.loading = false
 						},
 						(err) => {

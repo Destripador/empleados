@@ -163,7 +163,7 @@ export default {
 				},
 			],
 			area: '',
-			padre: null,
+			padre: '',
 		}
 	},
 	mounted() {
@@ -183,6 +183,7 @@ export default {
 			}
 		},
 		async eliminarDepartamento(departamento) {
+			this.showDialog = false
 			try {
 				await axios.post(generateUrl('/apps/empleados/EliminarArea'),
 					{
@@ -216,8 +217,6 @@ export default {
 				await axios.get(generateUrl('/apps/empleados/GetAreasFix'))
 					.then(
 						(response) => {
-							// eslint-disable-next-line no-console
-							console.log(response.data)
 							this.options = response.data
 						},
 						(err) => {
@@ -230,11 +229,11 @@ export default {
 		},
 
 		async guardarcambioarea() {
-			if (this.padre.label) {
+			if (this.padre == null) {
+				this.padre = ''
+			} else if (this.padre.label) {
 				this.padre = this.padre.label
 			}
-			// eslint-disable-next-line no-console
-			console.log('menee: ', this.padre)
 
 			try {
 				await axios.post(generateUrl('/apps/empleados/GuardarCambioArea'),

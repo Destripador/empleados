@@ -27,6 +27,7 @@ return [
 		['name' => 'areas#GuardarCambioArea', 'url' => '/GuardarCambioArea', 'verb' => 'POST'],
 		['name' => 'areas#ImportListAreas', 'url' => '/ImportListAreas', 'verb' => 'POST'],
 		['name' => 'areas#EliminarArea', 'url' => '/EliminarArea', 'verb' => 'POST'],
+		['name' => 'areas#crearArea', 'url' => '/crearArea', 'verb' => 'POST'],
 
 		// CONFIGURACIONES
 		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],

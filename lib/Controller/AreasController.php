@@ -297,4 +297,17 @@ class AreasController extends Controller {
 	public function GuardarCambioArea(int $id_departamento, string $padre, string $nombre): void {
 		$this->departamentosMapper->updateAreas(strval($id_departamento), $padre, $nombre);
 	}
+
+	
+	public function crearArea(string $nombre, string $padre): void {
+		$timestamp = date('Y-m-d');
+
+		$area = new departamentos();
+		$area->setid_padre($padre);
+		$area->setnombre($nombre);
+		$area->setcreated_at($timestamp);
+		$area->setupdated_at($timestamp);
+
+		$this->departamentosMapper->insert($area);
+	}
 }

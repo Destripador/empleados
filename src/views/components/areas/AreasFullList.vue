@@ -59,10 +59,24 @@
 		<NcModal
 			v-if="modal"
 			ref="modalRef"
-			name="Name inside modal"
+			name="Agregar nueva area"
 			@close="closeModal">
 			<div class="modal__content">
-				<h1>!!!</h1>
+				<div class="form-group center">
+					<NcTextField :value.sync="nombre_area"
+						label="Nombre del area" />
+					<NcSelect v-model="padre"
+						input-label="Area Padre"
+						:options="options" />
+					<br>
+					<NcButton
+						class="center"
+						aria-label="Guardar cambios"
+						type="primary"
+						@click="crearArea()">
+						Guardar cambios
+					</NcButton>
+				</div>
 			</div>
 		</NcModal>
 	</AppContentList>
@@ -85,6 +99,9 @@ import {
 	NcActions,
 	NcActionButton,
 	NcModal,
+	NcTextField,
+	NcSelect,
+	NcButton,
 } from '@nextcloud/vue'
 import AreasListItem from './AreasListItem.vue'
 import VirtualList from 'vue-virtual-scroll-list'
@@ -102,6 +119,9 @@ export default {
 		DatabaseExport,
 		AccountMultiplePlusOutline,
 		NcModal,
+		NcTextField,
+		NcSelect,
+		NcButton,
 	},
 
 	props: {
@@ -129,6 +149,9 @@ export default {
 			query: '',
 			modal: false,
 			button: false,
+			padre: '',
+			options: [],
+			nombre_area: '',
 		}
 	},
 
@@ -136,6 +159,14 @@ export default {
 		filteredList() {
 			return this.contacts
 				.filter(item => this.matchSearch(item.Nombre))
+		},
+	},
+
+	watch: {
+		modal(news, olds) {
+			if (olds !== news) {
+				this.getallsAreas()
+			}
 		},
 	},
 
@@ -149,6 +180,22 @@ export default {
 				return areas.toString().toLowerCase().search(this.query.trim().toLowerCase()) !== -1
 			}
 			return true
+		},
+
+		async getallsAreas() {
+			try {
+				await axios.get(generateUrl('/apps/empleados/GetAreasFix'))
+					.then(
+						(response) => {
+							this.options = response.data
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+			}
 		},
 
 		Exportar() {
@@ -212,6 +259,34 @@ export default {
 		toggle() {
 			this.button = !this.button
 		},
+		async crearArea() {
+			if (this.padre.label) {
+				this.padre = this.padre.label
+			} else {
+				this.padre = ''
+			}
+			try {
+				await axios.post(generateUrl('/apps/empleados/crearArea'),
+					{
+						padre: this.padre,
+						nombre: this.nombre_area,
+					})
+					.then(
+						(response) => {
+							showSuccess('Area creada exitosamente')
+							this.$root.$emit('reload')
+							this.nombre_area = ''
+							this.padre = null
+							this.modal = false
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			}
+		},
 	},
 }
 </script>
@@ -244,16 +319,31 @@ export default {
 }
 
 .container-search {
-            display: flex;
-        }
-        .input-container {
-            flex: 1;
-            margin-right: 5px;
-        }
-        .input-container input {
-            width: 100%;
-        }
-        .button-container button {
-            width: 100%;
-        }
+    display: flex;
+}
+.input-container {
+    flex: 1;
+    margin-right: 5px;
+}
+.input-container input {
+    width: 100%;
+}
+.button-container button {
+    width: 100%;
+}
+
+.modal__content {
+	margin: 50px;
+}
+
+.modal__content h2 {
+	text-align: center;
+}
+
+.form-group {
+	margin: calc(var(--default-grid-baseline) * 4) 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
 </style>
