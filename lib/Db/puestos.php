@@ -9,7 +9,7 @@ use OCP\AppFramework\Db\Entity;
 
 class puestos extends Entity {
     
-    protected string $idpuestos = '';
+    protected string $id_puestos = '';
     protected string $nombre = '';
     protected string $created_at = '';
     protected string $updated_at = '';
@@ -17,8 +17,8 @@ class puestos extends Entity {
 	public function __construct() {
         $this->addType('Id_puestos', 'string');
 		$this->addType('Nombre', 'string');
-		$this->addType('created_at', 'date');
-		$this->addType('updated_at', 'date');
+		$this->addType('created_at', 'string');
+		$this->addType('updated_at', 'string');
 	}
 
 	public function read(): array {

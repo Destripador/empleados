@@ -7,6 +7,7 @@ webpackConfig.entry = {
 	main: { import: path.join(__dirname, 'src', 'main.js'), filename: 'main.js' },
 	settings: path.join(__dirname, 'src', 'settings.js'),
 	areas: path.join(__dirname, 'src', 'areas.js'),
+	puestos: path.join(__dirname, 'src', 'puestos.js'),
 }
 
 webpackConfig.plugins.push(

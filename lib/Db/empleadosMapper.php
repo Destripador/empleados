@@ -135,4 +135,18 @@ class empleadosMapper extends QBMapper {
 		return $users;
 	}
 
+	public function GetEmpleadosPuesto(string $id_puesto): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('Id_puesto', $qb->createNamedParameter($id_puesto)));
+		
+		$result = $qb->execute();
+		$users = $result->fetchAll();
+		$result->closeCursor();
+	
+		return $users;
+	}
+
 }
