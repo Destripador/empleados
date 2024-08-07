@@ -121,6 +121,26 @@ class empleadosMapper extends QBMapper {
 		}
 	}
 
+	public function GuardarNota(string $Id_empleados, string $Nota,
+	): void {
+		try{
+			$timestamp = date('Y-m-d');
+
+			if(empty($Nota)){ $Nota = null; }
+			
+			$query = $this->db->getQueryBuilder();
+			$query->update($this->getTableName())
+				->set('Notas', $query->createNamedParameter($Nota))
+				->set('updated_at', $query->createNamedParameter($timestamp))
+				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
+	
+			$query->execute();
+		}
+		catch(Exception $e){
+			console.log($e);
+		}
+	}
+
     public function GetEmpleadosArea(string $id_area): array {
 		$qb = $this->db->getQueryBuilder();
 

@@ -15,6 +15,7 @@ return [
 		['name' => 'page#GetEmpleadosListFix', 'url' => '/GetEmpleadosListFix', 'verb' => 'GET'],
 		['name' => 'page#ExportListEmpleados', 'url' => '/ExportListEmpleados', 'verb' => 'GET'],
 		
+		['name' => 'page#GuardarNota', 'url' => '/GuardarNota', 'verb' => 'POST'],
 		['name' => 'page#ActivarEmpleado', 'url' => '/ActivarEmpleado', 'verb' => 'POST'],
 		['name' => 'page#EliminarEmpleado', 'url' => '/EliminarEmpleado', 'verb' => 'POST'],
 		['name' => 'page#ImportListEmpleados', 'url' => '/ImportListEmpleados', 'verb' => 'POST'],

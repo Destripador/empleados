@@ -200,6 +200,8 @@ class PageController extends Controller {
 		}
 	}
 
+	
+
 	#[UseSession]
 	public function EliminarEmpleado(int $id_empleados): string {
 		try{
@@ -306,6 +308,10 @@ class PageController extends Controller {
 				strval($row[15]), strval($row[16]) , strval($row[17]) , strval($row[18]) , strval($row[19]) , strval($row[20]) , strval($row[21]) , strval($row[22]) , strval($row[23]));
 			}
 		}
+	}
+
+	public function GuardarNota(int $id_empleados, string $nota): void {
+		$this->empleadosMapper->GuardarNota(strval($id_empleados), $nota);
 	}
 
 	private function getUploadedFile(string $key): array {

@@ -31,16 +31,16 @@
 		</NcTextField>
 		<br>
 		-----------------------------------------
-		<NcSelect v-model="gerente"
-			input-label="Gerente"
-			:options="empleados"
-			:user-select="true" />
-		<br>
 		<NcSelect v-model="socio"
 			input-label="Socio"
 			:options="empleados"
 			:user-select="true" />
 		<br>
+		<br>
+		<NcSelect v-model="gerente"
+			input-label="Gerente"
+			:options="empleados"
+			:user-select="true" />
 		-----------------------------------------
 		<br>
 		<NcTextField
@@ -209,14 +209,25 @@
 		<NcTextArea class="top"
 			label="NOTAS EMPLEADO"
 			:disabled="show"
-			:value="checknull(data.Notas)" />
+			:value="inputValue" />
+		<NcButton
+			aria-label="Example text"
+			type="primary"
+			@click="guardarNota()">
+			Guardar nota
+		</NcButton>
+		<br>
+		{{ notas }}
 	</div>
 </template>
 
 <script>
 import 'vue-nav-tabs/themes/vue-tabs.css'
-
 import OrganizationChart from 'vue-organization-chart'
+
+import { generateUrl } from '@nextcloud/router'
+import axios from '@nextcloud/axios'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 
 // ICONOS
 // import Magnify from 'vue-material-design-icons/Magnify.vue'
@@ -279,7 +290,19 @@ export default {
 			Edit: [],
 			gerente: null,
 			socio: null,
+			notas: '',
 		}
+	},
+
+	computed: {
+		inputValue: {
+			get() {
+				return this.checknull(this.data.Notas)
+			},
+			set(value) {
+				this.notas = value
+			},
+		},
 	},
 
 	mounted() {
@@ -318,6 +341,25 @@ export default {
 			}
 
 			return satanizar
+		},
+		async guardarNota() {
+			try {
+				await axios.post(generateUrl('/apps/empleados/GuardarNota'),
+					{
+						id_empleados: this.data.Id_empleados,
+						nota: this.notas,
+					})
+					.then(
+						(response) => {
+							showSuccess('Nota ha sido actualizada')
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			}
 		},
 	},
 }
