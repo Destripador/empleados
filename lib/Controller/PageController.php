@@ -89,9 +89,13 @@ class PageController extends Controller {
 	#[UseSession]
 	#[NoCSRFRequired]
 	public function index(): TemplateResponse {
+
+		$param = ["hola", "total"];
+
 		return new TemplateResponse(
 			Application::APP_ID,
 			'index',
+			$param,
 		);
 	}
 

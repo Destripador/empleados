@@ -1,14 +1,16 @@
 <template id="content">
 	<NcContent app-name="empleados">
 		<navigator />
-		<EmployeeList />
+		<!--EmployeeList /-->
+		<h2>XXXXXXXXXXXXX</h2>
+		<h2>{{ parameters }}</h2>
 	</NcContent>
 </template>
 
 <script>
 // navigator
 import navigator from './navigator/Sidenavigation.vue'
-import EmployeeList from './components/contacs/EmployeeList.vue'
+// import EmployeeList from './components/contacs/EmployeeList.vue'
 
 import {
 	NcContent,
@@ -18,8 +20,14 @@ export default {
 	name: 'App',
 	components: {
 		navigator,
-		EmployeeList,
+		// EmployeeList,
 		NcContent,
+	},
+	props: {
+		parameters: {
+			type: Array,
+			required: true,
+		},
 	},
 }
 </script>
