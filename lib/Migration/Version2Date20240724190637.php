@@ -90,11 +90,15 @@ class Version2Date20240724190637 extends SimpleMigrationStep {
 	 * @param array $options
 	 */
 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-		  $qb = $this->db->getQueryBuilder();
-		  $qb->insert('empleados_conf')
-			  ->values([
-				  'Nombre' => $qb->createNamedParameter('usuario_almacenamiento')
-			  ])
-			  ->execute();
+		$qb = $this->db->getQueryBuilder();
+			$nombres = ['usuario_almacenamiento', 'automatic_save_note'];
+			  
+			foreach ($nombres as $nombre) {
+				$qb->insert('empleados_conf')
+					->values([
+						 'Nombre' => $qb->createNamedParameter($nombre)
+					 ])
+				->execute();
+			}
 	}
 }

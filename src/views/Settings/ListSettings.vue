@@ -32,6 +32,15 @@
 					Aplicar cambios
 				</NcButton>
 			</div>
+			<br>
+			<div class="grid">
+				<NcCheckboxRadioSwitch
+					:checked="guardado_notas"
+					type="switch"
+					@update:checked="onChangeGuardadoNotas">
+					Guardado automatico de notas
+				</NcCheckboxRadioSwitch>
+			</div>
 		</div>
 	</div>
 </template>
@@ -46,7 +55,7 @@ import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 // import Check from 'vue-material-design-icons/Check'
 
 // imports
-import { /* NcActions, NcActionButton, */ NcButton, NcLoadingIcon, NcSelect, NcNoteCard /*, NcAvatar */ } from '@nextcloud/vue'
+import { /* NcActions, NcActionButton, */ NcButton, NcLoadingIcon, NcSelect, NcNoteCard, NcCheckboxRadioSwitch /*, NcAvatar */ } from '@nextcloud/vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -62,6 +71,7 @@ export default {
 		AccountGroup,
 		NcSelect,
 		NcButton,
+		NcCheckboxRadioSwitch,
 		// Delete,
 		// Plus,
 	},
@@ -72,6 +82,7 @@ export default {
 			configuraciones: [],
 			options: [],
 			selected_user: null,
+			guardado_notas: false,
 		}
 	},
 
@@ -86,8 +97,16 @@ export default {
 				await axios.get(generateUrl('/apps/empleados/GetConfigurations'))
 					.then(
 						(response) => {
+							// usuarios nextcloud
 							this.options = response.data.Users
-							this.selected_user = response.data.Configuraciones
+
+							// Gestor de datos
+							this.selected_user = response.data.Gestor_actual
+
+							// Guardado de notas automatico
+							this.guardado_notas = (response.data.Guardado_notas === 'true')
+
+							// Desactivar animacion de guardado
 							this.loading = false
 						},
 						(err) => {
@@ -157,6 +176,27 @@ export default {
 				} catch (err) {
 					showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
 				}
+			}
+		},
+
+		async onChangeGuardadoNotas() {
+			this.guardado_notas = !this.guardado_notas
+			try {
+				await axios.post(generateUrl('/apps/empleados/ActualizarConfiguracion'),
+					{
+						id_configuracion: 'automatic_save_note',
+						data: this.guardado_notas.toString(),
+					})
+					.then(
+						(response) => {
+							showSuccess('Configuracion actualizada')
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
 			}
 		},
 	},

@@ -209,7 +209,8 @@
 		<NcTextArea class="top"
 			label="NOTAS EMPLEADO"
 			:disabled="show"
-			:value="inputValue" />
+			:value.sync="inputValue" />
+		{{ show }}
 		<NcButton
 			aria-label="Example text"
 			type="primary"
@@ -218,10 +219,15 @@
 		</NcButton>
 		<br>
 		{{ notas }}
+		<br>
+		{{ data.Notas }}
 	</div>
 </template>
 
 <script>
+
+import debounce from 'debounce'
+
 import 'vue-nav-tabs/themes/vue-tabs.css'
 import OrganizationChart from 'vue-organization-chart'
 
@@ -286,26 +292,39 @@ export default {
 	},
 
 	data() {
+		const { notas } = ''
 		return {
 			Edit: [],
 			gerente: null,
 			socio: null,
-			notas: '',
+			notas: notas ?? '',
 		}
 	},
 
 	computed: {
 		inputValue: {
 			get() {
-				return this.checknull(this.data.Notas)
+				return this.notas
 			},
 			set(value) {
-				this.notas = value
+				this.debouncePropertyChange(value.trim())
 			},
+		},
+		debouncePropertyChange() {
+			return debounce(function(value) {
+				this.notas = value
+				this.guardarNota()
+			}, 800)
+		},
+	},
+	watch: {
+		data() {
+			this.notas = this.data.Notas
 		},
 	},
 
 	mounted() {
+		this.notas = this.data.Notas
 		this.gerente = this.data.Id_gerente
 		this.socio = this.data.Id_socio
 	},
@@ -351,6 +370,7 @@ export default {
 					})
 					.then(
 						(response) => {
+							this.$root.$emit('getall')
 							showSuccess('Nota ha sido actualizada')
 						},
 						(err) => {

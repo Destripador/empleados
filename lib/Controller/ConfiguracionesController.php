@@ -69,6 +69,14 @@ class ConfiguracionesController extends Controller {
 	#[NoCSRFRequired]
 	#[NoAdminRequired]    
 	public function GetConfigurations(): array {
+
+        /**
+         *  este apartado funciona para obtener el listadod
+         *  usuarios disponibles en nextcloud
+         *  
+         *  Esto para rellenar el NcSelect y poder seleccionar
+         *  algyn nuevo gesto de datos
+        */
         $users = $this->userManager->search('');
 
         $userList = [];
@@ -82,6 +90,12 @@ class ConfiguracionesController extends Controller {
             ];
         }
 
+        /**
+         *  Esto funciona para obtener el usuario gestor
+         *  de datos, en caso de que exista, regresa el
+         *  usuario seleccionado para darle el valor al
+         *  NcSeleclt
+         */
         $configuraciones = $this->configuracionesMapper->GetConfig();
         if($configuraciones[0]['Data']) {
             $gestor_datos = $this->userManager->get($configuraciones[0]['Data']);
@@ -99,8 +113,9 @@ class ConfiguracionesController extends Controller {
 
         
 		$data = array(
-			'Configuraciones' => $gestor,
+			'Gestor_actual' => $gestor,
 			'Users' => $userList,
+            'Guardado_notas' => $configuraciones[1]['Data'],
         );
 
 
@@ -135,4 +150,8 @@ class ConfiguracionesController extends Controller {
         }
        
 	}
+
+    public function ActualizarConfiguracion($id_configuracion, $data){
+        $this->configuracionesMapper->ActualizarConfiguracion($id_configuracion, $data);
+    }
 }

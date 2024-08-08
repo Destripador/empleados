@@ -40,6 +40,29 @@ class configuracionesMapper extends QBMapper {
 			$query->execute();
 	}
 
+	public function ActualizarConfiguracion($id_configuracion, $data): void {
+		$query = $this->db->getQueryBuilder();
+			$query->update($this->getTableName())
+				->set('Data', $query->createNamedParameter($data))
+				->where($query->expr()->eq('Nombre', $query->createNamedParameter($id_configuracion)));
+	
+			$query->execute();
+	}
+
+	public function GetNotasGuardado(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('Data')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('automatic_save_note'));
+			
+		$result = $qb->execute();
+		$config = $result->fetchAll();
+		$result->closeCursor();
+	
+		return $config;
+	}
+
 	public function GetGestor(): array {
 		$qb = $this->db->getQueryBuilder();
 
