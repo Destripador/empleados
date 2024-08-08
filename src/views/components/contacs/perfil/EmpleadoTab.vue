@@ -208,9 +208,9 @@
 		<br>
 		<NcTextArea class="top"
 			label="NOTAS EMPLEADO"
+			resize="vertical"
 			:disabled="show"
 			:value.sync="inputValue" />
-		{{ show }}
 		<NcButton
 			aria-label="Example text"
 			type="primary"
@@ -218,9 +218,6 @@
 			Guardar nota
 		</NcButton>
 		<br>
-		{{ notas }}
-		<br>
-		{{ data.Notas }}
 	</div>
 </template>
 
@@ -314,7 +311,7 @@ export default {
 			return debounce(function(value) {
 				this.notas = value
 				this.guardarNota()
-			}, 800)
+			}, 600)
 		},
 	},
 	watch: {
