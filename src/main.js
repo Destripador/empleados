@@ -8,17 +8,16 @@ Vue.use(Router)
 Vue.mixin({ methods: { t, n } })
 
 // Obtener los parámetros desde el DOM
-const scriptElement = document.getElementById('data').getAttribute('data-parameters')
+const configuraciones = document.getElementById('data').getAttribute('data-parameters')
 // const parameterss = scriptElement ? JSON.parse(scriptElement.textContent) : {}
 
-const View = Vue.extend(App)
-
 // eslint-disable-next-line no-console
-console.log('hola ching: ', scriptElement)
+console.log('DATAS: ', configuraciones)
+const View = Vue.extend(App)
 
 new View({
 	router,
 	propsData: {
-		parameters: scriptElement,
+		parameters: configuraciones,
 	},
 }).$mount('#content')

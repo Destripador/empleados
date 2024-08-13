@@ -54,7 +54,7 @@ class configuracionesMapper extends QBMapper {
 
 		$qb->select('Data')
 			->from($this->getTableName())
-			->where($qb->expr()->eq('automatic_save_note'));
+			->where($qb->expr()->eq('Nombre', $qb->createNamedParameter("automatic_save_note")));
 			
 		$result = $qb->execute();
 		$config = $result->fetchAll();

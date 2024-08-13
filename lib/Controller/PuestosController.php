@@ -105,7 +105,7 @@ class PuestosController extends Controller {
 		$data = [];
 		foreach($Puestos as $puesto){
 			$datas = array(
-				'value' => $puesto['Id_puesto'],
+				'value' => $puesto['Id_puestos'],
 				'label' => $puesto['Nombre'],
 			);
 			$data[] = $datas;

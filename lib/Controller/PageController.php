@@ -90,12 +90,16 @@ class PageController extends Controller {
 	#[NoCSRFRequired]
 	public function index(): TemplateResponse {
 
-		$param = ["hola", "total"];
+		$configuraciones = $this->configuracionesMapper->GetNotasGuardado();
+		
+		$params = array(
+			"automatic_save_note" => $configuraciones[0]['Data'],
+		);
 
 		return new TemplateResponse(
 			Application::APP_ID,
 			'index',
-			$param,
+			$params,
 		);
 	}
 

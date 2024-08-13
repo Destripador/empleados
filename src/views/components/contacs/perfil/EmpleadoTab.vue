@@ -15,33 +15,37 @@
 			<Calendarrange class="margin-left-icon" :size="20" />
 		</NcTextField>
 		<br>
-		<NcTextField
-			:value="checknull(data.Id_departamento)"
-			:v-model="Edit.Id_departamento"
-			label="Id_departamento">
-			<Briefcaseaccount class="margin-left-icon" :size="20" />
-		</NcTextField>
 
+		<div>
+			<div>
+				<div>
+					<NcSelect v-model="Edit.Id_departamento"
+						input-label="Area"
+						:options="optionsarea" />
+				</div>
+				<div>
+					<NcSelect v-model="Edit.Id_puestos"
+						input-label="Puesto"
+						:options="optionspuesto" />
+				</div>
+			</div>
+			<div>
+				<div>
+					<NcSelect v-model="socio"
+						input-label="Socio"
+						:options="empleados"
+						:user-select="true" />
+				</div>
+				<div>
+					<NcSelect v-model="gerente"
+						input-label="Gerente"
+						:options="empleados"
+						:user-select="true" />
+				</div>
+			</div>
+		</div>
 		<br>
-		<NcTextField
-			:value="checknull(data.Id_puesto)"
-			:v-model="Edit.Id_puesto"
-			label="Id_puesto">
-			<Briefcaseaccount class="margin-left-icon" :size="20" />
-		</NcTextField>
-		<br>
-		-----------------------------------------
-		<NcSelect v-model="socio"
-			input-label="Socio"
-			:options="empleados"
-			:user-select="true" />
-		<br>
-		<br>
-		<NcSelect v-model="gerente"
-			input-label="Gerente"
-			:options="empleados"
-			:user-select="true" />
-		-----------------------------------------
+
 		<br>
 		<NcTextField
 			:value="checknull(data.Fondo_clave)"
@@ -116,7 +120,7 @@
 						type="text"
 						disabled="true"
 						class="inputtype"
-						:value="checknull(data.Id_departamento)">
+						:value="Area()">
 				</div>
 
 				<div>
@@ -128,7 +132,7 @@
 						type="text"
 						disabled="true"
 						class="inputtype"
-						:value="checknull(data.Id_puesto)">
+						:value="Puesto()">
 				</div>
 
 				<div>
@@ -212,7 +216,8 @@
 			:disabled="show"
 			:value.sync="inputValue" />
 		<NcButton
-			aria-label="Example text"
+			v-if="config === 'false'"
+			aria-label="Guardar nota"
 			type="primary"
 			@click="guardarNota()">
 			Guardar nota
@@ -286,6 +291,10 @@ export default {
 			type: Array,
 			required: true,
 		},
+		config: {
+			type: String,
+			required: true,
+		},
 	},
 
 	data() {
@@ -295,6 +304,8 @@ export default {
 			gerente: null,
 			socio: null,
 			notas: notas ?? '',
+			optionsarea: [],
+			optionspuesto: [],
 		}
 	},
 
@@ -310,7 +321,9 @@ export default {
 		debouncePropertyChange() {
 			return debounce(function(value) {
 				this.notas = value
-				this.guardarNota()
+				if (this.config) {
+					this.guardarNota()
+				}
 			}, 600)
 		},
 	},
@@ -318,15 +331,77 @@ export default {
 		data() {
 			this.notas = this.data.Notas
 		},
+		show(news, olds) {
+			if (news === true) {
+				this.getAreas()
+				this.getPuestos()
+			}
+		},
 	},
 
 	mounted() {
+		this.getAreas()
+		this.getPuestos()
 		this.notas = this.data.Notas
 		this.gerente = this.data.Id_gerente
 		this.socio = this.data.Id_socio
 	},
 
 	methods: {
+		async getAreas() {
+			try {
+				await axios.get(generateUrl('/apps/empleados/GetAreasFix'))
+					.then(
+						(response) => {
+							this.optionsarea = response.data
+							this.Edit.Id_departamento = this.optionsarea.find(role => role.value === parseInt(this.data.Id_departamento))
+
+							// this.Edit.Id_departamento =
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+			}
+		},
+
+		async getPuestos() {
+			// eslint-disable-next-line no-console
+			console.log(this.data)
+			try {
+				await axios.get(generateUrl('/apps/empleados/GetPuestosFix'))
+					.then(
+						(response) => {
+							this.optionspuesto = response.data
+							this.Edit.Id_puestos = this.optionspuesto.find(role => role.value === parseInt(this.data.Id_puesto))
+
+							// this.Edit.Id_departamento =
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
+			}
+		},
+
+		Area() {
+			if (this.checknull(this.data.Id_departamento) !== '' || this.checknull(this.data.Id_departamento) != null) {
+				return this.optionsarea.find(role => role.value === parseInt(this.data.Id_departamento)).label
+			}
+			return ''
+		},
+
+		Puesto() {
+			if (this.checknull(this.data.Id_puesto) !== '' || this.checknull(this.data.Id_puesto) != null) {
+				return this.optionspuesto.find(role => role.value === parseInt(this.data.Id_puesto)).label
+			}
+			return ''
+		},
+
 		generateChar(user, gerente, socio) {
 			if (gerente === '' || gerente == null) {
 				gerente = 'Sin Asignar'
@@ -352,7 +427,7 @@ export default {
 			}
 		},
 		checknull(satanizar) {
-			if (satanizar == null) {
+			if (satanizar === null) {
 				return ''
 			}
 

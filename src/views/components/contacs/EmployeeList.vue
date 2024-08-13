@@ -17,7 +17,7 @@
 		</template>
 
 		<!-- main contacts details -->
-		<ContactDetails :data="data_empleado" />
+		<ContactDetails :data="data_empleado" :config="config" />
 	</NcAppContent>
 </template>
 
@@ -45,6 +45,14 @@ export default {
 		NcLoadingIcon,
 		ContactsList,
 		ContactDetails,
+	},
+
+	props: {
+		// obtencion de parametros de configuracion
+		config: {
+			type: String,
+			required: true,
+		},
 	},
 
 	data() {

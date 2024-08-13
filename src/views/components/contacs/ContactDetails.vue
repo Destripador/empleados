@@ -66,7 +66,11 @@
 						type="pills"
 						centered>
 						<VTab title="Empleado">
-							<EmpleadoTab :data="data" :show="show" :empleados="Empleados" />
+							<EmpleadoTab
+								:data="data"
+								:show="show"
+								:empleados="Empleados"
+								:config="config" />
 						</VTab>
 
 						<VTab title="Personal" />
@@ -119,6 +123,10 @@ export default {
 	props: {
 		data: {
 			type: Object,
+			required: true,
+		},
+		config: {
+			type: String,
 			required: true,
 		},
 	},
