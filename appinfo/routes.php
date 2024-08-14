@@ -6,7 +6,7 @@ declare(strict_types=1);
 return [
 
 	'routes' => [
-		// EMPLEADOS
+		/******************************** EMPLEADOS ********************************************/ 
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 		['name' => 'page#GetUserLists', 'url' => '/GetUserLists', 'verb' => 'GET'],
 		['name' => 'page#GetEmpleadosList', 'url' => '/GetEmpleadosList', 'verb' => 'GET'],
@@ -16,11 +16,12 @@ return [
 		['name' => 'page#ExportListEmpleados', 'url' => '/ExportListEmpleados', 'verb' => 'GET'],
 		
 		['name' => 'page#GuardarNota', 'url' => '/GuardarNota', 'verb' => 'POST'],
+		['name' => 'empleados#CambiosEmpleado', 'url' => '/CambiosEmpleado', 'verb' => 'POST'],
 		['name' => 'page#ActivarEmpleado', 'url' => '/ActivarEmpleado', 'verb' => 'POST'],
 		['name' => 'page#EliminarEmpleado', 'url' => '/EliminarEmpleado', 'verb' => 'POST'],
 		['name' => 'page#ImportListEmpleados', 'url' => '/ImportListEmpleados', 'verb' => 'POST'],
 
-		// AREAS
+		/******************************** AREAS ********************************************/ 
 		['name' => 'page#Areas', 'url' => '/Areas', 'verb' => 'GET'],
 		['name' => 'areas#GetAreasFix', 'url' => '/GetAreasFix', 'verb' => 'GET'],
 		['name' => 'page#GetAreasList', 'url' => '/GetAreasList', 'verb' => 'GET'],
@@ -31,7 +32,7 @@ return [
 		['name' => 'areas#EliminarArea', 'url' => '/EliminarArea', 'verb' => 'POST'],
 		['name' => 'areas#crearArea', 'url' => '/crearArea', 'verb' => 'POST'],
 
-		// PUESTOS
+		/****************************** PUESTOS *********************************************/
 		['name' => 'page#Puestos', 'url' => '/Puestos', 'verb' => 'GET'],
 		['name' => 'puestos#GetPuestosFix', 'url' => '/GetPuestosFix', 'verb' => 'GET'],
 		['name' => 'puestos#GetPuestosList', 'url' => '/GetPuestosList', 'verb' => 'GET'],
@@ -43,7 +44,7 @@ return [
 		['name' => 'puestos#crearPuesto', 'url' => '/crearPuesto', 'verb' => 'POST'],
 
 
-		// CONFIGURACIONES
+		/***************************** CONFIGURACIONES ***************************************/
 		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],
 
 		['name' => 'configuraciones#ActualizarGestor', 'url' => '/ActualizarGestor', 'verb' => 'POST'],

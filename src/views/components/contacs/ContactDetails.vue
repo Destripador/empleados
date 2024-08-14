@@ -15,7 +15,9 @@
 							<template #icon>
 								<AccountCog :size="20" />
 							</template>
-							<NcActionButton @click="showEdit">
+							<NcActionButton
+								:close-after-click="true"
+								@click="showEdit">
 								<template #icon>
 									<AccountEdit :size="20" />
 								</template>

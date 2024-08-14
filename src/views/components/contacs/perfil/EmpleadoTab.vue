@@ -2,42 +2,45 @@
 	<div v-if="show">
 		<br>
 		<NcTextField
-			:value="checknull(data.Numero_empleado)"
-			:v-model="Edit.Numero_empleado"
+			:value.sync="Numero_empleado"
 			label="Numero_empleado">
 			<Badgeaccountoutline class="margin-left-icon" :size="20" />
 		</NcTextField>
 		<br>
 		<NcTextField
-			:value="checknull(data.Ingreso)"
-			:v-model="Edit.Ingreso"
+			type="date"
+			:value.sync="Ingreso"
 			label="Ingreso">
 			<Calendarrange class="margin-left-icon" :size="20" />
 		</NcTextField>
 		<br>
 
-		<div>
-			<div>
+		<div class="row1">
+			<div class="row2">
 				<div>
-					<NcSelect v-model="Edit.Id_departamento"
+					<NcSelect v-model="area"
+						class="select"
 						input-label="Area"
 						:options="optionsarea" />
 				</div>
 				<div>
-					<NcSelect v-model="Edit.Id_puestos"
+					<NcSelect v-model="puesto"
+						class="select"
 						input-label="Puesto"
 						:options="optionspuesto" />
 				</div>
 			</div>
-			<div>
+			<div class="row2">
 				<div>
 					<NcSelect v-model="socio"
+						class="select"
 						input-label="Socio"
 						:options="empleados"
 						:user-select="true" />
 				</div>
 				<div>
 					<NcSelect v-model="gerente"
+						class="select"
 						input-label="Gerente"
 						:options="empleados"
 						:user-select="true" />
@@ -48,29 +51,25 @@
 
 		<br>
 		<NcTextField
-			:value="checknull(data.Fondo_clave)"
-			:v-model="Edit.Fondo_clave"
+			:value.sync="Fondo_clave"
 			label="Fondo_clave">
 			<Piggybankoutline class="margin-left-icon" :size="20" />
 		</NcTextField>
 		<br>
 		<NcTextField
-			:value="checknull(data.Numero_cuenta)"
-			:v-model="Edit.Numero_cuenta"
+			:value.sync="Numero_cuenta"
 			label="Numero_cuenta">
 			<Bank class="margin-left-icon" :size="20" />
 		</NcTextField>
 		<br>
 		<NcTextField
-			:value="checknull(data.Equipo_asignado)"
-			:v-model="Edit.Equipo_asignado"
+			:value.sync="Equipo_asignado"
 			label="Equipo_asignado">
 			<Laptopaccount class="margin-left-icon" :size="20" />
 		</NcTextField>
 		<br>
 		<NcTextField
-			:value="checknull(data.Sueldo)"
-			:v-model="Edit.Sueldo"
+			:value.sync="Sueldo"
 			label="Sueldo">
 			<Cash class="margin-left-icon" :size="20" />
 		</NcTextField>
@@ -78,7 +77,8 @@
 		<div class="div-center">
 			<NcButton
 				aria-label="Guardar"
-				type="primary">
+				type="primary"
+				@click="CambiosEmpleado()">
 				Aplicar cambios
 			</NcButton>
 		</div>
@@ -117,10 +117,10 @@
 						Departamento
 					</label>
 					<input id="Id_departamento"
+						v-model="area"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="Area()">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -129,10 +129,10 @@
 						Puesto
 					</label>
 					<input id="Id_puesto"
+						v-model="puesto"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="Puesto()">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -300,12 +300,21 @@ export default {
 	data() {
 		const { notas } = ''
 		return {
-			Edit: [],
+			area: '',
+			puesto: '',
 			gerente: null,
 			socio: null,
 			notas: notas ?? '',
 			optionsarea: [],
 			optionspuesto: [],
+			Numero_empleado: '',
+			Ingreso: '',
+			Fondo_clave: '',
+			Numero_cuenta: '',
+			Equipo_asignado: '',
+			Sueldo: '',
+			areaSend: '',
+			puestoSend: '',
 		}
 	},
 
@@ -324,18 +333,26 @@ export default {
 				if (this.config) {
 					this.guardarNota()
 				}
-			}, 600)
+			}, 700)
 		},
 	},
 	watch: {
 		data() {
 			this.notas = this.data.Notas
+			this.getAreas()
+			this.getPuestos()
 		},
 		show(news, olds) {
-			if (news === true) {
-				this.getAreas()
-				this.getPuestos()
-			}
+			this.getAreas()
+			this.getPuestos()
+			this.Numero_empleado = this.checknull(this.data.Numero_empleado)
+			this.Ingreso = this.checknull(this.data.Ingreso)
+			this.Fondo_clave = this.checknull(this.data.Fondo_clave)
+			this.Numero_cuenta = this.checknull(this.data.Numero_cuenta)
+			this.Equipo_asignado = this.checknull(this.data.Equipo_asignado)
+			this.Sueldo = this.checknull(this.data.Sueldo)
+			this.gerente = this.checknull(this.data.Id_gerente)
+			this.socio = this.checknull(this.data.Id_socio)
 		},
 	},
 
@@ -354,9 +371,13 @@ export default {
 					.then(
 						(response) => {
 							this.optionsarea = response.data
-							this.Edit.Id_departamento = this.optionsarea.find(role => role.value === parseInt(this.data.Id_departamento))
-
-							// this.Edit.Id_departamento =
+							// eslint-disable-next-line no-console
+							console.log(this.data.Id_departamento.length)
+							if (this.data.Id_departamento.length !== 0 || this.data.Id_departamento !== null) {
+								this.area = this.optionsarea.find(role => role.value === parseInt(this.data.Id_departamento)).label
+							} else {
+								this.area = ''
+							}
 						},
 						(err) => {
 							showError(err)
@@ -368,16 +389,16 @@ export default {
 		},
 
 		async getPuestos() {
-			// eslint-disable-next-line no-console
-			console.log(this.data)
 			try {
 				await axios.get(generateUrl('/apps/empleados/GetPuestosFix'))
 					.then(
 						(response) => {
 							this.optionspuesto = response.data
-							this.Edit.Id_puestos = this.optionspuesto.find(role => role.value === parseInt(this.data.Id_puesto))
-
-							// this.Edit.Id_departamento =
+							if (this.data.Id_puesto.length !== 0 || this.data.Id_puesto !== null) {
+								this.puesto = this.optionspuesto.find(role => role.value === parseInt(this.data.Id_puesto)).label
+							} else {
+								this.puesto = ''
+							}
 						},
 						(err) => {
 							showError(err)
@@ -386,20 +407,6 @@ export default {
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [01] [' + err + ']'))
 			}
-		},
-
-		Area() {
-			if (this.checknull(this.data.Id_departamento) !== '' || this.checknull(this.data.Id_departamento) != null) {
-				return this.optionsarea.find(role => role.value === parseInt(this.data.Id_departamento)).label
-			}
-			return ''
-		},
-
-		Puesto() {
-			if (this.checknull(this.data.Id_puesto) !== '' || this.checknull(this.data.Id_puesto) != null) {
-				return this.optionspuesto.find(role => role.value === parseInt(this.data.Id_puesto)).label
-			}
-			return ''
 		},
 
 		generateChar(user, gerente, socio) {
@@ -427,7 +434,7 @@ export default {
 			}
 		},
 		checknull(satanizar) {
-			if (satanizar === null) {
+			if (satanizar === null || !satanizar) {
 				return ''
 			}
 
@@ -442,8 +449,58 @@ export default {
 					})
 					.then(
 						(response) => {
-							this.$root.$emit('getall')
 							showSuccess('Nota ha sido actualizada')
+						},
+						(err) => {
+							showError(err)
+						},
+					)
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
+			}
+		},
+		async CambiosEmpleado() {
+			try {
+
+				if (this.area.label) {
+					this.areaSend = this.checknull(this.area.label)
+				} else {
+					this.areaSend = this.checknull(this.area)
+				}
+
+				if (this.puesto.label) {
+					this.puestoSend = this.checknull(this.puesto.label)
+				} else {
+					this.puestoSend = this.checknull(this.puesto)
+				}
+
+				try {
+					this.areaSend = this.optionsarea.find(role => role.label === this.areaSend).value
+					this.puestoSend = this.optionspuesto.find(role => role.label === this.puestoSend).value
+				} catch (err) {
+					// eslint-disable-next-line no-console
+					console.log(err)
+				}
+
+				await axios.post(generateUrl('/apps/empleados/CambiosEmpleado'),
+					{
+						id_empleados: this.data.Id_empleados,
+						numeroempleado: this.checknull(this.Numero_empleado),
+						ingreso: this.checknull(this.Ingreso),
+						area: this.areaSend,
+						puesto: this.puestoSend,
+						socio: this.checknull(this.socio.id),
+						gerente: this.checknull(this.gerente.id),
+						fondoclave: this.checknull(this.Fondo_clave),
+						numerocuenta: this.checknull(this.Numero_cuenta),
+						equipoasignado: this.checknull(this.Equipo_asignado),
+						sueldo: this.checknull(this.Sueldo),
+					})
+					.then(
+						(response) => {
+							this.$root.$emit('getall')
+							this.$root.$emit('show', false)
+							showSuccess('Datos actualizados')
 						},
 						(err) => {
 							showError(err)
@@ -589,5 +646,14 @@ export default {
 	max-width: fit-content;
 	margin-left: auto;
 	margin-right: auto;
+}
+.row1{
+	display: flex;
+}
+.row2{
+	width: 50%;
+}
+.select {
+  width: 95%;
 }
 </style>
