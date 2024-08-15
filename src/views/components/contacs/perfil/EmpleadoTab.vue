@@ -93,10 +93,10 @@
 						Numero de empleado
 					</label>
 					<input id="Numero_empleado"
+						v-model="Numero_empleado"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="checknull(data.Numero_empleado)">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -105,10 +105,10 @@
 						Fecha de Ingreso
 					</label>
 					<input id="Ingreso"
+						v-model="Ingreso"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="checknull(data.Ingreso)">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -141,10 +141,10 @@
 						Fondo clave
 					</label>
 					<input id="Fondo_clave"
+						v-model="Fondo_clave"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="checknull(data.Fondo_clave)">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -153,10 +153,10 @@
 						Numero cuenta bancaria
 					</label>
 					<input id="Numero_cuenta"
+						v-model="Numero_cuenta"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="checknull(data.Numero_cuenta)">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -165,10 +165,10 @@
 						Equipo asignado
 					</label>
 					<input id="Equipo_asignado"
+						v-model="Equipo_asignado"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="checknull(data.Equipo_asignado)">
+						class="inputtype">
 				</div>
 
 				<div>
@@ -177,15 +177,15 @@
 						Sueldo
 					</label>
 					<input id="Sueldo"
+						v-model="Sueldo"
 						type="text"
 						disabled="true"
-						class="inputtype"
-						:value="checknull(data.Sueldo)">
+						class="inputtype">
 				</div>
 			</div>
 			<div>
 				<div class="">
-					<OrganizationChart :datasource="generateChar(data.uid, data.Id_gerente, data.Id_socio)">
+					<OrganizationChart :datasource="generateChar(data.uid, gerente, socio)">
 						<template slot-scope="{ nodeData }">
 							<div class="title">
 								{{ nodeData.title }}
@@ -227,15 +227,12 @@
 </template>
 
 <script>
-
-import debounce from 'debounce'
-
-import 'vue-nav-tabs/themes/vue-tabs.css'
-import OrganizationChart from 'vue-organization-chart'
-
-import { generateUrl } from '@nextcloud/router'
-import axios from '@nextcloud/axios'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import OrganizationChart from 'vue-organization-chart'
+import { generateUrl } from '@nextcloud/router'
+import 'vue-nav-tabs/themes/vue-tabs.css'
+import axios from '@nextcloud/axios'
+import debounce from 'debounce'
 
 // ICONOS
 // import Magnify from 'vue-material-design-icons/Magnify.vue'
@@ -337,44 +334,64 @@ export default {
 		},
 	},
 	watch: {
-		data() {
+		data(news, old) {
 			this.notas = this.data.Notas
-			this.getAreas()
-			this.getPuestos()
-		},
-		show(news, olds) {
-			this.getAreas()
-			this.getPuestos()
-			this.Numero_empleado = this.checknull(this.data.Numero_empleado)
-			this.Ingreso = this.checknull(this.data.Ingreso)
-			this.Fondo_clave = this.checknull(this.data.Fondo_clave)
-			this.Numero_cuenta = this.checknull(this.data.Numero_cuenta)
-			this.Equipo_asignado = this.checknull(this.data.Equipo_asignado)
-			this.Sueldo = this.checknull(this.data.Sueldo)
-			this.gerente = this.checknull(this.data.Id_gerente)
-			this.socio = this.checknull(this.data.Id_socio)
+			if (news) {
+				this.setAttr(
+					news.Numero_empleado,
+					news.Ingreso,
+					news.Id_departamento,
+					news.Id_puesto,
+					news.Id_gerente,
+					news.Id_socio,
+					news.Fondo_clave,
+					news.Numero_cuenta,
+					news.Equipo_asignado,
+					news.Sueldo)
+			}
 		},
 	},
 
 	mounted() {
-		this.getAreas()
-		this.getPuestos()
 		this.notas = this.data.Notas
-		this.gerente = this.data.Id_gerente
-		this.socio = this.data.Id_socio
+
+		this.setAttr(
+			this.data.Numero_empleado,
+			this.data.Ingreso,
+			this.data.Id_departamento,
+			this.data.Id_puesto,
+			this.data.Id_gerente,
+			this.data.Id_socio,
+			this.data.Fondo_clave,
+			this.data.Numero_cuenta,
+			this.data.Equipo_asignado,
+			this.data.Sueldo)
 	},
 
 	methods: {
-		async getAreas() {
+		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, NumeroCuenta, EquipoAsignado, Sueldo) {
+			this.Numero_empleado = this.checknull(NumeroEmpleado)
+			this.Ingreso = this.checknull(Ingreso)
+			this.area = this.checknull(Area)
+			this.puesto = this.checknull(Puesto)
+			this.gerente = this.checknull(Gerente)
+			this.socio = this.checknull(Socio)
+			this.Fondo_clave = this.checknull(FondoClave)
+			this.Numero_cuenta = this.checknull(NumeroCuenta)
+			this.Equipo_asignado = this.checknull(EquipoAsignado)
+			this.Sueldo = this.checknull(Sueldo)
+
+			this.getAreas(this.area)
+			this.getPuestos(this.puesto)
+		},
+		async getAreas(Area) {
 			try {
 				await axios.get(generateUrl('/apps/empleados/GetAreasFix'))
 					.then(
 						(response) => {
 							this.optionsarea = response.data
-							// eslint-disable-next-line no-console
-							console.log(this.data.Id_departamento.length)
-							if (this.data.Id_departamento.length !== 0 || this.data.Id_departamento !== null) {
-								this.area = this.optionsarea.find(role => role.value === parseInt(this.data.Id_departamento)).label
+							if (Area && Area.length !== 0) {
+								this.area = this.optionsarea.find(areas => areas.value === parseInt(Area)).label
 							} else {
 								this.area = ''
 							}
@@ -388,14 +405,14 @@ export default {
 			}
 		},
 
-		async getPuestos() {
+		async getPuestos(Puesto) {
 			try {
 				await axios.get(generateUrl('/apps/empleados/GetPuestosFix'))
 					.then(
 						(response) => {
 							this.optionspuesto = response.data
-							if (this.data.Id_puesto.length !== 0 || this.data.Id_puesto !== null) {
-								this.puesto = this.optionspuesto.find(role => role.value === parseInt(this.data.Id_puesto)).label
+							if (Puesto && Puesto.length !== 0) {
+								this.puesto = this.optionspuesto.find(role => role.value === parseInt(Puesto)).label
 							} else {
 								this.puesto = ''
 							}
@@ -433,13 +450,14 @@ export default {
 				],
 			}
 		},
+
 		checknull(satanizar) {
-			if (satanizar === null || !satanizar) {
+			if (!satanizar && satanizar === null) {
 				return ''
 			}
-
 			return satanizar
 		},
+
 		async guardarNota() {
 			try {
 				await axios.post(generateUrl('/apps/empleados/GuardarNota'),
@@ -450,6 +468,7 @@ export default {
 					.then(
 						(response) => {
 							showSuccess('Nota ha sido actualizada')
+							this.$root.$emit('getall')
 						},
 						(err) => {
 							showError(err)
@@ -459,29 +478,29 @@ export default {
 				showError(t('empleados', 'Se ha producido una excepcion [03] [' + err + ']'))
 			}
 		},
+
 		async CambiosEmpleado() {
 			try {
 
 				if (this.area.label) {
-					this.areaSend = this.checknull(this.area.label)
-				} else {
-					this.areaSend = this.checknull(this.area)
+					this.area = this.area.label
 				}
+				this.areaSend = this.optionsarea.find(role => role.label === this.area).value
 
 				if (this.puesto.label) {
-					this.puestoSend = this.checknull(this.puesto.label)
+					this.puesto = this.puesto.label
+				}
+				this.puestoSend = this.optionspuesto.find(role => role.label === this.puesto).value
+
+				if (this.socio.id) {
+					this.socio = this.checknull(this.socio.id)
+				}
+
+				if (this.gerente.id) {
+					this.gerente = this.checknull(this.gerente.id)
 				} else {
-					this.puestoSend = this.checknull(this.puesto)
+					this.gerente = this.checknull(this.gerente)
 				}
-
-				try {
-					this.areaSend = this.optionsarea.find(role => role.label === this.areaSend).value
-					this.puestoSend = this.optionspuesto.find(role => role.label === this.puestoSend).value
-				} catch (err) {
-					// eslint-disable-next-line no-console
-					console.log(err)
-				}
-
 				await axios.post(generateUrl('/apps/empleados/CambiosEmpleado'),
 					{
 						id_empleados: this.data.Id_empleados,
@@ -489,8 +508,8 @@ export default {
 						ingreso: this.checknull(this.Ingreso),
 						area: this.areaSend,
 						puesto: this.puestoSend,
-						socio: this.checknull(this.socio.id),
-						gerente: this.checknull(this.gerente.id),
+						socio: this.socio,
+						gerente: this.checknull(this.gerente),
 						fondoclave: this.checknull(this.Fondo_clave),
 						numerocuenta: this.checknull(this.Numero_cuenta),
 						equipoasignado: this.checknull(this.Equipo_asignado),
@@ -500,6 +519,8 @@ export default {
 						(response) => {
 							this.$root.$emit('getall')
 							this.$root.$emit('show', false)
+							// eslint-disable-next-line no-console
+							console.log('message: ', this.areaSend)
 							showSuccess('Datos actualizados')
 						},
 						(err) => {

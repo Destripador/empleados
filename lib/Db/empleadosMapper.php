@@ -168,7 +168,7 @@ class empleadosMapper extends QBMapper {
 	
 		return $users;
 	}
-	public function CambiosEmpleado($Id_empleados, $Numero_empleado, $Ingreso, $Id_departamento, $Id_puesto, $Id_gerente, $Id_socio, $Fondo_clave, $Numero_cuenta, $Equipo_asignado, $Sueldo): void {
+	public function CambiosEmpleado($Id_empleados, $Numero_empleado, $Ingreso, $Id_departamento, $Id_puesto, $Id_socio, $Id_gerente, $Fondo_clave, $Numero_cuenta, $Equipo_asignado, $Sueldo): void {
 		try{
 			$timestamp = date('Y-m-d');
 
