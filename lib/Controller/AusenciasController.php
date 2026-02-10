@@ -319,7 +319,17 @@ class AusenciasController extends BaseController {
                             $this->groupManager->isInGroup($uid, 'recursos_humanos');
 
             if ($isPrivileged) {
-                $user =  $this->userManager->get($this->request->getParam('id_usuario'));
+                $targetUserId = (string) $this->request->getParam('id_usuario');
+                if ($targetUserId === '') {
+                    return new DataResponse(['success' => false, 'message' => 'Debe seleccionar un empleado para registrar la ausencia.']);
+                }
+
+                $targetUser = $this->userManager->get($targetUserId);
+                if ($targetUser === null) {
+                    return new DataResponse(['success' => false, 'message' => 'No se encontró el usuario seleccionado para registrar la ausencia.']);
+                }
+
+                $user = $targetUser;
             }
 
             $gestor = $this->configuracionesMapper->GetGestor()[0]['Data'] ?? null;
@@ -372,8 +382,17 @@ class AusenciasController extends BaseController {
             $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($user->getUID());
             $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado[0]['Id_empleados']);
             
-            $fechaDeObj = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_de'));
-            $fechaHastaObj = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_hasta'));
+            $fechaDeObj = DateTime::createFromFormat('d/m/Y', (string) $this->request->getParam('fecha_de'));
+            $fechaHastaObj = DateTime::createFromFormat('d/m/Y', (string) $this->request->getParam('fecha_hasta'));
+
+            if ($fechaDeObj === false || $fechaHastaObj === false) {
+                return new DataResponse(['success' => false, 'message' => 'Formato de fecha inválido. Utiliza DD/MM/AAAA.']);
+            }
+
+            if ($fechaDeObj > $fechaHastaObj) {
+                return new DataResponse(['success' => false, 'message' => 'La fecha inicial no puede ser posterior a la fecha final.']);
+            }
+
             $hoy = new \DateTime();
 
             // Normalizamos horas
@@ -394,8 +413,8 @@ class AusenciasController extends BaseController {
                 $this->ausenciasMapper->updateAusenciasEmpleado($empleado_ausencias[0]['id_ausencias'], $dias_disponibles);
             }
             
-            $fecha_de = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_de'))->format('Y-m-d');
-            $fecha_hasta = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_hasta'))->format('Y-m-d');
+            $fecha_de = $fechaDeObj->format('Y-m-d');
+            $fecha_hasta = $fechaHastaObj->format('Y-m-d');
 
             // Registro en el historial de ausencias 
             $idHistorialAusencia = $this->historialausenciasMapper->EnviarAusencia((int) $id_tipo_ausencia, $empleado_ausencias[0]['id_ausencias'], $fecha_de, $fecha_hasta, (int) $prima_vacacional, $notas, $empleado_ausencias[0]['id_aniversario']);

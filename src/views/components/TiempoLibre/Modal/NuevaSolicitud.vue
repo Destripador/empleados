@@ -85,7 +85,7 @@
 									:text="t('empleados', 'You are registering an absence in admin mode. Notifications and automatic messages will remain active, and the corresponding days will be deducted from the selected employee.')" />
 								<br>
 							</div>
-							<div v-else>
+							<div>
 								<table class="top">
 									<caption>{{ t('empleados', 'PERIOD DATA') }}</caption>
 									<tbody>
@@ -206,7 +206,11 @@
 						</div>
 
 						<div v-else class="top">
-							<NcButton variant="secondary" wide @click="EnviarAusencia()">
+							<NcButton
+								variant="secondary"
+								wide
+								:disabled="!canSubmit"
+								@click="EnviarAusencia()">
 								<template #icon>
 									<Airplane :size="20" />
 								</template>
@@ -255,7 +259,7 @@ export default {
 
 	props: {
 		diasSolicitados: { type: Number, required: true },
-		diasDisponibles: { type: String, required: true },
+		diasDisponibles: { type: [String, Number], required: true },
 		date: {
 			type: Object,
 			required: true,
@@ -290,8 +294,30 @@ export default {
 		}
 	},
 
+	computed: {
+		canSubmit() {
+			if (!this.AusenciaSeleccionada || !this.date?.start || !this.date?.end) {
+				return false
+			}
+
+			if (this.admin && !this.employees_list?.user) {
+				return false
+			}
+
+			if (this.AusenciaSeleccionada.solicitar_archivo && this.selectedFiles.length === 0) {
+				return false
+			}
+
+			if (this.AusenciaSeleccionada.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias) {
+				return false
+			}
+
+			return true
+		},
+	},
+
 	mounted() {
-		this.TotalDias = parseInt(this.diasDisponibles, 10)
+		this.TotalDias = Number(this.diasDisponibles) || 0
 		this.RestanteDias = this.TotalDias - this.diasSolicitados
 		this.GetTipoAusencias()
 	},
@@ -331,16 +357,30 @@ export default {
 			this.selectedFiles = Array.from(files)
 		},
 
+		formatDateForApi(date) {
+			const day = String(date.getDate()).padStart(2, '0')
+			const month = String(date.getMonth() + 1).padStart(2, '0')
+			const year = date.getFullYear()
+			return `${day}/${month}/${year}`
+		},
+
 		async EnviarAusencia() {
+			if (!this.canSubmit) {
+				showError(t('empleados', 'Please complete all required fields before submitting the request.'))
+				return
+			}
+
 			this.loading = true
 			try {
 				const formData = new FormData()
-				formData.append('id_usuario', this.employees_list.user)
+				if (this.admin && this.employees_list?.user) {
+					formData.append('id_usuario', this.employees_list.user)
+				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('dias_solicitados', this.diasSolicitados)
-				formData.append('fecha_de', this.date.start.toLocaleDateString())
-				formData.append('fecha_hasta', this.date.end ? this.date.end.toLocaleDateString() : '')
-				formData.append('prima_vacacional', this.SolicitarPrima)
+				formData.append('fecha_de', this.formatDateForApi(this.date.start))
+				formData.append('fecha_hasta', this.date.end ? this.formatDateForApi(this.date.end) : '')
+				formData.append('prima_vacacional', this.SolicitarPrima ? '1' : '0')
 				formData.append('notas', this.comentarios || '')
 
 				for (let i = 0; i < this.selectedFiles.length; i++) {
