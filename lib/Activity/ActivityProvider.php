@@ -1,5 +1,4 @@
-<?php
-
+// lib/Activity/ActivityProvider.php
 namespace OCA\Empleados\Activity;
 
 use OCP\Activity\IProvider;
@@ -26,7 +25,6 @@ class ActivityProvider implements IProvider {
 
         return $event;
     }
-
 
     /**
      * Retorna la plantilla correspondiente según el ID del subject.
@@ -64,9 +62,8 @@ class ActivityProvider implements IProvider {
     public function getName(): string {
         return 'Gestor de Empleados';
     }
-    
+
     public function getTypes(): array {
         return ['empleados'];
     }
-
 }
