@@ -1,0 +1,15 @@
+
+### crearActividad(string $nombre, ?string $detalles, float $tiempoestimado, string $tipo)
+
+**Descripción:** Crea una nueva actividad.
+
+**Parámetros:**
+- `$nombre` (string): Nombre de la actividad.
+- `$detalles` (string): Detalles de la actividad.
+- `$tiempoestimado` (float): Tiempo estimado de la actividad en minutos.
+- `$tipo` (string): Tipo de tiempo ('horas' o 'minutos').
+
+**Retorno:**
+- `DataResponse`: Estado de creación en formato JSON.
+
+**Ejemplo de Uso:**

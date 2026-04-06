@@ -1,0 +1,12 @@
+
+### ExportarActividades()
+
+**Descripción:** Exporta la lista de actividades a un archivo XLSX.
+
+**Parámetros:**
+- Ninguno
+
+**Retorno:**
+- `DataResponse`: Archivo XLSX con la lista de actividades.
+
+**Ejemplo de Uso:**

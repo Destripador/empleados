@@ -1,0 +1,12 @@
+
+### deleteById($id)
+
+**Descripción:** Elimina una actividad por su ID.
+
+**Parámetros:**
+- `$id` (int): ID de la actividad a eliminar.
+
+**Retorno:**
+- `DataResponse`: Estado de eliminación en formato JSON.
+
+**Ejemplo de Uso:**

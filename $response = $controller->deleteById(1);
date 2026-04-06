@@ -1,0 +1,16 @@
+
+### modificarActividad(int $id_actividad, string $nombre, string $detalles, float $tiempoestimado, string $tipo)
+
+**Descripción:** Modifica una actividad existente.
+
+**Parámetros:**
+- `$id_actividad` (int): ID de la actividad a modificar.
+- `$nombre` (string): Nombre de la actividad.
+- `$detalles` (string): Detalles de la actividad.
+- `$tiempoestimado` (float): Tiempo estimado de la actividad en minutos.
+- `$tipo` (string): Tipo de tiempo ('horas' o 'minutos').
+
+**Retorno:**
+- `DataResponse`: Estado de modificación en formato JSON.
+
+**Ejemplo de Uso:**
