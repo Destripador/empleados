@@ -285,24 +285,4 @@ class actividadesController extends BaseController {
         }
         return $file;
     }
-
-    /**
-     * Devuelve un mensaje de saludo.
-     *
-     * @param string $nombre Nombre de la persona a saludar
-     * @return DataResponse
-     */
-    public function getSaludo(string $nombre): DataResponse {
-        $saludo = OCA\Empleados\Utils\ExampleUtil::getSaludo($nombre);
-        return new DataResponse(['message' => $saludo], Http::STATUS_OK);
-    }
-
-    /**
-     * Ejemplo de función que devuelve un mensaje simple.
-     *
-     * @return DataResponse
-     */
-    public function ejemplo(): DataResponse {
-        return new DataResponse(['message' => 'Esta es una función ejemplo'], Http::STATUS_OK);
-    }
 }
