@@ -37,19 +37,77 @@ require_once 'SimpleXLSX.php';
  */
 class actividadesController extends BaseController {
 
+    /**
+     * @var IUserSession
+     */
     protected $userSession;
+
+    /**
+     * @var IUserManager
+     */
     protected $userManager;
+
+    /**
+     * @var empleadosMapper
+     */
     protected $empleadosMapper;
+
+    /**
+     * @var actividadMapper
+     */
     protected $actividadMapper;
+
+    /**
+     * @var configuracionesMapper
+     */
     protected $configuracionesMapper;
+
+    /**
+     * @var IL10N
+     */
     protected $l10n;
+
+    /**
+     * @var IConfig
+     */
+    protected $config;
+
+    /**
+     * @var IGroupManager
+     */
     protected $groupManager;
-    private IConfig $config;
-    private IClientService $clientService;
-    private ISubAdmin $subAdmin;   
 
-    private IURLGenerator $urlGenerator;
+    /**
+     * @var IURLGenerator
+     */
+    protected $urlGenerator;
 
+    /**
+     * @var IClientService
+     */
+    protected $clientService;
+
+    /**
+     * @var ISubAdmin
+     */
+    protected $subAdmin;   
+
+    /**
+     * Constructor del controlador.
+     *
+     * @param IRequest $request
+     * @param IUserSession $userSession
+     * @param IUserManager $userManager
+     * @param empleadosMapper $empleadosMapper
+     * @param actividadMapper $actividadMapper
+     * @param configuracionesMapper $configuracionesMapper
+     * @param IL10N $l10n
+     * @param IConfig $config
+     * @param IGroupManager $groupManager
+     * @param IURLGenerator $urlGenerator
+     * @param IClientService $clientService
+     * @param ISubAdmin $subAdmin
+     */
     public function __construct(
         IRequest $request,
         IUserSession $userSession,
@@ -81,6 +139,8 @@ class actividadesController extends BaseController {
 
     /**
      * Obtiene la lista de actividad.
+     *
+     * @return DataResponse
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -91,6 +151,9 @@ class actividadesController extends BaseController {
 
     /**
      * Obtiene la lista de actividad por id.
+     *
+     * @param int $id
+     * @return DataResponse
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -100,7 +163,10 @@ class actividadesController extends BaseController {
     }
 
     /**
-     * eliminar actividad.
+     * Elimina actividad.
+     *
+     * @param int $id
+     * @return DataResponse
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -111,6 +177,13 @@ class actividadesController extends BaseController {
 
     /**
      * Guarda cambios en los actividad.
+     *
+     * @param int $id_actividad
+     * @param string $nombre
+     * @param string $detalles
+     * @param float $tiempoestimado
+     * @param string $tipo
+     * @return DataResponse
      */
     #[UseSession]
     #[NoAdminRequired] // si aplica, cámbiala por #[AdminRequired]
@@ -126,6 +199,12 @@ class actividadesController extends BaseController {
 
     /**
      * Crea un nuevo actividad.
+     *
+     * @param string $nombre
+     * @param ?string $detalles
+     * @param float $tiempoestimado
+     * @param string $tipo
+     * @return DataResponse
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -146,9 +225,10 @@ class actividadesController extends BaseController {
         return new DataResponse(Http::STATUS_OK);
     }
 
-
     /**
      * Exporta la lista de actividad a un archivo XLSX.
+     *
+     * @return DataResponse
      */
     public function ExportarActividades(): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
@@ -170,6 +250,8 @@ class actividadesController extends BaseController {
 
     /**
      * Importa la lista de actividad desde un archivo XLSX.
+     *
+     * @return DataResponse
      */
     public function ImportarActividades(): DataResponse {
         $file = $this->getUploadedFile('ActividadesfileXLSX');
@@ -189,8 +271,12 @@ class actividadesController extends BaseController {
         }
         return new DataResponse(Http::STATUS_OK);
     }
+
     /**
      * Obtiene un archivo subido y maneja posibles errores.
+     *
+     * @param string $key
+     * @return array
      */
     private function getUploadedFile(string $key): array {
         $file = $this->request->getUploadedFile($key);
