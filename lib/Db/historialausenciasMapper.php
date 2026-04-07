@@ -12,84 +12,74 @@ class historialausenciasMapper extends QBMapper {
 		parent::__construct($db, 'historial_ausencias', historialausencias::class);
 	}
 
-		public function EnviarAusencia(int $id_tipo_ausencia, $id_ausencias, $fecha_de, $fecha_hasta, int $prima_vacacional, string $notas, $id_aniverario): int {
-			$insert = $this->db->getQueryBuilder();
-			$insert->insert($this->getTableName())
-				->values(
-					[
-						'id_ausencias' => $insert->createNamedParameter($id_ausencias),
-						'id_aniversario' => $insert->createNamedParameter($id_aniverario),
-						'id_tipo_ausencia' => $insert->createNamedParameter($id_tipo_ausencia),
-						'fecha_de' => $insert->createNamedParameter($fecha_de),
-						'fecha_hasta' => $insert->createNamedParameter($fecha_hasta),
-						'prima_vacacional' => $insert->createNamedParameter($prima_vacacional),
-						'notas' => $insert->createNamedParameter($notas),
-					]
-				);
-			$insert->executeStatement();
-			
-			return (int) $this->db->lastInsertId('historial_ausencias');
+	public function EnviarAusencia(int $id_tipo_ausencia, $id_ausencias, $fecha_de, $fecha_hasta, int $prima_vacacional, string $notas, $id_aniverario): int {
+		$insert = $this->db->getQueryBuilder();
+		$insert->insert($this->getTableName())
+			->values([
+				'id_ausencias' => $insert->createNamedParameter($id_ausencias),
+				'id_aniversario' => $insert->createNamedParameter($id_aniverario),
+				'id_tipo_ausencia' => $insert->createNamedParameter($id_tipo_ausencia),
+				'fecha_de' => $insert->createNamedParameter($fecha_de),
+				'fecha_hasta' => $insert->createNamedParameter($fecha_hasta),
+				'prima_vacacional' => $insert->createNamedParameter($prima_vacacional),
+				'notas' => $insert->createNamedParameter($notas),
+			]);
 
-		}
+		$insert->executeStatement();
 
-		public function GetAusenciasEnRango(string $desde, string $hasta, int $id): array {
-			$qb = $this->db->getQueryBuilder();
+		return (int) $this->db->lastInsertId('historial_ausencias');
+	}
 
-			$qb->select('h.*', 't.nombre AS tipo_nombre')
-				->from($this->getTableName(), 'h')
-				->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
-				->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
-				->andWhere(
-					$qb->expr()->andX(
-						$qb->expr()->lte('h.fecha_de', $qb->createNamedParameter($hasta)),
-						$qb->expr()->gte('h.fecha_hasta', $qb->createNamedParameter($desde))
-					)
-				);
+	public function GetAusenciasEnRango(string $desde, string $hasta, int $id): array {
+		$qb = $this->db->getQueryBuilder();
 
-			$result = $qb->execute();
-			$ausencias = $result->fetchAll();
-			$result->closeCursor();
+		$qb->select('h.*', 't.nombre AS tipo_nombre')
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
+			->andWhere(
+				$qb->expr()->andX(
+					$qb->expr()->lte('h.fecha_de', $qb->createNamedParameter($hasta)),
+					$qb->expr()->gte('h.fecha_hasta', $qb->createNamedParameter($desde))
+				)
+			);
 
-			return $ausencias;
-		}
+		$result = $qb->executeQuery();
+		$ausencias = $result->fetchAll();
+		$result->closeCursor();
 
-		public function GetAusenciasHistorialGerente(int $id): array {
-			$qb = $this->db->getQueryBuilder();
+		return $ausencias;
+	}
 
-			$qb->select('h.*', 't.nombre AS tipo_nombre')
-				->from($this->getTableName(), 'h')
-				->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
-				->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
-				->andWhere(
-					$qb->expr()->andX(
-						$qb->expr()->lte('h.a_gerente', $qb->createNamedParameter(0))
-					)
-				);
+	public function GetAusenciasHistorialGerente(int $id): array {
+		$qb = $this->db->getQueryBuilder();
 
-			$result = $qb->execute();
-			$ausencias = $result->fetchAll();
-			$result->closeCursor();
+		$qb->select('h.*', 't.nombre AS tipo_nombre')
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
+			->andWhere($qb->expr()->lte('h.a_gerente', $qb->createNamedParameter(0)));
 
-			return $ausencias;
-		}
-		
-		public function GetAusenciasHistorialSocio(int $id): array {
-			$qb = $this->db->getQueryBuilder();
+		$result = $qb->executeQuery();
+		$ausencias = $result->fetchAll();
+		$result->closeCursor();
 
-			$qb->select('h.*', 't.nombre AS tipo_nombre')
-				->from($this->getTableName(), 'h')
-				->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
-				->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
-				->andWhere(
-					$qb->expr()->andX(
-						$qb->expr()->lte('h.a_socio', $qb->createNamedParameter(0))
-					)
-				);
+		return $ausencias;
+	}
 
-			$result = $qb->execute();
-			$ausencias = $result->fetchAll();
-			$result->closeCursor();
+	public function GetAusenciasHistorialSocio(int $id): array {
+		$qb = $this->db->getQueryBuilder();
 
-			return $ausencias;
-		}
+		$qb->select('h.*', 't.nombre AS tipo_nombre')
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
+			->andWhere($qb->expr()->lte('h.a_socio', $qb->createNamedParameter(0)));
+
+		$result = $qb->executeQuery();
+		$ausencias = $result->fetchAll();
+		$result->closeCursor();
+
+		return $ausencias;
+	}
 }

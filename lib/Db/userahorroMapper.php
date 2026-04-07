@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
-use DateTime;
-use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\AppFramework\Db\QBMapper;
-use OCP\DB\Exception;
-use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
-
-use OCP\AppFramework\Db\DoesNotExistException;
-
 
 class userahorroMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
@@ -24,11 +17,10 @@ class userahorroMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName());
-		
+
 		return $this->findEntities($qb);
 	}
 
-	// obtener listado de usuarios con ahorro activo
 	public function getUsersWithAhorro(): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -36,10 +28,10 @@ class userahorroMapper extends QBMapper {
 			->from($this->getTableName(), 'o')
 			->innerJoin('o', 'users', 'c', $qb->expr()->eq('uid', 'id_user'));
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $users;
 	}
 
@@ -49,10 +41,10 @@ class userahorroMapper extends QBMapper {
 		$qb->select('*')
 			->from('users');
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $users;
 	}
 
@@ -62,19 +54,18 @@ class userahorroMapper extends QBMapper {
 			->set('id_permision', $query->createNamedParameter($id_permision))
 			->set('state', $query->createNamedParameter($state))
 			->set('cantidad', $query->createNamedParameter($cantidad))
-			->where($query->expr()->eq('id', $query->createNamedParameter($id)));
+			->where($query->expr()->eq('id_ahorro', $query->createNamedParameter($id_ahorro)));
 
-		$query->execute();
+		$query->executeStatement();
 	}
 
-	//TODO
 	public function updatePermisionUserId(int $id, string $state): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('state', $query->createNamedParameter($state))
 			->where($query->expr()->eq('id_ahorro', $query->createNamedParameter($id)));
 
-		$query->execute();
+		$query->executeStatement();
 	}
 
 	public function updatePermisionByEmpleadoId(int $id, string $state): void {
@@ -83,35 +74,34 @@ class userahorroMapper extends QBMapper {
 			->set('state', $query->createNamedParameter($state))
 			->where($query->expr()->eq('id_user', $query->createNamedParameter($id)));
 
-		$query->execute();
+		$query->executeStatement();
 	}
 
-	public function GetInfoAhorro(int $id_user): array{
+	public function GetInfoAhorro(int $id_user): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('id_user', $qb->createNamedParameter($id_user)));
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
-	
-		return $users;
 
+		return $users;
 	}
-	public function GetInfoByIdAhorro(int $id_user): array{
+
+	public function GetInfoByIdAhorro(int $id_user): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('id_ahorro', $qb->createNamedParameter($id_user)));
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
-	
-		return $users;
 
+		return $users;
 	}
 }

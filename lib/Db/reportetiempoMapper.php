@@ -6,12 +6,11 @@ namespace OCA\Empleados\Db;
 
 use OCP\IDBConnection;
 use OCP\AppFramework\Db\QBMapper;
-use OCP\AppFramework\Db\DoesNotExistException;
-use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 
 class reportetiempoMapper extends QBMapper {
 	protected string $primaryKey = 'id_reporte';
+
 	public function __construct(IDBConnection $db) {
 		parent::__construct($db, 'empleados_rep_tiempos', reportetiempo::class);
 	}
@@ -27,12 +26,10 @@ class reportetiempoMapper extends QBMapper {
 			)
 			->orderBy('id_reporte', 'DESC');
 
-		// Filtro por rango de meses del año
 		if ($anio !== null && $periodo_inicio !== null && $periodo_fin !== null) {
 			$periodo_inicio = max(1, min(12, (int)$periodo_inicio));
-			$periodo_fin    = max(1, min(12, (int)$periodo_fin));
+			$periodo_fin = max(1, min(12, (int)$periodo_fin));
 
-			// si vienen invertidos, los acomodamos
 			if ($periodo_inicio > $periodo_fin) {
 				[$periodo_inicio, $periodo_fin] = [$periodo_fin, $periodo_inicio];
 			}
@@ -49,7 +46,7 @@ class reportetiempoMapper extends QBMapper {
 
 		if ($limit > 0) {
 			$qb->setMaxResults($limit)
-			->setFirstResult($offset);
+				->setFirstResult($offset);
 		}
 
 		$result = $qb->executeQuery();
@@ -68,9 +65,8 @@ class reportetiempoMapper extends QBMapper {
 
 		if ($anio !== null && $periodo_inicio !== null && $periodo_fin !== null) {
 			$periodo_inicio = max(1, min(12, (int)$periodo_inicio));
-			$periodo_fin    = max(1, min(12, (int)$periodo_fin));
+			$periodo_fin = max(1, min(12, (int)$periodo_fin));
 
-			// si vienen invertidos, los acomodamos
 			if ($periodo_inicio > $periodo_fin) {
 				[$periodo_inicio, $periodo_fin] = [$periodo_fin, $periodo_inicio];
 			}
@@ -87,8 +83,9 @@ class reportetiempoMapper extends QBMapper {
 
 		if ($limit > 0) {
 			$qb->setMaxResults($limit)
-			->setFirstResult($offset);
+				->setFirstResult($offset);
 		}
+
 		return $this->findEntities($qb);
 	}
 
@@ -98,6 +95,7 @@ class reportetiempoMapper extends QBMapper {
 			->where(
 				$qb->expr()->eq('id_reporte', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT))
 			);
+
 		$qb->executeStatement();
 	}
 
@@ -113,18 +111,11 @@ class reportetiempoMapper extends QBMapper {
 			->set('updated_at', $query->createNamedParameter($timestamp))
 			->where($query->expr()->eq('id_reporte', $query->createNamedParameter($id_reporte)))
 			->andWhere($query->expr()->eq('id_empleado', $query->createNamedParameter($id_empleado)))
-			// condición de 40 minutos
 			->andWhere('TIMESTAMPDIFF(MINUTE, created_at, NOW()) < 40')
-			->execute();
+			->executeStatement();
 
 		if ($result === 0) {
-			throw new \Exception("Update bloqueado: el reporte ya tiene más de 40 minutos y no se puede modificar.");
+			throw new \Exception('Update bloqueado: el reporte ya tiene más de 40 minutos y no se puede modificar.');
 		}
 	}
-
-	/* SKELETONS para que luego los llenes
-	public function findByEmpleado(string $uid, int $limit = 100, int $offset = 0): array { ... }
-	public function findByRangoFecha(string $desde, string $hasta): array { ... }
-	public function findPorClienteActividad(?int $idCliente, ?int $idActividad, int $limit = 100, int $offset = 0): array { ... }
-	*/
 }

@@ -142,11 +142,9 @@ class AniversariosController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function AgregarNuevoAniversario(int $numero_aniversario, string $fecha_de, string $fecha_hasta, float $dias): void {
+    public function AgregarNuevoAniversario(int $numero_aniversario, float $dias): void {
         $area = new aniversario();
         $area->setnumero_aniversario($numero_aniversario);
-        $area->setfecha_de($fecha_de);
-        $area->setfecha_hasta($fecha_hasta);
         $area->setdias($dias);
         $this->aniversarioMapper->insert($area);
     }

@@ -274,8 +274,6 @@ export default {
 			try {
 				await axios.post(generateUrl('/apps/empleados/AgregarNuevoAniversario'), {
 					numero_aniversario: this.NumeroAniversario,
-					fecha_de: '',
-					fecha_hasta: '',
 					dias: this.DiasAniversario,
 				})
 				showSuccess(t('empleados', 'Note has been updated'))

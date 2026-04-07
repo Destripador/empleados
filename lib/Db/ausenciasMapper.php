@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
-use DateTime;
-use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\AppFramework\Db\QBMapper;
-use OCP\DB\Exception;
-use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
-
-use OCP\AppFramework\Db\DoesNotExistException;
-
 
 class ausenciasMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
@@ -24,11 +17,11 @@ class ausenciasMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName());
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$ausencias = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $ausencias;
 	}
 
@@ -38,11 +31,11 @@ class ausenciasMapper extends QBMapper {
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('id_empleado', $qb->createNamedParameter($id)));
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$ausencias = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $ausencias;
 	}
 
@@ -52,36 +45,31 @@ class ausenciasMapper extends QBMapper {
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_ausencias)));
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $users;
 	}
 
-	public function updateAusenciasEmpleado(int $id_ausencias, float $dias ): void {
-		if(empty($id_ausencias) && $id_ausencias != 0){ $id_ausencias = null; }
-		if(empty($dias) && $dias != 0){ $dias = null; }
+	public function updateAusenciasEmpleado(int $id_ausencias, float $dias): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('dias_disponibles', $query->createNamedParameter($dias))
 			->where($query->expr()->eq('id_ausencias', $query->createNamedParameter($id_ausencias)));
-	
-		$query->execute();
+
+		$query->executeStatement();
 	}
-	
-	public function updateAusencias(int $id_ausencias, int $numero_ausencias, float $dias ): void {
-		if(empty($id_ausencias) && $id_ausencias != 0){ $id_ausencias = null; }
-		if(empty($numero_ausencias) && $numero_ausencias != 0){ $numero_ausencias = null; }
-		if(empty($dias) && $dias != 0){ $dias = null; }
+
+	public function updateAusencias(int $id_ausencias, int $numero_ausencias, float $dias): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('numero_ausencias', $query->createNamedParameter($numero_ausencias))
 			->set('dias', $query->createNamedParameter($dias))
 			->where($query->expr()->eq('id_ausencias', $query->createNamedParameter($id_ausencias)));
-	
-		$query->execute();
+
+		$query->executeStatement();
 	}
 
 	public function updateAusenciasById(int $id_empleado, int $id_aniversario, float $dias_disponibles): void {
@@ -90,8 +78,8 @@ class ausenciasMapper extends QBMapper {
 			->set('id_aniversario', $query->createNamedParameter($id_aniversario))
 			->set('dias_disponibles', $query->createNamedParameter($dias_disponibles))
 			->where($query->expr()->eq('id_empleado', $query->createNamedParameter($id_empleado)));
-	
-		$query->execute();
+
+		$query->executeStatement();
 	}
 
 	public function VaciarAusencias(): void {
@@ -99,7 +87,7 @@ class ausenciasMapper extends QBMapper {
 
 		$qb->delete($this->getTableName());
 
-		$result = $qb->execute();
+		$qb->executeStatement();
 	}
 
 	public function EliminarArea(string $id_departamento): void {
@@ -108,7 +96,7 @@ class ausenciasMapper extends QBMapper {
 		$qb->delete($this->getTableName())
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_departamento)));
 
-		$result = $qb->execute();
+		$qb->executeStatement();
 	}
 
 	public function deleteByIdEmpleado(int $id_empleados): void {
@@ -116,7 +104,6 @@ class ausenciasMapper extends QBMapper {
 
 		$qb->delete($this->getTableName())
 			->where($qb->expr()->eq('id_empleado', $qb->createNamedParameter($id_empleados)));
-			
 
 		$qb->executeStatement();
 	}

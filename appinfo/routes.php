@@ -164,5 +164,8 @@ return [
 
 		['name' => 'reportetiempo#GetEmpleadosReports', 'url' => '/GetEmpleadosReports', 'verb' => 'POST'],
 		['name' => 'reportetiempo#ExportarReportes', 'url' => '/ExportarReportes', 'verb' => 'POST'],
+
+		/************************** EJEMPLO ************************************/
+		['name' => 'ejemplo#nuevafuncion', 'url' => '/ejemplo', 'verb' => 'POST'],
 	],
 ];

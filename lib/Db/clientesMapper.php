@@ -24,10 +24,11 @@ class clientesMapper extends QBMapper {
 			->where(
 				$qb->expr()->eq('id_cliente', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT))
 			);
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$data = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $data;
 	}
 
@@ -51,10 +52,10 @@ class clientesMapper extends QBMapper {
 			->setMaxResults($limit)
 			->setFirstResult($offset);
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$data = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $data;
 	}
 
@@ -65,17 +66,20 @@ class clientesMapper extends QBMapper {
 			->where(
 				$qb->expr()->eq('id_cliente', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT))
 			);
-		$qb->executeStatement(); // usa ->execute() si tu versión lo requiere
+
+		$qb->executeStatement();
 	}
 
-	public function updateClientes(int $id_clientes, string $nombre, ?string $detalles, ?int $cliente_padre): void {	
+	public function updateClientes(int $id_clientes, string $nombre, ?string $detalles, ?int $cliente_padre): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('nombre', $query->createNamedParameter($nombre))
 			->set('detalles', $query->createNamedParameter($detalles))
 			->set('cliente_padre', $query->createNamedParameter($cliente_padre))
-			->where($query->expr()->eq('id_cliente', $query->createNamedParameter($id_clientes)));
-	
-		$query->execute();
+			->where(
+				$query->expr()->eq('id_cliente', $query->createNamedParameter($id_clientes, IQueryBuilder::PARAM_INT))
+			);
+
+		$query->executeStatement();
 	}
 }

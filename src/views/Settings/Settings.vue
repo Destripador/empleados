@@ -33,6 +33,10 @@
 				<VTab :title="t('empleados', 'Global settings')">
 					<ListSettings />
 				</VTab>
+
+				<VTab :title="t('empleados', 'Ejemplo')">
+					<Ejemplo />
+				</VTab>
 			</VueTabs>
 		</div>
 	</div>
@@ -45,6 +49,7 @@ import AlertCircleOutline from 'vue-material-design-icons/AlertCircleOutline.vue
 import TiempoLaboralSettings from './TiempoLaboralSettings.vue'
 import EmpleadosSettings from './EmpleadosSettings.vue'
 import ListSettings from './ListSettings.vue'
+import Ejemplo from './Ejemplo.vue'
 
 import { showError /*, showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
@@ -61,6 +66,7 @@ export default {
 		EmpleadosSettings,
 		TiempoLaboralSettings,
 		ListSettings,
+		Ejemplo,
 		VueTabs,
 		VTab,
 		NcEmptyContent,

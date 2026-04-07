@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
-use DateTime;
-use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\AppFramework\Db\QBMapper;
-use OCP\DB\Exception;
-use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
-
-use OCP\AppFramework\Db\DoesNotExistException;
-
 
 class aniversarioMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
@@ -24,11 +17,11 @@ class aniversarioMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName());
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$aniversarios = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $aniversarios;
 	}
 
@@ -38,11 +31,11 @@ class aniversarioMapper extends QBMapper {
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_aniversarios)));
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $users;
 	}
 
@@ -50,22 +43,19 @@ class aniversarioMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->delete($this->getTableName())
-			->where($qb->expr()->eq('Nombre', $qb->createNamedParameter($Nombre)));
+			->where($qb->expr()->eq('id_aniversario', $qb->createNamedParameter($id_aniversarios)));
 
-		$result = $qb->execute();
+		$qb->executeStatement();
 	}
 
-	public function updateAniversarios(int $id_aniversario, int $numero_aniversario, float $dias ): void {
-		if(empty($id_aniversario) && $id_aniversario != 0){ $id_aniversario = null; }
-		if(empty($numero_aniversario) && $numero_aniversario != 0){ $numero_aniversario = null; }
-		if(empty($dias) && $dias != 0){ $dias = null; }
+	public function updateAniversarios(int $id_aniversario, int $numero_aniversario, float $dias): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('numero_aniversario', $query->createNamedParameter($numero_aniversario))
 			->set('dias', $query->createNamedParameter($dias))
 			->where($query->expr()->eq('id_aniversario', $query->createNamedParameter($id_aniversario)));
-	
-		$query->execute();
+
+		$query->executeStatement();
 	}
 
 	public function VaciarAniversarios(): void {
@@ -73,7 +63,7 @@ class aniversarioMapper extends QBMapper {
 
 		$qb->delete($this->getTableName());
 
-		$result = $qb->execute();
+		$qb->executeStatement();
 	}
 
 	public function EliminarArea(string $id_departamento): void {
@@ -82,7 +72,7 @@ class aniversarioMapper extends QBMapper {
 		$qb->delete($this->getTableName())
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_departamento)));
 
-		$result = $qb->execute();
+		$qb->executeStatement();
 	}
 
 	public function GetAniversarioByDate(int $ingreso): array {
@@ -91,12 +81,11 @@ class aniversarioMapper extends QBMapper {
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($ingreso)));
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$aniversarios = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $aniversarios;
 	}
-
 }

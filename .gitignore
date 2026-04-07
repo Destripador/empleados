@@ -43,3 +43,4 @@ l10n/*.pot
 .env
 .env.local
 docker-compose.override.yml
+.aider*

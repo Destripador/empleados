@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
-use DateTime;
-use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\AppFramework\Db\QBMapper;
-use OCP\DB\Exception;
-use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
-
-use OCP\AppFramework\Db\DoesNotExistException;
-
 
 class tipoausenciaMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
@@ -24,11 +17,11 @@ class tipoausenciaMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName());
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$tipo_ausencia = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $tipo_ausencia;
 	}
 
@@ -38,18 +31,15 @@ class tipoausenciaMapper extends QBMapper {
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('id_tipo_ausencia', $qb->createNamedParameter($id)));
-			
-		$result = $qb->execute();
+
+		$result = $qb->executeQuery();
 		$tipo_ausencia = $result->fetchAll();
 		$result->closeCursor();
-	
+
 		return $tipo_ausencia;
 	}
 
 	public function updateTipoAusencias(int $id_tipo_ausencia, string $nombre, string $descripcion, bool $solicitar_archivo, bool $solicitar_prima_vacacional): void {
-		if(empty($id_tipo_ausencia) && $id_tipo_ausencia != 0){ $id_tipo_ausencia = null; }
-		if(empty($nombre) && $nombre != 0){ $nombre = null; }
-		if(empty($descripcion) && $descripcion != 0){ $descripcion = null; }
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('nombre', $query->createNamedParameter($nombre))
@@ -57,8 +47,8 @@ class tipoausenciaMapper extends QBMapper {
 			->set('solicitar_archivo', $query->createNamedParameter($solicitar_archivo))
 			->set('solicitar_prima_vacacional', $query->createNamedParameter($solicitar_prima_vacacional))
 			->where($query->expr()->eq('id_tipo_ausencia', $query->createNamedParameter($id_tipo_ausencia)));
-	
-		$query->execute();
+
+		$query->executeStatement();
 	}
 
 	public function VaciarTipo(): void {
@@ -66,6 +56,6 @@ class tipoausenciaMapper extends QBMapper {
 
 		$qb->delete($this->getTableName());
 
-		$result = $qb->execute();
+		$qb->executeStatement();
 	}
 }
