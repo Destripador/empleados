@@ -1,0 +1,27 @@
+# Reglas para desarrollo de módulos Nextcloud
+
+- Trabaja solo con archivos reales del repositorio.
+- Nunca conviertas fragmentos pegados en archivos nuevos.
+- No inventes rutas, clases, namespaces, métodos, servicios ni dependencias.
+- Respeta la estructura actual del módulo y el estilo ya existente del archivo.
+- Mantén las convenciones de nombres ya usadas en el proyecto.
+- No refactorices ni modifiques código fuera del objetivo solicitado.
+- No agregues librerías ni utilidades externas salvo que se pida.
+- La documentación nueva o actualizada va solo en docs/manual/.
+- Si falta contexto, no supongas; limita el cambio al archivo actual.
+- Si el cambio requiere tocar otros archivos, indícalo antes de hacerlo.
+- Entrega cambios mínimos y precisos.
+- Usa únicamente las mismas estructuras, patrones y dependencias ya presentes en el archivo actual.
+- No agregues nuevas clases, traits, interfaces, helpers, servicios, ni imports.
+- No cambies el patrón del archivo (por ejemplo: no introducir nuevas capas, lógica adicional o validaciones extra).
+- No agregues bloques de código adicionales fuera de lo solicitado.
+- No agregues comentarios, documentación ni validaciones extra si no se piden explícitamente.
+- No reordenes el código existente.
+- No optimices ni “mejores” el código existente.
+- Limítate estrictamente al estilo, estructura y patrones ya existentes en el archivo.
+- No introduzcas nuevas formas de programación.
+- No agregues validaciones, excepciones, logs ni manejo de errores adicional.
+- No agregues documentación, comentarios ni anotaciones.
+- No agregues dependencias ni imports nuevos.
+- El cambio debe parecer escrito por el mismo autor original del archivo.
+- El cambio debe parecer escrito por el mismo autor original del archivo.

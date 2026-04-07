@@ -14,6 +14,7 @@ import CompaniesGroups from '../views/components/clientes/CompaniesGroups.vue'
 import Actividades from '../views/components/clientes/Actividades.vue'
 import Reports from '../views/components/reports/Reports.vue'
 import Adminreports from '../views/components/reports/admin/Adminreports.vue'
+import Ejemplo from '../views/components/ejemplo/Ejemplo.vue'
 
 Vue.use(Router)
 
@@ -83,6 +84,11 @@ export default new Router({
 			path: '/Adminreports',
 			component: Adminreports,
 			name: 'Adminreports',
+		},
+		{
+			path: '/ejemplo', // Nueva ruta
+			component: Ejemplo, // Asumiendo que el componente se llama Sidenavitaion.vue
+			name: 'ejemplo',
 		},
 	],
 })

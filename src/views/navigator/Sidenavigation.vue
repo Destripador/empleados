@@ -148,6 +148,23 @@
 				</NcAppNavigationItem>
 			</NcAppNavigationList>
 		</div>
+
+		<!-- NUEVA SECCIÓN DE CONFIGURACIÓN -->
+		<div>
+			<NcAppNavigationCaption
+				:heading-id="t('empleados', 'Configuration')"
+				is-heading
+				:name="t('empleados', 'Configuration')" />
+			<NcAppNavigationList :aria-labelledby="t('empleados', 'Configuration')">
+				<NcAppNavigationItem
+					:name="t('empleados', 'General Settings')"
+					:to="{ name: 'Ejemplo' }">
+					<template #icon>
+						<Cog :size="20" />
+					</template>
+				</NcAppNavigationItem>
+			</NcAppNavigationList>
+		</div>
 	</NcAppNavigation>
 </template>
 

@@ -1,4 +1,3 @@
-// lib/Controller/ApiController.php
 <?php
 
 declare(strict_types=1);
