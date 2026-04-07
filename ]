@@ -1,0 +1,15 @@
+
+### Obtener una actividad por ID
+
+**URL:** `/api/actividades/{id}`
+
+**Método:** `GET`
+
+**Descripción:** Obtiene la información de una actividad específica.
+
+**Parámetros:**
+- `id` (int): Identificador único de la actividad.
+
+**Requisitos de acceso:** Debe estar autenticado y tener los roles 'admin' o 'recursos_humanos'.
+
+**Respuesta:**
