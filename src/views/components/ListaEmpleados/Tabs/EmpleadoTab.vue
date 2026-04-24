@@ -480,7 +480,7 @@ export default {
 					this.area = ''
 				}
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
@@ -494,7 +494,7 @@ export default {
 					this.puesto = ''
 				}
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
@@ -515,14 +515,14 @@ export default {
 					this.Equipo = ''
 				}
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
 		async GetAllEquipo(equipo) {
 			try {
 				if (equipo === '' || equipo === null || equipo === undefined) {
-					showError(t('empleados', 'This employee doesn’t belong to a team — assign them to one.'))
+					showError(t('empleados', 'This employee doesn’t belong to a team — assign them to one.'), { close: true })
 				} else {
 					const response = await axios.get(generateUrl('/apps/empleados/GetEmpleadosEquipo/' + equipo))
 					const data = response?.data?.ocs?.data
@@ -587,9 +587,9 @@ export default {
 				this.GetAllEquipo(this.Equipo.value)
 				this.$bus.emit('getall')
 				this.$bus.emit('show', false)
-				showSuccess(t('empleados', 'Datos actualizados'))
+				showSuccess(t('empleados', 'Datos actualizados'), { close: true })
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepción [03] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'Se ha producido una excepción [03] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
@@ -601,7 +601,7 @@ export default {
 				this.Aniversario = response?.data?.ocs?.data[0]?.numero_aniversario
 				this.Vacaciones = response?.data?.ocs?.data[0]?.dias
 			} catch (err) {
-				showError(err)
+				showError(t('empleados', 'No se pudo calcular las vacaciones, verifica tabla de aniversarios'), { close: true })
 			}
 		},
 

@@ -11394,7 +11394,8 @@ __webpack_require__.r(__webpack_exports__);
         }
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Se ha producido una excepción [01] [{error}]', {
-          error: String(err)
+          error: String(err),
+          close: true
         }));
       }
     },
@@ -11409,7 +11410,8 @@ __webpack_require__.r(__webpack_exports__);
         }
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Se ha producido una excepción [01] [{error}]', {
-          error: String(err)
+          error: String(err),
+          close: true
         }));
       }
     },
@@ -11431,14 +11433,17 @@ __webpack_require__.r(__webpack_exports__);
         }
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Se ha producido una excepción [01] [{error}]', {
-          error: String(err)
+          error: String(err),
+          close: true
         }));
       }
     },
     async GetAllEquipo(equipo) {
       try {
         if (equipo === '' || equipo === null || equipo === undefined) {
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'This employee doesn’t belong to a team — assign them to one.'));
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'This employee doesn’t belong to a team — assign them to one.'), {
+            close: true
+          });
         } else {
           const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_2__.generateUrl)('/apps/empleados/GetEmpleadosEquipo/' + equipo));
           const data = response?.data?.ocs?.data;
@@ -11504,10 +11509,13 @@ __webpack_require__.r(__webpack_exports__);
         this.GetAllEquipo(this.Equipo.value);
         this.$bus.emit('getall');
         this.$bus.emit('show', false);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Datos actualizados'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Datos actualizados'), {
+          close: true
+        });
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Se ha producido una excepción [03] [{error}]', {
-          error: String(err)
+          error: String(err),
+          close: true
         }));
       }
     },
@@ -11519,7 +11527,9 @@ __webpack_require__.r(__webpack_exports__);
         this.Aniversario = response?.data?.ocs?.data[0]?.numero_aniversario;
         this.Vacaciones = response?.data?.ocs?.data[0]?.dias;
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)(err);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'No se pudo calcular las vacaciones, verifica tabla de aniversarios'), {
+          close: true
+        });
       }
     },
     async cambioEstado(state) {

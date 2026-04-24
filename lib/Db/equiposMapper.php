@@ -85,16 +85,21 @@ class equiposMapper extends QBMapper {
 
 	public function getById(string $id): ?array {
 		$qb = $this->db->getQueryBuilder();
+
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($id)))
 			->setMaxResults(1);
 
 		$res = $qb->executeQuery();
-		$row = $res->fetchAssociative();
-		$res->closeCursor();
 
-		return $row ?: null;
+		try {
+			$row = $res->fetch();
+		} finally {
+			$res->closeCursor();
+		}
+
+		return is_array($row) ? $row : null;
 	}
 
 	public function EliminarEquipo(string $Id_equipo): ?array {
