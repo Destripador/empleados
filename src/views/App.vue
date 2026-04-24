@@ -1,20 +1,33 @@
 <template id="content">
 	<NcContent app-name="empleados">
-		<navigator />
-		<router-view />
+		<navigator v-if="configuraciones.usuario_almacenamiento != null && String(configuraciones.usuario_almacenamiento).trim() !== ''" />
+		<router-view v-if="configuraciones.usuario_almacenamiento != null && String(configuraciones.usuario_almacenamiento).trim() !== ''" />
+		<NcEmptyContent v-else
+			:name="t('empleados', 'Finish the initial setup')"
+			:description="t('empleados', 'Go to global settings and select the data manager.')"
+			style="background-color: white;">
+			<template #icon>
+				<AlertCircleOutline />
+			</template>
+		</NcEmptyContent>
 	</NcContent>
 </template>
 
 <script>
 // Importing necessary components
 import navigator from './navigator/Sidenavigation.vue'
-import { NcContent } from '@nextcloud/vue'
+import { NcContent, NcEmptyContent } from '@nextcloud/vue'
+
+// icons
+import AlertCircleOutline from 'vue-material-design-icons/AlertCircleOutline.vue'
 
 export default {
 	name: 'App',
 	components: {
 		navigator,
 		NcContent,
+		NcEmptyContent,
+		AlertCircleOutline,
 	},
 
 	provide() {
