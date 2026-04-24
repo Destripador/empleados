@@ -246,7 +246,7 @@ export default {
 			try {
 				await axios.get(generateUrl('/apps/empleados/Getaniversarios'))
 					.then(
-						(response) => { this.Aniversarios = response.data },
+						(response) => { this.Aniversarios = response?.data?.ocs?.data },
 						(err) => { showError(err) },
 					)
 			} catch (err) {

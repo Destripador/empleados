@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./build/**)",
+      "Read(./vendor/**)",
+      "Read(./coverage/**)",
+      "Read(./.git/**)",
+      "Read(./**/*.log)",
+      "Read(./**/*.tmp)",
+      "Read(./**/*.cache)",
+
+      "Bash(git commit *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git branch *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git tag *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(gh *)"
+    ]
+  }
+}

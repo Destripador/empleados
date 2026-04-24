@@ -14391,29 +14391,179 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
-/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
-// import { showError } from '@nextcloud/dialogs'
- // generateUrl
-// import axios from '@nextcloud/axios'
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var _nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/dialogs */ "./node_modules/@nextcloud/dialogs/dist/index.es.js");
 
 
-// public imports
-// i18n: usa t('empleados', '...') si tienes appId = 'empleados'
 
+const MAP_WIDTH = 760;
+const MAP_HEIGHT = 1120;
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'Ejemplo',
   components: {
-    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__.NcAppContent // NcEmptyContent, NcButton, NcNoteCard
+    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_0__.NcAppContent
   },
   data() {
     return {
-      loading: true
+      loading: true,
+      zoomLevel: 1,
+      maxZoom: 3,
+      minZoom: 0.6,
+      baseScale: 1,
+      translateX: 0,
+      translateY: 0,
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      dragStartX: 0,
+      dragStartY: 0,
+      activePointerId: null,
+      resizeObserver: null,
+      spaces: Array.from({
+        length: 42
+      }, (_, index) => ({
+        id: index + 1,
+        numero: index + 1,
+        nombre: '',
+        estado: 'vacio'
+      }))
     };
   },
+  computed: {
+    effectiveScale() {
+      return this.baseScale * this.zoomLevel;
+    },
+    parkingStyle() {
+      return {
+        width: `${MAP_WIDTH}px`,
+        height: `${MAP_HEIGHT}px`,
+        transform: `translate(${this.translateX}px, ${this.translateY}px) scale(${this.effectiveScale})`,
+        transformOrigin: 'center center'
+      };
+    }
+  },
+  mounted() {
+    this.bindDragEvents();
+    this.setupResizeObserver();
+    this.updateBaseScale();
+  },
+  beforeUnmount() {
+    this.unbindDragEvents();
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+  },
   methods: {
-    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.t
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.t,
+    handleSlotClick(slotNumber) {
+      // eslint-disable-next-line no-console
+      console.log(`Espacio ${slotNumber}`);
+      (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)(slotNumber);
+    },
+    setupResizeObserver() {
+      const viewport = this.$refs.viewport;
+      if (!viewport || typeof ResizeObserver === 'undefined') {
+        window.addEventListener('resize', this.updateBaseScale);
+        return;
+      }
+      this.resizeObserver = new ResizeObserver(() => {
+        this.updateBaseScale();
+      });
+      this.resizeObserver.observe(viewport);
+    },
+    updateBaseScale() {
+      const viewport = this.$refs.viewport;
+      if (!viewport) {
+        return;
+      }
+      const padding = 24;
+      const availableWidth = Math.max(viewport.clientWidth - padding, 200);
+      const availableHeight = Math.max(viewport.clientHeight - padding, 200);
+      const widthScale = availableWidth / MAP_WIDTH;
+      const heightScale = availableHeight / MAP_HEIGHT;
+      this.baseScale = Math.min(widthScale, heightScale, 1);
+    },
+    bindDragEvents() {
+      const parkingContainer = this.$refs.parkingContainer;
+      if (!parkingContainer) {
+        return;
+      }
+      parkingContainer.addEventListener('pointerdown', this.onPointerDown, {
+        passive: false
+      });
+      document.addEventListener('pointermove', this.onPointerMove, {
+        passive: false
+      });
+      document.addEventListener('pointerup', this.onPointerUp);
+      document.addEventListener('pointercancel', this.onPointerUp);
+    },
+    unbindDragEvents() {
+      const parkingContainer = this.$refs.parkingContainer;
+      if (parkingContainer) {
+        parkingContainer.removeEventListener('pointerdown', this.onPointerDown);
+      }
+      document.removeEventListener('pointermove', this.onPointerMove);
+      document.removeEventListener('pointerup', this.onPointerUp);
+      document.removeEventListener('pointercancel', this.onPointerUp);
+      window.removeEventListener('resize', this.updateBaseScale);
+    },
+    onPointerDown(e) {
+      const parking = this.$refs.parking;
+      const parkingContainer = this.$refs.parkingContainer;
+      if (!parking || !parking.contains(e.target)) {
+        return;
+      }
+
+      // Si se hizo click en un slot, deja que el click funcione normal
+      if (e.target.closest('.slot')) {
+        return;
+      }
+      if (e.pointerType === 'mouse' && e.button !== 0) {
+        return;
+      }
+      e.preventDefault();
+      this.isDragging = true;
+      this.activePointerId = e.pointerId;
+      this.startX = e.clientX;
+      this.startY = e.clientY;
+      this.dragStartX = this.translateX;
+      this.dragStartY = this.translateY;
+      if (parkingContainer && parkingContainer.setPointerCapture) {
+        parkingContainer.setPointerCapture(e.pointerId);
+      }
+    },
+    onPointerMove(e) {
+      if (!this.isDragging || this.activePointerId !== e.pointerId) {
+        return;
+      }
+      e.preventDefault();
+      this.translateX = this.dragStartX + (e.clientX - this.startX);
+      this.translateY = this.dragStartY + (e.clientY - this.startY);
+    },
+    onPointerUp(e) {
+      if (this.activePointerId !== null && e.pointerId !== this.activePointerId) {
+        return;
+      }
+      this.isDragging = false;
+      this.activePointerId = null;
+    },
+    zoomIn() {
+      if (this.zoomLevel < this.maxZoom) {
+        this.zoomLevel = Math.min(this.zoomLevel + 0.2, this.maxZoom);
+      }
+    },
+    zoomOut() {
+      if (this.zoomLevel > this.minZoom) {
+        this.zoomLevel = Math.max(this.zoomLevel - 0.2, this.minZoom);
+      }
+    },
+    resetView() {
+      this.zoomLevel = 1;
+      this.translateX = 0;
+      this.translateY = 0;
+      this.updateBaseScale();
+    }
   }
 });
 
@@ -21315,82 +21465,435 @@ var render = function render() {
   }, [_c("div", {
     staticClass: "main-content"
   }, [_c("div", {
-    staticClass: "parking"
+    staticClass: "toolbar toolbar-mobile"
+  }, [_c("button", {
+    staticClass: "zoom-btn",
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: _vm.zoomOut
+    }
+  }, [_vm._v("\n\t\t\t\t\t-\n\t\t\t\t")]), _vm._v(" "), _c("span", {
+    staticClass: "zoom-label"
+  }, [_vm._v(_vm._s(Math.round(_vm.effectiveScale * 100)) + "%")]), _vm._v(" "), _c("button", {
+    staticClass: "zoom-btn",
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: _vm.zoomIn
+    }
+  }, [_vm._v("\n\t\t\t\t\t+\n\t\t\t\t")]), _vm._v(" "), _c("button", {
+    staticClass: "zoom-btn",
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: _vm.resetView
+    }
+  }, [_vm._v("\n\t\t\t\t\tReset\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    ref: "viewport",
+    staticClass: "parking-viewport"
+  }, [_c("div", {
+    ref: "parkingContainer",
+    staticClass: "parking-stage",
+    class: {
+      dragging: _vm.isDragging
+    }
+  }, [_c("div", {
+    ref: "parking",
+    staticClass: "parking",
+    style: _vm.parkingStyle
   }, [_c("div", {
     staticClass: "side"
   }, [_c("div", {
-    staticClass: "slot medium empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  })]), _vm._v(" "), _c("div", {
+    staticClass: "slot medium empty top space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(1);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[0].nombre || _vm.spaces[0].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(2);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[1].nombre || _vm.spaces[1].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(3);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[2].nombre || _vm.spaces[2].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(4);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[3].nombre || _vm.spaces[3].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(5);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[4].nombre || _vm.spaces[4].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(6);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[5].nombre || _vm.spaces[5].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(7);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[6].nombre || _vm.spaces[6].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot big space-big",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(8);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[7].nombre || _vm.spaces[7].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(9);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[8].nombre || _vm.spaces[8].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(10);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[9].nombre || _vm.spaces[9].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(11);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[10].nombre || _vm.spaces[10].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(12);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[11].nombre || _vm.spaces[11].estado) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "center"
   }, [_c("div", {
     staticClass: "top-grid"
   }, [_c("div", {
-    staticClass: "slot empty"
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(13);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[12].nombre || _vm.spaces[12].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(20);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[19].nombre || _vm.spaces[19].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(23);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[22].nombre || _vm.spaces[22].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(14);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[13].nombre || _vm.spaces[13].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(21);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[20].nombre || _vm.spaces[20].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(24);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[23].nombre || _vm.spaces[23].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(15);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[14].nombre || _vm.spaces[14].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(22);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[21].nombre || _vm.spaces[21].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(25);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[24].nombre || _vm.spaces[24].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(16);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[15].nombre || _vm.spaces[15].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty hidden-spot"
+  }, [_vm._v("\n\t\t\t\t\t \n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(26);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[25].nombre || _vm.spaces[25].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(17);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[16].nombre || _vm.spaces[16].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty hidden-spot"
   }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(27);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[26].nombre || _vm.spaces[26].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(18);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[17].nombre || _vm.spaces[17].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty hidden-spot"
   }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(28);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[27].nombre || _vm.spaces[27].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(19);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[18].nombre || _vm.spaces[18].estado) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty hidden-spot"
   }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot empty"
-  })]), _vm._v(" "), _c("div", {
+    staticClass: "slot empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(29);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[28].nombre || _vm.spaces[28].estado) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "road"
   }, [_c("div", {
     staticClass: "car"
-  }, [_vm._v("\n\t\t\t\t\t\t\tentrada\n\t\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\tentrada\n\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
     staticClass: "side"
   }, [_c("div", {
-    staticClass: "slot medium empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small empty"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot small"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  }), _vm._v(" "), _c("div", {
-    staticClass: "slot medium"
-  })])])]), _vm._v(" "), _c("div", {
+    staticClass: "slot medium empty top space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(30);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[29].nombre || _vm.spaces[29].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small empty",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(31);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[30].nombre || _vm.spaces[30].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(32);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[31].nombre || _vm.spaces[31].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(33);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[32].nombre || _vm.spaces[32].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(34);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[33].nombre || _vm.spaces[33].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(35);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[34].nombre || _vm.spaces[34].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(36);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[35].nombre || _vm.spaces[35].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(37);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[36].nombre || _vm.spaces[36].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(38);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[37].nombre || _vm.spaces[37].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(39);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[38].nombre || _vm.spaces[38].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small space",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(40);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[39].nombre || _vm.spaces[39].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(41);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[40].nombre || _vm.spaces[40].estado) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "slot small",
+    on: {
+      click: function ($event) {
+        $event.stopPropagation();
+        return _vm.handleSlotClick(42);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.spaces[41].nombre || _vm.spaces[41].estado) + "\n\t\t\t\t\t\t\t")])])])])])]), _vm._v(" "), _c("div", {
     staticClass: "side-navigator"
-  }, [_vm._v("\n\t\t\tNavegador lateral\n\t\t")])])]);
+  }, [_c("div", {
+    staticClass: "toolbar"
+  }, [_c("button", {
+    staticClass: "zoom-btn",
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: _vm.zoomOut
+    }
+  }, [_vm._v("\n\t\t\t\t\t-\n\t\t\t\t")]), _vm._v(" "), _c("span", {
+    staticClass: "zoom-label"
+  }, [_vm._v(_vm._s(Math.round(_vm.effectiveScale * 100)) + "%")]), _vm._v(" "), _c("button", {
+    staticClass: "zoom-btn",
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: _vm.zoomIn
+    }
+  }, [_vm._v("\n\t\t\t\t\t+\n\t\t\t\t")]), _vm._v(" "), _c("button", {
+    staticClass: "zoom-btn",
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: _vm.resetView
+    }
+  }, [_vm._v("\n\t\t\t\t\tReset\n\t\t\t\t")])]), _vm._v(" "), _c("p", {
+    staticClass: "helper-text"
+  }, [_vm._v("\n\t\t\t\tMapa fijo del estacionamiento. En móvil se escala completo sin alterar proporciones.\n\t\t\t")])])])]);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -22875,35 +23378,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 2135068647)
-  })], 1)], 1) : _vm._e(), _vm._v(" "), _c("div", [_c("NcAppNavigationCaption", {
-    attrs: {
-      "heading-id": _vm.t("empleados", "Configuration"),
-      "is-heading": "",
-      name: _vm.t("empleados", "Configuration")
-    }
-  }), _vm._v(" "), _c("NcAppNavigationList", {
-    attrs: {
-      "aria-labelledby": _vm.t("empleados", "Configuration")
-    }
-  }, [_c("NcAppNavigationItem", {
-    attrs: {
-      name: _vm.t("empleados", "General Settings"),
-      to: {
-        name: "Ejemplo"
-      }
-    },
-    scopedSlots: _vm._u([{
-      key: "icon",
-      fn: function () {
-        return [_c("Cog", {
-          attrs: {
-            size: 20
-          }
-        })];
-      },
-      proxy: true
-    }])
-  })], 1)], 1)], 1);
+  })], 1)], 1) : _vm._e()], 1);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -41704,37 +42179,82 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
-.ejemplo[data-v-e2f80204] {
-  padding: 24px 32px;
+___CSS_LOADER_EXPORT___.push([module.id, `.wrap[data-v-e2f80204] {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 20px;
+  width: 100%;
 }
-.wrap[data-v-e2f80204] {
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
+.main-content[data-v-e2f80204],
+.side-navigator[data-v-e2f80204] {
+  background: var(--color-background-darker);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 .main-content[data-v-e2f80204] {
-  flex: 3;
-  padding: 24px 32px;
-  background: var(--color-background-darker);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  padding: 16px;
+  min-height: calc(100vh - 140px);
+  overflow: hidden;
 }
 .side-navigator[data-v-e2f80204] {
-  flex: 1;
-  margin-right: 20px; /* Mover este estilo aquí */
-  padding: 24px 32px;
-  background: var(--color-background-darker);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.toolbar[data-v-e2f80204] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.toolbar-mobile[data-v-e2f80204] {
+  display: none;
+  margin-bottom: 12px;
+}
+.zoom-btn[data-v-e2f80204] {
+  padding: 8px 12px;
   border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-main-background);
+  cursor: pointer;
+  min-width: 44px;
+}
+.zoom-label[data-v-e2f80204] {
+  font-weight: 600;
+  min-width: 56px;
+  text-align: center;
+}
+.helper-text[data-v-e2f80204] {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-maxcontrast);
+}
+.parking-viewport[data-v-e2f80204] {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 190px);
+  min-height: 420px;
+  overflow: hidden;
   border-radius: 12px;
-  margin-top: 20px;
+  background: var(--color-main-background);
+}
+.parking-stage[data-v-e2f80204] {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+  overflow: hidden;
+}
+.parking-stage.dragging[data-v-e2f80204] {
+  cursor: grabbing;
 }
 .parking[data-v-e2f80204] {
-  width: 760px;
-  margin: 20px auto;
   background: #dcdcdc;
   display: flex;
   justify-content: space-between;
@@ -41742,12 +42262,13 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   gap: 20px;
   padding: 10px;
   box-sizing: border-box;
+  will-change: transform;
 }
 .side[data-v-e2f80204] {
   width: 170px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 3.5px;
 }
 .slot[data-v-e2f80204] {
   background: #efefef;
@@ -41767,13 +42288,26 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 .slot.medium[data-v-e2f80204] {
   min-height: 90px;
 }
+.slot.big[data-v-e2f80204] {
+  min-height: 120px;
+}
 .slot.tall[data-v-e2f80204] {
   min-height: 120px;
 }
 .slot.empty[data-v-e2f80204] {
-  color: red;
+  color: #d10000;
   font-size: 22px;
-  font-weight: normal;
+  font-weight: 600;
+}
+.space[data-v-e2f80204] {
+  margin-bottom: 5px;
+}
+.space-big[data-v-e2f80204] {
+  margin-bottom: 15px;
+  margin-top: 15px;
+}
+.hidden-spot[data-v-e2f80204] {
+  visibility: hidden;
 }
 .center[data-v-e2f80204] {
   flex: 1;
@@ -41804,8 +42338,42 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 90px;
+  font-size: 40px;
   line-height: 1;
+}
+@media (max-width: 1024px) {
+.wrap[data-v-e2f80204] {
+    grid-template-columns: 1fr;
+}
+.side-navigator[data-v-e2f80204] {
+    display: none;
+}
+.toolbar-mobile[data-v-e2f80204] {
+    display: flex;
+}
+.main-content[data-v-e2f80204] {
+    min-height: calc(100vh - 110px);
+    padding: 12px;
+}
+.parking-viewport[data-v-e2f80204] {
+    height: calc(100vh - 180px);
+    min-height: 360px;
+}
+}
+@media (max-width: 640px) {
+.main-content[data-v-e2f80204] {
+    padding: 10px;
+}
+.parking-viewport[data-v-e2f80204] {
+    min-height: 300px;
+    height: calc(100vh - 170px);
+}
+.toolbar[data-v-e2f80204] {
+    gap: 8px;
+}
+.zoom-btn[data-v-e2f80204] {
+    padding: 10px 12px;
+}
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);

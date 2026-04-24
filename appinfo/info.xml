@@ -7,7 +7,7 @@
     <description>
         Módulo de gestión de empleados para Nextcloud. Permite administrar información de los empleados, equipos de trabajo, puestos, ausencias y vacaciones. Desarrollado para integrarse con Nextcloud y facilitar la administración de recursos humanos.
     </description>
-    <version>1.1.6</version>
+    <version>2.0.0</version>
     <licence>agpl</licence>
     <author mail="luis.alvarado@crowe.mx" homepage="https://gossler-torreon.com">Luis Angel Alvarado Hernandez</author>
     <namespace>Empleados</namespace>
