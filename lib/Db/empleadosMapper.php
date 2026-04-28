@@ -47,6 +47,7 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*') // Solo traemos empleados sin duplicar
 			->from('empleados', 'e')
+			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('e.Id_user', $qb->createNamedParameter($id)));
 		
 		$result = $qb->execute();

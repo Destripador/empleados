@@ -495,15 +495,45 @@ class reportetiempoController extends BaseController {
 			return [];
 		}
 
-		$equipoEmpleado = $this->empleadosMapper->GetSubordinates($user->getUID());
+		$userId = $user->getUID();
+		$boss = $this->empleadosMapper->GetMyEmployeeInfo($userId);
+		$equipoEmpleado = $this->empleadosMapper->GetSubordinates($userId);
+
+		if (!is_array($equipoEmpleado)) {
+			$equipoEmpleado = [];
+		}
+
+		if (!empty($boss)) {
+			// Si viene como lista, toma el primer registro
+			$bossRow = isset($boss[0]) && is_array($boss[0])
+				? $boss[0]
+				: $boss;
+
+			$bossFiltrado = [
+				'Id_empleados' => $bossRow['Id_empleados'] ?? $bossRow['id_empleados'] ?? null,
+				'Id_user'      => $bossRow['Id_user'] ?? $bossRow['id_user'] ?? null,
+				'displayname'  => $bossRow['displayname'] ?? $bossRow['Id_user'] ?? '',
+				'Sueldo'       => $bossRow['Sueldo'] ?? $bossRow['sueldo'] ?? 0,
+			];
+
+			if (!empty($bossFiltrado['Id_empleados'])) {
+				array_unshift($equipoEmpleado, $bossFiltrado);
+			}
+		}
 
 		$empleadosData = [];
 
 		foreach ($equipoEmpleado as $empleado) {
+			$idEmpleado = $empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? null;
+
+			if (empty($idEmpleado)) {
+				continue;
+			}
+
 			$total = 0.0;
 
 			$reportes = $this->reportetiempoMapper->findById(
-				(int)$empleado['Id_empleados'],
+				(int)$idEmpleado,
 				0,
 				0,
 				$periodo_inicio,
@@ -515,9 +545,12 @@ class reportetiempoController extends BaseController {
 				$total += (float)($item['tiempo_registrado'] ?? 0);
 			}
 
+			$horasReportadas = $total / 60;
+			$sueldo = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
+
 			$empleado['total_tiempo_registrado'] = $total;
-			$empleado['horas_reportadas'] = $total / 60;
-			$empleado['costo_total'] = ($total / 60) * (float)($empleado['Sueldo'] ?? 0);
+			$empleado['horas_reportadas'] = $horasReportadas;
+			$empleado['costo_total'] = $horasReportadas * $sueldo;
 
 			$empleadosData[] = $empleado;
 		}

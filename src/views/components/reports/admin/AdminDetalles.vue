@@ -1,128 +1,138 @@
 <!-- eslint-disable object-curly-newline -->
 <template>
 	<div class="contenedor">
-		<div class="kpi-grid">
-			<div class="kpi-card">
-				<div class="kpi-value">
-					{{ kpisFmt.horas_reportadas }}
+		<section class="hero-grid">
+			<div class="hero-card hero-card-main">
+				<div class="eyebrow">
+					Detalle del periodo
 				</div>
-				<div class="kpi-label">
-					Horas reportadas
+				<h2 class="hero-title">
+					Análisis de reportes y distribución operativa
+				</h2>
+				<p class="hero-copy">
+					Concentra la carga por proyecto, actividad y días de registro con un listado navegable de detalle.
+				</p>
+				<div class="hero-stats">
+					<div class="hero-stat">
+						<span class="hero-stat-label">Horas</span>
+						<strong class="hero-stat-value">{{ kpisFmt.horas_reportadas }}</strong>
+					</div>
+					<div class="hero-stat">
+						<span class="hero-stat-label">Costo</span>
+						<strong class="hero-stat-value">{{ kpisFmt.costo_total }}</strong>
+					</div>
+					<div class="hero-stat">
+						<span class="hero-stat-label">Reportes</span>
+						<strong class="hero-stat-value">{{ kpisFmt.total_reportes }}</strong>
+					</div>
+
+					<div class="hero-stat">
+						<span class="hero-stat-label">Proyectos (clientes)</span>
+						<strong class="hero-stat-value">{{ kpisFmt.proyectos_activos }}</strong>
+					</div>
+
+					<div class="hero-stat">
+						<span class="hero-stat-label">Actividades</span>
+						<strong class="hero-stat-value">{{ kpisFmt.actividades }}</strong>
+					</div>
+
+					<div class="hero-stat">
+						<span class="hero-stat-label">Promedio por reporte</span>
+						<strong class="hero-stat-value">{{ kpisFmt.promedio_horas_reporte }}</strong>
+					</div>
 				</div>
 			</div>
+		</section>
 
-			<div class="kpi-card">
-				<div class="kpi-value">
-					{{ kpisFmt.costo_total }}
-				</div>
-				<div class="kpi-label">
-					Costo total
-				</div>
-			</div>
-
-			<div class="kpi-card">
-				<div class="kpi-value">
-					{{ kpisFmt.proyectos_activos }}
-				</div>
-				<div class="kpi-label">
-					Proyectos (clientes)
-				</div>
-			</div>
-
-			<div class="kpi-card">
-				<div class="kpi-value">
-					{{ kpisFmt.actividades }}
-				</div>
-				<div class="kpi-label">
-					Actividades
-				</div>
-			</div>
-
-			<div class="kpi-card">
-				<div class="kpi-value">
-					{{ kpisFmt.total_reportes }}
-				</div>
-				<div class="kpi-label">
-					Reportes
-				</div>
-			</div>
-
-			<div class="kpi-card">
-				<div class="kpi-value">
-					{{ kpisFmt.promedio_horas_reporte }}
-				</div>
-				<div class="kpi-label">
-					Promedio por reporte
-				</div>
-			</div>
-		</div>
-
-		<div class="top">
-			<div class="acc">
-				<details class="acc-item">
-					<summary class="acc-title">
-						Proyectos / Empresas
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartProyectos" />
+		<section class="charts-grid">
+			<article class="panel">
+				<div class="panel-heading">
+					<div>
+						<div class="panel-eyebrow">
+							Rendimiento
 						</div>
+						<h3 class="panel-title">
+							Proyectos / Empresas
+						</h3>
 					</div>
-				</details>
+				</div>
+				<div class="chart-box">
+					<canvas ref="chartProyectos" />
+				</div>
+			</article>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Actividades
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartActividades" />
+			<article class="panel">
+				<div class="panel-heading">
+					<div>
+						<div class="panel-eyebrow">
+							Composición
 						</div>
+						<h3 class="panel-title">
+							Actividades
+						</h3>
 					</div>
-				</details>
+				</div>
+				<div class="chart-box">
+					<canvas ref="chartActividades" />
+				</div>
+			</article>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Proyecto vs actividad
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box chart-box-large">
-							<canvas ref="chartProyectoActividad" />
+			<article class="panel">
+				<div class="panel-heading">
+					<div>
+						<div class="panel-eyebrow">
+							Cruce operativo
 						</div>
+						<h3 class="panel-title">
+							Proyecto vs actividad
+						</h3>
 					</div>
-				</details>
+				</div>
+				<div class="chart-box chart-box-large">
+					<canvas ref="chartProyectoActividad" />
+				</div>
+			</article>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Horas por día
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartHorasDia" />
+			<article class="panel">
+				<div class="panel-heading">
+					<div>
+						<div class="panel-eyebrow">
+							Tendencia
 						</div>
+						<h3 class="panel-title">
+							Horas por día
+						</h3>
 					</div>
-				</details>
+				</div>
+				<div class="chart-box">
+					<canvas ref="chartHorasDia" />
+				</div>
+			</article>
 
-				<details v-if="select.length > 0" class="acc-item">
-					<summary class="acc-title">
-						Reportes del periodo (detalles)
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<VirtualList
-							class="list"
-							:data-sources="historial"
-							:data-key="'id_reporte'"
-							:data-component="rowComponent"
-							:extra-props="{ proyectosList, actividadesList }" />
+			<article v-if="select.length > 0" class="panel panel-full">
+				<div class="panel-heading">
+					<div>
+						<div class="panel-eyebrow">
+							Detalle transaccional
+						</div>
+						<h3 class="panel-title">
+							Reportes del periodo
+						</h3>
 					</div>
-				</details>
-			</div>
-		</div>
+					<div class="panel-badge">
+						{{ historial.length }} registros
+					</div>
+				</div>
+				<div class="details-list-wrap">
+					<VirtualList
+						class="details-list"
+						:data-sources="historial"
+						:data-key="'id_reporte'"
+						:data-component="rowComponent"
+						:extra-props="{ proyectosList, actividadesList }" />
+				</div>
+			</article>
+		</section>
 	</div>
 </template>
 
@@ -662,173 +672,210 @@ export default {
 }
 </script>
 
-<style>
-.details {
-	padding-left: 10px;
-	padding-right: 10px;
-}
-.box1Inside { flex: 3; }
-.flex-center {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	justify-content: center;
-	align-items: center;
-}
-:root {
-  --primary-color: #f6eee5;
-  --secondary-color: #e8d8c7;
-  --accent: #c9a892;
-  --dark-accent: #8c7a76;
-  --text-color: #3c3532;
-  --light-text: #6d6661;
-  --white: #ffffff;
-}
-
-/* Grid */
-.kpi-grid {
+<style scoped>
+.contenedor {
+	margin: 20px 10px 0;
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	gap: 20px;
 }
 
-/* Card */
-.kpi-card {
-  background: var(--white);
-  border-radius: 10px;
-  padding: 22px 20px;
-  text-align: center;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+.hero-card,
+.kpi-card,
+.panel {
+	background: var(--color-main-background, #fff);
+	border: 1px solid var(--color-border, rgba(15, 23, 42, 0.08));
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
-.kpi-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.1);
+.hero-card {
+	padding: 24px;
 }
 
-/* Number */
-.kpi-value {
-  font-family: "Cormorant Garamond", serif;
-  font-size: 2.4rem;
-  font-weight: 600;
-  color: #555352;;
-  line-height: 1.1;
+.hero-card-main {
+	background:
+		linear-gradient(135deg, rgba(91, 108, 250, 0.10), rgba(20, 184, 166, 0.08)),
+		var(--color-main-background, #fff);
 }
 
-/* Label */
+.eyebrow,
+.panel-eyebrow,
 .kpi-label {
-  margin-top: 6px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  font-size: 0.75rem;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #555352;;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast, #6b7280);
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.hero-title {
+	margin: 8px 0 10px;
+	font-size: 1.75rem;
+	line-height: 1.15;
+	color: var(--color-main-text, #111827);
 }
 
-@media (max-width: 480px) {
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.acc {
-  width: 100%;
+.hero-copy {
+	margin: 0;
+	line-height: 1.5;
+	color: var(--color-text-maxcontrast, #6b7280);
 }
 
-/* item */
-.acc-item {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-  margin-bottom: 12px;
-  overflow: hidden;
+.hero-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin-top: 24px;
 }
 
-/* title */
-.acc-title {
-  list-style: none;
-  cursor: pointer;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 600;
-  color: #3c3532;
-  user-select: none;
+.hero-stat {
+	padding: 14px 16px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.74);
+	border: 1px solid rgba(91, 108, 250, 0.12);
 }
 
-/* quita el marcador default */
-.acc-title::-webkit-details-marker {
-  display: none;
+.hero-stat-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 0.78rem;
+	color: var(--color-text-maxcontrast, #6b7280);
 }
 
-/* icon */
-.acc-icon {
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid rgba(0,0,0,0.55);
-  border-bottom: 2px solid rgba(0,0,0,0.55);
-  transform: rotate(45deg);
-  transition: transform 0.2s ease;
-  margin-left: 12px;
+.hero-stat-value {
+	font-size: 1.15rem;
+	color: var(--color-main-text, #111827);
 }
 
-/* abierto => flecha hacia arriba */
-.acc-item[open] .acc-icon {
-  transform: rotate(-135deg);
+.kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 16px;
 }
 
-/* body */
-.acc-body {
-  padding: 0 16px 16px 16px;
-  color: rgba(0,0,0,0.68);
-  line-height: 1.5;
+.kpi-card {
+	padding: 18px;
+	min-height: 126px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
 }
 
-/* separador suave entre title y body */
-.acc-item[open] .acc-title {
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+.kpi-value {
+	font-size: 1.9rem;
+	font-weight: 700;
+	line-height: 1.15;
+	color: var(--color-main-text, #111827);
 }
 
-.contenedor {
-	margin-right: 10px;
-	margin-left: 10px;
-	margin-top: 20px;
+.charts-grid {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 20px;
+}
+
+.panel {
+	padding: 20px;
+	grid-column: span 6;
+}
+
+.panel-full {
+	grid-column: 1 / -1;
+}
+
+.panel-heading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 18px;
+}
+
+.panel-title {
+	margin: 4px 0 0;
+	font-size: 1rem;
+	color: var(--color-main-text, #111827);
+}
+
+.panel-badge {
+	padding: 6px 10px;
+	border-radius: 999px;
+	white-space: nowrap;
+	font-size: 0.75rem;
+	color: var(--color-text-maxcontrast, #6b7280);
+	background: var(--color-background-hover, rgba(15, 23, 42, 0.05));
 }
 
 .chart-box {
 	position: relative;
-	width: 100%;
-	height: 360px;
-	min-height: 300px;
+	height: 320px;
+}
+
+.chart-box-large {
+	height: 440px;
+}
+
+.details-list-wrap {
+	max-height: min(58vh, 620px);
+	min-height: 280px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	border: 1px solid var(--color-border, rgba(15, 23, 42, 0.08));
+	border-radius: 10px;
+	background: var(--color-main-background, #fff);
+}
+
+.details-list {
+	padding: 4px 0;
+}
+
+@media (max-width: 1100px) {
+	.charts-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.panel,
+	.panel-full {
+		grid-column: auto;
+	}
 }
 
 @media (max-width: 768px) {
+	.hero-stats,
+	.charts-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.hero-card,
+	.kpi-card,
+	.panel {
+		padding: 18px;
+	}
+
 	.chart-box {
 		height: 300px;
 	}
-}
 
-@media (max-width: 480px) {
-	.chart-box {
-		height: 260px;
+	.chart-box-large {
+		height: 320px;
+	}
+
+	.details-list-wrap {
+		max-height: 60vh;
+		min-height: 240px;
 	}
 }
-.chart-box-large {
-	height: 460px;
-}
 
-@media (max-width: 768px) {
-	.chart-box-large {
-		height: 380px;
+@media (max-width: 560px) {
+	.kpi-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.hero-title {
+		font-size: 1.4rem;
+	}
+
+	.chart-box {
+		height: 260px;
 	}
 }
 </style>

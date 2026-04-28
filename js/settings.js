@@ -142686,4 +142686,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=8074a2451acb74dae30b
+//# sourceMappingURL=settings.js.map

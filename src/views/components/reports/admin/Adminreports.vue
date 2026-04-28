@@ -48,7 +48,7 @@
 				</div>
 			</template>
 			<template #details>
-				<h3>Resumen general Periodo - {{ meses.find(m => m.value === periodo_inicio)?.label }} - {{ meses.find(m => m.value === periodo_fin)?.label }} ({{ anioSeleccionado }})</h3>
+				<h3>Resumen Empleado - {{ meses.find(m => m.value === periodo_inicio)?.label }} - {{ meses.find(m => m.value === periodo_fin)?.label }} ({{ anioSeleccionado }})</h3>
 				<AdminDetalles :select="select"
 					:sueldo="sueldo"
 					:actividades-list="actividades"

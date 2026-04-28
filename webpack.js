@@ -4,8 +4,18 @@ const StyleLintPlugin = require('stylelint-webpack-plugin')
 const path = require('path')
 
 webpackConfig.entry = {
-	main: { import: path.join(__dirname, 'src', 'main.js'), filename: 'main.js' },
-	settings: path.join(__dirname, 'src', 'settings.js'),
+	main: {
+		import: path.join(__dirname, 'src', 'main.js'),
+		filename: 'main.js',
+	},
+	settings: {
+		import: path.join(__dirname, 'src', 'settings.js'),
+		filename: 'settings.js',
+	},
+	'dashboard-reportes': {
+		import: path.join(__dirname, 'src', 'dashboard-reportes.js'),
+		filename: 'dashboard-reportes.js',
+	},
 }
 
 webpackConfig.plugins.push(
@@ -14,6 +24,7 @@ webpackConfig.plugins.push(
 		files: 'src',
 	}),
 )
+
 webpackConfig.plugins.push(
 	new StyleLintPlugin({
 		files: 'src/**/*.{css,scss,vue}',

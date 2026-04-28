@@ -71,6 +71,7 @@
 								required
 								:value.sync="time_activity"
 								type="number"
+								min="1"
 								:label="t('empleados', 'Estimate time')" />
 						</div>
 						<div class="radios">
@@ -111,6 +112,7 @@
 							class=""
 							:aria-label="t('empleados', 'Create Activity')"
 							type="primary"
+							:disabled="!isFormValid"
 							@click="create()">
 							{{ t('empleados', 'Create Activity') }}
 						</NcButton>
@@ -174,7 +176,28 @@ export default {
 			actividades: [],
 			activity_selected: null,
 			listas_selected: null,
+			temp_listas: [],
 		}
+	},
+	computed: {
+		isFormValid() {
+			const clienteId = this.activity_selected?.id
+			const actividadId = this.listas_selected?.id
+			const tiempo = Number(this.time_activity)
+			const descripcion = String(this.description_activity || '').trim()
+			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
+
+			return Boolean(
+				clienteId !== null
+				&& clienteId !== undefined
+				&& actividadId !== null
+				&& actividadId !== undefined
+				&& Number.isFinite(tiempo)
+				&& tiempo > 0
+				&& descripcion.length > 0
+				&& !isNaN(fecha.getTime()),
+			)
+		},
 	},
 	async mounted() {
 		this.loading = true
@@ -202,6 +225,7 @@ export default {
 
 		closeModal() {
 			this.modal = false
+			this.resetForm()
 		},
 
 		async gethistorial() {
@@ -334,15 +358,23 @@ export default {
 		},
 
 		async create() {
+			if (!this.isFormValid) {
+				showError(t('empleados', 'Completa todos los campos obligatorios con valores válidos.'))
+				return
+			}
+
+			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
+			const payload = {
+				id_cliente: this.activity_selected.id,
+				id_actividad: this.listas_selected.id,
+				tiemporegistrado: Number(this.time_activity),
+				descripcion: String(this.description_activity || '').trim(),
+				tipo: this.type_time,
+				time: fecha.toISOString().slice(0, 10),
+			}
+
 			try {
-				await axios.post(generateUrl('/apps/empleados/crearReporte'), {
-					id_cliente: this.activity_selected.id,
-					id_actividad: this.listas_selected.id,
-					tiemporegistrado: Number(this.time_activity ?? 0),
-					descripcion: this.description_activity,
-					tipo: this.type_time,
-					time: this.time.toISOString().slice(0, 10),
-				}).then(
+				await axios.post(generateUrl('/apps/empleados/crearReporte'), payload).then(
 					() => {
 						showSuccess(t('empleados', 'Área creada exitosamente'))
 						this.gethistorial()
@@ -372,6 +404,15 @@ export default {
 			}
 			// si no fue parseable, regresa como viene
 			return val
+		},
+
+		resetForm() {
+			this.description_activity = ''
+			this.type_time = 'minutos'
+			this.time_activity = 0
+			this.time = new Date()
+			this.activity_selected = null
+			this.listas_selected = null
 		},
 	},
 }

@@ -1,151 +1,233 @@
 <template>
 	<div class="resumen-general">
-		<div v-if="loading" class="loading">
+		<div v-if="loading" class="state-card">
 			Cargando resumen...
 		</div>
 
-		<div v-else-if="!resumen">
+		<div v-else-if="!resumen" class="state-card">
 			No hay datos para este periodo.
 		</div>
 
-		<div v-else>
-			<div class="summary-grid">
-				<div class="summary-card">
-					<div class="summary-value">
-						{{ resumenFmt.horas_reportadas }}
-					</div>
+		<div v-else class="dashboard-shell">
+			<section class="summary-grid">
+				<div class="summary-card summary-card-accent">
 					<div class="summary-label">
 						Horas reportadas
 					</div>
+					<div class="summary-value">
+						{{ resumenFmt.horas_reportadas }}
+					</div>
 				</div>
 
 				<div class="summary-card">
-					<div class="summary-value">
-						{{ resumenFmt.costo_total }}
-					</div>
 					<div class="summary-label">
 						Costo total
 					</div>
+					<div class="summary-value">
+						{{ resumenFmt.costo_total }}
+					</div>
 				</div>
 
 				<div class="summary-card">
-					<div class="summary-value">
-						{{ resumenFmt.empleados_con_reportes }}
-					</div>
 					<div class="summary-label">
 						Empleados con reportes
 					</div>
+					<div class="summary-value">
+						{{ resumenFmt.empleados_con_reportes }}
+					</div>
 				</div>
 
 				<div class="summary-card">
-					<div class="summary-value">
-						{{ resumenFmt.total_reportes }}
-					</div>
 					<div class="summary-label">
 						Reportes
 					</div>
+					<div class="summary-value">
+						{{ resumenFmt.total_reportes }}
+					</div>
 				</div>
 
 				<div class="summary-card">
-					<div class="summary-value">
-						{{ resumenFmt.proyectos_activos }}
-					</div>
 					<div class="summary-label">
 						Proyectos
 					</div>
+					<div class="summary-value">
+						{{ resumenFmt.proyectos_activos }}
+					</div>
 				</div>
 
 				<div class="summary-card">
+					<div class="summary-label">
+						Actividades
+					</div>
 					<div class="summary-value">
 						{{ resumenFmt.actividades }}
 					</div>
-					<div class="summary-label">
-						Actividades
-					</div>
 				</div>
 
 				<div class="summary-card">
-					<div class="summary-value">
-						{{ resumenFmt.promedio_horas_reporte }}
-					</div>
 					<div class="summary-label">
 						Promedio por reporte
 					</div>
+					<div class="summary-value">
+						{{ resumenFmt.promedio_horas_reporte }}
+					</div>
+					<div class="summary-meta">
+						Eficiencia media registrada
+					</div>
 				</div>
-			</div>
-			<div class="acc">
-				<details class="acc-item" open>
-					<summary class="acc-title">
-						Horas por empleado
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
+			</section>
 
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartHorasEmpleado" />
+			<section class="charts-grid">
+				<article class="panel panel-wide">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Distribución
+							</div>
+							<h3 class="panel-title">
+								Horas por empleado
+							</h3>
+						</div>
+						<div class="panel-badge">
+							{{ resumenFmt.empleados_con_reportes }} activos
 						</div>
 					</div>
-				</details>
-				<details class="acc-item">
-					<summary class="acc-title">
-						Proyectos / Empresas
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartProyectos" />
-						</div>
+					<div class="chart-box chart-box-tall">
+						<canvas ref="chartHorasEmpleado" />
 					</div>
-				</details>
+				</article>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Actividades
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartActividades" />
+				<article class="panel panel-small">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Indicadores clave
+							</div>
+							<h3 class="panel-title">
+								Puntos de atención
+							</h3>
 						</div>
 					</div>
-				</details>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Horas por día
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartHorasDia" />
-						</div>
-					</div>
-				</details>
+					<ul class="insight-list">
+						<li class="insight-item">
+							<span class="insight-label">Empleado con mayor carga</span>
+							<strong class="insight-value">{{ topEmpleado.label }}</strong>
+							<span class="insight-meta">{{ topEmpleado.valor }}</span>
+						</li>
+						<li class="insight-item">
+							<span class="insight-label">Proyecto dominante</span>
+							<strong class="insight-value">{{ topProyecto.label }}</strong>
+							<span class="insight-meta">{{ topProyecto.valor }}</span>
+						</li>
+						<li class="insight-item">
+							<span class="insight-label">Actividad principal</span>
+							<strong class="insight-value">{{ topActividad.label }}</strong>
+							<span class="insight-meta">{{ topActividad.valor }}</span>
+						</li>
+						<li class="insight-item">
+							<span class="insight-label">Cobertura operativa</span>
+							<strong class="insight-value">{{ resumenFmt.empleados_con_reportes }} empleados</strong>
+							<span class="insight-meta">{{ resumenFmt.total_reportes }} reportes registrados</span>
+						</li>
+					</ul>
+				</article>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Reportes por día
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box">
-							<canvas ref="chartReportesDia" />
+				<article class="panel">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Composición
+							</div>
+							<h3 class="panel-title">
+								Actividades
+							</h3>
+						</div>
+						<div class="panel-badge">
+							{{ resumenFmt.actividades }} categorías
 						</div>
 					</div>
-				</details>
+					<div class="chart-box">
+						<canvas ref="chartActividades" />
+					</div>
+				</article>
 
-				<details class="acc-item">
-					<summary class="acc-title">
-						Proyecto vs actividad
-						<span class="acc-icon" aria-hidden="true" />
-					</summary>
-					<div class="acc-body">
-						<div class="chart-box chart-box-large">
-							<canvas ref="chartProyectoActividad" />
+				<article class="panel">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Rendimiento
+							</div>
+							<h3 class="panel-title">
+								Proyectos / empresas
+							</h3>
+						</div>
+						<div class="panel-badge">
+							{{ resumenFmt.proyectos_activos }} proyectos
 						</div>
 					</div>
-				</details>
-			</div>
+					<div class="chart-box">
+						<canvas ref="chartProyectos" />
+					</div>
+				</article>
+
+				<article class="panel">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Tendencia
+							</div>
+							<h3 class="panel-title">
+								Horas por día
+							</h3>
+						</div>
+						<div class="panel-badge">
+							Serie temporal
+						</div>
+					</div>
+					<div class="chart-box">
+						<canvas ref="chartHorasDia" />
+					</div>
+				</article>
+
+				<article class="panel">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Volumen
+							</div>
+							<h3 class="panel-title">
+								Reportes por día
+							</h3>
+						</div>
+						<div class="panel-badge">
+							Frecuencia diaria
+						</div>
+					</div>
+					<div class="chart-box">
+						<canvas ref="chartReportesDia" />
+					</div>
+				</article>
+
+				<article class="panel panel-full">
+					<div class="panel-heading">
+						<div>
+							<div class="panel-eyebrow">
+								Cruce operativo
+							</div>
+							<h3 class="panel-title">
+								Proyecto vs actividad
+							</h3>
+						</div>
+						<div class="panel-badge">
+							Distribución apilada
+						</div>
+					</div>
+					<div class="chart-box chart-box-large">
+						<canvas ref="chartProyectoActividad" />
+					</div>
+				</article>
+			</section>
 		</div>
 	</div>
 </template>
@@ -332,6 +414,51 @@ export default {
 				datasets,
 			}
 		},
+
+		topEmpleado() {
+			const top = this.graficaEmpleados[0]
+			if (!top) {
+				return {
+					label: 'Sin registros',
+					valor: '0 h',
+				}
+			}
+
+			return {
+				label: top.label,
+				valor: `${top.horas.toFixed(2)} h`,
+			}
+		},
+
+		topProyecto() {
+			const top = [...this.graficaProyectos].sort((a, b) => b.horas - a.horas)[0]
+			if (!top) {
+				return {
+					label: 'Sin registros',
+					valor: '0%',
+				}
+			}
+
+			return {
+				label: top.label,
+				valor: `${top.porcentaje.toFixed(1)}% del total`,
+			}
+		},
+
+		topActividad() {
+			const top = [...this.graficaActividades].sort((a, b) => b.horas - a.horas)[0]
+			if (!top) {
+				return {
+					label: 'Sin registros',
+					valor: '0%',
+				}
+			}
+
+			return {
+				label: top.label,
+				valor: `${top.porcentaje.toFixed(1)}% del total`,
+			}
+		},
 	},
 
 	watch: {
@@ -411,6 +538,9 @@ export default {
 					datasets: [{
 						label: 'Horas por empleado',
 						data: datos.map(x => Number(x.horas.toFixed(2))),
+						backgroundColor: '#5b6cfa',
+						borderRadius: 8,
+						borderSkipped: false,
 					}],
 				},
 				options: {
@@ -438,6 +568,14 @@ export default {
 					scales: {
 						x: {
 							beginAtZero: true,
+							grid: {
+								color: 'rgba(91, 108, 250, 0.12)',
+							},
+						},
+						y: {
+							grid: {
+								display: false,
+							},
 						},
 					},
 				},
@@ -460,6 +598,9 @@ export default {
 					datasets: [{
 						label: 'Horas por proyecto',
 						data: datos.map(x => Number(x.horas.toFixed(2))),
+						backgroundColor: '#14b8a6',
+						borderRadius: 8,
+						borderSkipped: false,
 					}],
 				},
 				options: {
@@ -484,6 +625,14 @@ export default {
 					scales: {
 						x: {
 							beginAtZero: true,
+							grid: {
+								color: 'rgba(20, 184, 166, 0.14)',
+							},
+						},
+						y: {
+							grid: {
+								display: false,
+							},
 						},
 					},
 				},
@@ -506,6 +655,16 @@ export default {
 					datasets: [{
 						label: 'Horas por actividad',
 						data: datos.map(x => Number(x.horas.toFixed(2))),
+						backgroundColor: [
+							'#5b6cfa',
+							'#14b8a6',
+							'#f59e0b',
+							'#ef4444',
+							'#8b5cf6',
+							'#0ea5e9',
+							'#84cc16',
+						],
+						borderWidth: 0,
 					}],
 				},
 				options: {
@@ -550,7 +709,11 @@ export default {
 						label: 'Horas por día',
 						data: datos.map(x => Number(x.horas.toFixed(2))),
 						tension: 0.3,
-						fill: false,
+						fill: true,
+						borderColor: '#5b6cfa',
+						backgroundColor: 'rgba(91, 108, 250, 0.12)',
+						pointBackgroundColor: '#5b6cfa',
+						pointRadius: 3,
 					}],
 				},
 				options: {
@@ -569,6 +732,14 @@ export default {
 					scales: {
 						y: {
 							beginAtZero: true,
+							grid: {
+								color: 'rgba(91, 108, 250, 0.12)',
+							},
+						},
+						x: {
+							grid: {
+								display: false,
+							},
 						},
 					},
 				},
@@ -591,14 +762,25 @@ export default {
 					datasets: [{
 						label: 'Reportes por día',
 						data: datos.map(x => x.reportes),
+						backgroundColor: '#f59e0b',
+						borderRadius: 8,
+						borderSkipped: false,
 					}],
 				},
 				options: {
 					responsive: true,
 					maintainAspectRatio: false,
 					scales: {
+						x: {
+							grid: {
+								display: false,
+							},
+						},
 						y: {
 							beginAtZero: true,
+							grid: {
+								color: 'rgba(245, 158, 11, 0.15)',
+							},
 							ticks: {
 								precision: 0,
 							},
@@ -688,130 +870,259 @@ export default {
 
 <style scoped>
 .resumen-general {
-	width: 100%;
+	width: 99%;
 }
 
-.loading {
+.state-card,
+.hero-card,
+.summary-card,
+.panel {
+	background: var(--color-main-background, #fff);
+	border: 1px solid var(--color-border, rgba(15, 23, 42, 0.08));
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.state-card {
+	padding: 28px 24px;
+	color: var(--color-text-maxcontrast, #6b7280);
 	text-align: center;
-	padding: 20px;
+}
+
+.dashboard-shell {
+	display: grid;
+	gap: 20px;
+}
+
+.hero-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+	gap: 20px;
+}
+
+.hero-card {
+	padding: 24px;
+}
+
+.hero-card-main {
+	background:
+		linear-gradient(135deg, rgba(91, 108, 250, 0.10), rgba(20, 184, 166, 0.08)),
+		var(--color-main-background, #fff);
+}
+
+.eyebrow,
+.panel-eyebrow,
+.summary-label,
+.insight-label {
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast, #6b7280);
+}
+
+.hero-title {
+	margin: 8px 0 10px;
+	font-size: 1.8rem;
+	line-height: 1.15;
+	color: var(--color-main-text, #111827);
+}
+
+.hero-copy {
+	margin: 0;
+	max-width: 64ch;
+	line-height: 1.5;
+	color: var(--color-text-maxcontrast, #6b7280);
+}
+
+.hero-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin-top: 24px;
+}
+
+.hero-stat {
+	padding: 14px 16px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.74);
+	border: 1px solid rgba(91, 108, 250, 0.12);
+}
+
+.hero-stat-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 0.78rem;
+	color: var(--color-text-maxcontrast, #6b7280);
+}
+
+.hero-stat-value {
+	font-size: 1.15rem;
+	color: var(--color-main-text, #111827);
+}
+
+.panel-heading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 18px;
+}
+
+.panel-title {
+	margin: 4px 0 0;
+	font-size: 1rem;
+	color: var(--color-main-text, #111827);
+}
+
+.panel-badge {
+	padding: 6px 10px;
+	border-radius: 999px;
+	white-space: nowrap;
+	font-size: 0.75rem;
+	color: var(--color-text-maxcontrast, #6b7280);
+	background: var(--color-background-hover, rgba(15, 23, 42, 0.05));
+}
+
+.insight-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 12px;
+}
+
+.insight-item {
+	display: grid;
+	gap: 4px;
+	padding: 14px 16px;
+	border-radius: 10px;
+	background: var(--color-background-hover, rgba(15, 23, 42, 0.03));
+}
+
+.insight-value {
+	font-size: 1rem;
+	color: var(--color-main-text, #111827);
+}
+
+.insight-meta,
+.summary-meta {
+	font-size: 0.84rem;
+	color: var(--color-text-maxcontrast, #6b7280);
 }
 
 .summary-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-	gap: 20px;
-	margin: 24px 0;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 16px;
 }
 
 .summary-card {
-	background: #fff;
-	border-radius: 10px;
-	padding: 22px 20px;
-	text-align: center;
-	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-	border: 1px solid rgba(0, 0, 0, 0.06);
+	padding: 18px;
+	min-height: 126px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.summary-card-accent {
+	background:
+		linear-gradient(180deg, rgba(91, 108, 250, 0.09), rgba(91, 108, 250, 0.02)),
+		var(--color-main-background, #fff);
+	border-color: rgba(91, 108, 250, 0.18);
 }
 
 .summary-value {
-	font-family: "Cormorant Garamond", serif;
-	font-size: 2.2rem;
-	font-weight: 600;
-	color: #555352;
-	line-height: 1.1;
+	font-size: 1.9rem;
+	font-weight: 700;
+	line-height: 1.15;
+	color: var(--color-main-text, #111827);
 }
 
-.summary-label {
-	margin-top: 6px;
-	font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-	font-size: 0.75rem;
-	letter-spacing: 1.5px;
-	text-transform: uppercase;
-	color: #555352;
+.charts-grid {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 20px;
 }
 
-.acc {
-	width: 100%;
-	margin-top: 10px;
+.panel {
+	padding: 20px;
+	grid-column: span 6;
 }
 
-.acc-item {
-	background: #fff;
-	border: 1px solid rgba(0, 0, 0, 0.08);
-	border-radius: 10px;
-	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-	margin-bottom: 12px;
-	overflow: hidden;
+.panel-wide {
+	grid-column: span 8;
 }
 
-.acc-title {
-	list-style: none;
-	cursor: pointer;
-	padding: 14px 16px;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	font-weight: 600;
-	color: #3c3532;
-	user-select: none;
+.panel-small {
+	grid-column: span 4;
 }
 
-.acc-title::-webkit-details-marker {
-	display: none;
-}
-
-.acc-icon {
-	width: 10px;
-	height: 10px;
-	border-right: 2px solid rgba(0, 0, 0, 0.55);
-	border-bottom: 2px solid rgba(0, 0, 0, 0.55);
-	transform: rotate(45deg);
-	transition: transform 0.2s ease;
-	margin-left: 12px;
-}
-
-.acc-item[open] .acc-icon {
-	transform: rotate(-135deg);
-}
-
-.acc-body {
-	padding: 0 16px 16px 16px;
-	color: rgba(0, 0, 0, 0.68);
-	line-height: 1.5;
-}
-
-.acc-item[open] .acc-title {
-	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+.panel-full {
+	grid-column: 1 / -1;
 }
 
 .chart-box {
 	position: relative;
-	width: 100%;
-	height: 360px;
-	min-height: 300px;
+	height: 320px;
 }
 
-@media (max-width: 768px) {
-	.chart-box {
-		height: 300px;
+.chart-box-tall {
+	height: 420px;
+}
+
+.chart-box-large {
+	height: 440px;
+}
+
+@media (max-width: 1100px) {
+	.hero-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.charts-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.panel,
+	.panel-wide,
+	.panel-full {
+		grid-column: auto;
 	}
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
+	.hero-stats,
+	.charts-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.hero-card,
+	.summary-card,
+	.panel {
+		padding: 18px;
+	}
+
+	.chart-box {
+		height: 300px;
+	}
+
+	.chart-box-tall,
+	.chart-box-large {
+		height: 320px;
+	}
+}
+
+@media (max-width: 560px) {
 	.summary-grid {
 		grid-template-columns: 1fr;
 	}
 
+	.hero-title {
+		font-size: 1.45rem;
+	}
+
 	.chart-box {
 		height: 260px;
-	}
-}
-.chart-box-large {
-	height: 460px;
-}
-
-@media (max-width: 768px) {
-	.chart-box-large {
-		height: 380px;
 	}
 }
 </style>
