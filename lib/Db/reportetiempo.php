@@ -20,7 +20,7 @@ class ReporteTiempo extends Entity {
 
 	public function __construct() {
 		$this->addType('idReporte', 'integer');
-		$this->addType('idEmpleado', 'integer');
+		$this->addType('idEmpleado', 'string');
 		$this->addType('idCliente', 'integer');
 		$this->addType('idActividad', 'integer');
 		$this->addType('descripcion', 'string');

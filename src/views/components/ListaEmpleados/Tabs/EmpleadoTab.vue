@@ -521,9 +521,7 @@ export default {
 
 		async GetAllEquipo(equipo) {
 			try {
-				if (equipo === '' || equipo === null || equipo === undefined) {
-					showError(t('empleados', 'This employee doesn’t belong to a team — assign them to one.'), { close: true })
-				} else {
+				if (equipo !== '' || equipo !== null || equipo !== undefined) {
 					const response = await axios.get(generateUrl('/apps/empleados/GetEmpleadosEquipo/' + equipo))
 					const data = response?.data?.ocs?.data
 					this.peopleEquipo = data

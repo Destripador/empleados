@@ -34,7 +34,17 @@
 			</template>
 			<template #custom>
 				<div class="periodo-details">
-					<h3>Resumen - {{ meses.find(m => m.value === periodo_inicio)?.label }} - {{ meses.find(m => m.value === periodo_fin)?.label }}  ({{ anioSeleccionado }})</h3>
+					<h3>
+						Resumen general - {{ meses.find(m => m.value === periodo_inicio)?.label }} -
+						{{ meses.find(m => m.value === periodo_fin)?.label }}
+						({{ anioSeleccionado }})
+					</h3>
+
+					<AdminResumenGeneral
+						:resumen="resumenGeneral"
+						:loading="loadingResumen"
+						:actividades-list="actividades"
+						:proyectos-list="temp_listas" />
 				</div>
 			</template>
 			<template #details>
@@ -180,6 +190,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 import List from '../../Helpers/Lists/List.vue'
 import AdminDetalles from './AdminDetalles.vue'
+import AdminResumenGeneral from './AdminResumenGeneral.vue'
 
 import {
 	NcAppContent,
@@ -210,6 +221,7 @@ export default {
 		AccountMultiplePlusOutline,
 		DatabaseCog,
 		NcSelect,
+		AdminResumenGeneral,
 	},
 	data() {
 		return {
@@ -242,7 +254,34 @@ export default {
 				{ label: 'Diciembre', value: 12 },
 			],
 			anios: Array.from({ length: Math.max(0, new Date().getFullYear() - 2025 + 1) }, (_, i) => 2025 + i),
+			resumenGeneral: null,
+			loadingResumen: false,
+			sueldo: 0,
+			temp_listas: [],
 		}
+	},
+
+	computed: {
+		resumenFmt() {
+			const kpis = this.resumenGeneral?.kpis || {}
+
+			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
+			const int = new Intl.NumberFormat('es-MX')
+			const money = new Intl.NumberFormat('es-MX', {
+				style: 'currency',
+				currency: 'MXN',
+			})
+
+			return {
+				horas_reportadas: num2.format(kpis.horas_reportadas || 0),
+				costo_total: money.format(kpis.costo_total || 0),
+				empleados_con_reportes: int.format(kpis.empleados_con_reportes || 0),
+				proyectos_activos: int.format(kpis.proyectos_activos || 0),
+				actividades: int.format(kpis.actividades || 0),
+				total_reportes: int.format(kpis.total_reportes || 0),
+				promedio_horas_reporte: `${num2.format(kpis.promedio_horas_reporte || 0)} h`,
+			}
+		},
 	},
 
 	async mounted() {
@@ -266,13 +305,12 @@ export default {
 		this.GetEmpleadosReports()
 		this.GetCompaniesGroups()
 		this.GetActividades()
-	},
-
-	beforeUnmount() {
-		window.removeEventListener('keydown', this.onKeyDown)
+		this.GetAdminReportsSummary()
 	},
 
 	beforeDestroy() {
+		window.removeEventListener('keydown', this.onKeyDown)
+
 		this.$root.$off('details', this._onDetails)
 		this.$root.$off('new', this._onNew)
 		this.$root.$off('delete', this._onDelete)
@@ -290,6 +328,7 @@ export default {
 
 		onEsc() {
 			this.select = []
+			this.sueldo = 0
 		},
 
 		openModal() {
@@ -374,7 +413,7 @@ export default {
 							}))
 
 							// Opciones para <NcSelect>
-							this.actividades = data.map(o => ({
+							this.empresasOptions = data.map(o => ({
 								id: o.id_cliente,
 								label: o.nombre,
 							}))
@@ -443,7 +482,10 @@ export default {
 			localStorage.setItem('nextcloud_empleados_anio_seleccionado', String(this.anioSeleccionado ?? ''))
 
 			this.closeModal()
+			this.select = []
+			this.sueldo = 0
 			this.GetEmpleadosReports()
+			this.GetAdminReportsSummary()
 		},
 
 		async gethistorial(id) {
@@ -467,6 +509,29 @@ export default {
 				showError(t('ahorrosgossler', 'Could not fetch your information'))
 			} finally {
 				this.loading = false
+			}
+		},
+
+		async GetAdminReportsSummary() {
+			try {
+				this.loadingResumen = true
+
+				const response = await axios.post(generateUrl('/apps/empleados/GetAdminReportsSummary'), {
+					periodo_inicio: this.periodo_inicio,
+					periodo_fin: this.periodo_fin,
+					anio: this.anioSeleccionado,
+				})
+
+				if (response?.data?.ocs?.meta?.status !== 'ok') {
+					showError(response?.data?.ocs?.meta?.message)
+					return
+				}
+
+				this.resumenGeneral = response?.data?.ocs?.data ?? null
+			} catch (err) {
+				showError(t('empleados', 'Se ha producido una excepcion [Resumen] [{error}]', { error: String(err) }))
+			} finally {
+				this.loadingResumen = false
 			}
 		},
 
@@ -538,5 +603,43 @@ export default {
 .periodo-details {
 	margin-bottom: 10px;
 	text-align: center;
+}
+.summary-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 20px;
+	margin: 24px 0;
+}
+
+.summary-card {
+	background: #fff;
+	border-radius: 10px;
+	padding: 22px 20px;
+	text-align: center;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+	border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.summary-value {
+	font-family: "Cormorant Garamond", serif;
+	font-size: 2.2rem;
+	font-weight: 600;
+	color: #555352;
+	line-height: 1.1;
+}
+
+.summary-label {
+	margin-top: 6px;
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+	font-size: 0.75rem;
+	letter-spacing: 1.5px;
+	text-transform: uppercase;
+	color: #555352;
+}
+
+@media (max-width: 480px) {
+	.summary-grid {
+		grid-template-columns: 1fr;
+	}
 }
 </style>
