@@ -15345,6 +15345,8 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+// eslint-disable-next-line import/no-named-as-default
+
  // NcTextField,
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'AdminDetalles',
@@ -15796,6 +15798,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 /* harmony import */ var chart_js_auto__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! chart.js/auto */ "./node_modules/chart.js/auto/auto.js");
+// eslint-disable-next-line import/no-named-as-default
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'AdminResumenGeneral',
