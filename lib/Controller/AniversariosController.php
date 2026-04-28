@@ -88,7 +88,7 @@ class AniversariosController extends BaseController {
     /**
      * Importa la lista de áreas desde un archivo XLSX.
      */
-    public function ImportListAniversarios(): void {
+    public function ImportListAniversarios(): DataResponse {
         $file = $this->getUploadedFile('fileXLSX');
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
@@ -98,6 +98,7 @@ class AniversariosController extends BaseController {
                 $this->aniversarioMapper->insert($area);
             }
         }
+        return new DataResponse('ok', Http::STATUS_OK);
     }
         
     /**
@@ -105,12 +106,12 @@ class AniversariosController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function VaciarAniversarios(): string {
+    public function VaciarAniversarios(): DataResponse {
         try {
             $this->aniversarioMapper->VaciarAniversarios();
-            return "ok";
+            return new DataResponse('ok', Http::STATUS_OK);
         } catch (\Exception $e) {
-            return $e->getMessage();
+            return new DataResponse($e->getMessage(), Http::STATUS_ERROR);
         }
     }
 

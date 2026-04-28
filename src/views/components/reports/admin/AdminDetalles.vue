@@ -135,6 +135,7 @@
 import ReportRow from '../../Helpers/Lists/ReportRow.vue'
 import VirtualList from 'vue-virtual-scroll-list'
 
+// eslint-disable-next-line import/no-named-as-default
 import Chart from 'chart.js/auto'
 
 import {
