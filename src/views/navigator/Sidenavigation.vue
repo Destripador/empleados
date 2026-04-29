@@ -205,41 +205,31 @@ export default {
 	},
 	inject: ['groupuser', 'configuraciones', 'subordinates'],
 	methods: {
-		t, // expone t al template
+		t,
+
 		navigateTo(route) {
 			this.$router.push({ name: route })
 		},
+
 		isAdmin() {
 			return 'admin' in this.groupuser || 'recursos_humanos' in this.groupuser
 		},
+
+		canSeeAdminReports() {
+			const value = this.configuraciones?.CanAdminReports
+
+			return value === true
+			|| value === 'true'
+			|| value === 1
+			|| value === '1'
+		},
+
 		ahorroModulo() {
 			return this.configuraciones.modulo_ahorro === 'true'
 		},
+
 		ausenciasModulo() {
 			return this.configuraciones.modulo_ausencias === 'true'
-		},
-		getAdminReportsGroup() {
-			return this.configuraciones?.Reportes?.admin_reports_group
-				|| this.configuraciones?.reportes_admin_reports_group
-				|| 'recursos_humanos'
-		},
-
-		isNextcloudAdmin() {
-			return this.groupuser && Object.prototype.hasOwnProperty.call(this.groupuser, 'admin')
-		},
-
-		canSeeAdminReports() {
-			if (this.isNextcloudAdmin()) {
-				return true
-			}
-
-			const adminReportsGroup = this.getAdminReportsGroup()
-
-			if (!adminReportsGroup || !this.groupuser) {
-				return false
-			}
-
-			return Object.prototype.hasOwnProperty.call(this.groupuser, adminReportsGroup)
 		},
 	},
 }

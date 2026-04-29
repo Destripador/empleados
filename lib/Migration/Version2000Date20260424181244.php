@@ -3,16 +3,14 @@
 declare(strict_types=1);
 
 /**
- * Migración base limpia para OCA\Empleados.
+ * Migración base para OCA\Empleados.
  *
- * Esta versión asume una instalación nueva del esquema de la app:
- * - No valida si las tablas existen.
- * - Crea las 15 tablas desde cero.
- * - Inserta la configuración base en empleados_conf.
+ * Esta migración es idempotente:
+ * - Crea las tablas que no existen.
+ * - Omite las tablas existentes.
+ * - Inserta configuraciones base solo si no existen.
  *
- * IMPORTANTE:
- * - Si alguna tabla ya existe, esta migración va a fallar.
- * - Úsala después de eliminar las tablas actuales del módulo o en una base limpia.
+ * No elimina ni modifica datos existentes.
  */
 
 namespace OCA\Empleados\Migration;
@@ -77,12 +75,21 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 		];
 
 		foreach ($configs as $nombre => $data) {
-			$this->insertConfig($nombre, $data);
-			$output->info("Seed empleados_conf.Nombre='{$nombre}' insertado.");
+			$created = $this->insertConfig($nombre, $data);
+
+			if ($created) {
+				$output->info("Seed empleados_conf.Nombre='{$nombre}' insertado.");
+			} else {
+				$output->info("Seed empleados_conf.Nombre='{$nombre}' ya existía, omitido.");
+			}
 		}
 	}
 
 	private function createEmpleados(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('empleados')) {
+			return;
+		}
+
 		$table = $schema->createTable('empleados');
 
 		$table->addColumn('Id_empleados', 'integer', [
@@ -132,6 +139,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createPuestos(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('puestos')) {
+			return;
+		}
+
 		$table = $schema->createTable('puestos');
 
 		$table->addColumn('Id_puestos', 'integer', [
@@ -149,6 +160,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createDepartamentos(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('departamentos')) {
+			return;
+		}
+
 		$table = $schema->createTable('departamentos');
 
 		$table->addColumn('Id_departamento', 'integer', [
@@ -168,6 +183,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createEmpleadosConf(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('empleados_conf')) {
+			return;
+		}
+
 		$table = $schema->createTable('empleados_conf');
 
 		$table->addColumn('Id_conf', 'integer', [
@@ -183,6 +202,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createAniversarios(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('aniversarios')) {
+			return;
+		}
+
 		$table = $schema->createTable('aniversarios');
 
 		$table->addColumn('id_aniversario', 'integer', [
@@ -200,6 +223,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createTipoAusencia(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('tipo_ausencia')) {
+			return;
+		}
+
 		$table = $schema->createTable('tipo_ausencia');
 
 		$table->addColumn('id_tipo_ausencia', 'integer', [
@@ -217,6 +244,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createAusencias(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('ausencias')) {
+			return;
+		}
+
 		$table = $schema->createTable('ausencias');
 
 		$table->addColumn('id_ausencias', 'integer', [
@@ -241,6 +272,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createHistorialAusencias(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('historial_ausencias')) {
+			return;
+		}
+
 		$table = $schema->createTable('historial_ausencias');
 
 		$table->addColumn('id_historial_ausencias', 'integer', [
@@ -268,6 +303,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createEquipos(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('equipos')) {
+			return;
+		}
+
 		$table = $schema->createTable('equipos');
 
 		$table->addColumn('Id_equipo', 'integer', [
@@ -287,6 +326,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createUserAhorro(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('user_ahorro')) {
+			return;
+		}
+
 		$table = $schema->createTable('user_ahorro');
 
 		$table->addColumn('id_ahorro', 'integer', [
@@ -305,6 +348,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createHistorialAhorro(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('historial_ahorro')) {
+			return;
+		}
+
 		$table = $schema->createTable('historial_ahorro');
 
 		$table->addColumn('id_historial', 'integer', [
@@ -325,6 +372,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createCapitalHumano(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('CapitalHumano')) {
+			return;
+		}
+
 		$table = $schema->createTable('CapitalHumano');
 
 		$table->addColumn('Id_ch', 'integer', [
@@ -341,6 +392,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createEmpleadosClientes(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('empleados_clientes')) {
+			return;
+		}
+
 		$table = $schema->createTable('empleados_clientes');
 
 		$table->addColumn('id_cliente', 'integer', [
@@ -358,6 +413,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createEmpleadosActividades(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('empleados_actividades')) {
+			return;
+		}
+
 		$table = $schema->createTable('empleados_actividades');
 
 		$table->addColumn('id_actividad', 'integer', [
@@ -374,6 +433,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 	}
 
 	private function createEmpleadosRepTiempos(ISchemaWrapper $schema): void {
+		if ($schema->hasTable('empleados_rep_tiempos')) {
+			return;
+		}
+
 		$table = $schema->createTable('empleados_rep_tiempos');
 
 		$table->addColumn('id_reporte', 'integer', [
@@ -396,7 +459,25 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 		$table->addIndex(['fecha_registro'], 'emp_rep_tiempos_fecha');
 	}
 
-	private function insertConfig(string $nombre, ?string $data): void {
+	private function insertConfig(string $nombre, ?string $data): bool {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('Id_conf')
+			->from('empleados_conf')
+			->where($qb->expr()->eq(
+				'Nombre',
+				$qb->createNamedParameter($nombre, IQueryBuilder::PARAM_STR)
+			))
+			->setMaxResults(1);
+
+		$result = $qb->executeQuery();
+		$exists = $result->fetch();
+		$result->closeCursor();
+
+		if ($exists) {
+			return false;
+		}
+
 		$qb = $this->db->getQueryBuilder();
 
 		$values = [
@@ -412,9 +493,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 
 		if (method_exists($qb, 'executeStatement')) {
 			$qb->executeStatement();
-			return;
+		} else {
+			$qb->execute();
 		}
 
-		$qb->execute();
+		return true;
 	}
 }

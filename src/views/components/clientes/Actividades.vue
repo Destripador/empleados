@@ -3,7 +3,8 @@
 		<List
 			:loading="loading"
 			:listas="listas"
-			:select="select">
+			:select="select"
+			:show-options="true">
 			<template #buttons />
 			<template #details>
 				<ActividadesDetalles :select="select" />

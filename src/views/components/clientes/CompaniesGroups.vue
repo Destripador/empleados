@@ -3,10 +3,11 @@
 		<List
 			:loading="loading"
 			:listas="listas"
-			:select="select">
+			:select="select"
+			:show-options="true">
 			<template #buttons />
 			<template #details>
-				<div class="client-details">
+				<div class="client-details TEST-CLIENT-DETAILS">
 					<div class="details-header">
 						<div class="details-icon">
 							<HexagonMultipleOutline :size="30" />
@@ -313,21 +314,29 @@ export default {
 
 		async modify() {
 			try {
+				const clientePadre = (this.padre && this.padre.id != null)
+					? Number(this.padre.id)
+					: 0
+
 				await axios.post(generateUrl('/apps/empleados/modificarCliente'), {
 					id_clientes: this.select[0].id_cliente,
 					nombre: this.name_cliente,
-					detalles: this.description_client,
-					cliente_padre: this.padre.id,
+					detalles: this.description_client || '',
+					cliente_padre: clientePadre,
 				}).then(
 					() => {
 						showSuccess(t('empleados', 'Modificacion exitosa'))
+
 						const id = this.select?.[0]?.id_cliente ?? null
+
 						this.select = [{
 							id_cliente: id,
 							nombre: this.name_cliente,
-							detalles: this.description_client,
-							tipo: 'minutos',
+							detalles: this.description_client || '',
+							cliente_padre: clientePadre,
+							child_count: this.select?.[0]?.child_count ?? 0,
 						}]
+
 						this.GetCompaniesGroups()
 						this.closeModal()
 					},
@@ -342,10 +351,13 @@ export default {
 			this.editing = true
 			this.name_cliente = this.select[0].nombre
 			this.description_client = this.select[0].detalles
-			const pid = this.select?.[0]?.cliente_padre ?? null
-			this.padre = (pid == null)
+
+			const pid = this.select?.[0]?.cliente_padre ?? 0
+
+			this.padre = Number(pid) === 0
 				? null
 				: this.options.find(o => Number(o.id) === Number(pid)) || null
+
 			this.modal = true
 		},
 
@@ -389,27 +401,36 @@ export default {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
 .client-details {
-	max-width: 900px;
-	margin: 28px auto 0;
-	padding: 22px;
+	width: 98%;
+	max-width: min(900px, 100%);
+	box-sizing: border-box;
+	margin: 20px auto 0;
+	padding: clamp(14px, 2vw, 22px);
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+	overflow: hidden;
 }
 
 .details-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 14px;
 	margin-bottom: 18px;
+	min-width: 0;
+}
+
+.details-header > div:last-child {
+	min-width: 0;
+	flex: 1 1 auto;
 }
 
 .details-icon {
 	display: inline-flex;
-	flex: 0 0 auto;
+	flex: 0 0 54px;
 	align-items: center;
 	justify-content: center;
 	width: 54px;
@@ -425,28 +446,38 @@ export default {
 	font-size: 12px;
 	font-weight: 700;
 	text-transform: uppercase;
+	overflow-wrap: anywhere;
 }
 
 .details-header h2 {
+	max-width: 100%;
 	margin: 0;
 	color: var(--color-main-text);
-	font-size: 24px;
+	font-size: clamp(20px, 2.5vw, 24px);
 	font-weight: 700;
 	line-height: 1.2;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 .details-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 12px;
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
 }
 
 .detail-field {
 	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
 	padding: 14px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
+	overflow: hidden;
 }
 
 .detail-field-wide {
@@ -460,47 +491,36 @@ export default {
 	font-size: 12px;
 	font-weight: 700;
 	text-transform: uppercase;
+	overflow-wrap: anywhere;
 }
 
 .detail-field strong,
 .detail-field p {
+	max-width: 100%;
 	margin: 0;
 	color: var(--color-main-text);
 	font-size: 14px;
 	line-height: 1.5;
 	overflow-wrap: anywhere;
-}
-
-.modal__content {
-	width: min(560px, calc(100vw - 48px));
-	padding: 24px;
-}
-
-.form-group {
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-	margin: 0;
-}
-
-.form-control {
-	width: 100%;
-}
-
-.save {
-	display: flex;
-	justify-content: center;
-	margin-top: 4px;
-}
-
-.file-input {
-	display: none;
+	word-break: break-word;
+	white-space: normal;
 }
 
 @media (max-width: 768px) {
 	.client-details {
-		margin-top: 18px;
+		margin-top: 14px;
 		padding: 14px;
+	}
+
+	.details-header {
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	.details-icon {
+		flex-basis: 44px;
+		width: 44px;
+		height: 44px;
 	}
 
 	.details-grid {
@@ -509,10 +529,6 @@ export default {
 
 	.detail-field-wide {
 		grid-column: auto;
-	}
-
-	.details-header h2 {
-		font-size: 20px;
 	}
 }
 </style>

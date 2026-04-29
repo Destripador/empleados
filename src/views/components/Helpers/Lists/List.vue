@@ -34,7 +34,7 @@
 				<div v-else>
 					<div>
 						<div class="container">
-							<div class="button-container-profile">
+							<div v-if="showOptions" class="button-container-profile">
 								<NcActions>
 									<template #icon>
 										<AccountCog :size="20" />
@@ -134,6 +134,7 @@ export default {
 		select: { type: Array, required: true },
 		custom: { type: Boolean, default: false, required: false },
 		defaultbuttons: { type: Boolean, default: true, required: false },
+		showOptions: { type: Boolean, default: false, required: false },
 		// reloadBus: { type: Object, required: true },
 	},
 

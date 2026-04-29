@@ -30,8 +30,8 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\Mail\IMailer;
 use OCP\Notification\IManager as INotificationManager;
 
-require_once 'SimpleXLSXGen.php';
-require_once 'SimpleXLSX.php';
+require_once __DIR__ . '/SimpleXLSXGen.php';
+require_once __DIR__ . '/SimpleXLSX.php';
 
 /**
  * Controlador para la gestión de reportes de tiempo de empleados.
@@ -396,59 +396,94 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
-	 * Exporta reportes de tiempo a XLSX.
+	 * Exporta reportes de tiempo a XLSX con diseño usando SimpleXLSXGen.
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function ExportarReportes($periodo_inicio = null, $periodo_fin = null, $anio = null): DataDownloadResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+	public function ExportarReportes($periodo_inicio = null, $periodo_fin = null, $anio = null) {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
 
-		$reportes = $this->reportetiempoMapper->findAll(
-			0,
-			0,
+		$denied = $this->denyIfNoAdminReportsAccess();
+
+		if ($denied !== null) {
+			return $denied;
+		}
+
+		$empleadosData = $this->getEmpleadosReportsData(
 			$periodo_inicio,
 			$periodo_fin,
 			$anio
 		);
 
-		$books = [[
-			'id_reporte',
-			'id_cliente',
-			'id_actividad',
-			'id_empleado',
-			'descripcion',
-			'tiempo_registrado',
-			'fecha_registro',
-			'created_at',
-			'updated_at',
-		]];
+		$idEmpleadosVisibles = array_values(array_unique(array_filter(array_map(
+			static function ($empleado) {
+				return (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? $empleado['id'] ?? 0);
+			},
+			$empleadosData
+		))));
 
-		foreach ($reportes as $reporte) {
-			$row = $reporte->read();
+		$resumen = $this->reportetiempoMapper->getResumenGeneral(
+			$periodo_inicio,
+			$periodo_fin,
+			$anio,
+			$idEmpleadosVisibles
+		);
 
-			$books[] = [
-				$row['id_reporte'] ?? '',
-				$row['id_cliente'] ?? '',
-				$row['id_actividad'] ?? '',
-				$row['id_empleado'] ?? '',
-				$row['descripcion'] ?? '',
-				$row['tiempo_registrado'] ?? '',
-				$row['fecha_registro'] ?? '',
-				$row['created_at'] ?? '',
-				$row['updated_at'] ?? '',
-			];
+		$costoTotal = 0.0;
+
+		foreach ($empleadosData as $empleado) {
+			$totalMinutos = (float)($empleado['total_tiempo_registrado'] ?? 0);
+			$sueldoHora = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
+
+			$costoTotal += ($totalMinutos / 60) * $sueldoHora;
 		}
 
-		$tmpFile = tempnam(sys_get_temp_dir(), 'reportetiempo_');
+		$resumen['costo_total'] = $costoTotal;
 
-		\Shuchkin\SimpleXLSXGen::fromArray($books)->saveAs($tmpFile);
+		$resumenSheet = $this->buildResumenReportesXlsx(
+			$resumen,
+			$empleadosData,
+			$periodo_inicio,
+			$periodo_fin,
+			$anio
+		);
+
+		$detalleSheet = $this->buildDetalleReportesXlsx(
+			$empleadosData,
+			$periodo_inicio,
+			$periodo_fin,
+			$anio
+		);
+
+		$xlsx = \Shuchkin\SimpleXLSXGen::fromArray($resumenSheet, 'Resumen')
+			->addSheet($detalleSheet, 'Detalle')
+			->setDefaultFont('Arial')
+			->setDefaultFontSize(10)
+			->setColWidth(1, 30)
+			->setColWidth(2, 22)
+			->setColWidth(3, 16)
+			->setColWidth(4, 16)
+			->setColWidth(5, 18)
+			->setColWidth(6, 18)
+			->setColWidth(7, 18)
+			->setColWidth(8, 35)
+			->mergeCells('A1:H1')
+			->mergeCells('A2:H2')
+			->autoFilter('A6:H2000')
+			->freezePanes('A7');
+
+		$tmpFile = tempnam(sys_get_temp_dir(), 'reportetiempo_') . '.xlsx';
+
+		$xlsx->saveAs($tmpFile);
 
 		$content = file_get_contents($tmpFile);
 		@unlink($tmpFile);
 
+		$filename = 'reporte_tiempos_' . date('Ymd_His') . '.xlsx';
+
 		return new DataDownloadResponse(
 			$content ?: '',
-			'reportetiempo.xlsx',
+			$filename,
 			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 		);
 	}
@@ -891,5 +926,336 @@ class reportetiempoController extends BaseController {
 		}
 
 		return null;
+	}
+	
+
+	private function buildResumenReportesXlsx(
+		array $resumen,
+		array $empleadosData,
+		$periodoInicio,
+		$periodoFin,
+		$anio
+	): array {
+		$rows = [];
+
+		$rows[] = [
+			'<style bgcolor="#1F2937" color="#FFFFFF" font-size="18"><center><b>Reporte administrativo de tiempos</b></center></style>',
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		];
+
+		$rows[] = [
+			'<style bgcolor="#E5E7EB" color="#374151"><center>'
+			. $this->escapeXlsxText($this->getPeriodoLabel($periodoInicio, $periodoFin, $anio))
+			. '</center></style>',
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		];
+
+		$rows[] = ['', '', '', '', '', '', '', ''];
+
+		$rows[] = [
+			$this->kpiLabel('Horas reportadas'),
+			$this->kpiValue(number_format((float)($resumen['horas_reportadas'] ?? 0), 2)),
+			$this->kpiLabel('Costo total'),
+			$this->moneyCell((float)($resumen['costo_total'] ?? 0)),
+			$this->kpiLabel('Total reportes'),
+			$this->kpiValue((string)((int)($resumen['total_reportes'] ?? 0))),
+			$this->kpiLabel('Empleados con reportes'),
+			$this->kpiValue((string)((int)($resumen['empleados_con_reportes'] ?? 0))),
+		];
+
+		$rows[] = ['', '', '', '', '', '', '', ''];
+
+		$rows[] = [
+			$this->headerCell('Empleado'),
+			$this->headerCell('Usuario'),
+			$this->headerCell('Minutos'),
+			$this->headerCell('Horas'),
+			$this->headerCell('Sueldo/hora'),
+			$this->headerCell('Costo'),
+			$this->headerCell('Estado'),
+			$this->headerCell('Observaciones'),
+		];
+
+		foreach ($empleadosData as $empleado) {
+			$totalMinutos = (float)($empleado['total_tiempo_registrado'] ?? 0);
+			$horas = $totalMinutos / 60;
+			$sueldo = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
+			$costo = $horas * $sueldo;
+
+			$rows[] = [
+				$this->bodyCell((string)($empleado['displayname'] ?? $empleado['name'] ?? 'Empleado')),
+				$this->bodyCell((string)($empleado['Id_user'] ?? $empleado['id_user'] ?? '')),
+				$this->numberCell($totalMinutos),
+				$this->numberCell($horas),
+				$this->moneyCell($sueldo),
+				$this->moneyCell($costo),
+				$totalMinutos > 0
+					? '<style bgcolor="#DCFCE7" color="#166534" border="#BBF7D0"><center><b>Con reportes</b></center></style>'
+					: '<style bgcolor="#FEE2E2" color="#991B1B" border="#FECACA"><center><b>Sin reportes</b></center></style>',
+				$this->bodyCell(''),
+			];
+		}
+
+		return $rows;
+	}
+
+	private function buildDetalleReportesXlsx(
+		array $empleadosData,
+		$periodoInicio,
+		$periodoFin,
+		$anio
+	): array {
+		$rows = [];
+
+		$clientesMap = $this->getClientesMap();
+		$actividadesMap = $this->getActividadesMap();
+
+		$rows[] = [
+			'<style bgcolor="#1F2937" color="#FFFFFF" font-size="18"><center><b>Detalle de reportes de tiempo</b></center></style>',
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		];
+
+	// resto igual...
+
+		$rows[] = [
+			'<style bgcolor="#E5E7EB" color="#374151"><center>'
+			. $this->escapeXlsxText($this->getPeriodoLabel($periodoInicio, $periodoFin, $anio))
+			. '</center></style>',
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		];
+
+		$rows[] = ['', '', '', '', '', '', '', '', '', ''];
+
+		$rows[] = [
+			$this->headerCell('Empleado'),
+			$this->headerCell('Cliente / proyecto'),
+			$this->headerCell('Actividad'),
+			$this->headerCell('Descripción'),
+			$this->headerCell('Minutos'),
+			$this->headerCell('Horas'),
+			$this->headerCell('Costo'),
+			$this->headerCell('Fecha'),
+			$this->headerCell('Creado'),
+		];
+
+		foreach ($empleadosData as $empleado) {
+			$idEmpleado = (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? $empleado['id'] ?? 0);
+
+			if ($idEmpleado <= 0) {
+				continue;
+			}
+
+			$nombreEmpleado = $empleado['displayname']
+				?? $empleado['name']
+				?? $empleado['Id_user']
+				?? $empleado['id_user']
+				?? 'Empleado';
+
+			$sueldoHora = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
+
+			$reportes = $this->reportetiempoMapper->findById(
+				$idEmpleado,
+				0,
+				0,
+				$periodoInicio,
+				$periodoFin,
+				$anio
+			);
+
+			foreach ($reportes as $reporte) {
+				$minutos = (float)($reporte['tiempo_registrado'] ?? 0);
+				$horas = $minutos / 60;
+				$costo = $horas * $sueldoHora;
+
+				$idCliente = (int)($reporte['id_cliente'] ?? 0);
+				$idActividad = (int)($reporte['id_actividad'] ?? 0);
+
+				$nombreCliente = $reporte['cliente']
+					?? $reporte['nombre_cliente']
+					?? $reporte['cliente_nombre']
+					?? $clientesMap[$idCliente]
+					?? ('Cliente #' . $idCliente);
+
+				$nombreActividad = $reporte['actividad']
+					?? $reporte['nombre_actividad']
+					?? $reporte['actividad_nombre']
+					?? $actividadesMap[$idActividad]
+					?? ('Actividad #' . $idActividad);
+
+				$rows[] = [
+					$this->bodyCell((string)$nombreEmpleado),
+					$this->bodyCell((string)$nombreCliente),
+					$this->bodyCell((string)$nombreActividad),
+					$this->wrapCell((string)($reporte['descripcion'] ?? '')),
+					$this->numberCell($minutos),
+					$this->numberCell($horas),
+					$this->moneyCell($costo),
+					$this->bodyCell((string)($reporte['fecha_registro'] ?? '')),
+					$this->bodyCell((string)($reporte['created_at'] ?? '')),
+				];
+			}
+		}
+
+		return $rows;
+	}
+
+	private function headerCell(string $text): string {
+		return '<style bgcolor="#334155" color="#FFFFFF" border="#CBD5E1"><center><b>'
+			. $this->escapeXlsxText($text)
+			. '</b></center></style>';
+	}
+
+	private function kpiLabel(string $text): string {
+		return '<style bgcolor="#EEF2FF" color="#374151" border="#CBD5E1"><center><b>'
+			. $this->escapeXlsxText($text)
+			. '</b></center></style>';
+	}
+
+	private function kpiValue(string $text): string {
+		return '<style bgcolor="#FFFFFF" color="#111827" border="#CBD5E1"><center><b>'
+			. $this->escapeXlsxText($text)
+			. '</b></center></style>';
+	}
+
+	private function bodyCell(string $text): string {
+		return '<style border="#E5E7EB">'
+			. $this->escapeXlsxText($text)
+			. '</style>';
+	}
+
+	private function wrapCell(string $text): string {
+		return '<style border="#E5E7EB"><wraptext>'
+			. $this->escapeXlsxText($text)
+			. '</wraptext></style>';
+	}
+
+	private function numberCell(float $value): string {
+		return '<style border="#E5E7EB" nf="#,##0.00"><right>'
+			. $value
+			. '</right></style>';
+	}
+
+	private function moneyCell(float $value): string {
+		return '<style border="#E5E7EB" nf="$#,##0.00"><right>'
+			. $value
+			. '</right></style>';
+	}
+
+	private function escapeXlsxText(string $text): string {
+		return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+	}
+
+	private function getPeriodoLabel($periodoInicio, $periodoFin, $anio): string {
+		$meses = [
+			1 => 'Enero',
+			2 => 'Febrero',
+			3 => 'Marzo',
+			4 => 'Abril',
+			5 => 'Mayo',
+			6 => 'Junio',
+			7 => 'Julio',
+			8 => 'Agosto',
+			9 => 'Septiembre',
+			10 => 'Octubre',
+			11 => 'Noviembre',
+			12 => 'Diciembre',
+		];
+
+		if (empty($periodoInicio) && empty($periodoFin) && empty($anio)) {
+			return 'Periodo: todos los registros';
+		}
+
+		$inicio = $meses[(int)$periodoInicio] ?? 'Sin inicio';
+		$fin = $meses[(int)$periodoFin] ?? 'Sin fin';
+		$year = $anio ?: date('Y');
+
+		return 'Periodo: ' . $inicio . ' - ' . $fin . ' (' . $year . ')';
+	}
+	
+
+	private function getClientesMap(): array {
+		$map = [];
+
+		try {
+			$clientes = $this->clientesMapper->findAll();
+		} catch (\Throwable $e) {
+			return $map;
+		}
+
+		foreach ($clientes as $cliente) {
+			if (is_object($cliente) && method_exists($cliente, 'read')) {
+				$cliente = $cliente->read();
+			}
+
+			if (!is_array($cliente)) {
+				continue;
+			}
+
+			$id = (int)($cliente['id_cliente'] ?? $cliente['id'] ?? 0);
+			$nombre = (string)($cliente['nombre'] ?? $cliente['name'] ?? '');
+
+			if ($id > 0 && $nombre !== '') {
+				$map[$id] = $nombre;
+			}
+		}
+
+		return $map;
+	}
+
+	private function getActividadesMap(): array {
+		$map = [];
+
+		try {
+			$actividades = $this->actividadMapper->findAll();
+		} catch (\Throwable $e) {
+			return $map;
+		}
+
+		foreach ($actividades as $actividad) {
+			if (is_object($actividad) && method_exists($actividad, 'read')) {
+				$actividad = $actividad->read();
+			}
+
+			if (!is_array($actividad)) {
+				continue;
+			}
+
+			$id = (int)($actividad['id_actividad'] ?? $actividad['id'] ?? 0);
+			$nombre = (string)($actividad['nombre'] ?? $actividad['name'] ?? '');
+
+			if ($id > 0 && $nombre !== '') {
+				$map[$id] = $nombre;
+			}
+		}
+
+		return $map;
 	}
 }

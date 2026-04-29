@@ -111,7 +111,8 @@ class ConfiguracionesController extends Controller {
          *  Esto para rellenar el NcSelect y poder seleccionar
          *  algun nuevo gestor de datos
         */
-       $groups = $this->groupManager->search('');
+        $users = $this->userManager->search('');
+        $groups = $this->groupManager->search('');
 
         $groupList = [];
 
@@ -182,7 +183,6 @@ class ConfiguracionesController extends Controller {
                     'reportes_admin_reports_group',
                     'recursos_humanos'
                 ),
-                'admin_reports_group' => $this->config->getAppValue(Application::APP_ID, 'reportes_admin_reports_group', 'recursos_humanos'),
             ],
         );
 
@@ -364,12 +364,8 @@ class ConfiguracionesController extends Controller {
             return false;
         }
 
-        $group = $this->groupManager->get($groupId);
+        $userGroupIds = $this->groupManager->getUserGroupIds($user);
 
-        if ($group === null) {
-            return false;
-        }
-
-        return $group->inGroup($user);
+        return in_array($groupId, $userGroupIds, true);
     }
 }
