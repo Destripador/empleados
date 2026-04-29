@@ -7,17 +7,17 @@
 				multiple
 				@change="uploadFile">
 
-			<div style="display: flex; justify-content: space-between; gap: 12px;">
+			<div class="file-toolbar">
 				<NcButton v-if="navigationStack.length > 0" @click="goBack">
 					<template #icon>
 						<ArrowLeft :size="20" />
 					</template>
 				</NcButton>
-				<div v-if="showLoading" style="display: flex; align-items: center; gap: 8px;">
+				<div v-if="showLoading" class="loading-state">
 					<NcLoadingIcon :size="25" :message="t('empleados', 'Processing files…')" />
 					<p>{{ t('empleados', 'Uploading file, please wait') }}</p>
 				</div>
-				<NcButton style="margin-left: auto;" @click="OpenFolder()">
+				<NcButton class="open-folder-button" @click="OpenFolder()">
 					<template #icon>
 						<FolderMoveOutline :size="20" />
 					</template>
@@ -42,30 +42,36 @@
 				</NcButton>
 			</div>
 
-			<table v-if="files.length > 0" class="file-table">
-				<thead>
-					<tr>
-						<th>📄 {{ t('empleados', 'File') }}</th>
-						<th>{{ t('empleados', 'Size') }}</th>
-						<th>{{ t('empleados', 'Last modified') }}</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr v-for="file in files" :key="file.id" @click="exploreFolder(file)">
-						<td>
-							<div class="file-item">
-								<FolderOutline v-if="file.isFolder" :size="20" />
-								<FilePdfBox v-else-if="file.name.endsWith('.pdf')" :size="20" />
-								<ImageIcon v-else-if="file.name.match(/\.(jpg|png|jpeg|gif)$/i)" :size="20" />
-								<FileOutline v-else :size="20" />
-								<span class="file-name">{{ truncateText(file.name) }}</span>
-							</div>
-						</td>
-						<td>{{ file.isFolder ? '-' : formatSize(file.size) }}</td>
-						<td>{{ formatDate(file.modified) }}</td>
-					</tr>
-				</tbody>
-			</table>
+			<div v-if="files.length > 0" class="file-table-wrap">
+				<table class="file-table">
+					<thead>
+						<tr>
+							<th>{{ t('empleados', 'File') }}</th>
+							<th>{{ t('empleados', 'Size') }}</th>
+							<th>{{ t('empleados', 'Last modified') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="file in files"
+							:key="file.id"
+							:class="{ 'file-row-folder': file.isFolder }"
+							@click="exploreFolder(file)">
+							<td>
+								<div class="file-item">
+									<FolderOutline v-if="file.isFolder" :size="20" />
+									<FilePdfBox v-else-if="file.name.endsWith('.pdf')" :size="20" />
+									<ImageIcon v-else-if="file.name.match(/\.(jpg|png|jpeg|gif)$/i)" :size="20" />
+									<FileOutline v-else :size="20" />
+									<span class="file-name">{{ truncateText(file.name) }}</span>
+								</div>
+							</td>
+							<td>{{ file.isFolder ? '-' : formatSize(file.size) }}</td>
+							<td>{{ formatDate(file.modified) }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 
 			<p v-if="files.length === 0 && !showLoading" class="empty-msg">
 				{{ t('empleados', 'No files available.') }}
@@ -267,34 +273,171 @@ export default {
 </script>
 
 <style scoped>
+.top {
+	margin-top: 14px;
+}
+
 .file-container {
 	margin: 0 auto;
-	padding: 20px;
-	background: white;
-	border-radius: 8px;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	text-align: center;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 	min-height: 200px;
-	border: 2px #ccc;
+	text-align: center;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
 }
+
+.file-container:focus-within {
+	border-color: var(--color-primary-element-light);
+	box-shadow: 0 0 0 2px var(--color-primary-element-light);
+}
+
+.file-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.open-folder-button {
+	margin-left: auto;
+}
+
+.loading-state {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	gap: 8px;
+	padding: 0 10px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+}
+
+.loading-state p {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.file-input {
+	display: none;
+}
+
+.file-table-wrap {
+	overflow-x: auto;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
 .file-table {
 	width: 100%;
 	border-collapse: collapse;
-	margin-top: 10px;
+	table-layout: fixed;
 }
-.file-table th, .file-table td {
-	border-bottom: 1px solid #ddd;
-	padding: 10px;
+
+.file-table th,
+.file-table td {
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--color-border);
+	color: var(--color-main-text);
 	text-align: left;
+	vertical-align: middle;
 }
-.file-table th { background-color: #f4f4f4; font-weight: bold; }
-.file-table tr:hover { background-color: #f9f9f9; }
-.file-input { display: none; }
-.empty-msg { color: #888; text-align: center; }
+
+.file-table th {
+	background-color: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.file-table th:first-child,
+.file-table td:first-child {
+	width: 58%;
+}
+
+.file-table th:nth-child(2),
+.file-table td:nth-child(2) {
+	width: 16%;
+	white-space: nowrap;
+}
+
+.file-table th:nth-child(3),
+.file-table td:nth-child(3) {
+	width: 26%;
+	white-space: nowrap;
+}
+
+.file-table tbody tr {
+	cursor: default;
+	transition: background-color 120ms ease;
+}
+
+.file-table tbody tr.file-row-folder {
+	cursor: pointer;
+}
+
+.file-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.file-table tr:hover {
+	background-color: var(--color-background-hover);
+}
+
+.empty-msg {
+	margin: 44px 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	font-weight: 600;
+	text-align: center;
+}
+
 .file-item {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	min-width: 0;
+	color: var(--color-primary-element);
 }
-.file-name { white-space: nowrap; }
+
+.file-name {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--color-main-text);
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+	.file-container {
+		padding: 12px;
+	}
+
+	.file-toolbar {
+		gap: 8px;
+	}
+
+	.open-folder-button {
+		margin-left: 0;
+	}
+
+	.loading-state {
+		order: 10;
+		width: 100%;
+		justify-content: center;
+	}
+
+	.file-table {
+		min-width: 620px;
+	}
+}
 </style>

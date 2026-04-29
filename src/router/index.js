@@ -15,6 +15,8 @@ import Actividades from '../views/components/clientes/Actividades.vue'
 import Reports from '../views/components/reports/Reports.vue'
 import Adminreports from '../views/components/reports/admin/Adminreports.vue'
 import Ejemplo from '../views/components/ejemplo/Ejemplo.vue'
+import QuickReport from '../views/components/reports/QuickReport.vue'
+import CumplimientoReportes from '../views/components/reports/CumplimientoReportes.vue'
 
 Vue.use(Router)
 
@@ -89,6 +91,16 @@ export default new Router({
 			path: '/ejemplo', // Nueva ruta
 			component: Ejemplo, // Asumiendo que el componente se llama Sidenavitaion.vue
 			name: 'ejemplo',
+		},
+		{
+			path: '/quick-report',
+			name: 'quick-report',
+			component: QuickReport,
+		},
+		{
+			path: '/cumplimiento-reportes',
+			name: 'cumplimiento-reportes',
+			component: CumplimientoReportes,
 		},
 	],
 })

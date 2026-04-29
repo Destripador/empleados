@@ -26,6 +26,8 @@ use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\IUserManager;
 use OCP\IUserSession;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\Mail\IMailer;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -44,6 +46,7 @@ class reportetiempoController extends BaseController {
     private $clientService;
     private $subAdmin;
     private $urlGenerator;
+	private $mailer;
 
 	public function __construct(
 		IRequest $request,
@@ -59,6 +62,7 @@ class reportetiempoController extends BaseController {
 		IGroupManager $groupManager,
 		IURLGenerator $urlGenerator,
 		IClientService $clientService,
+		IMailer $mailer,
 		ISubAdmin $subAdmin,
 	) {
 		parent::__construct(
@@ -67,7 +71,7 @@ class reportetiempoController extends BaseController {
 			$userSession,
 			$groupManager,
 			$empleadosMapper,
-			$configuracionesMapper
+			$configuracionesMapper,
 		);
 
 		$this->userSession = $userSession;
@@ -83,6 +87,7 @@ class reportetiempoController extends BaseController {
 		$this->urlGenerator = $urlGenerator;
 		$this->clientService = $clientService;
 		$this->subAdmin = $subAdmin;
+		$this->mailer = $mailer;
 	}
 
 	/**
@@ -556,5 +561,355 @@ class reportetiempoController extends BaseController {
 		}
 
 		return $empleadosData;
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function estadoReporteHoy(): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		$user = $this->userSession->getUser();
+
+		if ($user === null) {
+			return new DataResponse([
+				'error' => 'Usuario no autenticado',
+			], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$userId = $user->getUID();
+		$fecha = date('Y-m-d');
+
+		$empleado = $this->empleadosMapper->GetMyEmployeeInfo($userId);
+
+		if (empty($empleado)) {
+			return new DataResponse([
+				'fecha' => $fecha,
+				'registros' => 0,
+				'minutos_reportados' => 0,
+				'horas_reportadas' => 0,
+				'estado' => 'sin_empleado',
+			], Http::STATUS_OK);
+		}
+
+		$empleadoRow = isset($empleado[0]) && is_array($empleado[0])
+			? $empleado[0]
+			: $empleado;
+
+		$idEmpleado = (int)($empleadoRow['Id_empleados'] ?? $empleadoRow['id_empleados'] ?? 0);
+
+		if ($idEmpleado <= 0) {
+			return new DataResponse([
+				'fecha' => $fecha,
+				'registros' => 0,
+				'minutos_reportados' => 0,
+				'horas_reportadas' => 0,
+				'estado' => 'sin_empleado',
+			], Http::STATUS_OK);
+		}
+
+		$resumen = $this->reportetiempoMapper->getResumenDiaByEmpleado($idEmpleado, $fecha);
+
+		$registros = (int)($resumen['registros'] ?? 0);
+		$minutos = (float)($resumen['minutos_reportados'] ?? 0);
+		$horas = $minutos / 60;
+
+		$estado = $registros > 0 ? 'reportado' : 'pendiente';
+
+		return new DataResponse([
+			'fecha' => $fecha,
+			'registros' => $registros,
+			'minutos_reportados' => $minutos,
+			'horas_reportadas' => round($horas, 2),
+			'estado' => $estado,
+		], Http::STATUS_OK);
+	}
+	
+	/**
+	 * Reporte de cumplimiento diario de reportes de tiempo.
+	 *
+	 * Muestra el estado del jefe actual y sus subordinados.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function GetCumplimientoReportesHoy($fecha = null): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		$user = $this->userSession->getUser();
+
+		if ($user === null) {
+			return new DataResponse([
+				'error' => 'Usuario no autenticado',
+			], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$tz = new \DateTimeZone('America/Mexico_City');
+
+		if (empty($fecha)) {
+			$fecha = (new \DateTimeImmutable('now', $tz))->format('Y-m-d');
+		} else {
+			$fecha = (new \DateTimeImmutable((string)$fecha, $tz))->format('Y-m-d');
+		}
+
+		$empleados = $this->getEmpleadosVisiblesBasico();
+
+		$data = [];
+
+		$totalEmpleados = 0;
+		$totalReportados = 0;
+		$totalPendientes = 0;
+		$totalMinutos = 0.0;
+		$totalRegistros = 0;
+
+		foreach ($empleados as $empleado) {
+			$idEmpleado = $empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? null;
+
+			if (empty($idEmpleado)) {
+				continue;
+			}
+
+			$resumen = $this->reportetiempoMapper->getResumenDiaByEmpleado(
+				(int)$idEmpleado,
+				$fecha
+			);
+
+			$registros = (int)($resumen['registros'] ?? 0);
+			$minutos = (float)($resumen['minutos_reportados'] ?? 0);
+			$horas = $minutos / 60;
+
+			$estado = $registros > 0 ? 'reportado' : 'pendiente';
+
+			$totalEmpleados++;
+			$totalRegistros += $registros;
+			$totalMinutos += $minutos;
+
+			if ($estado === 'reportado') {
+				$totalReportados++;
+			} else {
+				$totalPendientes++;
+			}
+
+			$data[] = [
+				'id_empleado' => (int)$idEmpleado,
+				'id_user' => $empleado['id_user'] ?? $empleado['Id_user'] ?? null,
+				'displayname' => $empleado['displayname']
+					?? $empleado['DisplayName']
+					?? $empleado['Id_user']
+					?? $empleado['id_user']
+					?? 'Empleado',
+				'registros' => $registros,
+				'minutos_reportados' => $minutos,
+				'horas_reportadas' => round($horas, 2),
+				'estado' => $estado,
+			];
+		}
+
+		return new DataResponse([
+			'fecha' => $fecha,
+			'kpis' => [
+				'total_empleados' => $totalEmpleados,
+				'reportados' => $totalReportados,
+				'pendientes' => $totalPendientes,
+				'total_registros' => $totalRegistros,
+				'total_minutos' => $totalMinutos,
+				'total_horas' => round($totalMinutos / 60, 2),
+				'porcentaje_cumplimiento' => $totalEmpleados > 0
+					? round(($totalReportados / $totalEmpleados) * 100, 2)
+					: 0,
+			],
+			'empleados' => $data,
+		], Http::STATUS_OK);
+	}
+
+	/**
+	 * Obtiene el jefe actual y sus subordinados sin calcular tiempos.
+	 */
+	private function getEmpleadosVisiblesBasico(): array {
+		$user = $this->userSession->getUser();
+
+		if ($user === null) {
+			return [];
+		}
+
+		$userId = $user->getUID();
+
+		$boss = $this->empleadosMapper->GetMyEmployeeInfo($userId);
+		$equipoEmpleado = $this->empleadosMapper->GetSubordinates($userId);
+
+		if (!is_array($equipoEmpleado)) {
+			$equipoEmpleado = [];
+		}
+
+		if (!empty($boss)) {
+			$bossRow = isset($boss[0]) && is_array($boss[0])
+				? $boss[0]
+				: $boss;
+
+			$bossFiltrado = [
+				'Id_empleados' => $bossRow['Id_empleados'] ?? $bossRow['id_empleados'] ?? null,
+				'Id_user' => $bossRow['Id_user'] ?? $bossRow['id_user'] ?? null,
+				'displayname' => $bossRow['displayname']
+					?? $bossRow['DisplayName']
+					?? $bossRow['Id_user']
+					?? $bossRow['id_user']
+					?? '',
+				'Sueldo' => $bossRow['Sueldo'] ?? $bossRow['sueldo'] ?? 0,
+			];
+
+			if (!empty($bossFiltrado['Id_empleados'])) {
+				array_unshift($equipoEmpleado, $bossFiltrado);
+			}
+		}
+
+		return $equipoEmpleado;
+	}
+
+	/**
+	 * Envía recordatorio manual a empleados pendientes de reportar en la fecha indicada.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function EnviarRecordatoriosPendientesHoy($fecha = null): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		$user = $this->userSession->getUser();
+
+		if ($user === null) {
+			return new DataResponse([
+				'error' => 'Usuario no autenticado',
+			], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$tz = new \DateTimeZone('America/Mexico_City');
+
+		if (empty($fecha)) {
+			$fecha = (new \DateTimeImmutable('now', $tz))->format('Y-m-d');
+		} else {
+			$fecha = (new \DateTimeImmutable((string)$fecha, $tz))->format('Y-m-d');
+		}
+
+		$empleados = $this->getEmpleadosVisiblesBasico();
+		$quickReportUrl = $this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/quick-report';
+
+		$enviados = [];
+		$omitidos = [];
+
+		foreach ($empleados as $empleado) {
+			$idEmpleado = $empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? null;
+			$uid = $empleado['id_user'] ?? $empleado['Id_user'] ?? null;
+			$displayname = $empleado['displayname']
+				?? $empleado['DisplayName']
+				?? $uid
+				?? 'Empleado';
+
+			if (empty($idEmpleado) || empty($uid)) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'motivo' => 'Empleado inválido',
+				];
+				continue;
+			}
+
+			$resumen = $this->reportetiempoMapper->getResumenDiaByEmpleado(
+				(int)$idEmpleado,
+				$fecha
+			);
+
+			$registros = (int)($resumen['registros'] ?? 0);
+
+			if ($registros > 0) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'motivo' => 'Ya tiene reportes',
+				];
+				continue;
+			}
+
+			$ultimoRecordatorio = $this->config->getUserValue(
+				(string)$uid,
+				Application::APP_ID,
+				'ultimo_recordatorio_reporte_tiempo',
+				''
+			);
+
+			if ($ultimoRecordatorio === $fecha) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'motivo' => 'Ya se envió recordatorio hoy',
+				];
+				continue;
+			}
+
+			$nextcloudUser = $this->userManager->get((string)$uid);
+
+			if ($nextcloudUser === null) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'motivo' => 'Usuario Nextcloud no encontrado',
+				];
+				continue;
+			}
+
+			$email = $nextcloudUser->getEMailAddress();
+
+			if (empty($email)) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'motivo' => 'Sin correo',
+				];
+				continue;
+			}
+
+			try {
+				$message = $this->mailer->createMessage();
+
+				$message->setTo([
+					$email => $nextcloudUser->getDisplayName() ?: (string)$uid,
+				]);
+
+				$message->setSubject('Recordatorio: registra tu tiempo');
+
+				$body = implode("\n", [
+					'Hola ' . ($nextcloudUser->getDisplayName() ?: $displayname) . ',',
+					'',
+					'Aún no tienes reportes de tiempo registrados para la fecha ' . $fecha . '.',
+					'',
+					'Puedes registrarlo aquí:',
+					$quickReportUrl,
+					'',
+					'Este es un recordatorio enviado desde el reporte de cumplimiento.',
+				]);
+
+				$message->setPlainBody($body);
+
+				$this->mailer->send($message);
+
+				$this->config->setUserValue(
+					(string)$uid,
+					Application::APP_ID,
+					'ultimo_recordatorio_reporte_tiempo',
+					$fecha
+				);
+
+				$enviados[] = [
+					'uid' => $uid,
+					'email' => $email,
+				];
+			} catch (\Throwable $e) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'motivo' => 'Error enviando correo: ' . $e->getMessage(),
+				];
+			}
+		}
+
+		return new DataResponse([
+			'fecha' => $fecha,
+			'enviados' => count($enviados),
+			'omitidos' => count($omitidos),
+			'detalle_enviados' => $enviados,
+			'detalle_omitidos' => $omitidos,
+		], Http::STATUS_OK);
 	}
 }

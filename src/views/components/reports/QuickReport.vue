@@ -1,111 +1,100 @@
 <template>
-	<div class="empleados-dashboard-widget">
-		<p class="description">
-			Registra tu tiempo del día sin abrir el módulo completo.
-		</p>
+	<NcAppContent name="Empleados – Reporte rápido">
+		<div class="quick-report-page">
+			<div class="quick-report-card">
+				<div class="header">
+					<h2>Reporte rápido de tiempo</h2>
+					<p>
+						Registra tus actividades del día de forma rápida.
+					</p>
+				</div>
+				<div class="estado-card" :class="estadoClass">
+					<div>
+						<strong>Estado de hoy:</strong> {{ loadingEstado ? 'Cargando...' : estadoLabel }}
+					</div>
+					<div>
+						Horas reportadas hoy: {{ horasHoy }} h
+					</div>
+				</div>
 
-		<div class="estado-card" :class="estadoClass">
-			<div class="estado-title">
-				Estado de hoy
-			</div>
+				<div v-if="loading" class="loading">
+					<NcLoadingIcon :size="48" />
+				</div>
 
-			<div v-if="loadingEstado" class="estado-value">
-				Cargando...
-			</div>
-
-			<div v-else class="estado-value">
-				{{ estadoLabel }}
-			</div>
-
-			<div class="estado-detail">
-				Horas reportadas: {{ horasHoy }} h
-			</div>
-		</div>
-
-		<NcButton
-			type="primary"
-			wide
-			@click="openModal">
-			Reportar tiempo
-		</NcButton>
-
-		<NcModal
-			v-if="modal"
-			:name="t('empleados', 'Add new activity')"
-			@close="closeModal">
-			<div class="modal__content">
-				<div class="form-group">
+				<div v-else class="form">
 					<NcSelect
 						v-model="activity_selected"
-						:input-label="t('empleados', 'Proyect')"
+						:input-label="t('empleados', 'Proyecto / Cliente')"
 						:options="actividades"
 						class="fit" />
 
-					<div class="time-selector">
-						<div class="wrapper">
-							<NcDateTimePicker
-								v-model="time"
-								class="date-picker"
-								type="date" />
-						</div>
-
-						<div class="estimatetime">
-							<NcTextField
-								required
-								:value.sync="time_activity"
-								type="number"
-								min="1"
-								:label="t('empleados', 'Estimate time')" />
-						</div>
-					</div>
-
-					<div class="radios">
-						<NcCheckboxRadioSwitch
-							v-model="type_time"
-							:button-variant="true"
-							value="minutos"
-							name="Minutos"
-							type="radio"
-							button-variant-grouped="horizontal">
-							Minutos
-						</NcCheckboxRadioSwitch>
-
-						<NcCheckboxRadioSwitch
-							v-model="type_time"
-							:button-variant="true"
-							value="horas"
-							name="Horas"
-							type="radio"
-							button-variant-grouped="horizontal">
-							Horas
-						</NcCheckboxRadioSwitch>
-					</div>
-
 					<NcSelect
 						v-model="listas_selected"
-						:input-label="t('empleados', 'Activity')"
+						:input-label="t('empleados', 'Actividad')"
 						:options="listas"
-						class="fit" />
+						class="fit top" />
+
+					<div class="time-selector">
+						<NcDateTimePicker
+							v-model="time"
+							class="date-picker"
+							type="date" />
+
+						<NcTextField
+							required
+							:value.sync="time_activity"
+							type="number"
+							min="1"
+							:label="t('empleados', 'Tiempo')" />
+
+						<div class="radios">
+							<NcCheckboxRadioSwitch
+								v-model="type_time"
+								:button-variant="true"
+								value="minutos"
+								name="Minutos"
+								type="radio"
+								button-variant-grouped="horizontal">
+								Minutos
+							</NcCheckboxRadioSwitch>
+
+							<NcCheckboxRadioSwitch
+								v-model="type_time"
+								:button-variant="true"
+								value="horas"
+								name="Horas"
+								type="radio"
+								button-variant-grouped="horizontal">
+								Horas
+							</NcCheckboxRadioSwitch>
+						</div>
+					</div>
 
 					<NcTextArea
 						required
 						resize="vertical"
 						:value.sync="description_activity"
 						class="top"
-						:label="t('empleados', 'Description activity')" />
+						:label="t('empleados', 'Descripción de la actividad')" />
 
-					<div class="save top">
+					<div class="actions">
+						<NcButton
+							type="secondary"
+							@click="resetForm">
+							Limpiar
+						</NcButton>
+
 						<NcButton
 							type="primary"
 							:disabled="!isFormValid || saving"
 							@click="create">
-							{{ saving ? 'Guardando...' : 'Crear reporte' }}
+							{{ saving ? 'Guardando...' : 'Guardar reporte' }}
 						</NcButton>
 					</div>
 				</div>
 			</div>
-		</NcModal>
-	</div>
+		</div>
+	</NcAppContent>
 </template>
 
 <script>
@@ -115,35 +104,34 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
 import {
+	NcAppContent,
 	NcButton,
-	NcModal,
-	NcSelect,
-	NcDateTimePicker,
-	NcTextField,
+	NcLoadingIcon,
 	NcTextArea,
 	NcCheckboxRadioSwitch,
+	NcTextField,
+	NcDateTimePicker,
+	NcSelect,
 } from '@nextcloud/vue'
 
 export default {
-	name: 'DashboardReportesWidget',
+	name: 'QuickReport',
 
 	components: {
+		NcAppContent,
 		NcButton,
-		NcModal,
-		NcSelect,
-		NcDateTimePicker,
-		NcTextField,
+		NcLoadingIcon,
 		NcTextArea,
 		NcCheckboxRadioSwitch,
+		NcTextField,
+		NcDateTimePicker,
+		NcSelect,
 	},
 
 	data() {
 		return {
-			modal: false,
+			loading: true,
 			saving: false,
-			loadingCatalogs: false,
-			loadingEstado: false,
-			estadoHoy: null,
 
 			description_activity: '',
 			type_time: 'minutos',
@@ -155,6 +143,9 @@ export default {
 
 			activity_selected: null,
 			listas_selected: null,
+
+			estadoHoy: null,
+			loadingEstado: false,
 		}
 	},
 
@@ -168,16 +159,15 @@ export default {
 
 			return Boolean(
 				clienteId !== null
-			&& clienteId !== undefined
-			&& actividadId !== null
-			&& actividadId !== undefined
-			&& Number.isFinite(tiempo)
-			&& tiempo > 0
-			&& descripcion.length > 0
-			&& !isNaN(fecha.getTime()),
+				&& clienteId !== undefined
+				&& actividadId !== null
+				&& actividadId !== undefined
+				&& Number.isFinite(tiempo)
+				&& tiempo > 0
+				&& descripcion.length > 0
+				&& !isNaN(fecha.getTime()),
 			)
 		},
-
 		estadoLabel() {
 			const estado = this.estadoHoy?.estado
 
@@ -212,37 +202,21 @@ export default {
 	},
 
 	async mounted() {
-		await this.loadEstadoHoy()
+		this.loading = true
+
+		try {
+			await Promise.all([
+				this.GetCompaniesGroups(),
+				this.GetActividades(),
+				this.loadEstadoHoy(),
+			])
+		} finally {
+			this.loading = false
+		}
 	},
 
 	methods: {
 		t,
-
-		async openModal() {
-			this.modal = true
-
-			if (this.actividades.length === 0 || this.listas.length === 0) {
-				await this.loadCatalogs()
-			}
-		},
-
-		closeModal() {
-			this.modal = false
-			this.resetForm()
-		},
-
-		async loadCatalogs() {
-			this.loadingCatalogs = true
-
-			try {
-				await Promise.all([
-					this.GetCompaniesGroups(),
-					this.GetActividades(),
-				])
-			} finally {
-				this.loadingCatalogs = false
-			}
-		},
 
 		async GetActividades() {
 			try {
@@ -313,7 +287,7 @@ export default {
 
 				showSuccess(t('empleados', 'Reporte creado exitosamente'))
 				await this.loadEstadoHoy()
-				this.closeModal()
+				this.resetForm()
 			} catch (err) {
 				showError(t('empleados', 'Error creando reporte: {error}', { error: String(err) }))
 			} finally {
@@ -329,7 +303,6 @@ export default {
 			this.activity_selected = null
 			this.listas_selected = null
 		},
-
 		async loadEstadoHoy() {
 			this.loadingEstado = true
 
@@ -348,87 +321,82 @@ export default {
 </script>
 
 <style scoped>
-.empleados-dashboard-widget {
-	padding: 12px;
+.quick-report-page {
+	width: 100%;
+	min-height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding: 32px;
+	box-sizing: border-box;
 }
 
-.description {
-	margin-bottom: 12px;
+.quick-report-card {
+	width: 100%;
+	max-width: 760px;
+	background-color: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+}
+
+.header {
+	margin-bottom: 24px;
+}
+
+.header h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+}
+
+.header p {
+	margin: 0;
 	color: var(--color-text-maxcontrast);
+}
+
+.loading {
+	display: flex;
+	justify-content: center;
+	padding: 48px;
 }
 
 .fit {
 	width: 100%;
 }
 
-.modal__content {
-	padding: 20px;
-	min-width: 520px;
-	max-width: 700px;
+.top {
+	margin-top: 16px;
 }
 
 .time-selector {
-	display: flex;
-	gap: 8px;
-	margin: 12px 0;
+	display: grid;
+	grid-template-columns: 180px 1fr auto;
+	gap: 12px;
 	align-items: center;
+	margin-top: 16px;
 }
 
 .radios {
 	display: flex;
-	margin: 8px 0 12px;
+	align-items: center;
 }
 
-.estimatetime {
-	flex: 1;
-}
-
-.date-picker {
-	min-width: 180px;
-}
-
-.top {
-	margin-top: 12px;
-}
-
-.save {
+.actions {
 	display: flex;
 	justify-content: flex-end;
-}
-.estado-card {
-	border: 1px solid var(--color-border);
-	border-radius: 12px;
-	padding: 12px;
-	margin-bottom: 14px;
-	background-color: var(--color-background-hover);
+	gap: 12px;
+	margin-top: 24px;
 }
 
-.estado-title {
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
-	margin-bottom: 4px;
-}
+@media (max-width: 700px) {
+	.quick-report-page {
+		padding: 16px;
+	}
 
-.estado-value {
-	font-size: 20px;
-	font-weight: 700;
-	margin-bottom: 4px;
-}
-
-.estado-detail {
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
-}
-
-.status-ok {
-	border-left: 5px solid #46ba61;
-}
-
-.status-pending {
-	border-left: 5px solid #e9322d;
-}
-
-.status-warning {
-	border-left: 5px solid #eca700;
+	.time-selector {
+		grid-template-columns: 1fr;
+	}
 }
 </style>

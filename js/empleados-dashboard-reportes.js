@@ -9447,6 +9447,8 @@ __webpack_require__.r(__webpack_exports__);
       modal: false,
       saving: false,
       loadingCatalogs: false,
+      loadingEstado: false,
+      estadoHoy: null,
       description_activity: '',
       type_time: 'minutos',
       time_activity: 0,
@@ -9465,7 +9467,33 @@ __webpack_require__.r(__webpack_exports__);
       const descripcion = String(this.description_activity || '').trim();
       const fecha = this.time instanceof Date ? this.time : new Date(this.time);
       return Boolean(clienteId !== null && clienteId !== undefined && actividadId !== null && actividadId !== undefined && Number.isFinite(tiempo) && tiempo > 0 && descripcion.length > 0 && !isNaN(fecha.getTime()));
+    },
+    estadoLabel() {
+      const estado = this.estadoHoy?.estado;
+      if (estado === 'reportado') {
+        return 'Reportado';
+      }
+      if (estado === 'sin_empleado') {
+        return 'Sin empleado asignado';
+      }
+      return 'Pendiente';
+    },
+    estadoClass() {
+      const estado = this.estadoHoy?.estado;
+      if (estado === 'reportado') {
+        return 'status-ok';
+      }
+      if (estado === 'sin_empleado') {
+        return 'status-warning';
+      }
+      return 'status-pending';
+    },
+    horasHoy() {
+      return Number(this.estadoHoy?.horas_reportadas || 0).toFixed(2);
     }
+  },
+  async mounted() {
+    await this.loadEstadoHoy();
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate,
@@ -9542,6 +9570,7 @@ __webpack_require__.r(__webpack_exports__);
       try {
         await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/crearReporte'), payload);
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Reporte creado exitosamente'));
+        await this.loadEstadoHoy();
         this.closeModal();
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error creando reporte: {error}', {
@@ -9558,6 +9587,19 @@ __webpack_require__.r(__webpack_exports__);
       this.time = new Date();
       this.activity_selected = null;
       this.listas_selected = null;
+    },
+    async loadEstadoHoy() {
+      this.loadingEstado = true;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/estadoReporteHoy'));
+        this.estadoHoy = response?.data?.ocs?.data ?? response?.data ?? null;
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'No se pudo cargar el estado de hoy: {error}', {
+          error: String(err)
+        }));
+      } finally {
+        this.loadingEstado = false;
+      }
     }
   }
 });
@@ -9583,7 +9625,18 @@ var render = function render() {
     staticClass: "empleados-dashboard-widget"
   }, [_c("p", {
     staticClass: "description"
-  }, [_vm._v("\n\t\tRegistra tu tiempo del día sin abrir el módulo completo.\n\t")]), _vm._v(" "), _c("NcButton", {
+  }, [_vm._v("\n\t\tRegistra tu tiempo del día sin abrir el módulo completo.\n\t")]), _vm._v(" "), _c("div", {
+    staticClass: "estado-card",
+    class: _vm.estadoClass
+  }, [_c("div", {
+    staticClass: "estado-title"
+  }, [_vm._v("\n\t\t\tEstado de hoy\n\t\t")]), _vm._v(" "), _vm.loadingEstado ? _c("div", {
+    staticClass: "estado-value"
+  }, [_vm._v("\n\t\t\tCargando...\n\t\t")]) : _c("div", {
+    staticClass: "estado-value"
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.estadoLabel) + "\n\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "estado-detail"
+  }, [_vm._v("\n\t\t\tHoras reportadas: " + _vm._s(_vm.horasHoy) + " h\n\t\t")])]), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "primary",
       wide: ""
@@ -23095,6 +23148,36 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 .save[data-v-363fa294] {
 	display: flex;
 	justify-content: flex-end;
+}
+.estado-card[data-v-363fa294] {
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	padding: 12px;
+	margin-bottom: 14px;
+	background-color: var(--color-background-hover);
+}
+.estado-title[data-v-363fa294] {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	margin-bottom: 4px;
+}
+.estado-value[data-v-363fa294] {
+	font-size: 20px;
+	font-weight: 700;
+	margin-bottom: 4px;
+}
+.estado-detail[data-v-363fa294] {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+.status-ok[data-v-363fa294] {
+	border-left: 5px solid #46ba61;
+}
+.status-pending[data-v-363fa294] {
+	border-left: 5px solid #e9322d;
+}
+.status-warning[data-v-363fa294] {
+	border-left: 5px solid #eca700;
 }
 `, ""]);
 // Exports
@@ -138579,4 +138662,4 @@ if (document.readyState === 'loading') {
 
 /******/ })()
 ;
-//# sourceMappingURL=dashboard-reportes.js.map
+//# sourceMappingURL=empleados-dashboard-reportes.js.map?v=fe6dc78f4cb097f70d1d

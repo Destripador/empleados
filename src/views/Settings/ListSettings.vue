@@ -16,9 +16,9 @@
 			</h2>
 		</div>
 
-		<div class="container">
+		<div class="settings-container">
 			<!-- Block: Automatic note saving -->
-			<div class="grid">
+			<div class="settings-card settings-card-compact">
 				<NcCheckboxRadioSwitch
 					:checked="guardado_notas"
 					type="switch"
@@ -27,10 +27,8 @@
 				</NcCheckboxRadioSwitch>
 			</div>
 
-			<br>
-
 			<!-- Block: Accrue vacation -->
-			<div class="grid">
+			<div class="settings-card settings-card-compact">
 				<NcCheckboxRadioSwitch
 					:checked="acumular_vacaciones"
 					type="switch"
@@ -39,19 +37,15 @@
 				</NcCheckboxRadioSwitch>
 			</div>
 
-			<br>
-
 			<!-- Block: Savings module -->
-			<div class="grid">
+			<div class="settings-card">
 				<NcNoteCard :type="'info'" :heading="t('empleados','Savings module')">
 					<p>
 						{{ t('empleados', 'If the savings module is enabled, users will see the savings option in their menu.') }}
 					</p>
-					<br>
 					<p>
 						{{ t('empleados', 'When the module is enabled, all users\\’ states are reset to 0.') }}
 					</p>
-					<br>
 					<NcCheckboxRadioSwitch
 						:checked="modulo_ahorro"
 						type="switch"
@@ -61,15 +55,12 @@
 				</NcNoteCard>
 			</div>
 
-			<br>
-
 			<!-- Block: Absences module -->
-			<div class="grid">
+			<div class="settings-card">
 				<NcNoteCard :type="'info'" :heading="t('empleados','Absences module')">
 					<p>
 						{{ t('empleados', 'If the absences module is enabled, users will see the absences option in their menu.') }}
 					</p>
-					<br>
 					<NcCheckboxRadioSwitch
 						:checked="modulo_ausencias"
 						type="switch"
@@ -86,10 +77,8 @@
 				</NcNoteCard>
 			</div>
 
-			<br>
-
 			<!-- Block: Customers module -->
-			<div class="grid">
+			<div class="settings-card">
 				<NcNoteCard :type="'info'" :heading="t('empleados','Customers module')">
 					<NcCheckboxRadioSwitch
 						:checked="modulo_clientes"
@@ -101,7 +90,7 @@
 			</div>
 
 			<!-- Block: report times module -->
-			<div class="grid">
+			<div class="settings-card">
 				<NcNoteCard :type="'info'" :heading="t('empleados','Report times module')">
 					<NcCheckboxRadioSwitch
 						:checked="modulo_reporte_tiempos"
@@ -112,10 +101,62 @@
 				</NcNoteCard>
 			</div>
 
-			<br>
+			<div class="settings-card settings-card-wide">
+				<NcNoteCard :type="'info'" :heading="t('empleados','Report times settings')">
+					<p>
+						Configuración de recordatorios y cumplimiento del módulo de reportes de tiempo.
+					</p>
+
+					<NcCheckboxRadioSwitch
+						:checked="reportes_recordatorios_enabled"
+						type="switch"
+						@update:checked="reportes_recordatorios_enabled = !reportes_recordatorios_enabled">
+						Activar recordatorios automáticos
+					</NcCheckboxRadioSwitch>
+
+					<NcCheckboxRadioSwitch
+						:checked="reportes_recordatorios_email"
+						type="switch"
+						@update:checked="reportes_recordatorios_email = !reportes_recordatorios_email">
+						Enviar recordatorios por correo
+					</NcCheckboxRadioSwitch>
+
+					<div class="settings-grid">
+						<NcTextField
+							:value.sync="reportes_recordatorios_grupo"
+							label="Grupo obligado a reportar" />
+
+						<NcTextField
+							:value.sync="reportes_recordatorios_hora"
+							type="number"
+							min="0"
+							max="23"
+							label="Hora de recordatorio" />
+
+						<NcTextField
+							:value.sync="reportes_recordatorios_zona_horaria"
+							label="Zona horaria" />
+
+						<NcTextField
+							:value.sync="reportes_horas_minimas"
+							type="number"
+							min="0"
+							label="Horas mínimas para considerar reportado" />
+					</div>
+
+					<div class="actions-row">
+						<NcButton
+							:aria-label="t('empleados','Apply changes')"
+							type="primary"
+							@click="saveConfiguracionReportes">
+							{{ t('empleados','Apply changes') }}
+						</NcButton>
+					</div>
+				</NcNoteCard>
+			</div>
 
 			<!-- Block: Single select for Data Manager -->
-			<div class="grid">
+			<div class="settings-card settings-card-wide">
 				<NcNoteCard v-if="selected_user" :type="'warning'" :heading="t('empleados','ATTENTION')">
 					<p>
 						{{ t('empleados', 'If you change the file manager user after it has already been set, file loss may occur. Consider making a backup before proceeding.') }}
@@ -128,41 +169,46 @@
 					:options="optionsGestor"
 					:user-select="true" />
 
-				<NcButton
-					:aria-label="t('empleados','Apply changes')"
-					type="primary"
-					@click="saveGestor">
-					{{ t('empleados','Apply changes') }}
-				</NcButton>
+				<div class="actions-row">
+					<NcButton
+						:aria-label="t('empleados','Apply changes')"
+						type="primary"
+						@click="saveGestor">
+						{{ t('empleados','Apply changes') }}
+					</NcButton>
+				</div>
 			</div>
 
-			<br>
-
 			<!-- Block: Multi-select for Human Resources -->
-			<div class="grid">
+			<div class="settings-card settings-card-wide">
 				<NcSelect
 					v-bind="propsCapitalHumano"
 					v-model="selectedUsers"
 					:input-label="t('empleados','Select Human Resources users')" />
 
-				<NcButton
-					:aria-label="t('empleados','Apply changes')"
-					type="primary"
-					@click="saveCapitalHumano">
-					{{ t('empleados','Apply changes') }}
-				</NcButton>
+				<div class="actions-row">
+					<NcButton
+						:aria-label="t('empleados','Apply changes')"
+						type="primary"
+						@click="saveCapitalHumano">
+						{{ t('empleados','Apply changes') }}
+					</NcButton>
+				</div>
 			</div>
-			<br>
-			<NcPasswordField :value.sync="secrettoken"
-				label="Secret token to admin moves"
-				as-text />
-			<NcButton
-				:aria-label="t('empleados','Apply changes')"
-				type="primary"
-				@click="saveSecretToken">
-				{{ t('empleados','Apply changes') }}
-			</NcButton>
-			<br>
+
+			<div class="settings-card settings-card-wide">
+				<NcPasswordField :value.sync="secrettoken"
+					label="Secret token to admin moves"
+					as-text />
+				<div class="actions-row">
+					<NcButton
+						:aria-label="t('empleados','Apply changes')"
+						type="primary"
+						@click="saveSecretToken">
+						{{ t('empleados','Apply changes') }}
+					</NcButton>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
@@ -179,6 +225,7 @@ import {
 	NcNoteCard,
 	NcCheckboxRadioSwitch,
 	NcPasswordField,
+	NcTextField,
 } from '@nextcloud/vue'
 
 // Nextcloud utils
@@ -196,6 +243,7 @@ export default {
 		NcLoadingIcon,
 		NcCheckboxRadioSwitch,
 		NcPasswordField,
+		NcTextField,
 	},
 
 	data() {
@@ -231,6 +279,13 @@ export default {
 			// From GetCapitalHumano (actual HR users)
 			capitalHumano: [],
 			secrettoken: null,
+
+			reportes_recordatorios_enabled: true,
+			reportes_recordatorios_grupo: 'empleados',
+			reportes_recordatorios_hora: 17,
+			reportes_recordatorios_zona_horaria: 'America/Mexico_City',
+			reportes_recordatorios_email: true,
+			reportes_horas_minimas: 0,
 		}
 	},
 
@@ -266,6 +321,15 @@ export default {
 				this.modulo_ausencias_readonly = (response.data.modulo_ausencias_readonly === 'true')
 				this.modulo_clientes = (response.data.modulo_clientes === 'true')
 				this.modulo_reporte_tiempos = (response.data.modulo_reporte_tiempos === 'true')
+
+				const reportes = response.data.Reportes || {}
+
+				this.reportes_recordatorios_enabled = String(reportes.recordatorios_enabled ?? 'true') === 'true'
+				this.reportes_recordatorios_grupo = reportes.recordatorios_grupo || 'empleados'
+				this.reportes_recordatorios_hora = Number(reportes.recordatorios_hora ?? 17)
+				this.reportes_recordatorios_zona_horaria = reportes.recordatorios_zona_horaria || 'America/Mexico_City'
+				this.reportes_recordatorios_email = String(reportes.recordatorios_email ?? 'true') === 'true'
+				this.reportes_horas_minimas = Number(reportes.horas_minimas ?? 0)
 
 				this.loading = false
 			} catch (err) {
@@ -487,37 +551,123 @@ export default {
 				console.error(err)
 			}
 		},
+		async saveConfiguracionReportes() {
+			try {
+				await axios.post(generateUrl('/apps/empleados/ActualizarConfiguracionReportes'), {
+					recordatorios_enabled: this.reportes_recordatorios_enabled.toString(),
+					recordatorios_grupo: this.reportes_recordatorios_grupo,
+					recordatorios_hora: Number(this.reportes_recordatorios_hora),
+					recordatorios_zona_horaria: this.reportes_recordatorios_zona_horaria,
+					recordatorios_email: this.reportes_recordatorios_email.toString(),
+					horas_minimas: Number(this.reportes_horas_minimas),
+				})
+
+				showSuccess(t('empleados', 'Configuration updated'))
+			} catch (err) {
+				showError(t('empleados', 'Exception [UpdateReportSettings]: {error}', { error: String(err) }))
+				console.error(err)
+			}
+		},
 	},
 }
 </script>
 
-<style>
+<style scoped>
 /* Board title */
 .board-title {
-	padding-left: 20px;
-	margin-right: 10px;
-	margin-top: 14px;
-	font-size: 25px;
 	display: flex;
 	align-items: center;
+	gap: 10px;
+	margin: 14px 20px 18px;
+	color: var(--color-main-text);
+	font-size: 25px;
 	font-weight: bold;
-}
-.board-title .icon {
-	margin-right: 8px;
 }
 
 /* Centered loading */
 .center-screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 55vh;
+	text-align: center;
 }
 
 /* Container */
-.container {
-	padding-left: 20px;
-	padding-right: 20px;
+.settings-container {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	padding: 0 20px 28px;
+}
+
+.settings-card {
+	min-width: 0;
+	padding: 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.settings-card-compact {
+	display: flex;
+	align-items: center;
+	min-height: 58px;
+}
+
+.settings-card-wide {
+	grid-column: 1 / -1;
+}
+
+.settings-card :deep(.notecard) {
+	margin: 0;
+}
+
+.settings-card :deep(p) {
+	margin: 0 0 10px;
+	line-height: 1.45;
+}
+
+.settings-card :deep(.checkbox-radio-switch) {
+	margin-top: 8px;
+}
+
+.actions-row {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 14px;
+}
+
+.settings-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	gap: 12px;
+	max-width: 760px;
+	margin-top: 14px;
+}
+
+@media (max-width: 700px) {
+	.board-title {
+		margin: 10px 14px 14px;
+		font-size: 22px;
+	}
+
+	.settings-container {
+		grid-template-columns: 1fr;
+		padding: 0 14px 20px;
+	}
+
+	.settings-card-wide {
+		grid-column: auto;
+	}
+
+	.settings-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.actions-row {
+		justify-content: stretch;
+	}
 }
 </style>

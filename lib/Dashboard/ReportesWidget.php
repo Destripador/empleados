@@ -44,6 +44,6 @@ class ReportesWidget implements IWidget, IIconWidget {
 	}
 
 	public function load(): void {
-		Util::addScript(Application::APP_ID, 'dashboard-reportes');
+		Util::addScript(Application::APP_ID, 'empleados-dashboard-reportes');
 	}
 }

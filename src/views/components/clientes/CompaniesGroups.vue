@@ -6,7 +6,34 @@
 			:select="select">
 			<template #buttons />
 			<template #details>
-				{{ select }}
+				<div class="client-details">
+					<div class="details-header">
+						<div class="details-icon">
+							<HexagonMultipleOutline :size="30" />
+						</div>
+						<div>
+							<p class="eyebrow">
+								{{ t('empleados', 'Companie or group') }}
+							</p>
+							<h2>{{ selectedClient.nombre || t('empleados', 'Without name') }}</h2>
+						</div>
+					</div>
+
+					<div class="details-grid">
+						<div class="detail-field detail-field-wide">
+							<span>{{ t('empleados', 'Description') }}</span>
+							<p>{{ selectedClient.detalles || t('empleados', 'No description available.') }}</p>
+						</div>
+						<div class="detail-field">
+							<span>{{ t('empleados', 'Parent group') }}</span>
+							<strong>{{ parentName }}</strong>
+						</div>
+						<div class="detail-field">
+							<span>{{ t('empleados', 'Subgroups') }}</span>
+							<strong>{{ selectedClient.child_count || 0 }}</strong>
+						</div>
+					</div>
+				</div>
 				<!--CompaniesGroupsDetalles :select="select" /-->
 			</template>
 		</List>
@@ -20,15 +47,18 @@
 				<div class="form-group center">
 					<NcTextField
 						required
+						class="form-control"
 						:value.sync="name_cliente"
 						:label="t('empleados', 'Companie or group name')" />
 					<NcTextArea
 						required
+						class="form-control"
 						resize="vertical"
 						:value.sync="description_client"
 						:label="t('empleados', 'Description companie or group')" />
 					<NcSelect
 						v-model="padre"
+						class="form-control"
 						:input-label="t('empleados', 'part of group')"
 						:options="options" />
 					<div class="save">
@@ -55,7 +85,7 @@
 		<input
 			ref="file"
 			type="file"
-			style="display: none"
+			class="file-input"
 			accept=".xlsx"
 			@change="importar()">
 	</NcAppContent>
@@ -69,6 +99,7 @@ import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
 import List from '../Helpers/Lists/List.vue'
+import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOutline.vue'
 
 import {
 	NcAppContent,
@@ -85,6 +116,7 @@ export default {
 	components: {
 		NcAppContent,
 		List,
+		HexagonMultipleOutline,
 		NcModal,
 		NcTextField,
 		NcButton,
@@ -104,6 +136,22 @@ export default {
 			description_client: '',
 			padre: [],
 		}
+	},
+	computed: {
+		selectedClient() {
+			return this.select?.[0] || {}
+		},
+
+		parentName() {
+			const parentId = this.selectedClient?.cliente_padre
+
+			if (!parentId || Number(parentId) === 0) {
+				return this.t('empleados', 'Main group')
+			}
+
+			return this.options.find(option => Number(option.id) === Number(parentId))?.label
+				|| this.t('empleados', 'Not found')
+		},
 	},
 	mounted() {
 		this._onDetails = (id) => this.GetCompanieGroup(id)
@@ -342,23 +390,129 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.time-selector {
-	display: flex;
-	margin: .5rem 0;          /* margen arriba y abajo */
-	align-self: center;
+.client-details {
+	max-width: 900px;
+	margin: 28px auto 0;
+	padding: 22px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
-.radios {
+.details-header {
 	display: flex;
-	margin-right: 10px;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 18px;
 }
 
-.estimatetime {
+.details-icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 54px;
+	height: 54px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	color: var(--color-primary-element);
+}
+
+.eyebrow {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.details-header h2 {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 24px;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.details-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.detail-field {
+	min-width: 0;
+	padding: 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.detail-field-wide {
+	grid-column: 1 / -1;
+}
+
+.detail-field span {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.detail-field strong,
+.detail-field p {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 14px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.modal__content {
+	width: min(560px, calc(100vw - 48px));
+	padding: 24px;
+}
+
+.form-group {
 	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 0;
+}
+
+.form-control {
+	width: 100%;
 }
 
 .save {
 	display: flex;
-	margin-left: 10px;
+	justify-content: center;
+	margin-top: 4px;
+}
+
+.file-input {
+	display: none;
+}
+
+@media (max-width: 768px) {
+	.client-details {
+		margin-top: 18px;
+		padding: 14px;
+	}
+
+	.details-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.detail-field-wide {
+		grid-column: auto;
+	}
+
+	.details-header h2 {
+		font-size: 20px;
+	}
 }
 </style>

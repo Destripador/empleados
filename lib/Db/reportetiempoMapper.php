@@ -362,4 +362,33 @@ class reportetiempoMapper extends QBMapper {
 			throw new \Exception('Update bloqueado: el reporte ya tiene más de 40 minutos y no se puede modificar.');
 		}
 	}
+
+	public function getResumenDiaByEmpleado(int $idEmpleado, string $fecha): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias($qb->createFunction('COUNT(*)'), 'registros')
+			->selectAlias($qb->createFunction('COALESCE(SUM(tiempo_registrado), 0)'), 'minutos_reportados')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq(
+					'id_empleado',
+					$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->andWhere(
+				$qb->expr()->eq(
+					'fecha_registro',
+					$qb->createNamedParameter($fecha)
+				)
+			);
+
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		return [
+			'registros' => (int)($row['registros'] ?? 0),
+			'minutos_reportados' => (float)($row['minutos_reportados'] ?? 0),
+		];
+	}
 }

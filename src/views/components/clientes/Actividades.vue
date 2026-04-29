@@ -19,10 +19,12 @@
 				<div class="form-group center">
 					<NcTextField
 						required
+						class="form-control"
 						:value.sync="name_activity"
 						:label="t('empleados', 'Activity name')" />
 					<NcTextArea
 						required
+						class="form-control"
 						resize="vertical"
 						:value.sync="description_activity"
 						:label="t('empleados', 'Description activity')" />
@@ -50,6 +52,7 @@
 						<div class="estimatetime">
 							<NcTextField
 								required
+								class="form-control"
 								:value.sync="time_activity"
 								type="number"
 								:label="t('empleados', 'Estimate time')" />
@@ -79,7 +82,7 @@
 		<input
 			ref="file"
 			type="file"
-			style="display: none"
+			class="file-input"
 			accept=".xlsx"
 			@change="importar()">
 	</NcAppContent>
@@ -354,23 +357,64 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.modal__content {
+	width: min(620px, calc(100vw - 48px));
+	padding: 24px;
+}
+
+.form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 0;
+}
+
+.form-control {
+	width: 100%;
+}
+
 .time-selector {
 	display: flex;
-	margin: .5rem 0;          /* margen arriba y abajo */
-	align-self: center;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 14px;
+	margin: 4px 0 0;
 }
 
 .radios {
 	display: flex;
-	margin-right: 10px;
+	flex-wrap: wrap;
+	gap: 8px;
 }
 
 .estimatetime {
 	display: flex;
+	flex: 1 1 180px;
+	min-width: 180px;
 }
 
 .save {
 	display: flex;
-	margin-left: 10px;
+	justify-content: center;
+	width: 100%;
+	margin-top: 4px;
+}
+
+.file-input {
+	display: none;
+}
+
+@media (max-width: 768px) {
+	.modal__content {
+		padding: 18px;
+	}
+
+	.time-selector {
+		align-items: stretch;
+	}
+
+	.estimatetime {
+		flex-basis: 100%;
+	}
 }
 </style>

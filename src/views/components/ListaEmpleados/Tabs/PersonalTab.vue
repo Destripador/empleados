@@ -37,7 +37,7 @@
 		<br>
 
 		<!-- Address -->
-		<div class="external-label">
+		<div class="external-label field-wide">
 			<label for="Direccion" class="labeltype">
 				<MapMarkerOutline :size="20" />
 				{{ t('empleados', 'Address') }}
@@ -298,40 +298,120 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .wrapper {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 4px;
 	align-items: flex-end;
-	flex-wrap: wrap;
 }
+
 .external-label {
 	display: flex;
-	align-items: center;
-	gap: 10px;
-	margin-top: 3px;
+	flex-direction: column;
+	align-items: stretch;
+	min-width: 0;
+	gap: 6px;
 }
+
 .labeltype {
-	font-weight: bold;
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 5px;
-	min-width: 150px;
+	min-height: 24px;
+	gap: 8px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	font-weight: 600;
 }
+
+.labeltype .material-design-icon {
+	color: var(--color-primary-element);
+}
+
 .inputtype {
-	flex: 1;
-	height: 40px;
+	width: 100%;
+	min-height: 40px;
 	padding: 8px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
 	font-size: 14px;
-	border-radius: 5px;
-	border: 1px solid #ccc;
+	transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.inputtype:focus {
+	border-color: var(--color-primary-element);
+	box-shadow: 0 0 0 2px var(--color-primary-element-light);
+	outline: none;
+}
+
+.inputtype:disabled {
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+	cursor: not-allowed;
+	opacity: 1;
+}
+
+.inputtype:hover:not(:disabled) {
+	border-color: var(--color-primary-element-light);
+}
+
+.emergency-contact {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.emergency-contact br,
+.top > br {
+	display: none;
+}
+
+.top {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px;
+	margin-top: 14px;
+}
+
+.label-input-trabajo {
+	min-width: 0;
+}
+
+.select {
 	width: 100%;
 }
-.emergency-contact {
-	border: 1px solid rgba(0,0,0,0.17);
-	padding: 20px;
+
+.field-wide {
+	grid-column: 1 / -1;
 }
-.top {
-	margin-top: 20px;
+
+.div-center {
+	display: flex;
+	grid-column: 1 / -1;
+	justify-content: center;
+	margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+	.top,
+	.emergency-contact {
+		grid-template-columns: 1fr;
+	}
+
+	.top {
+		gap: 12px;
+		margin-top: 8px;
+	}
+
+	.emergency-contact {
+		padding: 14px;
+	}
 }
 </style>

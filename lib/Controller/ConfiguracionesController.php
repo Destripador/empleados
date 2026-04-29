@@ -40,6 +40,9 @@ use OCA\Empleados\Db\configuraciones;
 use OCP\IConfig;
 use OCP\AppFramework\Http\DataResponse;
 
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\AdminRequired;
+
 /**
  * @psalm-suppress UnusedClass
  */
@@ -140,8 +143,8 @@ class ConfiguracionesController extends Controller {
 
         
 		$data = array(
-			'Gestor_actual' => $gestor,
-			'Users' => $userList,
+            'Gestor_actual' => $gestor,
+            'Users' => $userList,
             'Guardado_notas' => $configuraciones[1]['Data'],
             'Acumular_vacaciones' => $configuraciones[2]['Data'],
             'modulo_ahorro' => $configuraciones[3]['Data'],
@@ -149,11 +152,78 @@ class ConfiguracionesController extends Controller {
             'modulo_ausencias_readonly' => $configuraciones[5]['Data'],
             'modulo_clientes' => $configuraciones[6]['Data'],
             'modulo_reporte_tiempos' => $configuraciones[7]['Data'],
-        );
 
+            'Reportes' => [
+                'recordatorios_enabled' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_enabled', 'true'),
+                'recordatorios_grupo' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_grupo', 'empleados'),
+                'recordatorios_hora' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_hora', '17'),
+                'recordatorios_zona_horaria' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_zona_horaria', 'America/Mexico_City'),
+                'recordatorios_email' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_email', 'true'),
+                'horas_minimas' => $this->config->getAppValue(Application::APP_ID, 'reportes_horas_minimas', '0'),
+            ],
+        );
 
         return $data;
 	}
+
+    #[NoCSRFRequired]
+    #[AdminRequired]
+    public function ActualizarConfiguracionReportes(): DataResponse {
+        $recordatoriosEnabled = filter_var(
+            $this->request->getParam('recordatorios_enabled', 'true'),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        $recordatoriosEmail = filter_var(
+            $this->request->getParam('recordatorios_email', 'true'),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        $grupo = trim((string)$this->request->getParam('recordatorios_grupo', 'empleados'));
+
+        if ($grupo === '') {
+            $grupo = 'empleados';
+        }
+
+        $hora = (int)$this->request->getParam('recordatorios_hora', 17);
+        $hora = max(0, min(23, $hora));
+
+        $zonaHoraria = trim((string)$this->request->getParam('recordatorios_zona_horaria', 'America/Mexico_City'));
+
+        try {
+            new \DateTimeZone($zonaHoraria);
+        } catch (\Throwable $e) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => 'Zona horaria inválida',
+            ], Http::STATUS_BAD_REQUEST);
+        }
+
+        $horasMinimas = (float)$this->request->getParam('horas_minimas', 0);
+
+        if ($horasMinimas < 0) {
+            $horasMinimas = 0;
+        }
+
+        $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_enabled', $recordatoriosEnabled ? 'true' : 'false');
+        $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_grupo', $grupo);
+        $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_hora', (string)$hora);
+        $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_zona_horaria', $zonaHoraria);
+        $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_email', $recordatoriosEmail ? 'true' : 'false');
+        $this->config->setAppValue(Application::APP_ID, 'reportes_horas_minimas', (string)$horasMinimas);
+
+        return new DataResponse([
+            'status' => 'ok',
+            'data' => [
+                'recordatorios_enabled' => $recordatoriosEnabled,
+                'recordatorios_grupo' => $grupo,
+                'recordatorios_hora' => $hora,
+                'recordatorios_zona_horaria' => $zonaHoraria,
+                'recordatorios_email' => $recordatoriosEmail,
+                'horas_minimas' => $horasMinimas,
+            ],
+        ], Http::STATUS_OK);
+    }
 
     #[NoCSRFRequired]
 	#[NoAdminRequired]    

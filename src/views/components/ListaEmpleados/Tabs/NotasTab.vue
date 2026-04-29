@@ -1,6 +1,6 @@
 <template>
 	<div class="well">
-		<div class="editbutton">
+		<div class="notes-toolbar">
 			<NcActions>
 				<NcActionButton :close-after-click="true" @click="showEdit">
 					<template #icon>
@@ -11,10 +11,11 @@
 			</NcActions>
 		</div>
 
-		<div class="top">
-			<div>
+		<div class="top notes-content">
+			<div class="notes-editor">
 				<NcRichText
 					v-if="showMarkdown"
+					class="notes-preview"
 					:class="{ 'plain-text': !useMarkdown }"
 					:text="inputValue"
 					:autolink="true"
@@ -24,7 +25,7 @@
 				<NcTextArea
 					v-else
 					input-class="model"
-					class="top"
+					class="notes-textarea"
 					:label="t('empleados', 'Employee notes')"
 					resize="vertical"
 					:disabled="show"
@@ -33,13 +34,12 @@
 
 			<NcButton
 				v-if="automaticsave === 'false'"
+				class="save-note-button"
 				:aria-label="t('empleados', 'Save note')"
 				type="primary"
 				@click="guardarNota">
 				{{ t('empleados', 'Save note') }}
 			</NcButton>
-
-			<br>
 		</div>
 	</div>
 </template>
@@ -156,20 +156,81 @@ export default {
 }
 </script>
 
-<style>
-.editbutton{
-	float: right;
+<style scoped>
+.well {
+	position: relative;
+	min-height: 360px;
+	padding-top: 2px;
+	background: var(--color-main-background);
+}
+
+.notes-toolbar {
 	position: absolute;
-	right: 30px;
-	z-index: 9999;
+	top: 0;
+	right: 0;
+	z-index: 10;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.top {
+	margin-top: 14px;
+}
+
+.notes-content {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.notes-editor {
+	min-height: 320px;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.notes-preview {
+	min-height: 282px;
+	padding: 12px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	line-height: 1.5;
+	overflow-wrap: anywhere;
 }
 
 .plain-text {
 	white-space: pre-line;
-	height: 300px;
 }
 
-textarea.model {
-	height: 300px !important;
+.notes-textarea {
+	width: 100%;
+}
+
+:deep(textarea.model) {
+	min-height: 300px !important;
+	border-radius: var(--border-radius-large);
+}
+
+.save-note-button {
+	align-self: center;
+}
+
+@media (max-width: 768px) {
+	.well {
+		padding-top: 44px;
+	}
+
+	.notes-toolbar {
+		right: 0;
+	}
+
+	.notes-editor {
+		padding: 12px;
+	}
 }
 </style>

@@ -18,6 +18,8 @@ use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\BackgroundJob\IJobList;
 
+use OCA\Empleados\Cron\RecordatorioReportesTiempo;
+
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'empleados';
 
@@ -39,5 +41,10 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function boot(IBootContext $context): void {
+		$context->injectFn(function(IJobList $jobList) {
+			if (!$jobList->has(RecordatorioReportesTiempo::class, null)) {
+				$jobList->add(RecordatorioReportesTiempo::class);
+			}
+		});
 	}
 }

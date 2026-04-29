@@ -78,6 +78,15 @@
 						<FileChartOutline :size="20" />
 					</template>
 				</NcAppNavigationItem>
+
+				<NcAppNavigationItem
+					v-if="(subordinates?.length || 0) > 0"
+					:name="t('empleados', 'Seguimiento')"
+					:to="{ name: 'cumplimiento-reportes' }">
+					<template #icon>
+						<FileChartOutline :size="20" />
+					</template>
+				</NcAppNavigationItem>
 			</NcAppNavigationList>
 		</div>
 

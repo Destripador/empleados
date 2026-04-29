@@ -92,7 +92,7 @@ return [
 		['name' => 'configuraciones#provisioning', 'url' => '/provisioning', 'verb' => 'POST'],
 		['name' => 'configuraciones#ActualizarGestor', 'url' => '/ActualizarGestor', 'verb' => 'POST'],
 		['name' => 'configuraciones#ActualizarConfiguracion', 'url' => '/ActualizarConfiguracion', 'verb' => 'POST'],
-
+		['name' => 'configuraciones#ActualizarConfiguracionReportes', 'url' => '/ActualizarConfiguracionReportes', 'verb' => 'POST',],
 		
 		/***************************** CAPITAL HUMANO ***************************************/
 		['name' => 'capitalhumano#GetCapitalHumano', 'url' => '/GetCapitalHumano', 'verb' => 'GET'],
@@ -165,6 +165,9 @@ return [
 		['name' => 'reportetiempo#GetEmpleadosReports', 'url' => '/GetEmpleadosReports', 'verb' => 'POST'],
 		['name' => 'reportetiempo#ExportarReportes', 'url' => '/ExportarReportes', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetAdminReportsSummary', 'url' => '/GetAdminReportsSummary', 'verb' => 'POST',],
+		['name' => 'reportetiempo#estadoReporteHoy', 'url' => '/estadoReporteHoy', 'verb' => 'GET',],
+		['name' => 'reportetiempo#GetCumplimientoReportesHoy', 'url' => '/GetCumplimientoReportesHoy', 'verb' => 'GET',],
+		['name' => 'reportetiempo#EnviarRecordatoriosPendientesHoy', 'url' => '/EnviarRecordatoriosPendientesHoy', 'verb' => 'POST',],
 
 		/************************** EJEMPLO ************************************/
 		['name' => 'ejemplo#nuevafuncion', 'url' => '/ejemplo', 'verb' => 'POST'],
