@@ -28,6 +28,7 @@ use OCP\IUserManager;
 use OCP\IUserSession;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\Mail\IMailer;
+use OCP\Notification\IManager as INotificationManager;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -47,6 +48,7 @@ class reportetiempoController extends BaseController {
     private $subAdmin;
     private $urlGenerator;
 	private $mailer;
+	private INotificationManager $notificationManager;
 
 	public function __construct(
 		IRequest $request,
@@ -64,6 +66,7 @@ class reportetiempoController extends BaseController {
 		IClientService $clientService,
 		IMailer $mailer,
 		ISubAdmin $subAdmin,
+		INotificationManager $notificationManager,
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -88,6 +91,7 @@ class reportetiempoController extends BaseController {
 		$this->clientService = $clientService;
 		$this->subAdmin = $subAdmin;
 		$this->mailer = $mailer;
+		$this->notificationManager = $notificationManager;
 	}
 
 	/**
@@ -258,7 +262,10 @@ class reportetiempoController extends BaseController {
 		$reportetiempo->setdescripcion((string)$descripcion);
 
 		$this->reportetiempoMapper->insert($reportetiempo);
-
+		$this->clearReporteTiempoNotification(
+		$this->userSession->getUser()->getUID(),
+			$fecha
+		);
 		return new DataResponse('ok', Http::STATUS_OK);
 	}
 
@@ -911,5 +918,15 @@ class reportetiempoController extends BaseController {
 			'detalle_enviados' => $enviados,
 			'detalle_omitidos' => $omitidos,
 		], Http::STATUS_OK);
+	}
+	private function clearReporteTiempoNotification(string $uid, string $fecha): void {
+		$notification = $this->notificationManager->createNotification();
+
+		$notification
+			->setApp(Application::APP_ID)
+			->setUser($uid)
+			->setObject('reporte_tiempo', $fecha);
+
+		$this->notificationManager->markProcessed($notification);
 	}
 }

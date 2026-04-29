@@ -15,6 +15,7 @@ use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\Mail\IMailer;
 use Psr\Log\LoggerInterface;
+use OCP\Notification\IManager as INotificationManager;
 
 class RecordatorioReportesTiempo extends TimedJob {
 
@@ -40,6 +41,7 @@ class RecordatorioReportesTiempo extends TimedJob {
 		private IMailer $mailer,
 		private IURLGenerator $urlGenerator,
 		private LoggerInterface $logger,
+		private INotificationManager $notificationManager,
 	) {
 		parent::__construct($time);
 
@@ -52,9 +54,9 @@ class RecordatorioReportesTiempo extends TimedJob {
 			return;
 		}
 
-		if (!$this->getBoolConfig(self::CONFIG_EMAIL, true)) {
-			return;
-		}
+		// if (!$this->getBoolConfig(self::CONFIG_EMAIL, true)) {
+		//	return;
+		// }
 
 		$now = new \DateTimeImmutable('now', $this->getConfiguredTimezone());
 
@@ -126,26 +128,57 @@ class RecordatorioReportesTiempo extends TimedJob {
 			return;
 		}
 
-		$email = $user->getEMailAddress();
-
-		if (empty($email)) {
-			$this->logger->warning('No se envió recordatorio de reporte: usuario sin correo.', [
-				'app' => Application::APP_ID,
-				'uid' => $uid,
-			]);
-			return;
-		}
+		$sent = false;
 
 		try {
-			$this->sendReminderEmail(
+			$this->sendNextcloudNotification(
 				$user,
-				$email,
-				$quickReportUrl,
+				$fecha,
 				$minutosReportados,
-				$horasMinimas,
-				$minutosMinimos
+				$horasMinimas
 			);
 
+			$sent = true;
+		} catch (\Throwable $e) {
+			$this->logger->error('Error enviando notificación interna de reporte de tiempo: ' . $e->getMessage(), [
+				'app' => Application::APP_ID,
+				'uid' => $uid,
+				'exception' => $e,
+			]);
+		}
+
+		if ($this->getBoolConfig(self::CONFIG_EMAIL, true)) {
+			$email = $user->getEMailAddress();
+
+			if (empty($email)) {
+				$this->logger->warning('No se envió correo de recordatorio: usuario sin correo.', [
+					'app' => Application::APP_ID,
+					'uid' => $uid,
+				]);
+			} else {
+				try {
+					$this->sendReminderEmail(
+						$user,
+						$email,
+						$quickReportUrl,
+						$minutosReportados,
+						$horasMinimas,
+						$minutosMinimos
+					);
+
+					$sent = true;
+				} catch (\Throwable $e) {
+					$this->logger->error('Error enviando correo de recordatorio de reporte de tiempo: ' . $e->getMessage(), [
+						'app' => Application::APP_ID,
+						'uid' => $uid,
+						'email' => $email,
+						'exception' => $e,
+					]);
+				}
+			}
+		}
+
+		if ($sent) {
 			$this->markUserAsReminded($uid, $fecha);
 
 			$this->logger->info('Recordatorio de reporte de tiempo enviado.', [
@@ -155,12 +188,6 @@ class RecordatorioReportesTiempo extends TimedJob {
 				'registros' => $registros,
 				'minutos_reportados' => $minutosReportados,
 				'horas_minimas' => $horasMinimas,
-			]);
-		} catch (\Throwable $e) {
-			$this->logger->error('Error enviando recordatorio de reporte de tiempo: ' . $e->getMessage(), [
-				'app' => Application::APP_ID,
-				'uid' => $uid,
-				'exception' => $e,
 			]);
 		}
 	}
@@ -315,5 +342,37 @@ class RecordatorioReportesTiempo extends TimedJob {
 		));
 
 		return $value !== '' ? $value : $default;
+	}
+	
+	private function sendNextcloudNotification(
+		IUser $user,
+		string $fecha,
+		float $minutosReportados,
+		float $horasMinimas
+	): void {
+		$uid = $user->getUID();
+
+		$oldNotification = $this->notificationManager->createNotification();
+		$oldNotification
+			->setApp(Application::APP_ID)
+			->setUser($uid)
+			->setObject('reporte_tiempo', $fecha);
+
+		$this->notificationManager->markProcessed($oldNotification);
+
+		$notification = $this->notificationManager->createNotification();
+
+		$notification
+			->setApp(Application::APP_ID)
+			->setUser($uid)
+			->setDateTime(new \DateTime())
+			->setObject('reporte_tiempo', $fecha)
+			->setSubject('tiempo_pendiente', [
+				'fecha' => $fecha,
+				'horas_reportadas' => round($minutosReportados / 60, 2),
+				'horas_minimas' => round($horasMinimas, 2),
+			]);
+
+		$this->notificationManager->notify($notification);
 	}
 }
