@@ -9669,7 +9669,10 @@ __webpack_require__.r(__webpack_exports__);
       reportes_recordatorios_hora: 17,
       reportes_recordatorios_zona_horaria: 'America/Mexico_City',
       reportes_recordatorios_email: true,
-      reportes_horas_minimas: 0
+      reportes_horas_minimas: 0,
+      optionsGroups: [],
+      selected_admin_reports_group: null,
+      reportes_admin_reports_group: 'recursos_humanos'
     };
   },
   async mounted() {
@@ -9704,6 +9707,15 @@ __webpack_require__.r(__webpack_exports__);
         this.reportes_recordatorios_zona_horaria = reportes.recordatorios_zona_horaria || 'America/Mexico_City';
         this.reportes_recordatorios_email = String(reportes.recordatorios_email ?? 'true') === 'true';
         this.reportes_horas_minimas = Number(reportes.horas_minimas ?? 0);
+        this.optionsGroups = (response.data.Groups || []).map(group => ({
+          id: group.id,
+          label: group.label || group.id
+        }));
+        this.reportes_admin_reports_group = reportes.admin_reports_group || 'recursos_humanos';
+        this.selected_admin_reports_group = this.optionsGroups.find(group => group.id === this.reportes_admin_reports_group) || {
+          id: this.reportes_admin_reports_group,
+          label: this.reportes_admin_reports_group
+        };
         this.loading = false;
       } catch (err) {
         this.loading = false;
@@ -9940,7 +9952,8 @@ __webpack_require__.r(__webpack_exports__);
           recordatorios_hora: Number(this.reportes_recordatorios_hora),
           recordatorios_zona_horaria: this.reportes_recordatorios_zona_horaria,
           recordatorios_email: this.reportes_recordatorios_email.toString(),
-          horas_minimas: Number(this.reportes_horas_minimas)
+          horas_minimas: Number(this.reportes_horas_minimas),
+          admin_reports_group: this.selected_admin_reports_group?.id || this.reportes_admin_reports_group
         });
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)(t('empleados', 'Configuration updated'));
       } catch (err) {
@@ -10744,6 +10757,19 @@ var render = function render() {
       "update:value": function ($event) {
         _vm.reportes_horas_minimas = $event;
       }
+    }
+  }), _vm._v(" "), _c("NcSelect", {
+    staticClass: "fit",
+    attrs: {
+      "input-label": "Grupo con acceso a reportes administrativos y seguimientos",
+      options: _vm.optionsGroups
+    },
+    model: {
+      value: _vm.selected_admin_reports_group,
+      callback: function ($$v) {
+        _vm.selected_admin_reports_group = $$v;
+      },
+      expression: "selected_admin_reports_group"
     }
   })], 1), _vm._v(" "), _c("div", {
     staticClass: "actions-row"
@@ -142866,4 +142892,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=8e173a743fdbf8829e2f
+//# sourceMappingURL=empleados-settings.js.map?v=63f7e7ef821ac64a762f

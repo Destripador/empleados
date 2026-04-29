@@ -43,6 +43,8 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\AdminRequired;
 
+use OCP\IGroupManager;
+
 /**
  * @psalm-suppress UnusedClass
  */
@@ -59,7 +61,7 @@ class ConfiguracionesController extends Controller {
     private IConfig $config;
     
     private IUserManager $userManager;
-
+    private IGroupManager $groupManager;
 
 	public function __construct(
             IRequest $request,
@@ -69,7 +71,8 @@ class ConfiguracionesController extends Controller {
             IL10N $l10n,
             IRootFolder $rootFolder,
             configuracionesMapper $configuracionesMapper, 
-            IConfig $config
+            IConfig $config,
+            IGroupManager $groupManager,
         ) {
 		parent::__construct(Application::APP_ID, $request);
 
@@ -78,6 +81,7 @@ class ConfiguracionesController extends Controller {
 		$this->configuracionesMapper = $configuracionesMapper;
 		$this->rootFolder = $rootFolder;
         $this->config = $config;
+        $this->groupManager = $groupManager;
 
 	}
     
@@ -107,7 +111,18 @@ class ConfiguracionesController extends Controller {
          *  Esto para rellenar el NcSelect y poder seleccionar
          *  algun nuevo gestor de datos
         */
-        $users = $this->userManager->search('');
+       $groups = $this->groupManager->search('');
+
+        $groupList = [];
+
+        foreach ($groups as $group) {
+            $gid = $group->getGID();
+
+            $groupList[] = [
+                'id' => $gid,
+                'label' => $gid,
+            ];
+        }
 
         $userList = [];
         foreach ($users as $user) {
@@ -152,6 +167,8 @@ class ConfiguracionesController extends Controller {
             'modulo_ausencias_readonly' => $configuraciones[5]['Data'],
             'modulo_clientes' => $configuraciones[6]['Data'],
             'modulo_reporte_tiempos' => $configuraciones[7]['Data'],
+            'Groups' => $groupList,
+            'CanAdminReports' => $this->canAccessAdminReports(),
 
             'Reportes' => [
                 'recordatorios_enabled' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_enabled', 'true'),
@@ -160,6 +177,12 @@ class ConfiguracionesController extends Controller {
                 'recordatorios_zona_horaria' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_zona_horaria', 'America/Mexico_City'),
                 'recordatorios_email' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_email', 'true'),
                 'horas_minimas' => $this->config->getAppValue(Application::APP_ID, 'reportes_horas_minimas', '0'),
+                'admin_reports_group' => $this->config->getAppValue(
+                    Application::APP_ID,
+                    'reportes_admin_reports_group',
+                    'recursos_humanos'
+                ),
+                'admin_reports_group' => $this->config->getAppValue(Application::APP_ID, 'reportes_admin_reports_group', 'recursos_humanos'),
             ],
         );
 
@@ -169,6 +192,22 @@ class ConfiguracionesController extends Controller {
     #[NoCSRFRequired]
     #[AdminRequired]
     public function ActualizarConfiguracionReportes(): DataResponse {
+        $adminReportsGroup = trim((string)$this->request->getParam(
+            'admin_reports_group',
+            'recursos_humanos'
+        ));
+
+        if ($adminReportsGroup === '') {
+            $adminReportsGroup = 'recursos_humanos';
+        }
+
+        if ($this->groupManager->get($adminReportsGroup) === null) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => 'El grupo configurado para reportes administrativos no existe.',
+            ], Http::STATUS_BAD_REQUEST);
+        }
+
         $recordatoriosEnabled = filter_var(
             $this->request->getParam('recordatorios_enabled', 'true'),
             FILTER_VALIDATE_BOOLEAN
@@ -211,6 +250,11 @@ class ConfiguracionesController extends Controller {
         $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_zona_horaria', $zonaHoraria);
         $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_email', $recordatoriosEmail ? 'true' : 'false');
         $this->config->setAppValue(Application::APP_ID, 'reportes_horas_minimas', (string)$horasMinimas);
+        $this->config->setAppValue(
+            Application::APP_ID,
+            'reportes_admin_reports_group',
+            $adminReportsGroup
+        );
 
         return new DataResponse([
             'status' => 'ok',
@@ -221,6 +265,7 @@ class ConfiguracionesController extends Controller {
                 'recordatorios_zona_horaria' => $zonaHoraria,
                 'recordatorios_email' => $recordatoriosEmail,
                 'horas_minimas' => $horasMinimas,
+                'admin_reports_group' => $adminReportsGroup,
             ],
         ], Http::STATUS_OK);
     }
@@ -294,5 +339,37 @@ class ConfiguracionesController extends Controller {
         $this->config->setAppValue('empleados', 'provisioning_admin_pass', $password);
 
         return new DataResponse(['status' => 'ok']);
+    }
+
+    private function canAccessAdminReports(): bool {
+        $user = $this->userSession->getUser();
+
+        if ($user === null) {
+            return false;
+        }
+
+        $uid = $user->getUID();
+
+        if ($this->groupManager->isAdmin($uid)) {
+            return true;
+        }
+
+        $groupId = trim($this->config->getAppValue(
+            Application::APP_ID,
+            'reportes_admin_reports_group',
+            'recursos_humanos'
+        ));
+
+        if ($groupId === '') {
+            return false;
+        }
+
+        $group = $this->groupManager->get($groupId);
+
+        if ($group === null) {
+            return false;
+        }
+
+        return $group->inGroup($user);
     }
 }

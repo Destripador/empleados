@@ -71,7 +71,7 @@
 				</NcAppNavigationItem>
 
 				<NcAppNavigationItem
-					v-if="(subordinates?.length || 0) > 0"
+					v-if="canSeeAdminReports()"
 					:name="t('empleados', 'Admin reports')"
 					:to="{ name: 'Adminreports' }">
 					<template #icon>
@@ -80,7 +80,7 @@
 				</NcAppNavigationItem>
 
 				<NcAppNavigationItem
-					v-if="(subordinates?.length || 0) > 0"
+					v-if="canSeeAdminReports()"
 					:name="t('empleados', 'Seguimiento')"
 					:to="{ name: 'cumplimiento-reportes' }">
 					<template #icon>
@@ -217,6 +217,29 @@ export default {
 		},
 		ausenciasModulo() {
 			return this.configuraciones.modulo_ausencias === 'true'
+		},
+		getAdminReportsGroup() {
+			return this.configuraciones?.Reportes?.admin_reports_group
+				|| this.configuraciones?.reportes_admin_reports_group
+				|| 'recursos_humanos'
+		},
+
+		isNextcloudAdmin() {
+			return this.groupuser && Object.prototype.hasOwnProperty.call(this.groupuser, 'admin')
+		},
+
+		canSeeAdminReports() {
+			if (this.isNextcloudAdmin()) {
+				return true
+			}
+
+			const adminReportsGroup = this.getAdminReportsGroup()
+
+			if (!adminReportsGroup || !this.groupuser) {
+				return false
+			}
+
+			return Object.prototype.hasOwnProperty.call(this.groupuser, adminReportsGroup)
 		},
 	},
 }

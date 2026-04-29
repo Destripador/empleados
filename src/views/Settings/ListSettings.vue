@@ -142,6 +142,12 @@
 							type="number"
 							min="0"
 							label="Horas mínimas para considerar reportado" />
+
+						<NcSelect
+							v-model="selected_admin_reports_group"
+							:input-label="'Grupo con acceso a reportes administrativos y seguimientos'"
+							:options="optionsGroups"
+							class="fit" />
 					</div>
 
 					<div class="actions-row">
@@ -286,6 +292,9 @@ export default {
 			reportes_recordatorios_zona_horaria: 'America/Mexico_City',
 			reportes_recordatorios_email: true,
 			reportes_horas_minimas: 0,
+			optionsGroups: [],
+			selected_admin_reports_group: null,
+			reportes_admin_reports_group: 'recursos_humanos',
 		}
 	},
 
@@ -330,6 +339,19 @@ export default {
 				this.reportes_recordatorios_zona_horaria = reportes.recordatorios_zona_horaria || 'America/Mexico_City'
 				this.reportes_recordatorios_email = String(reportes.recordatorios_email ?? 'true') === 'true'
 				this.reportes_horas_minimas = Number(reportes.horas_minimas ?? 0)
+				this.optionsGroups = (response.data.Groups || []).map(group => ({
+					id: group.id,
+					label: group.label || group.id,
+				}))
+
+				this.reportes_admin_reports_group = reportes.admin_reports_group || 'recursos_humanos'
+
+				this.selected_admin_reports_group = this.optionsGroups.find(
+					group => group.id === this.reportes_admin_reports_group,
+				) || {
+					id: this.reportes_admin_reports_group,
+					label: this.reportes_admin_reports_group,
+				}
 
 				this.loading = false
 			} catch (err) {
@@ -560,6 +582,7 @@ export default {
 					recordatorios_zona_horaria: this.reportes_recordatorios_zona_horaria,
 					recordatorios_email: this.reportes_recordatorios_email.toString(),
 					horas_minimas: Number(this.reportes_horas_minimas),
+					admin_reports_group: this.selected_admin_reports_group?.id || this.reportes_admin_reports_group,
 				})
 
 				showSuccess(t('empleados', 'Configuration updated'))

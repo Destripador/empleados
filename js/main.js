@@ -17181,6 +17181,22 @@ __webpack_require__.r(__webpack_exports__);
     },
     ausenciasModulo() {
       return this.configuraciones.modulo_ausencias === 'true';
+    },
+    getAdminReportsGroup() {
+      return this.configuraciones?.Reportes?.admin_reports_group || this.configuraciones?.reportes_admin_reports_group || 'recursos_humanos';
+    },
+    isNextcloudAdmin() {
+      return this.groupuser && Object.prototype.hasOwnProperty.call(this.groupuser, 'admin');
+    },
+    canSeeAdminReports() {
+      if (this.isNextcloudAdmin()) {
+        return true;
+      }
+      const adminReportsGroup = this.getAdminReportsGroup();
+      if (!adminReportsGroup || !this.groupuser) {
+        return false;
+      }
+      return Object.prototype.hasOwnProperty.call(this.groupuser, adminReportsGroup);
     }
   }
 });
@@ -25269,7 +25285,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 1325980530)
-  }), _vm._v(" "), (_vm.subordinates?.length || 0) > 0 ? _c("NcAppNavigationItem", {
+  }), _vm._v(" "), _vm.canSeeAdminReports() ? _c("NcAppNavigationItem", {
     attrs: {
       name: _vm.t("empleados", "Admin reports"),
       to: {
@@ -25287,7 +25303,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 1562890050)
-  }) : _vm._e(), _vm._v(" "), (_vm.subordinates?.length || 0) > 0 ? _c("NcAppNavigationItem", {
+  }) : _vm._e(), _vm._v(" "), _vm.canSeeAdminReports() ? _c("NcAppNavigationItem", {
     attrs: {
       name: _vm.t("empleados", "Seguimiento"),
       to: {

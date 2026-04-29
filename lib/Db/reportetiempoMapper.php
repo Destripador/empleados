@@ -103,10 +103,15 @@ class reportetiempoMapper extends QBMapper {
 	 *
 	 * No calcula costo_total porque esta tabla no tiene sueldo.
 	 */
-	public function getResumenGeneral($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getResumenGeneral(
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null,
+		array $idEmpleados = []
+	): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->selectAlias($qb->createFunction('SUM(tiempo_registrado)'), 'total_minutos')
+		$qb->selectAlias($qb->createFunction('COALESCE(SUM(tiempo_registrado), 0)'), 'total_minutos')
 			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
 			->selectAlias($qb->createFunction('COUNT(DISTINCT id_empleado)'), 'empleados_con_reportes')
 			->selectAlias($qb->createFunction('COUNT(DISTINCT id_cliente)'), 'proyectos_activos')
@@ -114,6 +119,7 @@ class reportetiempoMapper extends QBMapper {
 			->from($this->getTableName());
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$row = $result->fetch();
@@ -137,7 +143,7 @@ class reportetiempoMapper extends QBMapper {
 	/**
 	 * Horas agrupadas por empleado.
 	 */
-	public function getHorasPorEmpleado($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getHorasPorEmpleado($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('id_empleado')
@@ -148,6 +154,7 @@ class reportetiempoMapper extends QBMapper {
 			->orderBy('total_minutos', 'DESC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -168,7 +175,7 @@ class reportetiempoMapper extends QBMapper {
 	/**
 	 * Horas agrupadas por proyecto / cliente.
 	 */
-	public function getHorasPorProyecto($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getHorasPorProyecto($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('id_cliente')
@@ -179,6 +186,7 @@ class reportetiempoMapper extends QBMapper {
 			->orderBy('total_minutos', 'DESC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -199,7 +207,7 @@ class reportetiempoMapper extends QBMapper {
 	/**
 	 * Horas agrupadas por actividad.
 	 */
-	public function getHorasPorActividad($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getHorasPorActividad($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('id_actividad')
@@ -210,6 +218,7 @@ class reportetiempoMapper extends QBMapper {
 			->orderBy('total_minutos', 'DESC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -230,7 +239,7 @@ class reportetiempoMapper extends QBMapper {
 	/**
 	 * Horas agrupadas por día.
 	 */
-	public function getHorasPorDia($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getHorasPorDia($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('fecha_registro')
@@ -241,6 +250,7 @@ class reportetiempoMapper extends QBMapper {
 			->orderBy('fecha_registro', 'ASC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -261,7 +271,7 @@ class reportetiempoMapper extends QBMapper {
 	/**
 	 * Cantidad de reportes agrupados por día.
 	 */
-	public function getReportesPorDia($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getReportesPorDia($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('fecha_registro')
@@ -271,6 +281,7 @@ class reportetiempoMapper extends QBMapper {
 			->orderBy('fecha_registro', 'ASC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -288,7 +299,7 @@ class reportetiempoMapper extends QBMapper {
 	 * Datos para gráfica apilada:
 	 * Proyecto / cliente vs actividad.
 	 */
-	public function getProyectoVsActividad($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
+	public function getProyectoVsActividad($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('id_cliente', 'id_actividad')
@@ -300,6 +311,7 @@ class reportetiempoMapper extends QBMapper {
 			->orderBy('id_cliente', 'ASC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -390,5 +402,21 @@ class reportetiempoMapper extends QBMapper {
 			'registros' => (int)($row['registros'] ?? 0),
 			'minutos_reportados' => (float)($row['minutos_reportados'] ?? 0),
 		];
+	}
+
+	private function aplicarFiltroEmpleados(IQueryBuilder $qb, array $idEmpleados): void {
+		$idEmpleados = array_values(array_unique(array_filter(array_map('intval', $idEmpleados))));
+
+		if (empty($idEmpleados)) {
+			$qb->andWhere($qb->expr()->eq('id_empleado', $qb->createNamedParameter(-1, IQueryBuilder::PARAM_INT)));
+			return;
+		}
+
+		$qb->andWhere(
+			$qb->expr()->in(
+				'id_empleado',
+				$qb->createNamedParameter($idEmpleados, IQueryBuilder::PARAM_INT_ARRAY)
+			)
+		);
 	}
 }
