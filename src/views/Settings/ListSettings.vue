@@ -161,6 +161,38 @@
 				</NcNoteCard>
 			</div>
 
+			<!-- Block: IT Inventory module -->
+			<div class="settings-card">
+				<NcNoteCard :type="'info'" :heading="t('empleados','IT Inventory module')">
+					<p>
+						{{ t('empleados', 'Enable this module to manage computer equipment, hardware models, serial numbers and device assignments.') }}
+					</p>
+
+					<NcCheckboxRadioSwitch
+						:checked="modulo_inventario"
+						type="switch"
+						@update:checked="onChangemodulo_inventario">
+						{{ t('empleados', 'Enable IT inventory module') }}
+					</NcCheckboxRadioSwitch>
+				</NcNoteCard>
+			</div>
+
+			<!-- Block: IT Support module -->
+			<div class="settings-card">
+				<NcNoteCard :type="'info'" :heading="t('empleados','IT Support module')">
+					<p>
+						{{ t('empleados', 'Enable this module to track technical support, maintenance history and actions performed on assigned devices.') }}
+					</p>
+
+					<NcCheckboxRadioSwitch
+						:checked="modulo_soporte"
+						type="switch"
+						@update:checked="onChangemodulo_soporte">
+						{{ t('empleados', 'Enable IT support module') }}
+					</NcCheckboxRadioSwitch>
+				</NcNoteCard>
+			</div>
+
 			<!-- Block: Single select for Data Manager -->
 			<div class="settings-card settings-card-wide">
 				<NcNoteCard v-if="selected_user" :type="'warning'" :heading="t('empleados','ATTENTION')">
@@ -271,6 +303,8 @@ export default {
 			modulo_clientes: false,
 			modulo_reporte_tiempos: false,
 
+			modulo_inventario: false,
+			modulo_soporte: false,
 			// MULTI SELECT — Human Resources
 			propsCapitalHumano: {
 				userSelect: true,
@@ -330,7 +364,8 @@ export default {
 				this.modulo_ausencias_readonly = (response.data.modulo_ausencias_readonly === 'true')
 				this.modulo_clientes = (response.data.modulo_clientes === 'true')
 				this.modulo_reporte_tiempos = (response.data.modulo_reporte_tiempos === 'true')
-
+				this.modulo_inventario = (response.data.modulo_inventario === 'true')
+				this.modulo_soporte = (response.data.modulo_soporte === 'true')
 				const reportes = response.data.Reportes || {}
 
 				this.reportes_recordatorios_enabled = String(reportes.recordatorios_enabled ?? 'true') === 'true'
@@ -442,6 +477,44 @@ export default {
 					data: this.modulo_reporte_tiempos.toString(),
 				})
 				showSuccess(t('empleados', 'Configuration updated'))
+			} catch (err) {
+				showError(t('empleados', 'Exception [UpdateConfiguration]: {error}', { error: String(err) }))
+				console.error(err)
+			}
+		},
+
+		/**
+		 * Toggle: IT inventory module
+		 */
+		async onChangemodulo_inventario() {
+			this.modulo_inventario = !this.modulo_inventario
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/ActualizarConfiguracion'), {
+					id_configuracion: 'modulo_inventario',
+					data: this.modulo_inventario.toString(),
+				})
+
+				showSuccess(t('empleados', 'Configuration updated. Refresh the page to update the navigation menu.'))
+			} catch (err) {
+				showError(t('empleados', 'Exception [UpdateConfiguration]: {error}', { error: String(err) }))
+				console.error(err)
+			}
+		},
+
+		/**
+		 * Toggle: IT support module
+		 */
+		async onChangemodulo_soporte() {
+			this.modulo_soporte = !this.modulo_soporte
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/ActualizarConfiguracion'), {
+					id_configuracion: 'modulo_soporte',
+					data: this.modulo_soporte.toString(),
+				})
+
+				showSuccess(t('empleados', 'Configuration updated. Refresh the page to update the navigation menu.'))
 			} catch (err) {
 				showError(t('empleados', 'Exception [UpdateConfiguration]: {error}', { error: String(err) }))
 				console.error(err)

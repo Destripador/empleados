@@ -17,6 +17,7 @@ import Adminreports from '../views/components/reports/admin/Adminreports.vue'
 import Ejemplo from '../views/components/ejemplo/Ejemplo.vue'
 import QuickReport from '../views/components/reports/QuickReport.vue'
 import CumplimientoReportes from '../views/components/reports/CumplimientoReportes.vue'
+import Inventario from '../views/components/Inventario/Inventario.vue'
 
 Vue.use(Router)
 
@@ -101,6 +102,11 @@ export default new Router({
 			path: '/cumplimiento-reportes',
 			name: 'cumplimiento-reportes',
 			component: CumplimientoReportes,
+		},
+		{
+			path: '/Inventario',
+			component: Inventario,
+			name: 'Inventario',
 		},
 	],
 })

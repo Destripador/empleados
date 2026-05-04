@@ -1,205 +1,160 @@
 <template id="content">
-	<NcAppContent name="Loading">
-		<div class="">
-			<div class="text-center section">
-				<div v-if="configuraciones.modulo_ausencias_readonly === 'true'">
-					<br>
-					<NcNoteCard
-						type="error"
-						:heading="t('empleados', 'Attention!!!')"
-						:text="t('empleados', 'The module is in read-only mode')" />
-					<br>
+	<NcAppContent :name="t('empleados', 'Working time')">
+		<div class="time-off-page">
+			<NcNoteCard
+				v-if="configuraciones.modulo_ausencias_readonly === 'true'"
+				type="error"
+				:heading="t('empleados', 'Attention')"
+				:text="t('empleados', 'The module is in read-only mode')" />
+
+			<header class="page-header">
+				<div>
+					<h2>{{ t('empleados', 'Vacation') }}</h2>
+					<p>{{ vista_actual }}</p>
 				</div>
-				<section class="layout">
-					<div class="grow2">
-						<div class="text-center sectionPicker">
-							<FullCalendar
-								ref="fullCalendar"
-								:options="calendarOptions"
-								class="my-calendar" />
-						</div>
-					</div>
-					<div class="grow1">
-						<div class="cards">
-							<div class="headers">
-								<div class="btn-top-right">
-									<NcActions>
-										<NcActionButton @click="showAniversarioModal">
-											<template #icon>
-												<CalendarQuestionOutline :size="20" />
-											</template>
-											{{ t('empleados', 'My information') }}
-										</NcActionButton>
-									</NcActions>
-								</div>
-								<div>
-									<h2 class="h2-white">
-										{{ t('empleados', 'Vacation') }}
-									</h2>
-								</div>
-								<div class="vacations">
-									<div class="gl">
-										<div v-if="Ausencias.dias_disponibles">
-											{{ formatearDias(Ausencias.dias_disponibles) }}
-										</div>
-										<div v-else>
-											<NcLoadingIcon />
-										</div>
-									</div>
-								</div>
-							</div>
-							<div class="infos">
-								<!-- Notifications accordion -->
-								<div v-if="notificaciones" class="acordeon-item">
-									<button class="acordeon-notification" @click="toggle(0)">
-										<div class="noti-wrapper">
-											<BellOutline class="bell-icon" :class="{ 'bell-shake': isShaking }" />
-											<NcCounterBubble :count="notifications_counter" class="noti-badge" />
-										</div>
-										<span class="noti-text">{{ t('empleados', 'Pending') }}</span>
-										<span class="arrow">{{ accordeon[0].abierto ? '-' : '+' }}</span>
-									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[0].abierto }]">
-										<div>
-											<div class="rst">
-												<div style="max-height: 300px; overflow-y: auto;">
-													<ul>
-														<NcListItem
-															v-for="(item) in notifications_result"
-															:key="item.id_historial_ausencias"
-															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="employees = []; typePetition = 'employee'; selected_user = item; $refs.fullCalendar.getApi().gotoDate(item.fecha_de); $refs.fullCalendar.getApi().refetchEvents();">
-															<template #icon>
-																<NcAvatar disable-menu
-																	:size="44"
-																	:user="item.Id_user"
-																	:display-name="item.Id_user" />
-															</template>
-															<template #subname>
-																{{ new Date(item.fecha_de).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) }}
-															</template>
-														</NcListItem>
-													</ul>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
+				<NcButton @click="showAniversarioModal">
+					<template #icon>
+						<CalendarQuestionOutline :size="20" />
+					</template>
+					{{ t('empleados', 'My information') }}
+				</NcButton>
+			</header>
 
-								<!-- Show only my absences -->
+			<section class="layout">
+				<div class="calendar-panel">
+					<FullCalendar
+						ref="fullCalendar"
+						:options="calendarOptions"
+						class="my-calendar" />
+				</div>
+
+				<aside class="side-panel">
+					<section class="vacation-balance">
+						<span>{{ t('empleados', 'Available days') }}</span>
+						<strong v-if="Ausencias.dias_disponibles">
+							{{ formatearDias(Ausencias.dias_disponibles) }}
+						</strong>
+						<NcLoadingIcon v-else />
+					</section>
+
+					<NcButton
+						variant="secondary"
+						wide
+						@click="typePetition = null; $refs.fullCalendar.getApi().refetchEvents()">
+						{{ t('empleados', 'Show my absences') }}
+					</NcButton>
+
+					<section v-if="notificaciones" class="filter-section">
+						<button class="section-toggle" type="button" @click="toggle(0)">
+							<span class="section-title">
+								<BellOutline :class="{ 'bell-shake': isShaking }" :size="20" />
+								{{ t('empleados', 'Pending') }}
+								<NcCounterBubble :count="notifications_counter" />
+							</span>
+							<ChevronUp v-if="accordeon[0].abierto" :size="20" />
+							<ChevronDown v-else :size="20" />
+						</button>
+						<div :class="['section-content', { abierto: accordeon[0].abierto }]">
+							<NcListItem
+								v-for="item in notifications_result"
+								:key="item.id_historial_ausencias"
+								:name="item.displayname ? item.displayname : item.Id_user"
+								@click.prevent="selectNotification(item)">
+								<template #icon>
+									<NcAvatar
+										disable-menu
+										:size="44"
+										:user="item.Id_user"
+										:display-name="item.Id_user" />
+								</template>
+								<template #subname>
+									{{ new Date(item.fecha_de).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) }}
+								</template>
+							</NcListItem>
+						</div>
+					</section>
+
+					<section v-if="Object.keys(Equipo).length" class="filter-section">
+						<button class="section-toggle" type="button" @click="toggle(1)">
+							<span class="section-title">{{ t('empleados', 'Filter by team') }}</span>
+							<ChevronUp v-if="accordeon[1].abierto" :size="20" />
+							<ChevronDown v-else :size="20" />
+						</button>
+						<div :class="['section-content', { abierto: accordeon[1].abierto }]">
+							<div class="team-heading">
+								<NcAvatar :user="Equipo.Id_jefe_equipo" :display-name="Equipo.Id_jefe_equipo" :size="24" />
+								<strong>{{ Equipo.Nombre }}</strong>
 								<NcButton
-									class="btn-top"
-									text="center (default)"
-									variant="secondary"
-									wide
-									@click="typePetition = null; $refs.fullCalendar.getApi().refetchEvents()">
-									{{ t('empleados', 'Show my absences') }}
+									type="tertiary"
+									:aria-label="t('empleados', 'Show all team')"
+									@click="typePetition = 'all'; $refs.fullCalendar.getApi().refetchEvents()">
+									<template #icon>
+										<AccountGroup :size="20" />
+									</template>
 								</NcButton>
-
-								<!-- Team view accordion -->
-								<div v-if="Object.keys(Equipo).length" class="acordeon-item btn-top">
-									<button class="acordeon-titulo" @click="toggle(1)">
-										{{ t('empleados', 'Filter by team') }}
-										<span>{{ accordeon[1].abierto ? '-' : '+' }}</span>
-									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[1].abierto }]">
-										<div>
-											<div class="rst-title">
-												<div class="title_flex">
-													<div class="subtitle_flex">
-														<NcAvatar :user="Equipo.Id_jefe_equipo" :display-name="Equipo.Id_jefe_equipo" :size="20" />
-													</div>
-													<div class="btn-top-subtitle">
-														{{ Equipo.Nombre }}
-													</div>
-													<div class="flex-to-right">
-														<AccountGroup class="pointer" @click="typePetition = 'all'; $refs.fullCalendar.getApi().refetchEvents()" />
-													</div>
-												</div>
-											</div>
-											<div class="rst">
-												<div style="max-height: 300px; overflow-y: auto;">
-													<ul>
-														<NcListItem
-															v-for="(item) in peopleEquipo.equipo"
-															:key="item.Id_empleados"
-															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="employees = []; typePetition = 'employee'; selected_user = item; $refs.fullCalendar.getApi().refetchEvents()">
-															<template #icon>
-																<NcAvatar disable-menu
-																	:size="44"
-																	:user="item.Id_user"
-																	:display-name="item.Id_user" />
-															</template>
-														</NcListItem>
-													</ul>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<!-- Administrative view accordion -->
-								<div v-if="isAdmin()" class="acordeon-item btn-top">
-									<button class="acordeon-titulo" @click="toggle(2)">
-										{{ t('empleados', 'Administrative') }}
-										<span>{{ accordeon[2].abierto ? '-' : '+' }}</span>
-									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[2].abierto }]">
-										<div class="btn-top">
-											<NcSelect v-bind="propsEmployees" v-model="employees" />
-										</div>
-									</div>
-								</div>
-
-								<!-- My subordinates -->
-								<div v-if="subordinates.length > 0" class="acordeon-item">
-									<button class="acordeon-titulo" @click="toggle(3)">
-										{{ t('empleados', 'My subordinates') }} <span>{{ accordeon[3].abierto ? '-' : '+' }}</span>
-									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[3].abierto }]">
-										<div>
-											<div class="rst-title">
-												<div class="title_flex">
-													<div class="subtitle_flex">
-														{{ t('empleados', 'My subordinates') }}
-													</div>
-													<div class="flex-to-right">
-														<AccountGroup class="pointer" @click="typePetition = 'all-employees'; $refs.fullCalendar.getApi().refetchEvents()" />
-													</div>
-												</div>
-											</div>
-											<div class="rst">
-												<div style="max-height: 300px; overflow-y: auto;">
-													<ul>
-														<NcListItem
-															v-for="(item) in subordinates"
-															:key="item.Id_empleados"
-															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="employees = []; typePetition = 'employee'; selected_user = item; $refs.fullCalendar.getApi().refetchEvents()">
-															<template #icon>
-																<NcAvatar disable-menu
-																	:size="44"
-																	:user="item.Id_user"
-																	:display-name="item.Id_user" />
-															</template>
-														</NcListItem>
-													</ul>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
 							</div>
-							<div class="footers">
-								<p>
-									🔎 {{ vista_actual }}
-								</p>
-							</div>
+							<NcListItem
+								v-for="item in peopleEquipo.equipo"
+								:key="item.Id_empleados"
+								:name="item.displayname ? item.displayname : item.Id_user"
+								@click.prevent="selectEmployee(item)">
+								<template #icon>
+									<NcAvatar
+										disable-menu
+										:size="44"
+										:user="item.Id_user"
+										:display-name="item.Id_user" />
+								</template>
+							</NcListItem>
 						</div>
-					</div>
-				</section>
-			</div>
+					</section>
+
+					<section v-if="isAdmin()" class="filter-section">
+						<button class="section-toggle" type="button" @click="toggle(2)">
+							<span class="section-title">{{ t('empleados', 'Administrative') }}</span>
+							<ChevronUp v-if="accordeon[2].abierto" :size="20" />
+							<ChevronDown v-else :size="20" />
+						</button>
+						<div :class="['section-content', { abierto: accordeon[2].abierto }]">
+							<NcSelect v-bind="propsEmployees" v-model="employees" />
+						</div>
+					</section>
+
+					<section v-if="subordinates.length > 0" class="filter-section">
+						<button class="section-toggle" type="button" @click="toggle(3)">
+							<span class="section-title">{{ t('empleados', 'My subordinates') }}</span>
+							<ChevronUp v-if="accordeon[3].abierto" :size="20" />
+							<ChevronDown v-else :size="20" />
+						</button>
+						<div :class="['section-content', { abierto: accordeon[3].abierto }]">
+							<div class="team-heading">
+								<strong>{{ t('empleados', 'My subordinates') }}</strong>
+								<NcButton
+									type="tertiary"
+									:aria-label="t('empleados', 'Show all subordinates')"
+									@click="typePetition = 'all-employees'; $refs.fullCalendar.getApi().refetchEvents()">
+									<template #icon>
+										<AccountGroup :size="20" />
+									</template>
+								</NcButton>
+							</div>
+							<NcListItem
+								v-for="item in subordinates"
+								:key="item.Id_empleados"
+								:name="item.displayname ? item.displayname : item.Id_user"
+								@click.prevent="selectEmployee(item)">
+								<template #icon>
+									<NcAvatar
+										disable-menu
+										:size="44"
+										:user="item.Id_user"
+										:display-name="item.Id_user" />
+								</template>
+							</NcListItem>
+						</div>
+					</section>
+				</aside>
+			</section>
 		</div>
 		<!-- EVENT DETAILS MODAL -->
 		<NcModal
@@ -242,13 +197,12 @@
 			size="large"
 			:name="t('empleados', 'Anniversary table')"
 			@close="closeModalAniversario">
-			<div class="table_component" role="region" tabindex="0">
-				<div class="modal__content">
-					<div class="layout">
-						<div class="grow3">
-							<TrofeosAniversarios :info="Ausencias" :acumular="configuraciones.acumular_vacaciones" />
-							<br>
-							<table>
+			<div class="modal__content anniversary-modal-content">
+				<div class="anniversary-layout">
+					<div>
+						<TrofeosAniversarios :info="Ausencias" :acumular="configuraciones.acumular_vacaciones" />
+						<div class="anniversary-table-wrap">
+							<table class="anniversary-table">
 								<caption>
 									<span class="caption-title">{{ t('empleados', 'Anniversary table') }}</span>
 								</caption>
@@ -273,9 +227,9 @@
 								</tbody>
 							</table>
 						</div>
-						<div class="grow4">
-							<MensajeAniversarios :info="Ausencias" :acumular="configuraciones.acumular_vacaciones" />
-						</div>
+					</div>
+					<div>
+						<MensajeAniversarios :info="Ausencias" :acumular="configuraciones.acumular_vacaciones" />
 					</div>
 				</div>
 			</div>
@@ -307,12 +261,12 @@ import { translate as t } from '@nextcloud/l10n'
 import BellOutline from 'vue-material-design-icons/BellOutline.vue'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import CalendarQuestionOutline from 'vue-material-design-icons/CalendarQuestionOutline.vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 
 import {
 	NcAppContent,
 	NcModal,
-	NcActions,
-	NcActionButton,
 	NcListItem,
 	NcAvatar,
 	NcButton,
@@ -330,10 +284,10 @@ export default {
 		NuevaSolicitud,
 		NcAppContent,
 		NcModal,
-		NcActions,
-		NcActionButton,
 		AccountGroup,
 		CalendarQuestionOutline,
+		ChevronDown,
+		ChevronUp,
 		FullCalendar,
 		NcListItem,
 		NcAvatar,
@@ -521,6 +475,19 @@ export default {
 				...item,
 				abierto: i === index ? !item.abierto : false,
 			}))
+		},
+		selectNotification(item) {
+			this.employees = []
+			this.typePetition = 'employee'
+			this.selected_user = item
+			this.$refs.fullCalendar.getApi().gotoDate(item.fecha_de)
+			this.$refs.fullCalendar.getApi().refetchEvents()
+		},
+		selectEmployee(item) {
+			this.employees = []
+			this.typePetition = 'employee'
+			this.selected_user = item
+			this.$refs.fullCalendar.getApi().refetchEvents()
 		},
 		showAniversarioModal() {
 			this.getAniversarios()
@@ -832,216 +799,206 @@ export default {
 }
 </script>
 <style scoped>
-/* (styles unchanged) */
+.time-off-page {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 24px;
+}
+
+.page-header {
+	display: flex;
+	gap: 16px;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+
+.page-header h2,
+.page-header p {
+	margin: 0;
+}
+
+.page-header p {
+	color: var(--color-text-maxcontrast);
+}
+
 .layout {
-  width: 100%;
-  display: flex;
-  gap: 16px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+	gap: 16px;
+	align-items: start;
 }
 
-.grow1 { flex: 3; }
-.grow2 { flex: 7; }
-.grow3 { flex: 3; }
-.grow4 { flex: 3; }
-
-.cards {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-radius: 0.75rem;
-  background-color: white;
-  border: 1px solid #cbd5e0;
+.calendar-panel,
+.side-panel {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-main-background);
 }
 
-.headers {
-  position: relative;
-  background-clip: border-box;
-  margin-top: 1.5rem;
-  margin-left: 1rem;
-  margin-right: 1rem;
-  border-radius: 0.75rem;
-  background-color: rgb(33 150 243);
-  box-shadow: 0 10px 15px -3px rgba(33,150,243,.4), 0 4px 6px -4px rgba(33,150,243,.4);
-  height: 8rem;
-  text-align: center;
+.calendar-panel {
+	min-width: 0;
+	padding: 12px;
+	overflow: auto;
 }
 
-.infos {
-  border: none;
-  padding: 1.5rem;
-  text-align: center;
+.side-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 12px;
 }
 
-.titles {
-  color: rgb(38 50 56);
-  font-weight: 600;
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
+.vacation-balance {
+	display: grid;
+	gap: 4px;
+	padding: 14px;
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-primary-element-light);
 }
 
-.footers {
-  padding: 0.75rem;
-  border: 1px solid rgb(236 239 241);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: rgba(0, 140, 255, 0.082);
+.vacation-balance span {
+	color: var(--color-text-maxcontrast);
 }
 
-.h2-white {
-  color: white;
+.vacation-balance strong {
+	font-size: 24px;
+	line-height: 1.2;
 }
 
-.btn-top-right {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background-color: white;
-  border: none;
-  border-radius: 50%;
-  padding: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  cursor: pointer;
-  font-size: 1rem;
-  transition: transform 0.2s ease;
-}
-.btn-top {
-  margin-top: 10px
+.filter-section {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	overflow: hidden;
 }
 
-.btn-top-right:hover {
-  transform: scale(1.1);
+.section-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
+	border: none;
+	background: transparent;
+	color: var(--color-main-text);
+	cursor: pointer;
+	font-weight: 700;
 }
 
-.table_component {
-  overflow: auto;
-  width: 100%;
+.section-toggle:hover,
+.section-toggle:focus-visible {
+	background-color: var(--color-background-hover);
 }
 
-.table_component table {
-  border: 1px solid #dededf;
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  text-align: left;
+.section-title {
+	display: inline-flex;
+	gap: 8px;
+	align-items: center;
+	min-width: 0;
 }
 
-.table_component th,
-.table_component td {
-  border: 1px solid #dededf;
-  padding: 5px;
+.section-content {
+	display: none;
+	max-height: 320px;
+	padding: 8px;
+	overflow-y: auto;
+	border-top: 1px solid var(--color-border);
 }
 
-.table_component th {
-  background-color: #eceff1;
-  color: black;
+.section-content.abierto {
+	display: block;
 }
 
-.table_component td {
-  background-color: white;
-  color: black;
-}
-
-.caption-title {
-  font-weight: bold;
+.team-heading {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 8px;
+	align-items: center;
+	padding: 4px 4px 8px;
 }
 
 .modal__content {
-  margin: 50px;
+	padding: 24px;
 }
 
-.sectionPicker {
-  height: clamp(520px, 70vh, 780px);
+.anniversary-modal-content {
+	width: min(980px, calc(100vw - 48px));
 }
 
-.my-calendar { height: 100%;
---color-background-dark: transparent !important;}
-
-.acordeon-item {
-	margin-bottom: 10px;
-	border-radius: 5px;
-	overflow: hidden;
+.anniversary-layout {
+	display: grid;
+	grid-template-columns: minmax(260px, 0.85fr) minmax(320px, 1fr);
+	gap: 20px;
+	align-items: start;
 }
 
-.acordeon-titulo {
+.anniversary-table-wrap {
+	margin-top: 12px;
+	overflow-x: auto;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+}
+
+.anniversary-table {
 	width: 100%;
-	text-align: center;
-	border: none;
-	justify-content: space-between;
-	align-items: center;
+	border-collapse: collapse;
+	table-layout: fixed;
 }
 
-.acordeon-contenido {
-	max-height: 0;
-	opacity: 0;
-	overflow: hidden;
-	transition: all 0.3s ease-in-out;
+.anniversary-table caption {
+	padding: 10px 12px;
+	text-align: left;
+	font-weight: 700;
 }
 
-.acordeon-contenido.abierto {
-	max-height: 500px;
-	opacity: 1;
-}
-.flex-to-right {
-	margin-left: auto;
-	margin-right: 5%;
-	cursor: pointer;
-}
-.subtitle_flex{
-	margin-left: 4%;
-}
-.btn-top-subtitle {
-	margin-top: 3px;
-}
-.pointer {
-	cursor: pointer;
-}
-
-.acordeon-notification {
-	width: 100%;
-	border: none;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	position: relative;
-}
-
-.noti-wrapper {
-	position: initial;
-	width: 24px;
-	height: 24px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.noti-badge {
-	position: absolute;
-	top: -5px;
-	right: -5px;
-}
-
-.noti-text {
+.anniversary-table th,
+.anniversary-table td {
+	padding: 10px 12px;
+	border-top: 1px solid var(--color-border);
 	text-align: left;
 }
 
-.arrow {
-	font-weight: bold;
-	color: #666;
+.anniversary-table th {
+	color: var(--color-text-maxcontrast);
+	background-color: var(--color-background-hover);
+}
+
+.my-calendar {
+	height: 100%;
+	--color-background-dark: transparent !important;
 }
 
 @keyframes shake {
-  0% { transform: rotate(0deg); }
-  15% { transform: rotate(-15deg); }
-  30% { transform: rotate(15deg); }
-  45% { transform: rotate(-10deg); }
-  60% { transform: rotate(10deg); }
-  75% { transform: rotate(-5deg); }
-  90% { transform: rotate(5deg); }
-  100% { transform: rotate(0deg); }
+	0% { transform: rotate(0deg); }
+	15% { transform: rotate(-15deg); }
+	30% { transform: rotate(15deg); }
+	45% { transform: rotate(-10deg); }
+	60% { transform: rotate(10deg); }
+	75% { transform: rotate(-5deg); }
+	90% { transform: rotate(5deg); }
+	100% { transform: rotate(0deg); }
 }
 
 .bell-shake {
-  animation: shake 0.8s ease;
+	animation: shake 0.8s ease;
+}
+
+@media (max-width: 1050px) {
+	.layout,
+	.anniversary-layout {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 700px) {
+	.time-off-page {
+		padding: 12px;
+	}
+
+	.page-header {
+		flex-direction: column;
+		align-items: stretch;
+	}
 }
 </style>

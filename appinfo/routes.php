@@ -171,5 +171,28 @@ return [
 
 		/************************** EJEMPLO ************************************/
 		['name' => 'ejemplo#nuevafuncion', 'url' => '/ejemplo', 'verb' => 'POST'],
+
+		/************************** INVENTARIO TI ************************************/
+
+		// Modelos de equipo
+		['name' => 'inventario#GetInventarioModelos', 'url' => '/GetInventarioModelos', 'verb' => 'GET'],
+		['name' => 'inventario#GetInventarioModelo', 'url' => '/GetInventarioModelo', 'verb' => 'POST'],
+		['name' => 'inventario#CrearInventarioModelo', 'url' => '/CrearInventarioModelo', 'verb' => 'POST'],
+		['name' => 'inventario#ActualizarInventarioModelo', 'url' => '/ActualizarInventarioModelo', 'verb' => 'POST'],
+		['name' => 'inventario#EliminarInventarioModelo', 'url' => '/EliminarInventarioModelo', 'verb' => 'POST'],
+
+		// Equipos de cómputo
+		['name' => 'inventario#GetInventarioComputo', 'url' => '/GetInventarioComputo', 'verb' => 'GET'],
+		['name' => 'inventario#GetInventarioEquipo', 'url' => '/GetInventarioEquipo', 'verb' => 'POST'],
+		['name' => 'inventario#GetInventarioEmpleado', 'url' => '/GetInventarioEmpleado', 'verb' => 'POST'],
+		['name' => 'inventario#CrearInventarioEquipo', 'url' => '/CrearInventarioEquipo', 'verb' => 'POST'],
+		['name' => 'inventario#ActualizarInventarioEquipo', 'url' => '/ActualizarInventarioEquipo', 'verb' => 'POST'],
+		['name' => 'inventario#EliminarInventarioEquipo', 'url' => '/EliminarInventarioEquipo', 'verb' => 'POST'],
+
+		// Historial de soporte
+		['name' => 'inventario#GetSoporteEquipo', 'url' => '/GetSoporteEquipo', 'verb' => 'POST'],
+		['name' => 'inventario#CrearSoporteEquipo', 'url' => '/CrearSoporteEquipo', 'verb' => 'POST'],
+		['name' => 'inventario#ActualizarSoporteEquipo', 'url' => '/ActualizarSoporteEquipo', 'verb' => 'POST'],
+		['name' => 'inventario#EliminarSoporteEquipo', 'url' => '/EliminarSoporteEquipo', 'verb' => 'POST'],
 	],
 ];

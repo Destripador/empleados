@@ -35,9 +35,9 @@
 			<template #custom>
 				<div class="periodo-details">
 					<h3>
-						Resumen general - {{ meses.find(m => m.value === periodo_inicio)?.label }} -
-						{{ meses.find(m => m.value === periodo_fin)?.label }}
-						({{ anioSeleccionado }})
+						Resumen general - {{ monthLabel(periodo_inicio) }} -
+						{{ monthLabel(periodo_fin) }}
+						({{ normalizedPeriod.anio || '-' }})
 					</h3>
 
 					<AdminResumenGeneral
@@ -48,7 +48,7 @@
 				</div>
 			</template>
 			<template #details>
-				<h3>Resumen Empleado - {{ meses.find(m => m.value === periodo_inicio)?.label }} - {{ meses.find(m => m.value === periodo_fin)?.label }} ({{ anioSeleccionado }})</h3>
+				<h3>Resumen Empleado - {{ monthLabel(periodo_inicio) }} - {{ monthLabel(periodo_fin) }} ({{ normalizedPeriod.anio || '-' }})</h3>
 				<AdminDetalles :select="select"
 					:sueldo="sueldo"
 					:actividades-list="actividades"
@@ -262,6 +262,22 @@ export default {
 	},
 
 	computed: {
+		normalizedPeriod() {
+			let periodoInicio = this.normalizeSelectNumber(this.periodo_inicio)
+			let periodoFin = this.normalizeSelectNumber(this.periodo_fin)
+			const anio = this.normalizeSelectNumber(this.anioSeleccionado)
+
+			if (periodoInicio !== null && periodoFin !== null && periodoInicio > periodoFin) {
+				[periodoInicio, periodoFin] = [periodoFin, periodoInicio]
+			}
+
+			return {
+				periodo_inicio: periodoInicio,
+				periodo_fin: periodoFin,
+				anio,
+			}
+		},
+
 		resumenFmt() {
 			const kpis = this.resumenGeneral?.kpis || {}
 
@@ -431,11 +447,7 @@ export default {
 
 		async GetEmpleadosReports() {
 			try {
-				await axios.post(generateUrl('/apps/empleados/GetEmpleadosReports'), {
-					periodo_inicio: this.periodo_inicio,
-					periodo_fin: this.periodo_fin,
-					anio: this.anioSeleccionado,
-				}).then(
+				await axios.post(generateUrl('/apps/empleados/GetEmpleadosReports'), this.normalizedPeriod).then(
 					(response) => {
 						if (response?.data?.ocs?.meta?.status !== 'ok') {
 							showError(response?.data?.ocs?.meta?.message)
@@ -477,9 +489,15 @@ export default {
 		},
 
 		ChangeReportConfig() {
-			localStorage.setItem('nextcloud_empleados_mes_inicio', String(this.periodo_inicio ?? ''))
-			localStorage.setItem('nextcloud_empleados_mes_fin', String(this.periodo_fin ?? ''))
-			localStorage.setItem('nextcloud_empleados_anio_seleccionado', String(this.anioSeleccionado ?? ''))
+			const period = this.normalizedPeriod
+
+			this.periodo_inicio = period.periodo_inicio
+			this.periodo_fin = period.periodo_fin
+			this.anioSeleccionado = period.anio
+
+			localStorage.setItem('nextcloud_empleados_mes_inicio', String(period.periodo_inicio ?? ''))
+			localStorage.setItem('nextcloud_empleados_mes_fin', String(period.periodo_fin ?? ''))
+			localStorage.setItem('nextcloud_empleados_anio_seleccionado', String(period.anio ?? ''))
 
 			this.closeModal()
 			this.select = []
@@ -492,9 +510,7 @@ export default {
 			try {
 				await axios.post(generateUrl('/apps/empleados/GetReportesById'), {
 					id,
-					periodo_inicio: this.periodo_inicio,
-					periodo_fin: this.periodo_fin,
-					anio: this.anioSeleccionado,
+					...this.normalizedPeriod,
 				}).then(
 					(response) => {
 						this.select = response?.data?.ocs?.data
@@ -516,11 +532,7 @@ export default {
 			try {
 				this.loadingResumen = true
 
-				const response = await axios.post(generateUrl('/apps/empleados/GetAdminReportsSummary'), {
-					periodo_inicio: this.periodo_inicio,
-					periodo_fin: this.periodo_fin,
-					anio: this.anioSeleccionado,
-				})
+				const response = await axios.post(generateUrl('/apps/empleados/GetAdminReportsSummary'), this.normalizedPeriod)
 
 				if (response?.data?.ocs?.meta?.status !== 'ok') {
 					showError(response?.data?.ocs?.meta?.message)
@@ -538,11 +550,7 @@ export default {
 		Exportar() {
 			axios.post(
 				generateUrl('/apps/empleados/ExportarReportes'),
-				{
-					periodo_inicio: this.periodo_inicio,
-					periodo_fin: this.periodo_fin,
-					anio: this.anioSeleccionado,
-				},
+				this.normalizedPeriod,
 				{
 					responseType: 'blob',
 				},
@@ -562,6 +570,26 @@ export default {
 			}).catch((err) => {
 				showError(t('empleados', 'Se ha producido un error {error}, reporte al administrador', { error: String(err) }))
 			})
+		},
+
+		normalizeSelectNumber(value) {
+			const raw = value && typeof value === 'object'
+				? value.value ?? value.id ?? null
+				: value
+
+			if (raw === null || raw === undefined || raw === '') {
+				return null
+			}
+
+			const number = Number(raw)
+
+			return Number.isFinite(number) ? number : null
+		},
+
+		monthLabel(value) {
+			const month = this.normalizeSelectNumber(value)
+
+			return this.meses.find(m => m.value === month)?.label || '-'
 		},
 	},
 }

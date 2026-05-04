@@ -143,6 +143,9 @@ class ConfiguracionesController extends Controller {
          *  NcSelect
          */
         $configuraciones = $this->configuracionesMapper->GetConfig();
+
+        $configMap = array_column($configuraciones, 'Data', 'Nombre');
+
         if($configuraciones[0]['Data']) {
             $gestor_datos = $this->userManager->get($configuraciones[0]['Data']);
             $gestor[] = [
@@ -184,6 +187,9 @@ class ConfiguracionesController extends Controller {
                     'recursos_humanos'
                 ),
             ],
+
+            'modulo_inventario' => $configMap['modulo_inventario'] ?? 'false',
+            'modulo_soporte' => $configMap['modulo_soporte'] ?? 'false',
         );
 
         return $data;

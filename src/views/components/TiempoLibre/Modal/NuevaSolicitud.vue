@@ -1,223 +1,114 @@
 <template id="content">
-	<div
-		class="table_component"
-		role="region">
-		<div class="modal__content">
-			<form class="bg-white shadow-md rounded px-8 pt-6 pb-8">
-				<div class="table_component" role="region" tabindex="0">
-					<div>
-						<div class="table_component" role="region" tabindex="0">
-							<table v-if="admin">
-								<thead>
-									<tr>
-										<th>
-											{{ t('empleados', 'As an administrator, you can request or assign an absence for the selected employee') }}
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>
-											<NcSelect v-bind="propsEmployees" v-model="employees_list" />
-										</td>
-									</tr>
-								</tbody>
-							</table>
+	<form class="absence-request" @submit.prevent="EnviarAusencia">
+		<NcNoteCard
+			v-if="admin"
+			type="warning"
+			:heading="t('empleados', 'ATTENTION')"
+			:text="t('empleados', 'You are registering an absence in admin mode. Notifications and automatic messages will remain active, and the corresponding days will be deducted from the selected employee.')" />
 
-							<table>
-								<thead>
-									<tr>
-										<th>
-											{{ t('empleados', 'Select the absence type') }}
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>
-											<NcSelect id="id"
-												v-model="AusenciaSeleccionada"
-												:no-wrap="true"
-												class="hide-label"
-												:options="TipoAusencias"
-												:keep-open="false"
-												:input-label="t('empleados', 'Absence type')" />
-										</td>
-									</tr>
-								</tbody>
-							</table>
+		<section v-if="admin" class="form-section">
+			<h3>{{ t('empleados', 'Employee') }}</h3>
+			<NcSelect v-bind="propsEmployees" v-model="employees_list" />
+		</section>
 
-							<table v-if="AusenciaSeleccionada && AusenciaSeleccionada.descripcion">
-								<thead>
-									<tr>
-										<th>
-											{{ t('empleados', 'Details') }}
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td v-if="AusenciaSeleccionada && AusenciaSeleccionada.descripcion">
-											{{ AusenciaSeleccionada.descripcion }}
-										</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
+		<section class="form-section">
+			<h3>{{ t('empleados', 'Absence type') }}</h3>
+			<NcSelect
+				id="id"
+				v-model="AusenciaSeleccionada"
+				:no-wrap="true"
+				:options="TipoAusencias"
+				:keep-open="false"
+				:input-label="t('empleados', 'Absence type')" />
 
-					<div v-if="AusenciaSeleccionada && AusenciaSeleccionada.descripcion">
-						<div v-if="AusenciaSeleccionada &&
-							AusenciaSeleccionada.solicitar_prima_vacacional == 1 &&
-							diasSolicitados > TotalDias">
-							<NcNoteCard type="info">
-								<p>
-									{{ t('empleados', 'You cannot request more days than available.') }}
-								</p>
-							</NcNoteCard>
-						</div>
-						<div v-else>
-							<div v-if="admin">
-								<br>
-								<NcNoteCard
-									type="warning"
-									:heading="t('empleados', 'ATTENTION')"
-									:text="t('empleados', 'You are registering an absence in admin mode. Notifications and automatic messages will remain active, and the corresponding days will be deducted from the selected employee.')" />
-								<br>
-							</div>
-							<div v-else>
-								<table class="top">
-									<caption>{{ t('empleados', 'PERIOD DATA') }}</caption>
-									<tbody>
-										<tr v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
-											<td>{{ t('empleados', 'Available days') }}</td>
-											<td>
-												<span v-if="TotalDias">
-													{{ TotalDias }}
-												</span>
-											</td>
-										</tr>
-										<tr>
-											<td>{{ t('empleados', 'Days to take') }}</td>
-											<td>
-												<span class="block text-gray-600 text-sm text-left font-bold mb-2">
-													{{ diasSolicitados }}
-												</span>
-											</td>
-										</tr>
-										<tr v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
-											<td>{{ t('empleados', 'Remaining days') }}</td>
-											<td>
-												<span v-if="RestanteDias">
-													{{ RestanteDias }}
-												</span>
-											</td>
-										</tr>
-									</tbody>
-								</table>
+			<NcNoteCard
+				v-if="AusenciaSeleccionada && AusenciaSeleccionada.descripcion"
+				type="info"
+				:text="AusenciaSeleccionada.descripcion" />
+		</section>
 
-								<table class="top">
-									<thead>
-										<tr>
-											<th>
-												{{ t('empleados', 'Absence period') }}
-											</th>
-										</tr>
-									</thead>
-									<tbody>
-										<tr>
-											<td>
-												<span v-if="date">
-													{{ t('empleados', 'From:') }} {{ date.start.toLocaleDateString() }}
-													-
-													{{ t('empleados', 'To:') }} {{ date.end ? date.end.toLocaleDateString() : t('empleados', 'Undefined') }}
-												</span>
-											</td>
-										</tr>
-									</tbody>
-								</table>
+		<NcNoteCard
+			v-if="exceedsAvailableDays"
+			type="info"
+			:text="t('empleados', 'You cannot request more days than available.')" />
 
-								<div v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_archivo">
-									<div class="top">
-										<NcNoteCard type="info" :text="t('empleados', 'It is necessary to upload a file to justify your absence.')" />
-									</div>
-
-									<input ref="fileInput"
-										type="file"
-										class="file-input"
-										multiple
-										@change="uploadFile">
-
-									<div
-										class="drop-area top"
-										@dragover.prevent
-										@dragenter.prevent
-										@drop.prevent="handleDrop"
-										@click="$refs.fileInput.click()">
-										{{ t('empleados', 'Drop files here or click to select') }}
-									</div>
-
-									<div v-if="selectedFiles.length > 0" class="top">
-										<div class="table_component" role="region" tabindex="0">
-											<table>
-												<caption>{{ t('empleados', 'Selected files:') }}</caption>
-												<thead>
-													<tr>
-														<th>{{ t('empleados', 'File name') }}</th>
-														<th>{{ t('empleados', 'Size') }}</th>
-													</tr>
-												</thead>
-												<tbody>
-													<tr v-for="(file, index) in selectedFiles" :key="index">
-														<td>{{ file.name }}</td>
-														<td>
-															{{ file.size < 1024 * 1024 ? (file.size / 1024).toFixed(2) + ' KB' : (file.size / (1024 * 1024)).toFixed(2) + ' MB' }}
-														</td>
-													</tr>
-												</tbody>
-											</table>
-										</div>
-									</div>
-								</div>
-
-								<div class="top">
-									<NcCheckboxRadioSwitch
-										v-if="AusenciaSeleccionada &&
-											AusenciaSeleccionada.solicitar_prima_vacacional == 1 &&
-											prima == 1"
-										v-model="SolicitarPrima">
-										{{ t('empleados', 'Request vacation bonus') }}
-									</NcCheckboxRadioSwitch>
-								</div>
-
-								<div class="top">
-									<NcTextArea
-										v-model="comentarios"
-										resize="vertical"
-										:label="t('empleados', 'Comments')"
-										:placeholder="t('empleados', 'Add a comment to your request (OPTIONAL)')"
-										:helper-text="t('empleados', 'Add a comment to your request (OPTIONAL)')" />
-								</div>
-							</div>
-						</div>
-
-						<div v-if="loading">
-							<NcLoadingIcon :size="64" />
-						</div>
-
-						<div v-else class="top">
-							<NcButton variant="secondary" wide @click="EnviarAusencia()">
-								<template #icon>
-									<Airplane :size="20" />
-								</template>
-								{{ t('empleados', 'Submit') }}
-							</NcButton>
-						</div>
+		<template v-if="AusenciaSeleccionada && !exceedsAvailableDays">
+			<section class="form-section">
+				<h3>{{ t('empleados', 'Absence period') }}</h3>
+				<div class="period-grid">
+					<div
+						v-for="item in periodItems"
+						:key="item.label"
+						class="period-item">
+						<span>{{ item.label }}</span>
+						<strong>{{ item.value }}</strong>
 					</div>
 				</div>
-			</form>
-		</div>
-	</div>
+			</section>
+
+			<section v-if="AusenciaSeleccionada.solicitar_archivo" class="form-section">
+				<h3>{{ t('empleados', 'Files') }}</h3>
+				<NcNoteCard type="info" :text="t('empleados', 'It is necessary to upload a file to justify your absence.')" />
+
+				<input
+					ref="fileInput"
+					type="file"
+					class="file-input"
+					multiple
+					@change="uploadFile">
+
+				<button
+					type="button"
+					class="drop-area"
+					@dragover.prevent
+					@dragenter.prevent
+					@drop.prevent="handleDrop"
+					@click="$refs.fileInput.click()">
+					<Upload :size="24" />
+					<span>{{ t('empleados', 'Drop files here or click to select') }}</span>
+				</button>
+
+				<ul v-if="selectedFiles.length > 0" class="file-list">
+					<li v-for="(file, index) in selectedFiles" :key="index">
+						<FileDocumentOutline :size="20" />
+						<span>{{ file.name }}</span>
+						<small>{{ formatFileSize(file.size) }}</small>
+					</li>
+				</ul>
+			</section>
+
+			<section class="form-section">
+				<NcCheckboxRadioSwitch
+					v-if="AusenciaSeleccionada &&
+						AusenciaSeleccionada.solicitar_prima_vacacional == 1 &&
+						prima == 1"
+					v-model="SolicitarPrima">
+					{{ t('empleados', 'Request vacation bonus') }}
+				</NcCheckboxRadioSwitch>
+
+				<NcTextArea
+					v-model="comentarios"
+					resize="vertical"
+					:label="t('empleados', 'Comments')"
+					:placeholder="t('empleados', 'Add a comment to your request (OPTIONAL)')"
+					:helper-text="t('empleados', 'Add a comment to your request (OPTIONAL)')" />
+			</section>
+
+			<div class="form-actions">
+				<NcLoadingIcon v-if="loading" :size="32" />
+				<NcButton
+					v-else
+					type="primary"
+					native-type="submit"
+					wide>
+					<template #icon>
+						<Airplane :size="20" />
+					</template>
+					{{ t('empleados', 'Submit') }}
+				</NcButton>
+			</div>
+		</template>
+	</form>
 </template>
 
 <script>
@@ -228,6 +119,8 @@ import { translate as t } from '@nextcloud/l10n'
 
 // icons
 import Airplane from 'vue-material-design-icons/Airplane.vue'
+import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
+import Upload from 'vue-material-design-icons/Upload.vue'
 
 import {
 	NcButton,
@@ -248,7 +141,9 @@ export default {
 		NcCheckboxRadioSwitch,
 		NcNoteCard,
 		Airplane,
+		FileDocumentOutline,
 		NcLoadingIcon,
+		Upload,
 	},
 
 	inject: ['employee'],
@@ -288,6 +183,44 @@ export default {
 			},
 			employees_list: [],
 		}
+	},
+
+	computed: {
+		exceedsAvailableDays() {
+			return this.AusenciaSeleccionada
+				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
+				&& this.diasSolicitados > this.TotalDias
+		},
+
+		periodItems() {
+			const items = [
+				{
+					label: t('empleados', 'Days to take'),
+					value: this.diasSolicitados,
+				},
+				{
+					label: t('empleados', 'From:'),
+					value: this.date?.start?.toLocaleDateString() || '-',
+				},
+				{
+					label: t('empleados', 'To:'),
+					value: this.date?.end?.toLocaleDateString() || t('empleados', 'Undefined'),
+				},
+			]
+
+			if (Number(this.AusenciaSeleccionada?.solicitar_prima_vacacional) === 1) {
+				items.unshift({
+					label: t('empleados', 'Available days'),
+					value: this.TotalDias,
+				})
+				items.push({
+					label: t('empleados', 'Remaining days'),
+					value: this.RestanteDias,
+				})
+			}
+
+			return items
+		},
 	},
 
 	mounted() {
@@ -331,6 +264,12 @@ export default {
 			this.selectedFiles = Array.from(files)
 		},
 
+		formatFileSize(size) {
+			return size < 1024 * 1024
+				? `${(size / 1024).toFixed(2)} KB`
+				: `${(size / (1024 * 1024)).toFixed(2)} MB`
+		},
+
 		async EnviarAusencia() {
 			this.loading = true
 			try {
@@ -367,50 +306,96 @@ export default {
 }
 </script>
 
-<style>
-.table_component {
-	overflow: auto;
-	width: 100%;
+<style scoped>
+.absence-request {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+	width: min(760px, calc(100vw - 48px));
+	padding: 24px;
 }
 
-.table_component table {
-	border: 1px solid #dededf;
-	height: 100%;
-	width: 100%;
-	table-layout: fixed;
-	border-collapse: collapse;
-	border-spacing: 1px;
-	text-align: left;
+.form-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }
 
-.table_component caption {
-	caption-side: top;
-	text-align: left;
+.form-section h3 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
 }
 
-.table_component th {
-	border: 1px solid #dededf;
-	background-color: #eceff1;
-	color: #000000;
-	padding: 5px;
+.period-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 8px;
 }
 
-.table_component td {
-	border: 1px solid #dededf;
-	background-color: #ffffff;
-	color: #000000;
-	padding: 5px;
+.period-item {
+	display: grid;
+	gap: 4px;
+	min-height: 64px;
+	padding: 10px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-main-background);
 }
-.hide-label label { display: none !important; }
-.file-input { display: none; }
+
+.period-item span,
+.file-list small {
+	color: var(--color-text-maxcontrast);
+}
+
+.period-item strong {
+	font-size: 18px;
+}
+
+.file-input {
+	display: none;
+}
+
 .drop-area {
-	border: 2px dashed #999;
-	border-radius: 8px;
-	padding: 20px;
-	text-align: center;
-	color: #666;
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: center;
+	min-height: 88px;
+	border: 2px dashed var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-background-hover);
+	color: var(--color-main-text);
 	cursor: pointer;
-	transition: background-color 0.3s;
+	font-weight: 600;
 }
-.drop-area:hover { background-color: #f0f0f0; }
+
+.drop-area:hover,
+.drop-area:focus-visible {
+	border-color: var(--color-primary-element);
+	background-color: var(--color-primary-element-light);
+}
+
+.file-list {
+	display: grid;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.file-list li {
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr) auto;
+	gap: 8px;
+	align-items: center;
+	padding: 8px 10px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius, 6px);
+}
+
+.form-actions {
+	display: flex;
+	justify-content: flex-end;
+}
 </style>

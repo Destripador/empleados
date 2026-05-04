@@ -265,8 +265,8 @@ export default {
 			const fechaInicio = this.normalizeDateOnly(this.filter_fecha_inicio)
 			const fechaFin = this.normalizeDateOnly(this.filter_fecha_fin)
 
-			const clienteId = this.filter_cliente?.id ?? null
-			const actividadId = this.filter_actividad?.id ?? null
+			const clienteId = this.getOptionId(this.filter_cliente)
+			const actividadId = this.getOptionId(this.filter_actividad)
 			const busqueda = String(this.filter_busqueda || '').trim().toLowerCase()
 
 			return this.historial.filter((reporte) => {
@@ -280,11 +280,11 @@ export default {
 					return false
 				}
 
-				if (clienteId !== null && Number(reporte.idCliente) !== Number(clienteId)) {
+				if (clienteId !== null && Number(this.getReportClientId(reporte)) !== Number(clienteId)) {
 					return false
 				}
 
-				if (actividadId !== null && Number(reporte.idActividad) !== Number(actividadId)) {
+				if (actividadId !== null && Number(this.getReportActivityId(reporte)) !== Number(actividadId)) {
 					return false
 				}
 
@@ -532,6 +532,34 @@ export default {
 			this.activity_selected = null
 			this.listas_selected = null
 		},
+		getOptionId(option) {
+			if (option === null || option === undefined || option === '') {
+				return null
+			}
+
+			if (typeof option === 'object') {
+				return option.id ?? option.value ?? null
+			}
+
+			return option
+		},
+
+		getReportClientId(reporte) {
+			return reporte.idCliente
+				?? reporte.id_cliente
+				?? reporte.Id_cliente
+				?? reporte.IdCliente
+				?? null
+		},
+
+		getReportActivityId(reporte) {
+			return reporte.idActividad
+				?? reporte.id_actividad
+				?? reporte.Id_actividad
+				?? reporte.IdActividad
+				?? null
+		},
+
 		normalizeDateOnly(value) {
 			if (!value) {
 				return null

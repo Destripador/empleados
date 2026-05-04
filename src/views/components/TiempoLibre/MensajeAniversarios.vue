@@ -1,37 +1,52 @@
 <template id="content">
-	<div>
-		<div class="info-vacaciones">
-			<h2>🏖️ {{ t('empleados', 'Vacation Table') }}</h2>
+	<section class="anniversary-info">
+		<header class="info-header">
+			<h2>{{ t('empleados', 'Vacation Table') }}</h2>
 			<p>
 				{{ t('empleados', 'This table shows how many vacation days you are entitled to based on your years with the company. It is a guide based on the Federal Labor Law, reformed in 2023.') }}
 			</p>
+		</header>
 
-			<h3>🤔 {{ t('empleados', 'Frequently Asked Questions') }}</h3>
+		<div class="faq-section">
+			<h3>{{ t('empleados', 'Frequently Asked Questions') }}</h3>
 
-			<!-- Accordion -->
-			<div v-for="(pregunta, index) in preguntas" :key="index" class="acordeon-item">
-				<button class="acordeon-titulo" @click="toggle(index)">
-					{{ pregunta.titulo }}
-					<span>{{ pregunta.abierto ? '➖' : '➕' }}</span>
+			<div v-for="(pregunta, index) in preguntas" :key="index" class="faq-item">
+				<button
+					class="faq-title"
+					type="button"
+					:aria-expanded="pregunta.abierto ? 'true' : 'false'"
+					@click="toggle(index)">
+					<span>{{ pregunta.titulo }}</span>
+					<ChevronUp v-if="pregunta.abierto" :size="20" />
+					<ChevronDown v-else :size="20" />
 				</button>
-				<div v-show="pregunta.abierto" class="acordeon-contenido">
-					<div>{{ pregunta.contenido }}</div>
+				<div v-show="pregunta.abierto" class="faq-content">
+					{{ pregunta.contenido }}
 				</div>
 			</div>
+		</div>
 
-			<h3>✅ {{ t('empleados', 'Recommendation') }}</h3>
+		<NcNoteCard type="info" :heading="t('empleados', 'Recommendation')">
 			<p>
 				{{ t('empleados', 'Check this table every time you reach a work anniversary. That way you can plan your time off in advance and enjoy your days to the fullest.') }}
 			</p>
-		</div>
-	</div>
+		</NcNoteCard>
+	</section>
 </template>
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
+import { NcNoteCard } from '@nextcloud/vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 
 export default {
 	name: 'MensajeAniversarios',
+	components: {
+		ChevronDown,
+		ChevronUp,
+		NcNoteCard,
+	},
 
 	props: {
 		info: { type: Object, required: true },
@@ -82,30 +97,59 @@ export default {
 </script>
 
 <style scoped>
-.acordeon-item {
-	margin-bottom: 10px;
-	border-radius: 5px;
-	overflow: hidden;
-}
-
-.acordeon-titulo {
-	width: 100%;
-	text-align: left;
-	background-color: #f0f0f0;
-	border: none;
-	padding: 10px;
-	font-weight: bold;
-	cursor: pointer;
+.anniversary-info {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	font-size: 16px;
+	flex-direction: column;
+	gap: 20px;
 }
 
-.acordeon-contenido {
-	padding: 10px;
-	background-color: #fafafa;
-	border-top: 1px solid #ddd;
-	transition: all 0.3s ease-in-out;
+.info-header h2,
+.faq-section h3 {
+	margin: 0 0 8px;
+}
+
+.info-header p,
+.faq-content {
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+
+.faq-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.faq-item {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	overflow: hidden;
+	background-color: var(--color-main-background);
+}
+
+.faq-title {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
+	border: none;
+	background-color: transparent;
+	color: var(--color-main-text);
+	cursor: pointer;
+	font-weight: 700;
+	text-align: left;
+}
+
+.faq-title:hover,
+.faq-title:focus-visible {
+	background-color: var(--color-background-hover);
+}
+
+.faq-content {
+	padding: 0 12px 12px;
+	border: none;
 }
 </style>

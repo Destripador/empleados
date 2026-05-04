@@ -5,6 +5,7 @@
 			:heading-id="t('empleados', 'General')"
 			is-heading
 			:name="t('empleados', 'General')" />
+
 		<NcAppNavigationList :aria-labelledby="t('empleados', 'General')">
 			<NcAppNavigationItem
 				:name="t('empleados', 'Home')"
@@ -16,12 +17,13 @@
 			</NcAppNavigationItem>
 		</NcAppNavigationList>
 
-		<!-- Capital Humano (solo admin / RH) -->
-		<div v-if="isAdmin()">
+		<!-- Human Resources -->
+		<div v-if="canSeeHumanResources">
 			<NcAppNavigationCaption
 				:heading-id="t('empleados', 'Human Resources')"
 				is-heading
 				:name="t('empleados', 'Human Resources')" />
+
 			<NcAppNavigationList :aria-labelledby="t('empleados', 'Human Resources')">
 				<NcAppNavigationItem
 					:name="t('empleados', 'Employees')"
@@ -38,6 +40,7 @@
 						<OfficeBuilding :size="20" />
 					</template>
 				</NcAppNavigationItem>
+
 				<NcAppNavigationItem
 					:name="t('empleados', 'Positions')"
 					:to="{ name: 'Puestos' }">
@@ -45,6 +48,7 @@
 						<AccountTieOutline :size="20" />
 					</template>
 				</NcAppNavigationItem>
+
 				<NcAppNavigationItem
 					:name="t('empleados', 'Teams')"
 					:to="{ name: 'Equipos' }">
@@ -55,15 +59,34 @@
 			</NcAppNavigationList>
 		</div>
 
-		<!-- REPORTE DE TIEMPOS -->
-		<div v-if="configuraciones.modulo_reporte_tiempos === 'true'">
+		<!-- IT Inventory -->
+		<div v-if="canSeeInventory">
 			<NcAppNavigationCaption
-				:heading-id="t('empleados', 'Report Times')"
+				:heading-id="t('empleados', 'IT Management')"
 				is-heading
-				:name="t('empleados', 'Report Times')" />
-			<NcAppNavigationList :aria-labelledby="t('empleados', 'Report Times')">
+				:name="t('empleados', 'IT Management')" />
+
+			<NcAppNavigationList :aria-labelledby="t('empleados', 'IT Management')">
 				<NcAppNavigationItem
-					:name="t('empleados', 'My reports | Create report')"
+					:name="t('empleados', 'Inventory and support')"
+					:to="{ name: 'Inventario' }">
+					<template #icon>
+						<Laptop :size="20" />
+					</template>
+				</NcAppNavigationItem>
+			</NcAppNavigationList>
+		</div>
+
+		<!-- Time Reports -->
+		<div v-if="reportTimesEnabled">
+			<NcAppNavigationCaption
+				:heading-id="t('empleados', 'Time Reports')"
+				is-heading
+				:name="t('empleados', 'Time Reports')" />
+
+			<NcAppNavigationList :aria-labelledby="t('empleados', 'Time Reports')">
+				<NcAppNavigationItem
+					:name="t('empleados', 'My reports')"
 					:to="{ name: 'Reports' }">
 					<template #icon>
 						<CalendarClock :size="20" />
@@ -71,7 +94,7 @@
 				</NcAppNavigationItem>
 
 				<NcAppNavigationItem
-					v-if="canSeeAdminReports()"
+					v-if="canSeeAdminReports"
 					:name="t('empleados', 'Admin reports')"
 					:to="{ name: 'Adminreports' }">
 					<template #icon>
@@ -80,8 +103,8 @@
 				</NcAppNavigationItem>
 
 				<NcAppNavigationItem
-					v-if="canSeeAdminReports()"
-					:name="t('empleados', 'Seguimiento')"
+					v-if="canSeeAdminReports"
+					:name="t('empleados', 'Compliance tracking')"
 					:to="{ name: 'cumplimiento-reportes' }">
 					<template #icon>
 						<FileChartOutline :size="20" />
@@ -90,13 +113,14 @@
 			</NcAppNavigationList>
 		</div>
 
-		<!-- AHORRO -->
-		<div v-if="ahorroModulo()">
+		<!-- Savings -->
+		<div v-if="savingsEnabled">
 			<NcAppNavigationCaption
-				:heading-id="t('empleados', 'Savings module')"
+				:heading-id="t('empleados', 'Savings')"
 				is-heading
-				:name="t('empleados', 'Savings module')" />
-			<NcAppNavigationList :aria-labelledby="t('empleados', 'Savings module')">
+				:name="t('empleados', 'Savings')" />
+
+			<NcAppNavigationList :aria-labelledby="t('empleados', 'Savings')">
 				<NcAppNavigationItem
 					:name="t('empleados', 'Request')"
 					:to="{ name: 'Ahorros' }">
@@ -104,9 +128,9 @@
 						<FileSign :size="20" />
 					</template>
 				</NcAppNavigationItem>
-			</NcAppNavigationList>
-			<NcAppNavigationList v-if="isAdmin()" :aria-labelledby="t('empleados', 'Savings module')">
+
 				<NcAppNavigationItem
+					v-if="canSeeHumanResources"
 					:name="t('empleados', 'Admin panel')"
 					:to="{ name: 'PanelAhorros' }">
 					<template #icon>
@@ -116,12 +140,13 @@
 			</NcAppNavigationList>
 		</div>
 
-		<!-- Ausencias -->
-		<div v-if="ausenciasModulo()">
+		<!-- Working Time -->
+		<div v-if="absencesEnabled">
 			<NcAppNavigationCaption
 				:heading-id="t('empleados', 'Working time')"
 				is-heading
 				:name="t('empleados', 'Working time')" />
+
 			<NcAppNavigationList :aria-labelledby="t('empleados', 'Working time')">
 				<NcAppNavigationItem
 					:name="t('empleados', 'Calendar')"
@@ -133,12 +158,13 @@
 			</NcAppNavigationList>
 		</div>
 
-		<!-- CLIENTES -->
-		<div v-if="isAdmin() && configuraciones.modulo_clientes === 'true'">
+		<!-- Customers -->
+		<div v-if="canSeeCustomers">
 			<NcAppNavigationCaption
 				:heading-id="t('empleados', 'Customers')"
 				is-heading
 				:name="t('empleados', 'Customers')" />
+
 			<NcAppNavigationList :aria-labelledby="t('empleados', 'Customers')">
 				<NcAppNavigationItem
 					:name="t('empleados', 'Companies / Groups')"
@@ -161,7 +187,6 @@
 </template>
 
 <script>
-// ICONOS
 import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOutline.vue'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import BadgeAccountAlert from 'vue-material-design-icons/BadgeAccountAlert.vue'
@@ -174,6 +199,7 @@ import Bank from 'vue-material-design-icons/Bank.vue'
 import FileChartOutline from 'vue-material-design-icons/FileChartOutline.vue'
 import CalendarClock from 'vue-material-design-icons/CalendarClock.vue'
 import CalendarBlank from 'vue-material-design-icons/CalendarBlank.vue'
+import Laptop from 'vue-material-design-icons/Laptop.vue'
 
 import {
 	NcAppNavigation,
@@ -181,10 +207,12 @@ import {
 	NcAppNavigationList,
 	NcAppNavigationCaption,
 } from '@nextcloud/vue'
+
 import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'Sidenavigation',
+
 	components: {
 		NcAppNavigation,
 		NcAppNavigationItem,
@@ -202,34 +230,80 @@ export default {
 		ViewList,
 		FileChartOutline,
 		CalendarClock,
+		Laptop,
 	},
+
 	inject: ['groupuser', 'configuraciones', 'subordinates'],
-	methods: {
-		t,
 
-		navigateTo(route) {
-			this.$router.push({ name: route })
-		},
-
-		isAdmin() {
-			return 'admin' in this.groupuser || 'recursos_humanos' in this.groupuser
+	computed: {
+		canSeeHumanResources() {
+			return this.hasGroup('admin') || this.hasGroup('recursos_humanos')
 		},
 
 		canSeeAdminReports() {
-			const value = this.configuraciones?.CanAdminReports
+			return this.isTruthy(this.configuraciones?.CanAdminReports)
+		},
 
+		canSeeCustomers() {
+			return this.canSeeHumanResources && this.isModuleEnabled('modulo_clientes')
+		},
+
+		canSeeInventory() {
+			return this.canSeeHumanResources
+				&& (
+					this.isModuleEnabled('modulo_inventario')
+					|| this.isModuleEnabled('modulo_soporte')
+				)
+		},
+
+		reportTimesEnabled() {
+			return this.isModuleEnabled('modulo_reporte_tiempos')
+		},
+
+		savingsEnabled() {
+			return this.isModuleEnabled('modulo_ahorro')
+		},
+
+		absencesEnabled() {
+			return this.isModuleEnabled('modulo_ausencias')
+		},
+	},
+
+	methods: {
+		t,
+
+		hasGroup(groupName) {
+			if (!groupName || !this.groupuser) {
+				return false
+			}
+
+			if (Array.isArray(this.groupuser)) {
+				return this.groupuser.includes(groupName)
+					|| this.groupuser.some(group => {
+						return group?.id === groupName
+							|| group?.gid === groupName
+							|| group?.name === groupName
+					})
+			}
+
+			if (typeof this.groupuser === 'object') {
+				return Object.prototype.hasOwnProperty.call(this.groupuser, groupName)
+					|| this.groupuser[groupName] === true
+					|| Object.values(this.groupuser).includes(groupName)
+			}
+
+			return false
+		},
+
+		isTruthy(value) {
 			return value === true
-			|| value === 'true'
-			|| value === 1
-			|| value === '1'
+				|| value === 'true'
+				|| value === 1
+				|| value === '1'
 		},
 
-		ahorroModulo() {
-			return this.configuraciones.modulo_ahorro === 'true'
-		},
-
-		ausenciasModulo() {
-			return this.configuraciones.modulo_ausencias === 'true'
+		isModuleEnabled(moduleName) {
+			return this.isTruthy(this.configuraciones?.[moduleName])
 		},
 	},
 }
