@@ -1,27 +1,102 @@
 <?xml version="1.0"?>
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+
     <id>empleados</id>
     <name>Empleados</name>
-    <summary>Módulo integral para gestión de empleados, puestos y ausencias en Nextcloud.</summary>
-    <description>
-        Módulo de gestión de empleados para Nextcloud. Permite administrar información de los empleados, equipos de trabajo, puestos, ausencias y vacaciones. Desarrollado para integrarse con Nextcloud y facilitar la administración de recursos humanos.
-    </description>
-    <version>2.0.0</version>
-    <licence>agpl</licence>
+
+    <summary>Employee ERP for HR, documents, vacations, savings and time reports.</summary>
+
+    <description><![CDATA[
+# Empleados — ERP and Human Resources Module for Nextcloud
+
+Empleados is an ERP-style Human Resources module built for Nextcloud. It allows organizations to manage employee information, departments, positions, teams, documents, vacations, absences, savings and time reports directly inside their private Nextcloud environment.
+
+The module is designed for companies that want more control over their internal processes, better data ownership and a customizable alternative to external HR SaaS platforms.
+
+## Main Features
+
+### Human Capital Management
+
+- Employee profiles with general, job, banking and personal information.
+- Support for RFC, IMSS and CURP fields.
+- Department, position and team assignment.
+- Partner, manager and employee structure.
+- Internal notes and employee history.
+- Centralized employee records.
+
+### Documents
+
+- Employee document management inside Nextcloud Files.
+- Automatic employee folder creation.
+- Centralized storage under an `EMPLEADOS` folder.
+- Useful for records, memos, identification files and internal documentation.
+
+### Vacations and Absences
+
+- Vacation and absence calendar.
+- Employee vacation history.
+- Anniversary-based vacation period management.
+- Vacation day calculation adapted to Mexican labor rules.
+- Administrative review of absence records.
+
+### Savings Module
+
+- Employee savings request management.
+- Savings request history.
+- Administrative review and authorization panel.
+- Savings information linked to employee profiles.
+
+### Time Reports
+
+The latest major update adds a complete employee time reporting workflow:
+
+- Time reporting by client, project and activity.
+- Quick report access from the Nextcloud dashboard.
+- Dashboard widget for pending and completed reports.
+- Internal reminders for missing time reports.
+- Administrative period summaries.
+- KPIs for reported employees, pending employees, total records, reported hours, estimated salary and compliance percentage.
+- Charts and filters for administrative analysis.
+- Configurable administrative access group.
+
+## Video Demo
+
+Watch the English demo video:
+
+https://youtu.be/WrfVQT97Mqk
+
+## Project Links
+
+- Repository: https://github.com/Destripador/empleados
+- Wiki: https://github.com/Destripador/empleados/wiki
+- Issues: https://github.com/Destripador/empleados/issues
+
+## Current Status
+
+This project is currently in beta and under active development. It is already functional in internal environments, but some workflows, documentation and administrative tools may continue to change as the module evolves.
+    ]]></description>
+
+    <version>2.1.0</version>
+    <licence>AGPL-3.0-or-later</licence>
+
     <author mail="luis.alvarado@crowe.mx" homepage="https://gossler-torreon.com">Luis Angel Alvarado Hernandez</author>
+
     <namespace>Empleados</namespace>
     <category>organization</category>
 
     <website>https://github.com/Destripador/empleados</website>
-    <repository>https://github.com/Destripador/empleados</repository>
+    <repository type="git">https://github.com/Destripador/empleados</repository>
     <bugs>https://github.com/Destripador/empleados/issues</bugs>
+    <discussion>https://github.com/Destripador/empleados/issues</discussion>
 
     <documentation>
+        <user>https://github.com/Destripador/empleados/wiki</user>
         <admin>https://github.com/Destripador/empleados/blob/main/README.md</admin>
+        <developer>https://github.com/Destripador/empleados</developer>
     </documentation>
 
-    <screenshot>https://raw.githubusercontent.com/Destripador/employees/refs/heads/main/docs/screenshots/empleado_general.png</screenshot>
+    <screenshot small-thumbnail="https://raw.githubusercontent.com/Destripador/employees/refs/heads/main/docs/screenshots/empleado_general.png">https://raw.githubusercontent.com/Destripador/employees/refs/heads/main/docs/screenshots/empleado_general.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/Destripador/employees/refs/heads/main/docs/screenshots/configuraciones.png</screenshot>
 
     <dependencies>
@@ -47,10 +122,6 @@
         </navigation>
     </navigations>
 
-    <!--background-jobs>
-        <job>OCA\Empleados\Cron\ActualizarAniversarios</job>
-    </background-jobs-->
-
     <commands>
         <command>OCA\Empleados\Command\RepairConfigCommand</command>
     </commands>
@@ -59,11 +130,5 @@
         <admin>OCA\Empleados\Settings\settingsAdmin</admin>
         <admin-section>OCA\Empleados\Sections\settingsAdmin</admin-section>
     </settings>
-
-    <repair-steps>
-        <post-migration>
-            <step>OCA\Empleados\Migration\Repair\RepairEmpleadosTables</step>
-        </post-migration>
-    </repair-steps>
 
 </info>

@@ -29,19 +29,77 @@
 				</div>
 			</div>
 
+			<div class="filters-card">
+				<div class="filters-header">
+					<div>
+						<h3>{{ t('empleados', 'Review my reports') }}</h3>
+						<p>
+							{{ t('empleados', 'Filter your reports by date, project, activity or description.') }}
+						</p>
+					</div>
+
+					<NcButton
+						:aria-label="t('empleados', 'Clear filters')"
+						@click="clearFilters">
+						{{ t('empleados', 'Clear filters') }}
+					</NcButton>
+				</div>
+
+				<div class="filters-grid">
+					<NcDateTimePicker
+						v-model="filter_fecha_inicio"
+						class="filter-control"
+						type="date"
+						:placeholder="t('empleados', 'From date')" />
+
+					<NcDateTimePicker
+						v-model="filter_fecha_fin"
+						class="filter-control"
+						type="date"
+						:placeholder="t('empleados', 'To date')" />
+
+					<NcSelect
+						v-model="filter_cliente"
+						:input-label="t('empleados', 'Project')"
+						:options="actividades"
+						class="filter-control" />
+
+					<NcSelect
+						v-model="filter_actividad"
+						:input-label="t('empleados', 'Activity')"
+						:options="listas"
+						class="filter-control" />
+
+					<NcTextField
+						class="filter-control filter-search"
+						:value.sync="filter_busqueda"
+						:label="t('empleados', 'Search description, project or activity')" />
+				</div>
+
+				<div class="filters-summary">
+					<span>
+						{{ t('empleados', 'Reports') }}:
+						<strong>{{ historialFiltrado.length }}</strong>
+					</span>
+
+					<span>
+						{{ t('empleados', 'Total hours') }}:
+						<strong>{{ totalHorasFiltradas }}</strong>
+					</span>
+				</div>
+			</div>
+
 			<VirtualList
-				v-if="historial.length > 0"
+				v-if="historialFiltrado.length > 0"
 				class="list"
-				:data-sources="historial"
+				:data-sources="historialFiltrado"
 				:data-key="'id'"
 				:data-component="rowComponent"
-				:keeps="30"
+				:keeps="24"
 				:estimate-size="52"
 				:extra-props="{ listas, actividades }" />
 
-			<div v-else id="emptycontent">
-				<h2>{{ t('ahorrosgossler', 'No movements yet') }}</h2>
-			</div>
+			<div v-else id="emptycontent" />
 		</div>
 		<NcModal
 			v-if="modal"
@@ -177,6 +235,11 @@ export default {
 			activity_selected: null,
 			listas_selected: null,
 			temp_listas: [],
+			filter_fecha_inicio: null,
+			filter_fecha_fin: null,
+			filter_cliente: null,
+			filter_actividad: null,
+			filter_busqueda: '',
 		}
 	},
 	computed: {
@@ -197,6 +260,61 @@ export default {
 				&& descripcion.length > 0
 				&& !isNaN(fecha.getTime()),
 			)
+		},
+		historialFiltrado() {
+			const fechaInicio = this.normalizeDateOnly(this.filter_fecha_inicio)
+			const fechaFin = this.normalizeDateOnly(this.filter_fecha_fin)
+
+			const clienteId = this.filter_cliente?.id ?? null
+			const actividadId = this.filter_actividad?.id ?? null
+			const busqueda = String(this.filter_busqueda || '').trim().toLowerCase()
+
+			return this.historial.filter((reporte) => {
+				const fechaReporte = this.normalizeDateOnly(reporte.fecha_registro)
+
+				if (fechaInicio && fechaReporte && fechaReporte < fechaInicio) {
+					return false
+				}
+
+				if (fechaFin && fechaReporte && fechaReporte > fechaFin) {
+					return false
+				}
+
+				if (clienteId !== null && Number(reporte.idCliente) !== Number(clienteId)) {
+					return false
+				}
+
+				if (actividadId !== null && Number(reporte.idActividad) !== Number(actividadId)) {
+					return false
+				}
+
+				if (busqueda) {
+					const texto = [
+						reporte.descripcion,
+						reporte.clienteNombre,
+						reporte.actividadNombre,
+						reporte.fecha_registro,
+						reporte.tiempo_registrado,
+					].join(' ').toLowerCase()
+
+					if (!texto.includes(busqueda)) {
+						return false
+					}
+				}
+
+				return true
+			})
+		},
+
+		totalHorasFiltradas() {
+			const totalMinutos = this.historialFiltrado.reduce((total, reporte) => {
+				return total + Number(reporte.tiempo_registrado || 0)
+			}, 0)
+
+			return new Intl.NumberFormat('es-MX', {
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			}).format(totalMinutos / 60)
 		},
 	},
 	async mounted() {
@@ -414,6 +532,37 @@ export default {
 			this.activity_selected = null
 			this.listas_selected = null
 		},
+		normalizeDateOnly(value) {
+			if (!value) {
+				return null
+			}
+
+			if (value instanceof Date && !isNaN(value.getTime())) {
+				return value.toISOString().slice(0, 10)
+			}
+
+			const text = String(value)
+
+			if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+				return text.slice(0, 10)
+			}
+
+			const date = new Date(value)
+
+			if (isNaN(date.getTime())) {
+				return null
+			}
+
+			return date.toISOString().slice(0, 10)
+		},
+
+		clearFilters() {
+			this.filter_fecha_inicio = null
+			this.filter_fecha_fin = null
+			this.filter_cliente = null
+			this.filter_actividad = null
+			this.filter_busqueda = ''
+		},
 	},
 }
 </script>
@@ -484,11 +633,111 @@ export default {
 	width: 100%;
 }
 .list {
-  height: calc(100vh - 260px);
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  margin: 20px;
+	height: clamp(280px, calc(100vh - 390px), 560px);
+	max-height: 560px;
+	min-height: 280px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	margin: 20px;
+	background: var(--color-main-background);
+	overscroll-behavior: contain;
+}
+.filters-card {
+	margin: 20px;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
+.filters-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+	margin-bottom: 16px;
+}
+
+.filters-header h3 {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.filters-header p {
+	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.filters-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(180px, 1fr));
+	gap: 12px;
+	align-items: end;
+}
+
+.filter-control {
+	width: 100%;
+	min-width: 0;
+}
+
+.filter-search {
+	grid-column: span 2;
+}
+
+.filters-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-top: 14px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.filters-summary strong {
+	color: var(--color-main-text);
+}
+
+@media (max-width: 1100px) {
+	.filters-grid {
+		grid-template-columns: repeat(2, minmax(180px, 1fr));
+	}
+
+	.filter-search {
+		grid-column: span 2;
+	}
+}
+
+@media (max-width: 700px) {
+	.filters-header {
+		flex-direction: column;
+	}
+
+	.filters-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.filter-search {
+		grid-column: auto;
+	}
+}
+
+@media (max-width: 900px) {
+	.list {
+		height: clamp(260px, 48vh, 480px);
+		max-height: 480px;
+	}
+}
+
+@media (max-width: 600px) {
+	.list {
+		height: 45vh;
+		min-height: 240px;
+		margin: 12px;
+	}
+}
 </style>
