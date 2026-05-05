@@ -49,6 +49,7 @@ import ListSettings from './ListSettings.vue'
 import { showError /*, showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
+import { translate as t } from '@nextcloud/l10n'
 
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import 'vue-nav-tabs/themes/vue-tabs.css'
@@ -83,6 +84,7 @@ export default {
 	},
 
 	methods: {
+		t,
 		/**
 		 * Load global configuration, including "Users" for Data Manager.
 		 */

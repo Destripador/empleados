@@ -1,5 +1,5 @@
 <template id="content">
-	<NcAppContent name="Empleados – Actividades">
+	<NcAppContent :name="t('empleados', 'Employees - Activities')">
 		<List
 			:loading="loading"
 			:listas="listas"
@@ -35,19 +35,19 @@
 								v-model="type_time"
 								:button-variant="true"
 								value="minutos"
-								name="Minutos"
+								:name="t('empleados', 'Minutes')"
 								type="radio"
 								button-variant-grouped="horizontal">
-								Minutos
+								{{ t('empleados', 'Minutes') }}
 							</NcCheckboxRadioSwitch>
 							<NcCheckboxRadioSwitch
 								v-model="type_time"
 								:button-variant="true"
 								value="horas"
-								name="Horas"
+								:name="t('empleados', 'Hours')"
 								type="radio"
 								button-variant-grouped="horizontal">
-								Horas
+								{{ t('empleados', 'Hours') }}
 							</NcCheckboxRadioSwitch>
 						</div>
 						<div class="estimatetime">

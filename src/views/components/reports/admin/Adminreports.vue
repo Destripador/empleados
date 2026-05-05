@@ -1,5 +1,5 @@
 <template id="content">
-	<NcAppContent name="Empleados – Actividades">
+	<NcAppContent :name="t('empleados', 'Employees - Activities')">
 		<List
 			:loading="loading"
 			:listas="listas"
@@ -35,7 +35,7 @@
 			<template #custom>
 				<div class="periodo-details">
 					<h3>
-						Resumen general - {{ monthLabel(periodo_inicio) }} -
+						{{ t('empleados', 'General summary') }} - {{ monthLabel(periodo_inicio) }} -
 						{{ monthLabel(periodo_fin) }}
 						({{ normalizedPeriod.anio || '-' }})
 					</h3>
@@ -48,7 +48,7 @@
 				</div>
 			</template>
 			<template #details>
-				<h3>Resumen Empleado - {{ monthLabel(periodo_inicio) }} - {{ monthLabel(periodo_fin) }} ({{ normalizedPeriod.anio || '-' }})</h3>
+				<h3>{{ t('empleados', 'Employee summary') }} - {{ monthLabel(periodo_inicio) }} - {{ monthLabel(periodo_fin) }} ({{ normalizedPeriod.anio || '-' }})</h3>
 				<AdminDetalles :select="select"
 					:sueldo="sueldo"
 					:actividades-list="actividades"
@@ -78,19 +78,19 @@
 								v-model="type_time"
 								:button-variant="true"
 								value="minutos"
-								name="Minutos"
+								:name="t('empleados', 'Minutes')"
 								type="radio"
 								button-variant-grouped="horizontal">
-								Minutos
+								{{ t('empleados', 'Minutes') }}
 							</NcCheckboxRadioSwitch>
 							<NcCheckboxRadioSwitch
 								v-model="type_time"
 								:button-variant="true"
 								value="horas"
-								name="Horas"
+								:name="t('empleados', 'Hours')"
 								type="radio"
 								button-variant-grouped="horizontal">
-								Horas
+								{{ t('empleados', 'Hours') }}
 							</NcCheckboxRadioSwitch>
 						</div>
 						<div class="estimatetime">
@@ -131,7 +131,7 @@
 		<NcModal
 			v-if="modalReport"
 			ref="modalRef"
-			:name="t('empleados', 'Add new activity')"
+			:name="t('empleados', 'Report configuration')"
 			size="large"
 			@close="closeModal">
 			<div class="modal__content">
@@ -146,7 +146,7 @@
 							:options="meses"
 							label="label"
 							:reduce="m => m.value"
-							input-label="Mes de inicio"
+							:input-label="t('empleados', 'Start month')"
 							class="select-date" />
 
 						<NcSelect
@@ -154,13 +154,13 @@
 							:options="meses"
 							label="label"
 							:reduce="m => m.value"
-							input-label="Mes de fin"
+							:input-label="t('empleados', 'End month')"
 							class="select-date" />
 						<NcSelect
 							v-model="anioSeleccionado"
 							:options="anios"
 							:reduce="a => a"
-							input-label="Año"
+							:input-label="t('empleados', 'Year')"
 							class="select-date" />
 					</div>
 					<NcButton
@@ -240,18 +240,18 @@ export default {
 			anioSeleccionado: null,
 			actividades: [],
 			meses: [
-				{ label: 'Enero', value: 1 },
-				{ label: 'Febrero', value: 2 },
-				{ label: 'Marzo', value: 3 },
-				{ label: 'Abril', value: 4 },
-				{ label: 'Mayo', value: 5 },
-				{ label: 'Junio', value: 6 },
-				{ label: 'Julio', value: 7 },
-				{ label: 'Agosto', value: 8 },
-				{ label: 'Septiembre', value: 9 },
-				{ label: 'Octubre', value: 10 },
-				{ label: 'Noviembre', value: 11 },
-				{ label: 'Diciembre', value: 12 },
+				{ label: t('empleados', 'January'), value: 1 },
+				{ label: t('empleados', 'February'), value: 2 },
+				{ label: t('empleados', 'March'), value: 3 },
+				{ label: t('empleados', 'April'), value: 4 },
+				{ label: t('empleados', 'May'), value: 5 },
+				{ label: t('empleados', 'June'), value: 6 },
+				{ label: t('empleados', 'July'), value: 7 },
+				{ label: t('empleados', 'August'), value: 8 },
+				{ label: t('empleados', 'September'), value: 9 },
+				{ label: t('empleados', 'October'), value: 10 },
+				{ label: t('empleados', 'November'), value: 11 },
+				{ label: t('empleados', 'December'), value: 12 },
 			],
 			anios: Array.from({ length: Math.max(0, new Date().getFullYear() - 2025 + 1) }, (_, i) => 2025 + i),
 			resumenGeneral: null,

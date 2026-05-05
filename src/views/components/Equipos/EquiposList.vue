@@ -1,5 +1,5 @@
 <template id="EmployeeList">
-	<NcAppContent v-if="loading" name="Loading">
+	<NcAppContent v-if="loading" :name="t('empleados', 'Loading')">
 		<NcEmptyContent class="empty-content" :name="t('empleados', 'Loading')">
 			<template #icon>
 				<NcLoadingIcon :size="20" />
@@ -7,7 +7,7 @@
 		</NcEmptyContent>
 	</NcAppContent>
 
-	<NcAppContent v-else name="Loading">
+	<NcAppContent v-else :name="t('empleados', 'Loading')">
 		<!-- contacts list -->
 		<template #list>
 			<EquiposFullList

@@ -9,26 +9,26 @@
 			<table>
 				<thead>
 					<tr>
-						<th>ESPACIO</th>
-						<th>EMPLEADO</th>
-						<th>OPCIONES</th>
+						<th>{{ t('empleados', 'Space') }}</th>
+						<th>{{ t('empleados', 'Employee') }}</th>
+						<th>{{ t('empleados', 'Options') }}</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr v-for="n in numtables" :key="n">
 						<td>{{ n }}</td>
 						<td v-if="casillaedit == n">
-							<NcSelect v-bind="props" v-model="empleados" input-label="Empleados" />
+							<NcSelect v-bind="props" v-model="empleados" :input-label="t('empleados', 'Employees')" />
 						</td>
 						<td v-else>
-							listo para editar
+							{{ t('empleados', 'Ready to edit') }}
 						</td>
 						<td>
 							<NcButton v-if="casillaedit == n" @click="guardar(n)">
-								Guardar
+								{{ t('empleados', 'Save') }}
 							</NcButton>
 							<NcButton v-else @click="edit(n)">
-								Editar
+								{{ t('empleados', 'Edit') }}
 							</NcButton>
 						</td>
 					</tr>
@@ -39,23 +39,23 @@
 		<NcModal
 			:show.sync="modal"
 			size="large"
-			name="Name"
+			:name="t('empleados', 'Name')"
 			out-transition
 			@close="closeModal">
 			<template #actions>
-				<NcActionCaption name="Some action" />
+				<NcActionCaption :name="t('empleados', 'Some action')" />
 			</template>
 			<div class="modal__content">
-				<h1>formulario ejemplo</h1>
+				<h1>{{ t('empleados', 'Example form') }}</h1>
 				<div class="form-group">
-					<NcTextField label="First name" :value.sync="nombre">
+					<NcTextField :label="t('empleados', 'First name')" :value.sync="nombre">
 						<template #icon>
 							<AccountChildOutline :size="20" />
 						</template>
 					</NcTextField>
-					<NcTextField label="Last name" :value.sync="segundonombre" />
+					<NcTextField :label="t('empleados', 'Last name')" :value.sync="segundonombre" />
 					<NcButton @click="enviar">
-						enviar
+						{{ t('empleados', 'Send') }}
 					</NcButton>
 				</div>
 			</div>
@@ -79,7 +79,7 @@ import {
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
-// import { translate as t } from '@nextcloud/l10n'
+import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'Ejemplo',
@@ -136,6 +136,7 @@ export default {
 	},
 
 	methods: {
+		t,
 		showModal() {
 			this.modal = true
 			// eslint-disable-next-line no-console
@@ -154,11 +155,11 @@ export default {
 					nombre_enviar: this.nombre,
 					segundonombre_enviar: this.segundonombre,
 				})
-				showSuccess('enviado exitoso')
+				showSuccess(t('empleados', 'Sent successfully'))
 			} catch (error) {
 				// eslint-disable-next-line no-console
 				console.log(error)
-				showError('esta peticion fallo')
+				showError(t('empleados', 'This request failed'))
 			}
 		},
 		async edit(id) {
@@ -182,11 +183,11 @@ export default {
 				}))
 				// eslint-disable-next-line no-console
 				console.log(this.props.options)
-				showSuccess('enviado exitoso')
+				showSuccess(t('empleados', 'Sent successfully'))
 			} catch (error) {
 				// eslint-disable-next-line no-console
 				console.log(error)
-				showError('esta peticion fallo')
+				showError(t('empleados', 'This request failed'))
 			}
 		},
 		async guardar(id) {
@@ -195,11 +196,11 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/ejemplo'), {
 					empleados: this.empleados,
 				})
-				showSuccess('enviado exitoso')
+				showSuccess(t('empleados', 'Sent successfully'))
 			} catch (error) {
 				// eslint-disable-next-line no-console
 				console.log(error)
-				showError('esta peticion fallo')
+				showError(t('empleados', 'This request failed'))
 			}
 		},
 	},

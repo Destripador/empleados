@@ -12221,7 +12221,7 @@ __webpack_require__.r(__webpack_exports__);
       showLoading: false,
       Folder: '',
       buttons: [{
-        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_13__.translate)('empleados', 'Crear'),
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_13__.translate)('empleados', 'Create'),
         type: 'primary',
         nativeType: 'submit'
       }]
@@ -12258,7 +12258,9 @@ __webpack_require__.r(__webpack_exports__);
           modified: file.lastmod || null
         })) : [];
       } catch (error) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showError)('❌ Error al obtener archivos: ' + error.message);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_13__.translate)('empleados', 'Error fetching files: {error}', {
+          error: error.message
+        }));
       }
     },
     exploreFolder(file) {
@@ -12282,10 +12284,10 @@ __webpack_require__.r(__webpack_exports__);
         const safeFolder = this.Folder.trim().replace(/[<>:"/\\|?*]/g, '_');
         await (0,_nextcloud_files_dav__WEBPACK_IMPORTED_MODULE_9__.getClient)().createDirectory(`${this.currentPath}${safeFolder}/`);
         this.Folder = '';
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showSuccess)('✅ Carpeta creada.');
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_13__.translate)('empleados', 'Folder created.'));
         this.fetchFiles();
       } catch (e) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showError)('❌ ' + e.message);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showError)(String(e.message || e));
       }
     },
     async subirArchivo(file, destino) {
@@ -12299,13 +12301,17 @@ __webpack_require__.r(__webpack_exports__);
         try {
           const remoto = await this.client.stat(this.currentPath + file.name);
           if (remoto?.size === file.size) {
-            (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showSuccess)(`✅ Archivo ${file.name} subido correctamente.`);
+            (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_13__.translate)('empleados', 'File {name} uploaded successfully.', {
+              name: file.name
+            }));
             return;
           }
         } catch {}
         await new Promise(resolve => setTimeout(resolve, delay));
       }
-      (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showWarning)(`⚠️ No se pudo confirmar la subida del archivo ${file.name} después de varios intentos.`);
+      (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_11__.showWarning)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_13__.translate)('empleados', 'Could not confirm upload of file {name} after several attempts.', {
+        name: file.name
+      }));
     },
     async uploadFile(event) {
       const files = Array.from(event.target.files);
@@ -15918,7 +15924,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @nextcloud/axios */ "./node_modules/@nextcloud/axios/dist/index.mjs");
 /* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
 /* harmony import */ var _nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/dialogs */ "./node_modules/@nextcloud/dialogs/dist/index.es.js");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+
 
 
 
@@ -15926,10 +15934,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'CumplimientoReportes',
   components: {
-    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_3__.NcAppContent,
-    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_3__.NcLoadingIcon,
-    NcDateTimePicker: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_3__.NcDateTimePicker,
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_3__.NcButton
+    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcAppContent,
+    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcLoadingIcon,
+    NcDateTimePicker: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcDateTimePicker,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcButton
   },
   data() {
     return {
@@ -15952,6 +15960,7 @@ __webpack_require__.r(__webpack_exports__);
     await this.loadCumplimiento();
   },
   methods: {
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate,
     formatFecha(fecha) {
       const date = fecha instanceof Date ? fecha : new Date(fecha);
       if (isNaN(date.getTime())) {
@@ -15979,7 +15988,9 @@ __webpack_require__.r(__webpack_exports__);
         };
         this.empleados = Array.isArray(data.empleados) ? data.empleados : [];
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)(`No se pudo cargar el cumplimiento: ${String(err)}`);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not load compliance data: {error}', {
+          error: String(err)
+        }));
       } finally {
         this.loading = false;
       }
@@ -15992,10 +16003,15 @@ __webpack_require__.r(__webpack_exports__);
           fecha
         });
         const data = response?.data?.ocs?.data ?? response?.data ?? {};
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)(`Recordatorios enviados: ${data.enviados || 0}. Omitidos: ${data.omitidos || 0}.`);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Reminders sent: {sent}. Skipped: {skipped}.', {
+          sent: data.enviados || 0,
+          skipped: data.omitidos || 0
+        }));
         await this.loadCumplimiento();
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)(`No se pudieron enviar recordatorios: ${String(err)}`);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not send reminders: {error}', {
+          error: String(err)
+        }));
       } finally {
         this.sendingReminder = false;
       }
@@ -16066,12 +16082,12 @@ __webpack_require__.r(__webpack_exports__);
     estadoLabel() {
       const estado = this.estadoHoy?.estado;
       if (estado === 'reportado') {
-        return 'Reportado';
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Reported');
       }
       if (estado === 'sin_empleado') {
-        return 'Sin empleado asignado';
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'No employee assigned');
       }
-      return 'Pendiente';
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Pending');
     },
     estadoClass() {
       const estado = this.estadoHoy?.estado;
@@ -16101,7 +16117,7 @@ __webpack_require__.r(__webpack_exports__);
       try {
         const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/GetActividades'));
         if (response?.data?.ocs?.meta?.status !== 'ok') {
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)(response?.data?.ocs?.meta?.message || 'No se pudieron cargar las actividades');
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)(response?.data?.ocs?.meta?.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not load activities'));
           return;
         }
         const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : [];
@@ -16111,7 +16127,7 @@ __webpack_require__.r(__webpack_exports__);
           count: item.tiempo_real
         }));
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error cargando actividades: {error}', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error loading activities: {error}', {
           error: String(err)
         }));
       }
@@ -16120,7 +16136,7 @@ __webpack_require__.r(__webpack_exports__);
       try {
         const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/GetCompaniesGroups'));
         if (response?.data?.ocs?.meta?.status !== 'ok') {
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)(response?.data?.ocs?.meta?.message || 'No se pudieron cargar los clientes');
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)(response?.data?.ocs?.meta?.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not load customers'));
           return;
         }
         const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : [];
@@ -16129,14 +16145,14 @@ __webpack_require__.r(__webpack_exports__);
           label: item.nombre
         }));
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error cargando clientes: {error}', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error loading customers: {error}', {
           error: String(err)
         }));
       }
     },
     async create() {
       if (!this.isFormValid) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Completa todos los campos obligatorios con valores válidos.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Complete all required fields with valid values.'));
         return;
       }
       const fecha = this.time instanceof Date ? this.time : new Date(this.time);
@@ -16151,11 +16167,11 @@ __webpack_require__.r(__webpack_exports__);
       this.saving = true;
       try {
         await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/crearReporte'), payload);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Reporte creado exitosamente'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Report created successfully'));
         await this.loadEstadoHoy();
         this.resetForm();
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error creando reporte: {error}', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error creating report: {error}', {
           error: String(err)
         }));
       } finally {
@@ -16176,7 +16192,7 @@ __webpack_require__.r(__webpack_exports__);
         const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/estadoReporteHoy'));
         this.estadoHoy = response?.data?.ocs?.data ?? response?.data ?? null;
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'No se pudo cargar el estado de hoy: {error}', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not load today status: {error}', {
           error: String(err)
         }));
       } finally {
@@ -16536,15 +16552,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _Helpers_Lists_ReportRow_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../Helpers/Lists/ReportRow.vue */ "./src/views/components/Helpers/Lists/ReportRow.vue");
-/* harmony import */ var vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! vue-virtual-scroll-list */ "./node_modules/vue-virtual-scroll-list/dist/index.js");
-/* harmony import */ var vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var chart_js_auto__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! chart.js/auto */ "./node_modules/chart.js/auto/auto.js");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
-// import { generateUrl } from '@nextcloud/router'
-// import axios from '@nextcloud/axios'
-// import { showError /* showSuccess */ } from '@nextcloud/dialogs'
-// import { translate as t } from '@nextcloud/l10n'
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var _Helpers_Lists_ReportRow_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../Helpers/Lists/ReportRow.vue */ "./src/views/components/Helpers/Lists/ReportRow.vue");
+/* harmony import */ var vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! vue-virtual-scroll-list */ "./node_modules/vue-virtual-scroll-list/dist/index.js");
+/* harmony import */ var vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var chart_js_auto__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! chart.js/auto */ "./node_modules/chart.js/auto/auto.js");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+
 
 
 
@@ -16555,7 +16569,7 @@ __webpack_require__.r(__webpack_exports__);
   name: 'AdminDetalles',
   components: {
     // NcTextField,
-    VirtualList: (vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_1___default())
+    VirtualList: (vue_virtual_scroll_list__WEBPACK_IMPORTED_MODULE_2___default())
   },
   props: {
     select: {
@@ -16580,7 +16594,7 @@ __webpack_require__.r(__webpack_exports__);
   },
   data() {
     return {
-      rowComponent: _Helpers_Lists_ReportRow_vue__WEBPACK_IMPORTED_MODULE_0__["default"],
+      rowComponent: _Helpers_Lists_ReportRow_vue__WEBPACK_IMPORTED_MODULE_1__["default"],
       horasreportadas: '',
       costototal: '',
       proyectosactivos: '',
@@ -16752,7 +16766,7 @@ __webpack_require__.r(__webpack_exports__);
     this.destruirGraficas();
   },
   methods: {
-    t,
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate,
     toNum(v) {
       if (v === null || v === undefined) return 0;
       const s = String(v).trim().replace(',', '.').replace(/[^\d.-]/g, '');
@@ -16765,7 +16779,7 @@ __webpack_require__.r(__webpack_exports__);
       const totalHorasGeneral = this.kpis.horas_reportadas || 0;
       for (const r of this.historial) {
         const id = r[idCampo] ?? 'sin-id';
-        const label = r[nombreCampo] || `Sin ${nombreCampo}`;
+        const label = r[nombreCampo] || `${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'No')} ${nombreCampo}`;
         const minutos = this.toNum(r.tiempo_registrado);
         const horas = minutos / 60;
         const costo = horas * sueldoHora;
@@ -16801,12 +16815,12 @@ __webpack_require__.r(__webpack_exports__);
         this.chartProyectosInstance.destroy();
       }
       const datos = this.graficaProyectos;
-      this.chartProyectosInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_2__["default"](this.$refs.chartProyectos, {
+      this.chartProyectosInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_3__["default"](this.$refs.chartProyectos, {
         type: 'bar',
         data: {
           labels: datos.map(x => x.label),
           datasets: [{
-            label: 'Horas por proyecto',
+            label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Hours by project'),
             data: datos.map(x => Number(x.total.toFixed(2)))
           }]
         },
@@ -16831,7 +16845,15 @@ __webpack_require__.r(__webpack_exports__);
                   const porcentaje = new Intl.NumberFormat('es-MX', {
                     maximumFractionDigits: 2
                   }).format(item.porcentaje || 0);
-                  return [`Horas: ${horas}`, `Costo: ${costo}`, `Reportes: ${item.reportes}`, `Participación: ${porcentaje}%`];
+                  return [(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Hours: {hours}', {
+                    hours: horas
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Cost: {cost}', {
+                    cost: costo
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Reports: {reports}', {
+                    reports: item.reportes
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Share: {percent}%', {
+                    percent: porcentaje
+                  })];
                 }
               }
             }
@@ -16853,7 +16875,7 @@ __webpack_require__.r(__webpack_exports__);
         this.chartActividadesInstance.destroy();
       }
       const datos = this.graficaActividades;
-      this.chartActividadesInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_2__["default"](this.$refs.chartActividades, {
+      this.chartActividadesInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_3__["default"](this.$refs.chartActividades, {
         type: 'doughnut',
         data: {
           labels: datos.map(x => x.label),
@@ -16886,7 +16908,7 @@ __webpack_require__.r(__webpack_exports__);
         this.chartHorasDiaInstance.destroy();
       }
       const datos = this.graficaHorasPorDia;
-      this.chartHorasDiaInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_2__["default"](this.$refs.chartHorasDia, {
+      this.chartHorasDiaInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_3__["default"](this.$refs.chartHorasDia, {
         type: 'line',
         data: {
           labels: datos.map(x => x.fecha),
@@ -16930,7 +16952,7 @@ __webpack_require__.r(__webpack_exports__);
         this.chartProyectoActividadInstance.destroy();
       }
       const datos = this.graficaProyectoActividad;
-      this.chartProyectoActividadInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_2__["default"](this.$refs.chartProyectoActividad, {
+      this.chartProyectoActividadInstance = new chart_js_auto__WEBPACK_IMPORTED_MODULE_3__["default"](this.$refs.chartProyectoActividad, {
         type: 'bar',
         data: {
           labels: datos.proyectos,
@@ -17001,7 +17023,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 /* harmony import */ var chart_js_auto__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! chart.js/auto */ "./node_modules/chart.js/auto/auto.js");
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
 // eslint-disable-next-line import/no-named-as-default
+
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'AdminResumenGeneral',
@@ -17219,6 +17243,7 @@ __webpack_require__.r(__webpack_exports__);
     this.destruirGraficas();
   },
   methods: {
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate,
     toNum(v) {
       if (v === null || v === undefined) return 0;
       const s = String(v).trim().replace(',', '.').replace(/[^\d.-]/g, '');
@@ -17244,7 +17269,7 @@ __webpack_require__.r(__webpack_exports__);
         data: {
           labels: datos.map(x => x.label),
           datasets: [{
-            label: 'Horas por empleado',
+            label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Hours by employee'),
             data: datos.map(x => Number(x.horas.toFixed(2))),
             backgroundColor: '#5b6cfa',
             borderRadius: 8,
@@ -17264,7 +17289,11 @@ __webpack_require__.r(__webpack_exports__);
                     style: 'currency',
                     currency: 'MXN'
                   }).format(item.costo || 0);
-                  return [`Horas: ${context.raw}`, `Costo: ${costo}`];
+                  return [(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Hours: {hours}', {
+                    hours: context.raw
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Cost: {cost}', {
+                    cost: costo
+                  })];
                 }
               }
             }
@@ -17296,7 +17325,7 @@ __webpack_require__.r(__webpack_exports__);
         data: {
           labels: datos.map(x => x.label),
           datasets: [{
-            label: 'Horas por proyecto',
+            label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Hours by project'),
             data: datos.map(x => Number(x.horas.toFixed(2))),
             backgroundColor: '#14b8a6',
             borderRadius: 8,
@@ -17312,7 +17341,13 @@ __webpack_require__.r(__webpack_exports__);
               callbacks: {
                 label(context) {
                   const item = datos[context.dataIndex];
-                  return [`Horas: ${context.raw}`, `Reportes: ${item.reportes}`, `Participación: ${item.porcentaje.toFixed(2)}%`];
+                  return [(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Hours: {hours}', {
+                    hours: context.raw
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Reports: {reports}', {
+                    reports: item.reportes
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Share: {percent}%', {
+                    percent: item.porcentaje.toFixed(2)
+                  })];
                 }
               }
             }
@@ -17344,7 +17379,7 @@ __webpack_require__.r(__webpack_exports__);
         data: {
           labels: datos.map(x => x.label),
           datasets: [{
-            label: 'Horas por actividad',
+            label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Hours by activity'),
             data: datos.map(x => Number(x.horas.toFixed(2))),
             backgroundColor: ['#5b6cfa', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16'],
             borderWidth: 0
@@ -17361,7 +17396,14 @@ __webpack_require__.r(__webpack_exports__);
               callbacks: {
                 label(context) {
                   const item = datos[context.dataIndex];
-                  return [`${context.label}: ${context.raw} horas`, `Reportes: ${item.reportes}`, `Participación: ${item.porcentaje.toFixed(2)}%`];
+                  return [(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', '{label}: {hours} hours', {
+                    label: context.label,
+                    hours: context.raw
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Reports: {reports}', {
+                    reports: item.reportes
+                  }), (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Share: {percent}%', {
+                    percent: item.porcentaje.toFixed(2)
+                  })];
                 }
               }
             }
@@ -17380,7 +17422,7 @@ __webpack_require__.r(__webpack_exports__);
         data: {
           labels: datos.map(x => x.label),
           datasets: [{
-            label: 'Horas por día',
+            label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', 'Hours by day'),
             data: datos.map(x => Number(x.horas.toFixed(2))),
             tension: 0.3,
             fill: true,
@@ -17398,7 +17440,10 @@ __webpack_require__.r(__webpack_exports__);
               callbacks: {
                 label(context) {
                   const item = datos[context.dataIndex];
-                  return `${context.raw} horas en ${item.reportes} reporte(s)`;
+                  return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_1__.translate)('empleados', '{hours} hours in {reports} report(s)', {
+                    hours: context.raw,
+                    reports: item.reportes
+                  });
                 }
               }
             }
@@ -17601,40 +17646,40 @@ __webpack_require__.r(__webpack_exports__);
       anioSeleccionado: null,
       actividades: [],
       meses: [{
-        label: 'Enero',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'January'),
         value: 1
       }, {
-        label: 'Febrero',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'February'),
         value: 2
       }, {
-        label: 'Marzo',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'March'),
         value: 3
       }, {
-        label: 'Abril',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'April'),
         value: 4
       }, {
-        label: 'Mayo',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'May'),
         value: 5
       }, {
-        label: 'Junio',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'June'),
         value: 6
       }, {
-        label: 'Julio',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'July'),
         value: 7
       }, {
-        label: 'Agosto',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'August'),
         value: 8
       }, {
-        label: 'Septiembre',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'September'),
         value: 9
       }, {
-        label: 'Octubre',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'October'),
         value: 10
       }, {
-        label: 'Noviembre',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'November'),
         value: 11
       }, {
-        label: 'Diciembre',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_6__.translate)('empleados', 'December'),
         value: 12
       }],
       anios: Array.from({
@@ -18538,7 +18583,7 @@ var render = function render() {
   }), _vm._v(" "), _c("br"), _vm._v(" "), _c("NcButton", {
     staticClass: "center",
     attrs: {
-      "aria-label": "Guardar cambios",
+      "aria-label": _vm.t("empleados", "Save changes"),
       type: "primary"
     },
     on: {
@@ -18546,7 +18591,7 @@ var render = function render() {
         return _vm.crearEquipo();
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save Changes")) + "\n\t\t\t\t")])], 1)])]) : _vm._e()], 1);
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save changes")) + "\n\t\t\t\t")])], 1)])]) : _vm._e()], 1);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -18571,7 +18616,7 @@ var render = function render() {
     _c = _vm._self._c;
   return _vm.loading ? _c("NcAppContent", {
     attrs: {
-      name: "Loading"
+      name: _vm.t("empleados", "Loading")
     }
   }, [_c("NcEmptyContent", {
     staticClass: "empty-content",
@@ -18591,7 +18636,7 @@ var render = function render() {
     }], null, false, 3155754792)
   })], 1) : _c("NcAppContent", {
     attrs: {
-      name: "Loading"
+      name: _vm.t("empleados", "Loading")
     },
     scopedSlots: _vm._u([{
       key: "list",
@@ -19448,7 +19493,7 @@ var render = function render() {
     attrs: {
       "button-variant": true,
       value: "minutos",
-      name: "Minutos",
+      name: _vm.t("empleados", "Minutes"),
       type: "radio",
       "button-variant-grouped": "horizontal",
       disabled: !_vm.editable
@@ -19460,11 +19505,11 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\tMinutos\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Minutes")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       "button-variant": true,
       value: "horas",
-      name: "Horas",
+      name: _vm.t("empleados", "Hours"),
       type: "radio",
       "button-variant-grouped": "horizontal",
       disabled: !_vm.editable
@@ -19476,7 +19521,7 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\tHoras\n\t\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _c("NcSelect", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours")) + "\n\t\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _c("NcSelect", {
     staticClass: "fit",
     attrs: {
       "input-label": _vm.t("empleados", "Activity"),
@@ -23720,7 +23765,7 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("NcAppContent", {
     attrs: {
-      name: "Empleados – Actividades"
+      name: _vm.t("empleados", "Employees - Activities")
     }
   }, [_c("List", {
     attrs: {
@@ -23791,7 +23836,7 @@ var render = function render() {
     attrs: {
       "button-variant": true,
       value: "minutos",
-      name: "Minutos",
+      name: _vm.t("empleados", "Minutes"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -23802,11 +23847,11 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tMinutos\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Minutes")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       "button-variant": true,
       value: "horas",
-      name: "Horas",
+      name: _vm.t("empleados", "Hours"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -23817,7 +23862,7 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tHoras\n\t\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours")) + "\n\t\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "estimatetime"
   }, [_c("NcTextField", {
     staticClass: "form-control",
@@ -25258,13 +25303,13 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("NcAppContent", {
     attrs: {
-      name: "Cumplimiento de reportes"
+      name: _vm.t("empleados", "Reports compliance")
     }
   }, [_c("div", {
     staticClass: "cumplimiento-page"
   }, [_c("div", {
     staticClass: "header"
-  }, [_c("div", [_c("h2", [_vm._v("Cumplimiento de reportes")]), _vm._v(" "), _c("p", [_vm._v("Estado diario de reportes de tiempo por empleado.")])]), _vm._v(" "), _c("NcDateTimePicker", {
+  }, [_c("div", [_c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Reports compliance")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Daily time-report status by employee.")))])]), _vm._v(" "), _c("NcDateTimePicker", {
     staticClass: "date-picker",
     attrs: {
       type: "date"
@@ -25304,7 +25349,7 @@ var render = function render() {
     on: {
       click: _vm.enviarRecordatoriosPendientes
     }
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.sendingReminder ? "Enviando..." : "Recordar pendientes") + "\n\t\t\t")])], 1), _vm._v(" "), _vm.loading ? _c("div", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.sendingReminder ? _vm.t("empleados", "Sending...") : _vm.t("empleados", "Remind pending")) + "\n\t\t\t")])], 1), _vm._v(" "), _vm.loading ? _c("div", {
     staticClass: "loading"
   }, [_c("NcLoadingIcon", {
     attrs: {
@@ -25316,46 +25361,46 @@ var render = function render() {
     staticClass: "kpi-card"
   }, [_c("div", {
     staticClass: "kpi-label"
-  }, [_vm._v("\n\t\t\t\t\t\tEmpleados\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Employees")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "kpi-value"
   }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.kpis.total_empleados) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "kpi-card ok"
   }, [_c("div", {
     staticClass: "kpi-label"
-  }, [_vm._v("\n\t\t\t\t\t\tReportados\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reported")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "kpi-value"
   }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.kpis.reportados) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "kpi-card pending"
   }, [_c("div", {
     staticClass: "kpi-label"
-  }, [_vm._v("\n\t\t\t\t\t\tPendientes\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Pending")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "kpi-value"
   }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.kpis.pendientes) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "kpi-card"
   }, [_c("div", {
     staticClass: "kpi-label"
-  }, [_vm._v("\n\t\t\t\t\t\tCumplimiento\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Compliance")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "kpi-value"
   }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.kpis.porcentaje_cumplimiento) + "%\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "kpi-card"
   }, [_c("div", {
     staticClass: "kpi-label"
-  }, [_vm._v("\n\t\t\t\t\t\tHoras\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "kpi-value"
   }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.kpis.total_horas) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
     staticClass: "table-card"
   }, [_c("table", {
     staticClass: "cumplimiento-table"
-  }, [_c("thead", [_c("tr", [_c("th", [_vm._v("Empleado")]), _vm._v(" "), _c("th", [_vm._v("Usuario")]), _vm._v(" "), _c("th", [_vm._v("Estado")]), _vm._v(" "), _c("th", [_vm._v("Registros")]), _vm._v(" "), _c("th", [_vm._v("Minutos")]), _vm._v(" "), _c("th", [_vm._v("Horas")])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.empleados, function (empleado) {
+  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Employee")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "User")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Records")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Minutes")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Hours")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.empleados, function (empleado) {
     return _c("tr", {
       key: empleado.id_empleado
     }, [_c("td", [_vm._v(_vm._s(empleado.displayname))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.id_user))]), _vm._v(" "), _c("td", [_c("span", {
       staticClass: "badge",
       class: empleado.estado
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(empleado.estado === "reportado" ? "Reportado" : "Pendiente") + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.registros))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.minutos_reportados))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.horas_reportadas))])]);
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(empleado.estado === "reportado" ? _vm.t("empleados", "Reported") : _vm.t("empleados", "Pending")) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.registros))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.minutos_reportados))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(empleado.horas_reportadas))])]);
   }), 0)])]), _vm._v(" "), _vm.empleados.length === 0 ? _c("div", {
     staticClass: "empty"
-  }, [_vm._v("\n\t\t\t\tNo hay empleados para mostrar.\n\t\t\t")]) : _vm._e()])])]);
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "No employees to display.")) + "\n\t\t\t")]) : _vm._e()])])]);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -25380,7 +25425,7 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("NcAppContent", {
     attrs: {
-      name: "Empleados – Reporte rápido"
+      name: _vm.t("empleados", "Employees - Quick report")
     }
   }, [_c("div", {
     staticClass: "quick-report-page"
@@ -25388,10 +25433,12 @@ var render = function render() {
     staticClass: "quick-report-card"
   }, [_c("div", {
     staticClass: "header"
-  }, [_c("h2", [_vm._v("Reporte rápido de tiempo")]), _vm._v(" "), _c("p", [_vm._v("\n\t\t\t\t\tRegistra tus actividades del día de forma rápida.\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
+  }, [_c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Quick time report")))]), _vm._v(" "), _c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Log your day activities quickly.")) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "estado-card",
     class: _vm.estadoClass
-  }, [_c("div", [_c("strong", [_vm._v("Estado de hoy:")]), _vm._v(" " + _vm._s(_vm.loadingEstado ? "Cargando..." : _vm.estadoLabel) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", [_vm._v("\n\t\t\t\t\tHoras reportadas hoy: " + _vm._s(_vm.horasHoy) + " h\n\t\t\t\t")])]), _vm._v(" "), _vm.loading ? _c("div", {
+  }, [_c("div", [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Today status:")))]), _vm._v(" " + _vm._s(_vm.loadingEstado ? _vm.t("empleados", "Loading...") : _vm.estadoLabel) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours reported today: {hours} h", {
+    hours: _vm.horasHoy
+  })) + "\n\t\t\t\t")])]), _vm._v(" "), _vm.loading ? _c("div", {
     staticClass: "loading"
   }, [_c("NcLoadingIcon", {
     attrs: {
@@ -25458,7 +25505,7 @@ var render = function render() {
     attrs: {
       "button-variant": true,
       value: "minutos",
-      name: "Minutos",
+      name: _vm.t("empleados", "Minutes"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -25469,11 +25516,11 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tMinutos\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Minutes")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       "button-variant": true,
       value: "horas",
-      name: "Horas",
+      name: _vm.t("empleados", "Hours"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -25484,13 +25531,13 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tHoras\n\t\t\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("NcTextArea", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours")) + "\n\t\t\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("NcTextArea", {
     staticClass: "top",
     attrs: {
       required: "",
       resize: "vertical",
       value: _vm.description_activity,
-      label: _vm.t("empleados", "Descripción de la actividad")
+      label: _vm.t("empleados", "Activity description")
     },
     on: {
       "update:value": function ($event) {
@@ -25506,7 +25553,7 @@ var render = function render() {
     on: {
       click: _vm.resetForm
     }
-  }, [_vm._v("\n\t\t\t\t\t\tLimpiar\n\t\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Clear")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "primary",
       disabled: !_vm.isFormValid || _vm.saving
@@ -25514,7 +25561,7 @@ var render = function render() {
     on: {
       click: _vm.create
     }
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.saving ? "Guardando..." : "Guardar reporte") + "\n\t\t\t\t\t")])], 1)], 1)])])]);
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.saving ? _vm.t("empleados", "Saving...") : _vm.t("empleados", "Save report")) + "\n\t\t\t\t\t")])], 1)], 1)])])]);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -25539,7 +25586,7 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("NcAppContent", {
     attrs: {
-      name: "Empleados – Actividades"
+      name: _vm.t("empleados", "Employees - Activities")
     }
   }, [_vm.loading ? _c("div", [_c("div", {
     staticClass: "center"
@@ -25750,7 +25797,7 @@ var render = function render() {
     attrs: {
       "button-variant": true,
       value: "minutos",
-      name: "Minutos",
+      name: _vm.t("empleados", "Minutes"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -25761,11 +25808,11 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tMinutos\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Minutes")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       "button-variant": true,
       value: "horas",
-      name: "Horas",
+      name: _vm.t("empleados", "Hours"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -25776,7 +25823,7 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tHoras\n\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _c("NcSelect", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours")) + "\n\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _c("NcSelect", {
     staticClass: "fit",
     attrs: {
       "input-label": _vm.t("empleados", "Activity"),
@@ -25846,71 +25893,95 @@ var render = function render() {
     staticClass: "hero-card hero-card-main"
   }, [_c("div", {
     staticClass: "eyebrow"
-  }, [_vm._v("\n\t\t\t\tDetalle del periodo\n\t\t\t")]), _vm._v(" "), _c("h2", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Period details")) + "\n\t\t\t")]), _vm._v(" "), _c("h2", {
     staticClass: "hero-title"
-  }, [_vm._v("\n\t\t\t\tAnálisis de reportes y distribución operativa\n\t\t\t")]), _vm._v(" "), _c("p", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Report analysis and operational distribution")) + "\n\t\t\t")]), _vm._v(" "), _c("p", {
     staticClass: "hero-copy"
-  }, [_vm._v("\n\t\t\t\tConcentra la carga por proyecto, actividad y días de registro con un listado navegable de detalle.\n\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Review workload by project, activity and logged days with a navigable detail list.")) + "\n\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "hero-stats"
   }, [_c("div", {
     staticClass: "hero-stat"
   }, [_c("span", {
     staticClass: "hero-stat-label"
-  }, [_vm._v("Horas")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Hours")))]), _vm._v(" "), _c("strong", {
     staticClass: "hero-stat-value"
   }, [_vm._v(_vm._s(_vm.kpisFmt.horas_reportadas))])]), _vm._v(" "), _c("div", {
     staticClass: "hero-stat"
   }, [_c("span", {
     staticClass: "hero-stat-label"
-  }, [_vm._v("Costo")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Cost")))]), _vm._v(" "), _c("strong", {
     staticClass: "hero-stat-value"
   }, [_vm._v(_vm._s(_vm.kpisFmt.costo_total))])]), _vm._v(" "), _c("div", {
     staticClass: "hero-stat"
   }, [_c("span", {
     staticClass: "hero-stat-label"
-  }, [_vm._v("Reportes")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Reports")))]), _vm._v(" "), _c("strong", {
     staticClass: "hero-stat-value"
   }, [_vm._v(_vm._s(_vm.kpisFmt.total_reportes))])]), _vm._v(" "), _c("div", {
     staticClass: "hero-stat"
   }, [_c("span", {
     staticClass: "hero-stat-label"
-  }, [_vm._v("Proyectos (clientes)")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Projects (customers)")))]), _vm._v(" "), _c("strong", {
     staticClass: "hero-stat-value"
   }, [_vm._v(_vm._s(_vm.kpisFmt.proyectos_activos))])]), _vm._v(" "), _c("div", {
     staticClass: "hero-stat"
   }, [_c("span", {
     staticClass: "hero-stat-label"
-  }, [_vm._v("Actividades")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Activities")))]), _vm._v(" "), _c("strong", {
     staticClass: "hero-stat-value"
   }, [_vm._v(_vm._s(_vm.kpisFmt.actividades))])]), _vm._v(" "), _c("div", {
     staticClass: "hero-stat"
   }, [_c("span", {
     staticClass: "hero-stat-label"
-  }, [_vm._v("Promedio por reporte")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Average per report")))]), _vm._v(" "), _c("strong", {
     staticClass: "hero-stat-value"
   }, [_vm._v(_vm._s(_vm.kpisFmt.promedio_horas_reporte))])])])])]), _vm._v(" "), _c("section", {
     staticClass: "charts-grid"
   }, [_c("article", {
     staticClass: "panel"
-  }, [_vm._m(0), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Performance")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Projects / Companies")) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartProyectos"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel"
-  }, [_vm._m(1), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Composition")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Activities")) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartActividades"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel"
-  }, [_vm._m(2), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Operational cross-check")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Project vs activity")) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box chart-box-large"
   }, [_c("canvas", {
     ref: "chartProyectoActividad"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel"
-  }, [_vm._m(3), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Trend")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours per day")) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartHorasDia"
@@ -25918,9 +25989,15 @@ var render = function render() {
     staticClass: "panel panel-full"
   }, [_c("div", {
     staticClass: "panel-heading"
-  }, [_vm._m(4), _vm._v(" "), _c("div", {
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Transactional detail")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Period reports")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.historial.length) + " registros\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "{count} records", {
+    count: _vm.historial.length
+  })) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "details-list-wrap"
   }, [_c("VirtualList", {
     staticClass: "details-list",
@@ -25935,55 +26012,7 @@ var render = function render() {
     }
   })], 1)]) : _vm._e()])]);
 };
-var staticRenderFns = [function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\tRendimiento\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\tProyectos / Empresas\n\t\t\t\t\t")])])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\tComposición\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\tActividades\n\t\t\t\t\t")])])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\tCruce operativo\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\tProyecto vs actividad\n\t\t\t\t\t")])])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\tTendencia\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\tHoras por día\n\t\t\t\t\t")])])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\tDetalle transaccional\n\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\tReportes del periodo\n\t\t\t\t\t")])]);
-}];
+var staticRenderFns = [];
 render._withStripped = true;
 
 
@@ -26008,9 +26037,9 @@ var render = function render() {
     staticClass: "resumen-general"
   }, [_vm.loading ? _c("div", {
     staticClass: "state-card"
-  }, [_vm._v("\n\t\tCargando resumen...\n\t")]) : !_vm.resumen ? _c("div", {
+  }, [_vm._v("\n\t\t" + _vm._s(_vm.t("empleados", "Loading summary...")) + "\n\t")]) : !_vm.resumen ? _c("div", {
     staticClass: "state-card"
-  }, [_vm._v("\n\t\tNo hay datos para este periodo.\n\t")]) : _c("div", {
+  }, [_vm._v("\n\t\t" + _vm._s(_vm.t("empleados", "No data for this period.")) + "\n\t")]) : _c("div", {
     staticClass: "dashboard-shell"
   }, [_c("section", {
     staticClass: "summary-grid"
@@ -26018,67 +26047,79 @@ var render = function render() {
     staticClass: "summary-card summary-card-accent"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tHoras reportadas\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reported hours")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.horas_reportadas) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "summary-card"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tCosto total\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Total cost")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.costo_total) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "summary-card"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tEmpleados con reportes\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Employees with reports")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.empleados_con_reportes) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "summary-card"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tReportes\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reports")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.total_reportes) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "summary-card"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tProyectos\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Projects")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.proyectos_activos) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "summary-card"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tActividades\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Activities")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.actividades) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "summary-card"
   }, [_c("div", {
     staticClass: "summary-label"
-  }, [_vm._v("\n\t\t\t\t\tPromedio por reporte\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Average per report")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-value"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.resumenFmt.promedio_horas_reporte) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "summary-meta"
-  }, [_vm._v("\n\t\t\t\t\tEficiencia media registrada\n\t\t\t\t")])])]), _vm._v(" "), _c("section", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Average recorded efficiency")) + "\n\t\t\t\t")])])]), _vm._v(" "), _c("section", {
     staticClass: "charts-grid"
   }, [_c("article", {
     staticClass: "panel panel-wide"
   }, [_c("div", {
     staticClass: "panel-heading"
-  }, [_vm._m(0), _vm._v(" "), _c("div", {
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Distribution")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours by employee")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.resumenFmt.empleados_con_reportes) + " activos\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "{count} active", {
+    count: _vm.resumenFmt.empleados_con_reportes
+  })) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box chart-box-tall"
   }, [_c("canvas", {
     ref: "chartHorasEmpleado"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel panel-small"
-  }, [_vm._m(1), _vm._v(" "), _c("ul", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Key indicators")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Attention points")) + "\n\t\t\t\t\t\t")])])]), _vm._v(" "), _c("ul", {
     staticClass: "insight-list"
   }, [_c("li", {
     staticClass: "insight-item"
   }, [_c("span", {
     staticClass: "insight-label"
-  }, [_vm._v("Empleado con mayor carga")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Employee with highest workload")))]), _vm._v(" "), _c("strong", {
     staticClass: "insight-value"
   }, [_vm._v(_vm._s(_vm.topEmpleado.label))]), _vm._v(" "), _c("span", {
     staticClass: "insight-meta"
@@ -26086,7 +26127,7 @@ var render = function render() {
     staticClass: "insight-item"
   }, [_c("span", {
     staticClass: "insight-label"
-  }, [_vm._v("Proyecto dominante")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Leading project")))]), _vm._v(" "), _c("strong", {
     staticClass: "insight-value"
   }, [_vm._v(_vm._s(_vm.topProyecto.label))]), _vm._v(" "), _c("span", {
     staticClass: "insight-meta"
@@ -26094,7 +26135,7 @@ var render = function render() {
     staticClass: "insight-item"
   }, [_c("span", {
     staticClass: "insight-label"
-  }, [_vm._v("Actividad principal")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Main activity")))]), _vm._v(" "), _c("strong", {
     staticClass: "insight-value"
   }, [_vm._v(_vm._s(_vm.topActividad.label))]), _vm._v(" "), _c("span", {
     staticClass: "insight-meta"
@@ -26102,17 +26143,27 @@ var render = function render() {
     staticClass: "insight-item"
   }, [_c("span", {
     staticClass: "insight-label"
-  }, [_vm._v("Cobertura operativa")]), _vm._v(" "), _c("strong", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Operational coverage")))]), _vm._v(" "), _c("strong", {
     staticClass: "insight-value"
-  }, [_vm._v(_vm._s(_vm.resumenFmt.empleados_con_reportes) + " empleados")]), _vm._v(" "), _c("span", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "{count} employees", {
+    count: _vm.resumenFmt.empleados_con_reportes
+  })))]), _vm._v(" "), _c("span", {
     staticClass: "insight-meta"
-  }, [_vm._v(_vm._s(_vm.resumenFmt.total_reportes) + " reportes registrados")])])])]), _vm._v(" "), _c("article", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "{count} reports recorded", {
+    count: _vm.resumenFmt.total_reportes
+  })))])])])]), _vm._v(" "), _c("article", {
     staticClass: "panel"
   }, [_c("div", {
     staticClass: "panel-heading"
-  }, [_vm._m(2), _vm._v(" "), _c("div", {
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Composition")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Activities")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.resumenFmt.actividades) + " categorías\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "{count} categories", {
+    count: _vm.resumenFmt.actividades
+  })) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartActividades"
@@ -26120,103 +26171,63 @@ var render = function render() {
     staticClass: "panel"
   }, [_c("div", {
     staticClass: "panel-heading"
-  }, [_vm._m(3), _vm._v(" "), _c("div", {
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Performance")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Projects / companies")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.resumenFmt.proyectos_activos) + " proyectos\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "{count} projects", {
+    count: _vm.resumenFmt.proyectos_activos
+  })) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartProyectos"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel"
-  }, [_vm._m(4), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Trend")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours per day")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    staticClass: "panel-badge"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Time series")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartHorasDia"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel"
-  }, [_vm._m(5), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Volume")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reports per day")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    staticClass: "panel-badge"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Daily frequency")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box"
   }, [_c("canvas", {
     ref: "chartReportesDia"
   })])]), _vm._v(" "), _c("article", {
     staticClass: "panel panel-full"
-  }, [_vm._m(6), _vm._v(" "), _c("div", {
+  }, [_c("div", {
+    staticClass: "panel-heading"
+  }, [_c("div", [_c("div", {
+    staticClass: "panel-eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Operational cross-check")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
+    staticClass: "panel-title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Project vs activity")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    staticClass: "panel-badge"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Stacked distribution")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "chart-box chart-box-large"
   }, [_c("canvas", {
     ref: "chartProyectoActividad"
   })])])])])]);
 };
-var staticRenderFns = [function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tDistribución\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tHoras por empleado\n\t\t\t\t\t\t")])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tIndicadores clave\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tPuntos de atención\n\t\t\t\t\t\t")])])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tComposición\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tActividades\n\t\t\t\t\t\t")])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tRendimiento\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tProyectos / empresas\n\t\t\t\t\t\t")])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tTendencia\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tHoras por día\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
-    staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t\tSerie temporal\n\t\t\t\t\t")])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tVolumen\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tReportes por día\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
-    staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t\tFrecuencia diaria\n\t\t\t\t\t")])]);
-}, function () {
-  var _vm = this,
-    _c = _vm._self._c;
-  return _c("div", {
-    staticClass: "panel-heading"
-  }, [_c("div", [_c("div", {
-    staticClass: "panel-eyebrow"
-  }, [_vm._v("\n\t\t\t\t\t\t\tCruce operativo\n\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", {
-    staticClass: "panel-title"
-  }, [_vm._v("\n\t\t\t\t\t\t\tProyecto vs actividad\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
-    staticClass: "panel-badge"
-  }, [_vm._v("\n\t\t\t\t\t\tDistribución apilada\n\t\t\t\t\t")])]);
-}];
+var staticRenderFns = [];
 render._withStripped = true;
 
 
@@ -26239,7 +26250,7 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("NcAppContent", {
     attrs: {
-      name: "Empleados – Actividades"
+      name: _vm.t("empleados", "Employees - Activities")
     }
   }, [_c("List", {
     attrs: {
@@ -26311,7 +26322,7 @@ var render = function render() {
       fn: function () {
         return [_c("div", {
           staticClass: "periodo-details"
-        }, [_c("h3", [_vm._v("\n\t\t\t\t\tResumen general - " + _vm._s(_vm.monthLabel(_vm.periodo_inicio)) + " -\n\t\t\t\t\t" + _vm._s(_vm.monthLabel(_vm.periodo_fin)) + "\n\t\t\t\t\t(" + _vm._s(_vm.normalizedPeriod.anio || "-") + ")\n\t\t\t\t")]), _vm._v(" "), _c("AdminResumenGeneral", {
+        }, [_c("h3", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "General summary")) + " - " + _vm._s(_vm.monthLabel(_vm.periodo_inicio)) + " -\n\t\t\t\t\t" + _vm._s(_vm.monthLabel(_vm.periodo_fin)) + "\n\t\t\t\t\t(" + _vm._s(_vm.normalizedPeriod.anio || "-") + ")\n\t\t\t\t")]), _vm._v(" "), _c("AdminResumenGeneral", {
           attrs: {
             resumen: _vm.resumenGeneral,
             loading: _vm.loadingResumen,
@@ -26324,7 +26335,7 @@ var render = function render() {
     }, {
       key: "details",
       fn: function () {
-        return [_c("h3", [_vm._v("Resumen Empleado - " + _vm._s(_vm.monthLabel(_vm.periodo_inicio)) + " - " + _vm._s(_vm.monthLabel(_vm.periodo_fin)) + " (" + _vm._s(_vm.normalizedPeriod.anio || "-") + ")")]), _vm._v(" "), _c("AdminDetalles", {
+        return [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Employee summary")) + " - " + _vm._s(_vm.monthLabel(_vm.periodo_inicio)) + " - " + _vm._s(_vm.monthLabel(_vm.periodo_fin)) + " (" + _vm._s(_vm.normalizedPeriod.anio || "-") + ")")]), _vm._v(" "), _c("AdminDetalles", {
           attrs: {
             select: _vm.select,
             sueldo: _vm.sueldo,
@@ -26378,7 +26389,7 @@ var render = function render() {
     attrs: {
       "button-variant": true,
       value: "minutos",
-      name: "Minutos",
+      name: _vm.t("empleados", "Minutes"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -26389,11 +26400,11 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tMinutos\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Minutes")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       "button-variant": true,
       value: "horas",
-      name: "Horas",
+      name: _vm.t("empleados", "Hours"),
       type: "radio",
       "button-variant-grouped": "horizontal"
     },
@@ -26404,7 +26415,7 @@ var render = function render() {
       },
       expression: "type_time"
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\tHoras\n\t\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Hours")) + "\n\t\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "estimatetime"
   }, [_c("NcTextField", {
     attrs: {
@@ -26459,7 +26470,7 @@ var render = function render() {
   }), _vm._v(" "), _vm.modalReport ? _c("NcModal", {
     ref: "modalRef",
     attrs: {
-      name: _vm.t("empleados", "Add new activity"),
+      name: _vm.t("empleados", "Report configuration"),
       size: "large"
     },
     on: {
@@ -26489,7 +26500,7 @@ var render = function render() {
       options: _vm.meses,
       label: "label",
       reduce: m => m.value,
-      "input-label": "Mes de inicio"
+      "input-label": _vm.t("empleados", "Start month")
     },
     model: {
       value: _vm.periodo_inicio,
@@ -26504,7 +26515,7 @@ var render = function render() {
       options: _vm.meses,
       label: "label",
       reduce: m => m.value,
-      "input-label": "Mes de fin"
+      "input-label": _vm.t("empleados", "End month")
     },
     model: {
       value: _vm.periodo_fin,
@@ -26518,7 +26529,7 @@ var render = function render() {
     attrs: {
       options: _vm.anios,
       reduce: a => a,
-      "input-label": "Año"
+      "input-label": _vm.t("empleados", "Year")
     },
     model: {
       value: _vm.anioSeleccionado,

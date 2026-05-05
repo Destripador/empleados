@@ -1,18 +1,18 @@
 <template>
 	<div class="resumen-general">
 		<div v-if="loading" class="state-card">
-			Cargando resumen...
+			{{ t('empleados', 'Loading summary...') }}
 		</div>
 
 		<div v-else-if="!resumen" class="state-card">
-			No hay datos para este periodo.
+			{{ t('empleados', 'No data for this period.') }}
 		</div>
 
 		<div v-else class="dashboard-shell">
 			<section class="summary-grid">
 				<div class="summary-card summary-card-accent">
 					<div class="summary-label">
-						Horas reportadas
+						{{ t('empleados', 'Reported hours') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.horas_reportadas }}
@@ -21,7 +21,7 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
-						Costo total
+						{{ t('empleados', 'Total cost') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.costo_total }}
@@ -30,7 +30,7 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
-						Empleados con reportes
+						{{ t('empleados', 'Employees with reports') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.empleados_con_reportes }}
@@ -39,7 +39,7 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
-						Reportes
+						{{ t('empleados', 'Reports') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.total_reportes }}
@@ -48,7 +48,7 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
-						Proyectos
+						{{ t('empleados', 'Projects') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.proyectos_activos }}
@@ -57,7 +57,7 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
-						Actividades
+						{{ t('empleados', 'Activities') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.actividades }}
@@ -66,13 +66,13 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
-						Promedio por reporte
+						{{ t('empleados', 'Average per report') }}
 					</div>
 					<div class="summary-value">
 						{{ resumenFmt.promedio_horas_reporte }}
 					</div>
 					<div class="summary-meta">
-						Eficiencia media registrada
+						{{ t('empleados', 'Average recorded efficiency') }}
 					</div>
 				</div>
 			</section>
@@ -82,14 +82,14 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Distribución
+								{{ t('empleados', 'Distribution') }}
 							</div>
 							<h3 class="panel-title">
-								Horas por empleado
+								{{ t('empleados', 'Hours by employee') }}
 							</h3>
 						</div>
 						<div class="panel-badge">
-							{{ resumenFmt.empleados_con_reportes }} activos
+							{{ t('empleados', '{count} active', { count: resumenFmt.empleados_con_reportes }) }}
 						</div>
 					</div>
 					<div class="chart-box chart-box-tall">
@@ -101,34 +101,34 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Indicadores clave
+								{{ t('empleados', 'Key indicators') }}
 							</div>
 							<h3 class="panel-title">
-								Puntos de atención
+								{{ t('empleados', 'Attention points') }}
 							</h3>
 						</div>
 					</div>
 
 					<ul class="insight-list">
 						<li class="insight-item">
-							<span class="insight-label">Empleado con mayor carga</span>
+							<span class="insight-label">{{ t('empleados', 'Employee with highest workload') }}</span>
 							<strong class="insight-value">{{ topEmpleado.label }}</strong>
 							<span class="insight-meta">{{ topEmpleado.valor }}</span>
 						</li>
 						<li class="insight-item">
-							<span class="insight-label">Proyecto dominante</span>
+							<span class="insight-label">{{ t('empleados', 'Leading project') }}</span>
 							<strong class="insight-value">{{ topProyecto.label }}</strong>
 							<span class="insight-meta">{{ topProyecto.valor }}</span>
 						</li>
 						<li class="insight-item">
-							<span class="insight-label">Actividad principal</span>
+							<span class="insight-label">{{ t('empleados', 'Main activity') }}</span>
 							<strong class="insight-value">{{ topActividad.label }}</strong>
 							<span class="insight-meta">{{ topActividad.valor }}</span>
 						</li>
 						<li class="insight-item">
-							<span class="insight-label">Cobertura operativa</span>
-							<strong class="insight-value">{{ resumenFmt.empleados_con_reportes }} empleados</strong>
-							<span class="insight-meta">{{ resumenFmt.total_reportes }} reportes registrados</span>
+							<span class="insight-label">{{ t('empleados', 'Operational coverage') }}</span>
+							<strong class="insight-value">{{ t('empleados', '{count} employees', { count: resumenFmt.empleados_con_reportes }) }}</strong>
+							<span class="insight-meta">{{ t('empleados', '{count} reports recorded', { count: resumenFmt.total_reportes }) }}</span>
 						</li>
 					</ul>
 				</article>
@@ -137,14 +137,14 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Composición
+								{{ t('empleados', 'Composition') }}
 							</div>
 							<h3 class="panel-title">
-								Actividades
+								{{ t('empleados', 'Activities') }}
 							</h3>
 						</div>
 						<div class="panel-badge">
-							{{ resumenFmt.actividades }} categorías
+							{{ t('empleados', '{count} categories', { count: resumenFmt.actividades }) }}
 						</div>
 					</div>
 					<div class="chart-box">
@@ -156,14 +156,14 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Rendimiento
+								{{ t('empleados', 'Performance') }}
 							</div>
 							<h3 class="panel-title">
-								Proyectos / empresas
+								{{ t('empleados', 'Projects / companies') }}
 							</h3>
 						</div>
 						<div class="panel-badge">
-							{{ resumenFmt.proyectos_activos }} proyectos
+							{{ t('empleados', '{count} projects', { count: resumenFmt.proyectos_activos }) }}
 						</div>
 					</div>
 					<div class="chart-box">
@@ -175,14 +175,14 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Tendencia
+								{{ t('empleados', 'Trend') }}
 							</div>
 							<h3 class="panel-title">
-								Horas por día
+								{{ t('empleados', 'Hours per day') }}
 							</h3>
 						</div>
 						<div class="panel-badge">
-							Serie temporal
+							{{ t('empleados', 'Time series') }}
 						</div>
 					</div>
 					<div class="chart-box">
@@ -194,14 +194,14 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Volumen
+								{{ t('empleados', 'Volume') }}
 							</div>
 							<h3 class="panel-title">
-								Reportes por día
+								{{ t('empleados', 'Reports per day') }}
 							</h3>
 						</div>
 						<div class="panel-badge">
-							Frecuencia diaria
+							{{ t('empleados', 'Daily frequency') }}
 						</div>
 					</div>
 					<div class="chart-box">
@@ -213,14 +213,14 @@
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								Cruce operativo
+								{{ t('empleados', 'Operational cross-check') }}
 							</div>
 							<h3 class="panel-title">
-								Proyecto vs actividad
+								{{ t('empleados', 'Project vs activity') }}
 							</h3>
 						</div>
 						<div class="panel-badge">
-							Distribución apilada
+							{{ t('empleados', 'Stacked distribution') }}
 						</div>
 					</div>
 					<div class="chart-box chart-box-large">
@@ -235,6 +235,7 @@
 <script>
 // eslint-disable-next-line import/no-named-as-default
 import Chart from 'chart.js/auto'
+import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'AdminResumenGeneral',
@@ -501,6 +502,7 @@ export default {
 	},
 
 	methods: {
+		t,
 		toNum(v) {
 			if (v === null || v === undefined) return 0
 
@@ -536,7 +538,7 @@ export default {
 				data: {
 					labels: datos.map(x => x.label),
 					datasets: [{
-						label: 'Horas por empleado',
+						label: t('empleados', 'Hours by employee'),
 						data: datos.map(x => Number(x.horas.toFixed(2))),
 						backgroundColor: '#5b6cfa',
 						borderRadius: 8,
@@ -558,8 +560,8 @@ export default {
 									}).format(item.costo || 0)
 
 									return [
-										`Horas: ${context.raw}`,
-										`Costo: ${costo}`,
+										t('empleados', 'Hours: {hours}', { hours: context.raw }),
+										t('empleados', 'Cost: {cost}', { cost: costo }),
 									]
 								},
 							},
@@ -596,7 +598,7 @@ export default {
 				data: {
 					labels: datos.map(x => x.label),
 					datasets: [{
-						label: 'Horas por proyecto',
+						label: t('empleados', 'Hours by project'),
 						data: datos.map(x => Number(x.horas.toFixed(2))),
 						backgroundColor: '#14b8a6',
 						borderRadius: 8,
@@ -614,9 +616,9 @@ export default {
 									const item = datos[context.dataIndex]
 
 									return [
-										`Horas: ${context.raw}`,
-										`Reportes: ${item.reportes}`,
-										`Participación: ${item.porcentaje.toFixed(2)}%`,
+										t('empleados', 'Hours: {hours}', { hours: context.raw }),
+										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
+										t('empleados', 'Share: {percent}%', { percent: item.porcentaje.toFixed(2) }),
 									]
 								},
 							},
@@ -653,7 +655,7 @@ export default {
 				data: {
 					labels: datos.map(x => x.label),
 					datasets: [{
-						label: 'Horas por actividad',
+						label: t('empleados', 'Hours by activity'),
 						data: datos.map(x => Number(x.horas.toFixed(2))),
 						backgroundColor: [
 							'#5b6cfa',
@@ -680,9 +682,9 @@ export default {
 									const item = datos[context.dataIndex]
 
 									return [
-										`${context.label}: ${context.raw} horas`,
-										`Reportes: ${item.reportes}`,
-										`Participación: ${item.porcentaje.toFixed(2)}%`,
+										t('empleados', '{label}: {hours} hours', { label: context.label, hours: context.raw }),
+										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
+										t('empleados', 'Share: {percent}%', { percent: item.porcentaje.toFixed(2) }),
 									]
 								},
 							},
@@ -706,7 +708,7 @@ export default {
 				data: {
 					labels: datos.map(x => x.label),
 					datasets: [{
-						label: 'Horas por día',
+						label: t('empleados', 'Hours by day'),
 						data: datos.map(x => Number(x.horas.toFixed(2))),
 						tension: 0.3,
 						fill: true,
@@ -724,7 +726,10 @@ export default {
 							callbacks: {
 								label(context) {
 									const item = datos[context.dataIndex]
-									return `${context.raw} horas en ${item.reportes} reporte(s)`
+									return t('empleados', '{hours} hours in {reports} report(s)', {
+										hours: context.raw,
+										reports: item.reportes,
+									})
 								},
 							},
 						},

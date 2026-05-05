@@ -4,40 +4,40 @@
 		<section class="hero-grid">
 			<div class="hero-card hero-card-main">
 				<div class="eyebrow">
-					Detalle del periodo
+					{{ t('empleados', 'Period details') }}
 				</div>
 				<h2 class="hero-title">
-					Análisis de reportes y distribución operativa
+					{{ t('empleados', 'Report analysis and operational distribution') }}
 				</h2>
 				<p class="hero-copy">
-					Concentra la carga por proyecto, actividad y días de registro con un listado navegable de detalle.
+					{{ t('empleados', 'Review workload by project, activity and logged days with a navigable detail list.') }}
 				</p>
 				<div class="hero-stats">
 					<div class="hero-stat">
-						<span class="hero-stat-label">Horas</span>
+						<span class="hero-stat-label">{{ t('empleados', 'Hours') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.horas_reportadas }}</strong>
 					</div>
 					<div class="hero-stat">
-						<span class="hero-stat-label">Costo</span>
+						<span class="hero-stat-label">{{ t('empleados', 'Cost') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.costo_total }}</strong>
 					</div>
 					<div class="hero-stat">
-						<span class="hero-stat-label">Reportes</span>
+						<span class="hero-stat-label">{{ t('empleados', 'Reports') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.total_reportes }}</strong>
 					</div>
 
 					<div class="hero-stat">
-						<span class="hero-stat-label">Proyectos (clientes)</span>
+						<span class="hero-stat-label">{{ t('empleados', 'Projects (customers)') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.proyectos_activos }}</strong>
 					</div>
 
 					<div class="hero-stat">
-						<span class="hero-stat-label">Actividades</span>
+						<span class="hero-stat-label">{{ t('empleados', 'Activities') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.actividades }}</strong>
 					</div>
 
 					<div class="hero-stat">
-						<span class="hero-stat-label">Promedio por reporte</span>
+						<span class="hero-stat-label">{{ t('empleados', 'Average per report') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.promedio_horas_reporte }}</strong>
 					</div>
 				</div>
@@ -49,10 +49,10 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							Rendimiento
+							{{ t('empleados', 'Performance') }}
 						</div>
 						<h3 class="panel-title">
-							Proyectos / Empresas
+							{{ t('empleados', 'Projects / Companies') }}
 						</h3>
 					</div>
 				</div>
@@ -65,10 +65,10 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							Composición
+							{{ t('empleados', 'Composition') }}
 						</div>
 						<h3 class="panel-title">
-							Actividades
+							{{ t('empleados', 'Activities') }}
 						</h3>
 					</div>
 				</div>
@@ -81,10 +81,10 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							Cruce operativo
+							{{ t('empleados', 'Operational cross-check') }}
 						</div>
 						<h3 class="panel-title">
-							Proyecto vs actividad
+							{{ t('empleados', 'Project vs activity') }}
 						</h3>
 					</div>
 				</div>
@@ -97,10 +97,10 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							Tendencia
+							{{ t('empleados', 'Trend') }}
 						</div>
 						<h3 class="panel-title">
-							Horas por día
+							{{ t('empleados', 'Hours per day') }}
 						</h3>
 					</div>
 				</div>
@@ -113,14 +113,14 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							Detalle transaccional
+							{{ t('empleados', 'Transactional detail') }}
 						</div>
 						<h3 class="panel-title">
-							Reportes del periodo
+							{{ t('empleados', 'Period reports') }}
 						</h3>
 					</div>
 					<div class="panel-badge">
-						{{ historial.length }} registros
+						{{ t('empleados', '{count} records', { count: historial.length }) }}
 					</div>
 				</div>
 				<div class="details-list-wrap">
@@ -138,10 +138,7 @@
 
 <script>
 
-// import { generateUrl } from '@nextcloud/router'
-// import axios from '@nextcloud/axios'
-// import { showError /* showSuccess */ } from '@nextcloud/dialogs'
-// import { translate as t } from '@nextcloud/l10n'
+import { translate as t } from '@nextcloud/l10n'
 import ReportRow from '../../Helpers/Lists/ReportRow.vue'
 import VirtualList from 'vue-virtual-scroll-list'
 
@@ -408,7 +405,7 @@ export default {
 
 			for (const r of this.historial) {
 				const id = r[idCampo] ?? 'sin-id'
-				const label = r[nombreCampo] || `Sin ${nombreCampo}`
+				const label = r[nombreCampo] || `${t('empleados', 'No')} ${nombreCampo}`
 
 				const minutos = this.toNum(r.tiempo_registrado)
 				const horas = minutos / 60
@@ -464,7 +461,7 @@ export default {
 					labels: datos.map(x => x.label),
 					datasets: [
 						{
-							label: 'Horas por proyecto',
+							label: t('empleados', 'Hours by project'),
 							data: datos.map(x => Number(x.total.toFixed(2))),
 						},
 					],
@@ -495,10 +492,10 @@ export default {
 									}).format(item.porcentaje || 0)
 
 									return [
-										`Horas: ${horas}`,
-										`Costo: ${costo}`,
-										`Reportes: ${item.reportes}`,
-										`Participación: ${porcentaje}%`,
+										t('empleados', 'Hours: {hours}', { hours: horas }),
+										t('empleados', 'Cost: {cost}', { cost: costo }),
+										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
+										t('empleados', 'Share: {percent}%', { percent: porcentaje }),
 									]
 								},
 							},

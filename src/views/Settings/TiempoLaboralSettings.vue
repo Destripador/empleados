@@ -108,7 +108,7 @@
 		<NcModal
 			v-if="modalAddAniversario"
 			ref="modalRef"
-			name="add"
+			:name="t('empleados', 'Add')"
 			@close="closeModalAniversario">
 			<div class="modal__content">
 				<h2>{{ t('empleados', 'Add new anniversary information') }}</h2>
@@ -129,7 +129,7 @@
 		<NcModal
 			v-if="modalAddTipo"
 			ref="modalRef"
-			name="add"
+			:name="t('empleados', 'Add')"
 			@close="closeModalTipo">
 			<div class="modal__content">
 				<h2>{{ t('empleados', 'Add new absence type information') }}</h2>

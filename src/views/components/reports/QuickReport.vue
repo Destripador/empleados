@@ -1,19 +1,19 @@
 <template>
-	<NcAppContent name="Empleados – Reporte rápido">
+	<NcAppContent :name="t('empleados', 'Employees - Quick report')">
 		<div class="quick-report-page">
 			<div class="quick-report-card">
 				<div class="header">
-					<h2>Reporte rápido de tiempo</h2>
+					<h2>{{ t('empleados', 'Quick time report') }}</h2>
 					<p>
-						Registra tus actividades del día de forma rápida.
+						{{ t('empleados', 'Log your day activities quickly.') }}
 					</p>
 				</div>
 				<div class="estado-card" :class="estadoClass">
 					<div>
-						<strong>Estado de hoy:</strong> {{ loadingEstado ? 'Cargando...' : estadoLabel }}
+						<strong>{{ t('empleados', 'Today status:') }}</strong> {{ loadingEstado ? t('empleados', 'Loading...') : estadoLabel }}
 					</div>
 					<div>
-						Horas reportadas hoy: {{ horasHoy }} h
+						{{ t('empleados', 'Hours reported today: {hours} h', { hours: horasHoy }) }}
 					</div>
 				</div>
 
@@ -52,20 +52,20 @@
 								v-model="type_time"
 								:button-variant="true"
 								value="minutos"
-								name="Minutos"
+								:name="t('empleados', 'Minutes')"
 								type="radio"
 								button-variant-grouped="horizontal">
-								Minutos
+								{{ t('empleados', 'Minutes') }}
 							</NcCheckboxRadioSwitch>
 
 							<NcCheckboxRadioSwitch
 								v-model="type_time"
 								:button-variant="true"
 								value="horas"
-								name="Horas"
+								:name="t('empleados', 'Hours')"
 								type="radio"
 								button-variant-grouped="horizontal">
-								Horas
+								{{ t('empleados', 'Hours') }}
 							</NcCheckboxRadioSwitch>
 						</div>
 					</div>
@@ -75,20 +75,20 @@
 						resize="vertical"
 						:value.sync="description_activity"
 						class="top"
-						:label="t('empleados', 'Descripción de la actividad')" />
+						:label="t('empleados', 'Activity description')" />
 
 					<div class="actions">
 						<NcButton
 							type="secondary"
 							@click="resetForm">
-							Limpiar
+							{{ t('empleados', 'Clear') }}
 						</NcButton>
 
 						<NcButton
 							type="primary"
 							:disabled="!isFormValid || saving"
 							@click="create">
-							{{ saving ? 'Guardando...' : 'Guardar reporte' }}
+							{{ saving ? t('empleados', 'Saving...') : t('empleados', 'Save report') }}
 						</NcButton>
 					</div>
 				</div>
@@ -172,14 +172,14 @@ export default {
 			const estado = this.estadoHoy?.estado
 
 			if (estado === 'reportado') {
-				return 'Reportado'
+				return t('empleados', 'Reported')
 			}
 
 			if (estado === 'sin_empleado') {
-				return 'Sin empleado asignado'
+				return t('empleados', 'No employee assigned')
 			}
 
-			return 'Pendiente'
+			return t('empleados', 'Pending')
 		},
 
 		estadoClass() {
@@ -223,7 +223,7 @@ export default {
 				const response = await axios.get(generateUrl('/apps/empleados/GetActividades'))
 
 				if (response?.data?.ocs?.meta?.status !== 'ok') {
-					showError(response?.data?.ocs?.meta?.message || 'No se pudieron cargar las actividades')
+					showError(response?.data?.ocs?.meta?.message || t('empleados', 'Could not load activities'))
 					return
 				}
 
@@ -237,7 +237,7 @@ export default {
 					count: item.tiempo_real,
 				}))
 			} catch (err) {
-				showError(t('empleados', 'Error cargando actividades: {error}', { error: String(err) }))
+				showError(t('empleados', 'Error loading activities: {error}', { error: String(err) }))
 			}
 		},
 
@@ -246,7 +246,7 @@ export default {
 				const response = await axios.get(generateUrl('/apps/empleados/GetCompaniesGroups'))
 
 				if (response?.data?.ocs?.meta?.status !== 'ok') {
-					showError(response?.data?.ocs?.meta?.message || 'No se pudieron cargar los clientes')
+					showError(response?.data?.ocs?.meta?.message || t('empleados', 'Could not load customers'))
 					return
 				}
 
@@ -259,13 +259,13 @@ export default {
 					label: item.nombre,
 				}))
 			} catch (err) {
-				showError(t('empleados', 'Error cargando clientes: {error}', { error: String(err) }))
+				showError(t('empleados', 'Error loading customers: {error}', { error: String(err) }))
 			}
 		},
 
 		async create() {
 			if (!this.isFormValid) {
-				showError(t('empleados', 'Completa todos los campos obligatorios con valores válidos.'))
+				showError(t('empleados', 'Complete all required fields with valid values.'))
 				return
 			}
 
@@ -285,11 +285,11 @@ export default {
 			try {
 				await axios.post(generateUrl('/apps/empleados/crearReporte'), payload)
 
-				showSuccess(t('empleados', 'Reporte creado exitosamente'))
+				showSuccess(t('empleados', 'Report created successfully'))
 				await this.loadEstadoHoy()
 				this.resetForm()
 			} catch (err) {
-				showError(t('empleados', 'Error creando reporte: {error}', { error: String(err) }))
+				showError(t('empleados', 'Error creating report: {error}', { error: String(err) }))
 			} finally {
 				this.saving = false
 			}
@@ -311,7 +311,7 @@ export default {
 
 				this.estadoHoy = response?.data?.ocs?.data ?? response?.data ?? null
 			} catch (err) {
-				showError(t('empleados', 'No se pudo cargar el estado de hoy: {error}', { error: String(err) }))
+				showError(t('empleados', 'Could not load today status: {error}', { error: String(err) }))
 			} finally {
 				this.loadingEstado = false
 			}

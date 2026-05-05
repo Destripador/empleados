@@ -124,26 +124,35 @@ class equiposMapper extends QBMapper {
 		return $row;
 	}
 
-	public function deleteByIdReturningRow(string $Id_equipo): ?array {
+	public function deleteByIdReturningRow(string $idEquipo): ?array {
 		$qb = $this->db->getQueryBuilder();
+
 		$qb->select('*')
 			->from($this->getTableName())
-			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($Id_equipo)))
+			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($idEquipo)))
 			->setMaxResults(1);
 
-		$result = $qb->executeQuery();
-		$row = $result->fetchAssociative();
+		$result = method_exists($qb, 'executeQuery')
+			? $qb->executeQuery()
+			: $qb->execute();
+
+		$row = $result->fetch();
 		$result->closeCursor();
 
 		if (!$row) {
 			return null;
 		}
 
-		$qb2 = $this->db->getQueryBuilder();
-		$qb2->delete($this->getTableName())
-			->where($qb2->expr()->eq('Id_equipo', $qb2->createNamedParameter($Id_equipo)));
+		$qb = $this->db->getQueryBuilder();
 
-		$qb2->executeStatement();
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($idEquipo)));
+
+		if (method_exists($qb, 'executeStatement')) {
+			$qb->executeStatement();
+		} else {
+			$qb->execute();
+		}
 
 		return $row;
 	}

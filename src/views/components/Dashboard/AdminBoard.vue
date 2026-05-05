@@ -5,7 +5,7 @@
 		<section class="kpis">
 			<div class="kpi">
 				<div class="kpi-label">
-					Empleados
+					{{ t('empleados', 'Employees') }}
 				</div>
 				<div class="kpi-value">
 					{{ loading ? '…' : stats.totalEmpleados }}
@@ -13,7 +13,7 @@
 			</div>
 			<div class="kpi">
 				<div class="kpi-label">
-					Áreas
+					{{ t('empleados', 'Areas') }}
 				</div>
 				<div class="kpi-value">
 					{{ loading ? '…' : stats.totalAreas }}
@@ -21,7 +21,7 @@
 			</div>
 			<div class="kpi">
 				<div class="kpi-label">
-					Ausencias hoy
+					{{ t('empleados', 'Absences today') }}
 				</div>
 				<div class="kpi-value">
 					{{ loading ? '…' : stats.ausenciasHoy }}
@@ -29,7 +29,7 @@
 			</div>
 			<div class="kpi">
 				<div class="kpi-label">
-					Aniversarios (30 días)
+					{{ t('empleados', 'Anniversaries (30 days)') }}
 				</div>
 				<div class="kpi-value">
 					{{ loading ? '…' : stats.aniversariosMes }}
@@ -39,25 +39,25 @@
 
 		<!-- Acciones rápidas -->
 		<section class="quick">
-			<h3>Acciones rápidas</h3>
+			<h3>{{ t('empleados', 'Quick actions') }}</h3>
 			<div class="quick-grid">
 				<button class="nc-btn" @click="go('empleados')">
-					Ver empleados
+					{{ t('empleados', 'View employees') }}
 				</button>
 				<button class="nc-btn" @click="go('empleados/nuevo')">
-					Alta de empleado
+					{{ t('empleados', 'New employee') }}
 				</button>
 				<button class="nc-btn" @click="go('areas')">
-					Áreas y puestos
+					{{ t('empleados', 'Areas and positions') }}
 				</button>
 				<button class="nc-btn" @click="go('ausencias')">
-					Gestionar ausencias
+					{{ t('empleados', 'Manage absences') }}
 				</button>
 				<button class="nc-btn" @click="go('reportes')">
-					Reportes
+					{{ t('empleados', 'Reports') }}
 				</button>
 				<button class="nc-btn" @click="go('config')">
-					Configuración
+					{{ t('empleados', 'Settings') }}
 				</button>
 			</div>
 		</section>
@@ -65,13 +65,13 @@
 		<!-- Próximos aniversarios -->
 		<section class="panel">
 			<div class="panel-head">
-				<h3>Próximos aniversarios (30 días)</h3>
+				<h3>{{ t('empleados', 'Upcoming anniversaries (30 days)') }}</h3>
 				<button class="nc-link" @click="go('aniversarios')">
-					Ver todo
+					{{ t('empleados', 'View all') }}
 				</button>
 			</div>
 			<div v-if="loading" class="empty">
-				Cargando…
+				{{ t('empleados', 'Loading...') }}
 			</div>
 			<ul v-else-if="aniversarios.length" class="list">
 				<li v-for="a in aniversarios" :key="a.id" class="item">
@@ -81,25 +81,25 @@
 					</div>
 					<div class="item-meta">
 						<span class="pill">{{ a.fecha }}</span>
-						<span class="muted">{{ a.years }} años</span>
+						<span class="muted">{{ t('empleados', '{years} years', { years: a.years }) }}</span>
 					</div>
 				</li>
 			</ul>
 			<div v-else class="empty">
-				Sin aniversarios próximos.
+				{{ t('empleados', 'No upcoming anniversaries.') }}
 			</div>
 		</section>
 
 		<!-- Ausencias hoy -->
 		<section class="panel">
 			<div class="panel-head">
-				<h3>Ausencias de hoy</h3>
+				<h3>{{ t('empleados', 'Today absences') }}</h3>
 				<button class="nc-link" @click="go('ausencias')">
-					Gestionar
+					{{ t('empleados', 'Manage') }}
 				</button>
 			</div>
 			<div v-if="loading" class="empty">
-				Cargando…
+				{{ t('empleados', 'Loading...') }}
 			</div>
 			<ul v-else-if="ausenciasHoy.length" class="list">
 				<li v-for="x in ausenciasHoy" :key="x.id" class="item">
@@ -114,20 +114,20 @@
 				</li>
 			</ul>
 			<div v-else class="empty">
-				Nadie ausente hoy.
+				{{ t('empleados', 'Nobody is absent today.') }}
 			</div>
 		</section>
 
 		<!-- Últimos cambios -->
 		<section class="panel">
 			<div class="panel-head">
-				<h3>Últimos cambios</h3>
+				<h3>{{ t('empleados', 'Latest changes') }}</h3>
 				<button class="nc-link" @click="go('actividad')">
-					Ver actividad
+					{{ t('empleados', 'View activity') }}
 				</button>
 			</div>
 			<div v-if="loading" class="empty">
-				Cargando…
+				{{ t('empleados', 'Loading...') }}
 			</div>
 			<ul v-else-if="actividad.length" class="list">
 				<li v-for="e in actividad" :key="e.id" class="item">
@@ -141,8 +141,18 @@
 				</li>
 			</ul>
 			<div v-else class="empty">
-				Sin actividad reciente.
+				{{ t('empleados', 'No recent activity.') }}
 			</div>
 		</section>
 	</div>
 </template>
+
+<script>
+import { translate as t } from '@nextcloud/l10n'
+
+export default {
+	methods: {
+		t,
+	},
+}
+</script>

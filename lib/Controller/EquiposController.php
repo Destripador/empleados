@@ -167,23 +167,36 @@ class equiposController extends BaseController {
     #[NoAdminRequired]
     public function EliminarEquipo(int $id_equipo): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
+
         try {
             $row = $this->equiposMapper->deleteByIdReturningRow((string)$id_equipo);
-            if ($row) {
-                // ajusta el nombre de la columna al real en tu tabla
-                $nombreGrupo = $row['nombre_equipo'] ?? $row['Nombre'] ?? null;
-                if ($nombreGrupo) {
-                    $group = $this->groupManager->get($nombreGrupo);
-                    if ($group) {
-                        $group->delete($group);
-                    }
-                }
-            } else {
-                return new DataResponse('equipo_no_encontrado', Http::STATUS_NOT_FOUND);
+
+            if (!$row) {
+                return new DataResponse([
+                    'status' => 'error',
+                    'message' => 'Equipo no encontrado.',
+                ], Http::STATUS_NOT_FOUND);
             }
-            return new DataResponse('ok', Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return $e->getMessage();
+
+            $nombreGrupo = $row['Nombre'] ?? $row['nombre'] ?? null;
+
+            if (!empty($nombreGrupo)) {
+                $group = $this->groupManager->get($nombreGrupo);
+
+                if ($group !== null) {
+                    $group->delete();
+                }
+            }
+
+            return new DataResponse([
+                'status' => 'ok',
+                'message' => 'Equipo eliminado correctamente.',
+            ], Http::STATUS_OK);
+        } catch (\Throwable $e) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -192,46 +205,89 @@ class equiposController extends BaseController {
      * Guarda cambios en los equipos.
      */
     #[UseSession]
-    #[NoAdminRequired] // si aplica, cámbiala por #[AdminRequired]
+    #[NoAdminRequired]
     public function GuardarCambioEquipo(int $Id_Equipo, string $Id_jefe_equipo): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
-        // 1) leer estado actual
-        $old = $this->equiposMapper->getById((string)$Id_Equipo);
-        if (!$old) throw new \RuntimeException("Equipo $Id_Equipo no existe");
 
-        $groupName = $old['Nombre'] ?? $old['nombre'] ?? null;
-        if (!$groupName) throw new \RuntimeException("Equipo sin nombre");
+        try {
+            // 1) Leer estado actual
+            $old = $this->equiposMapper->getById((string)$Id_Equipo);
 
-        $oldJefe = $old['Id_jefe_equipo'] ?? $old['id_jefe_equipo'] ?? null;
+            if (!$old) {
+                return new DataResponse([
+                    'status' => 'error',
+                    'message' => "Equipo $Id_Equipo no existe",
+                ], Http::STATUS_NOT_FOUND);
+            }
 
-        // 2) actualizar solo el jefe en BD
-        $this->equiposMapper->updateEquipos((string)$Id_Equipo, $Id_jefe_equipo);
+            $groupName = $old['Nombre'] ?? $old['nombre'] ?? null;
 
-        // 3) asegurar grupo
-        $group = $this->groupManager->get($groupName);
-        if (!$group) {
-            $this->groupManager->createGroup($groupName);
+            if (!$groupName) {
+                return new DataResponse([
+                    'status' => 'error',
+                    'message' => 'Equipo sin nombre',
+                ], Http::STATUS_BAD_REQUEST);
+            }
+
+            $oldJefe = $old['Id_jefe_equipo'] ?? $old['id_jefe_equipo'] ?? null;
+
+            // 2) Actualizar jefe en BD
+            $this->equiposMapper->updateEquipos((string)$Id_Equipo, $Id_jefe_equipo);
+
+            // 3) Asegurar grupo
             $group = $this->groupManager->get($groupName);
-            if (!$group) throw new \RuntimeException("No se pudo crear/obtener el grupo '$groupName'");
+
+            if (!$group) {
+                $this->groupManager->createGroup($groupName);
+                $group = $this->groupManager->get($groupName);
+            }
+
+            if (!$group) {
+                return new DataResponse([
+                    'status' => 'error',
+                    'message' => "No se pudo crear/obtener el grupo '$groupName'",
+                ], Http::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            // 4) Nuevo jefe
+            $newBoss = $this->userManager->get($Id_jefe_equipo);
+
+            if (!$newBoss) {
+                return new DataResponse([
+                    'status' => 'error',
+                    'message' => "Usuario '$Id_jefe_equipo' no existe",
+                ], Http::STATUS_BAD_REQUEST);
+            }
+
+            // 5) Asegurar que el jefe sea miembro del grupo
+            if (!$group->inGroup($newBoss)) {
+                $group->addUser($newBoss);
+            }
+
+            // 6) Promover solo si todavía no es subadmin
+            if (!$this->isSubAdminOfGroupSafe($newBoss, $group)) {
+                $this->subAdmin->createSubAdmin($newBoss, $group);
+            }
+
+            // 7) Quitar subadmin anterior si cambió
+            if ($oldJefe && $oldJefe !== $Id_jefe_equipo) {
+                $oldUser = $this->userManager->get($oldJefe);
+
+                if ($oldUser && $this->isSubAdminOfGroupSafe($oldUser, $group)) {
+                    $this->subAdmin->deleteSubAdmin($oldUser, $group);
+                }
+            }
+
+            return new DataResponse([
+                'status' => 'ok',
+                'message' => 'Equipo actualizado correctamente.',
+            ], Http::STATUS_OK);
+        } catch (\Throwable $e) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
-
-        // 4) nuevo jefe
-        $newBoss = $this->userManager->get($Id_jefe_equipo);
-        if (!$newBoss) throw new \RuntimeException("Usuario '$Id_jefe_equipo' no existe");
-
-        if (!$group->inGroup($newBoss)) $group->addUser($newBoss);
-
-        // 5) promover nuevo jefe
-        $this->subAdmin->createSubAdmin($newBoss, $group);
-
-        // 6) quitar subadmin anterior (si cambió)
-        if ($oldJefe && $oldJefe !== $Id_jefe_equipo) {
-            $oldUser = $this->userManager->get($oldJefe);
-            if ($oldUser) $this->subAdmin->deleteSubAdmin($oldUser, $group);
-            // opcional: también puedes removerlo del grupo:
-            // if ($oldUser && $group->inGroup($oldUser)) $group->removeUser($oldUser);
-        }
-        return new DataResponse('ok', Http::STATUS_OK);
     }
 
     /**
@@ -291,8 +347,10 @@ class equiposController extends BaseController {
                 $group->addUser($user);
             }
 
-            // Promover a subadmin SIN usar HTTP:
-            $this->subAdmin->createSubAdmin($user, $group);
+            // Promover a subadmin
+            if (!$this->isSubAdminOfGroupSafe($user, $group)) {
+                $this->subAdmin->createSubAdmin($user, $group);
+            }
 
             return new DataResponse('ok', Http::STATUS_OK);
         } catch (\Throwable $e) {
@@ -310,5 +368,27 @@ class equiposController extends BaseController {
             throw new UploadException($this->l10n->t('Error en la subida del archivo.'));
         }
         return $file;
+    }
+
+    private function isSubAdminOfGroupSafe($user, $group): bool {
+        if (method_exists($this->subAdmin, 'isSubAdminOfGroup')) {
+            return $this->subAdmin->isSubAdminOfGroup($user, $group);
+        }
+
+        if (method_exists($this->subAdmin, 'isSubAdminofGroup')) {
+            return $this->subAdmin->isSubAdminofGroup($user, $group);
+        }
+
+        if (method_exists($this->subAdmin, 'getSubAdminsGroups')) {
+            $groups = $this->subAdmin->getSubAdminsGroups($user);
+
+            foreach ($groups as $subAdminGroup) {
+                if ($subAdminGroup->getGID() === $group->getGID()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

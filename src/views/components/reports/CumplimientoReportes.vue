@@ -1,10 +1,10 @@
 <template>
-	<NcAppContent name="Cumplimiento de reportes">
+	<NcAppContent :name="t('empleados', 'Reports compliance')">
 		<div class="cumplimiento-page">
 			<div class="header">
 				<div>
-					<h2>Cumplimiento de reportes</h2>
-					<p>Estado diario de reportes de tiempo por empleado.</p>
+					<h2>{{ t('empleados', 'Reports compliance') }}</h2>
+					<p>{{ t('empleados', 'Daily time-report status by employee.') }}</p>
 				</div>
 
 				<NcDateTimePicker
@@ -25,7 +25,7 @@
 					type="primary"
 					:disabled="sendingReminder || kpis.pendientes <= 0"
 					@click="enviarRecordatoriosPendientes">
-					{{ sendingReminder ? 'Enviando...' : 'Recordar pendientes' }}
+					{{ sendingReminder ? t('empleados', 'Sending...') : t('empleados', 'Remind pending') }}
 				</NcButton>
 			</div>
 
@@ -37,7 +37,7 @@
 				<div class="kpis">
 					<div class="kpi-card">
 						<div class="kpi-label">
-							Empleados
+							{{ t('empleados', 'Employees') }}
 						</div>
 						<div class="kpi-value">
 							{{ kpis.total_empleados }}
@@ -46,7 +46,7 @@
 
 					<div class="kpi-card ok">
 						<div class="kpi-label">
-							Reportados
+							{{ t('empleados', 'Reported') }}
 						</div>
 						<div class="kpi-value">
 							{{ kpis.reportados }}
@@ -55,7 +55,7 @@
 
 					<div class="kpi-card pending">
 						<div class="kpi-label">
-							Pendientes
+							{{ t('empleados', 'Pending') }}
 						</div>
 						<div class="kpi-value">
 							{{ kpis.pendientes }}
@@ -64,7 +64,7 @@
 
 					<div class="kpi-card">
 						<div class="kpi-label">
-							Cumplimiento
+							{{ t('empleados', 'Compliance') }}
 						</div>
 						<div class="kpi-value">
 							{{ kpis.porcentaje_cumplimiento }}%
@@ -73,7 +73,7 @@
 
 					<div class="kpi-card">
 						<div class="kpi-label">
-							Horas
+							{{ t('empleados', 'Hours') }}
 						</div>
 						<div class="kpi-value">
 							{{ kpis.total_horas }}
@@ -85,12 +85,12 @@
 					<table class="cumplimiento-table">
 						<thead>
 							<tr>
-								<th>Empleado</th>
-								<th>Usuario</th>
-								<th>Estado</th>
-								<th>Registros</th>
-								<th>Minutos</th>
-								<th>Horas</th>
+								<th>{{ t('empleados', 'Employee') }}</th>
+								<th>{{ t('empleados', 'User') }}</th>
+								<th>{{ t('empleados', 'Status') }}</th>
+								<th>{{ t('empleados', 'Records') }}</th>
+								<th>{{ t('empleados', 'Minutes') }}</th>
+								<th>{{ t('empleados', 'Hours') }}</th>
 							</tr>
 						</thead>
 
@@ -102,7 +102,7 @@
 								<td>{{ empleado.id_user }}</td>
 								<td>
 									<span class="badge" :class="empleado.estado">
-										{{ empleado.estado === 'reportado' ? 'Reportado' : 'Pendiente' }}
+										{{ empleado.estado === 'reportado' ? t('empleados', 'Reported') : t('empleados', 'Pending') }}
 									</span>
 								</td>
 								<td>{{ empleado.registros }}</td>
@@ -114,7 +114,7 @@
 				</div>
 
 				<div v-if="empleados.length === 0" class="empty">
-					No hay empleados para mostrar.
+					{{ t('empleados', 'No employees to display.') }}
 				</div>
 			</div>
 		</div>
@@ -125,6 +125,7 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { translate as t } from '@nextcloud/l10n'
 
 import {
 	NcAppContent,
@@ -166,6 +167,7 @@ export default {
 	},
 
 	methods: {
+		t,
 		formatFecha(fecha) {
 			const date = fecha instanceof Date ? fecha : new Date(fecha)
 
@@ -206,7 +208,7 @@ export default {
 					? data.empleados
 					: []
 			} catch (err) {
-				showError(`No se pudo cargar el cumplimiento: ${String(err)}`)
+				showError(t('empleados', 'Could not load compliance data: {error}', { error: String(err) }))
 			} finally {
 				this.loading = false
 			}
@@ -227,12 +229,15 @@ export default {
 				const data = response?.data?.ocs?.data ?? response?.data ?? {}
 
 				showSuccess(
-					`Recordatorios enviados: ${data.enviados || 0}. Omitidos: ${data.omitidos || 0}.`,
+					t('empleados', 'Reminders sent: {sent}. Skipped: {skipped}.', {
+						sent: data.enviados || 0,
+						skipped: data.omitidos || 0,
+					}),
 				)
 
 				await this.loadCumplimiento()
 			} catch (err) {
-				showError(`No se pudieron enviar recordatorios: ${String(err)}`)
+				showError(t('empleados', 'Could not send reminders: {error}', { error: String(err) }))
 			} finally {
 				this.sendingReminder = false
 			}

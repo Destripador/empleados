@@ -138,7 +138,7 @@ export default {
 			showDialogFolder: false,
 			showLoading: false,
 			Folder: '',
-			buttons: [{ label: t('empleados', 'Crear'), type: 'primary', nativeType: 'submit' }],
+			buttons: [{ label: t('empleados', 'Create'), type: 'primary', nativeType: 'submit' }],
 		}
 	},
 	watch: {
@@ -172,7 +172,7 @@ export default {
 					}))
 					: []
 			} catch (error) {
-				showError('❌ Error al obtener archivos: ' + error.message)
+				showError(t('empleados', 'Error fetching files: {error}', { error: error.message }))
 			}
 		},
 		exploreFolder(file) {
@@ -196,10 +196,10 @@ export default {
 				const safeFolder = this.Folder.trim().replace(/[<>:"/\\|?*]/g, '_')
 				await getClient().createDirectory(`${this.currentPath}${safeFolder}/`)
 				this.Folder = ''
-				showSuccess('✅ Carpeta creada.')
+				showSuccess(t('empleados', 'Folder created.'))
 				this.fetchFiles()
 			} catch (e) {
-				showError('❌ ' + e.message)
+				showError(String(e.message || e))
 			}
 		},
 		async subirArchivo(file, destino) {
@@ -213,13 +213,13 @@ export default {
 				try {
 					const remoto = await this.client.stat(this.currentPath + file.name)
 					if (remoto?.size === file.size) {
-						showSuccess(`✅ Archivo ${file.name} subido correctamente.`)
+						showSuccess(t('empleados', 'File {name} uploaded successfully.', { name: file.name }))
 						return
 					}
 				} catch {}
 				await new Promise(resolve => setTimeout(resolve, delay))
 			}
-			showWarning(`⚠️ No se pudo confirmar la subida del archivo ${file.name} después de varios intentos.`)
+			showWarning(t('empleados', 'Could not confirm upload of file {name} after several attempts.', { name: file.name }))
 		},
 		async uploadFile(event) {
 			const files = Array.from(event.target.files)

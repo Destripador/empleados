@@ -81,10 +81,10 @@
 					<br>
 					<NcButton
 						class="center"
-						aria-label="Guardar cambios"
+						:aria-label="t('empleados', 'Save changes')"
 						type="primary"
 						@click="crearEquipo()">
-						{{ t('empleados', 'Save Changes') }}
+						{{ t('empleados', 'Save changes') }}
 					</NcButton>
 				</div>
 			</div>

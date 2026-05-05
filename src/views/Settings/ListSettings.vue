@@ -104,48 +104,48 @@
 			<div class="settings-card settings-card-wide">
 				<NcNoteCard :type="'info'" :heading="t('empleados','Report times settings')">
 					<p>
-						Configuración de recordatorios y cumplimiento del módulo de reportes de tiempo.
+						{{ t('empleados', 'Reminder and compliance settings for the time reports module.') }}
 					</p>
 
 					<NcCheckboxRadioSwitch
 						:checked="reportes_recordatorios_enabled"
 						type="switch"
 						@update:checked="reportes_recordatorios_enabled = !reportes_recordatorios_enabled">
-						Activar recordatorios automáticos
+						{{ t('empleados', 'Enable automatic reminders') }}
 					</NcCheckboxRadioSwitch>
 
 					<NcCheckboxRadioSwitch
 						:checked="reportes_recordatorios_email"
 						type="switch"
 						@update:checked="reportes_recordatorios_email = !reportes_recordatorios_email">
-						Enviar recordatorios por correo
+						{{ t('empleados', 'Send reminders by email') }}
 					</NcCheckboxRadioSwitch>
 
 					<div class="settings-grid">
 						<NcTextField
 							:value.sync="reportes_recordatorios_grupo"
-							label="Grupo obligado a reportar" />
+							:label="t('empleados', 'Group required to report')" />
 
 						<NcTextField
 							:value.sync="reportes_recordatorios_hora"
 							type="number"
 							min="0"
 							max="23"
-							label="Hora de recordatorio" />
+							:label="t('empleados', 'Reminder hour')" />
 
 						<NcTextField
 							:value.sync="reportes_recordatorios_zona_horaria"
-							label="Zona horaria" />
+							:label="t('empleados', 'Time zone')" />
 
 						<NcTextField
 							:value.sync="reportes_horas_minimas"
 							type="number"
 							min="0"
-							label="Horas mínimas para considerar reportado" />
+							:label="t('empleados', 'Minimum hours to consider reported')" />
 
 						<NcSelect
 							v-model="selected_admin_reports_group"
-							:input-label="'Grupo con acceso a reportes administrativos y seguimientos'"
+							:input-label="t('empleados', 'Group with access to admin reports and compliance tracking')"
 							:options="optionsGroups"
 							class="fit" />
 					</div>
@@ -236,7 +236,7 @@
 
 			<div class="settings-card settings-card-wide">
 				<NcPasswordField :value.sync="secrettoken"
-					label="Secret token to admin moves"
+					:label="t('empleados', 'Secret token to admin moves')"
 					as-text />
 				<div class="actions-row">
 					<NcButton
@@ -270,6 +270,7 @@ import {
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
+import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'ListSettings',
@@ -346,6 +347,7 @@ export default {
 	},
 
 	methods: {
+		t,
 		/**
 		 * Load global configuration, including "Users" for Data Manager.
 		 */

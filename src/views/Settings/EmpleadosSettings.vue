@@ -192,6 +192,7 @@ import { showError } from '@nextcloud/dialogs'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
+import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'EmpleadosSettings',
@@ -224,14 +225,14 @@ export default {
 			selectArray: [],
 			ButtonsEliminarUser: [
 				{
-					label: 'OK',
+					label: t('empleados', 'OK'),
 					type: 'primary',
 					callback: () => { this.EliminarUser(this.selected.index) },
 				},
 			],
 			buttons: [
 				{
-					label: 'OK',
+					label: t('empleados', 'OK'),
 					type: 'primary',
 					callback: () => { this.DeactiveUser(this.selected.index) },
 				},
@@ -245,6 +246,7 @@ export default {
 	},
 
 	methods: {
+		t,
 		// Fetch all lists
 		async getall() {
 			try {
