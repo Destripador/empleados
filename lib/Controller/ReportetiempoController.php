@@ -869,11 +869,241 @@ class reportetiempoController extends BaseController {
 
 		if ($user === null) {
 			return new DataResponse([
-				'error' => 'Usuario no autenticado',
+				'status' => 'error',
+				'message' => 'Usuario no autenticado',
 			], Http::STATUS_UNAUTHORIZED);
 		}
 
-		// resto igual...
+		$zonaHoraria = $this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_recordatorios_zona_horaria',
+			'America/Mexico_City'
+		);
+
+		try {
+			$tz = new \DateTimeZone($zonaHoraria);
+		} catch (\Throwable $e) {
+			$tz = new \DateTimeZone('America/Mexico_City');
+		}
+
+		if (empty($fecha)) {
+			$fecha = (new \DateTimeImmutable('now', $tz))->format('Y-m-d');
+		} else {
+			try {
+				$fecha = (new \DateTimeImmutable((string)$fecha, $tz))->format('Y-m-d');
+			} catch (\Throwable $e) {
+				return new DataResponse([
+					'status' => 'error',
+					'message' => 'Fecha inválida.',
+				], Http::STATUS_BAD_REQUEST);
+			}
+		}
+
+		$enviarEmail = filter_var(
+			$this->config->getAppValue(
+				Application::APP_ID,
+				'reportes_recordatorios_email',
+				'true'
+			),
+			FILTER_VALIDATE_BOOLEAN
+		);
+
+		$horasMinimas = (float)$this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_horas_minimas',
+			'0'
+		);
+
+		if ($horasMinimas < 0) {
+			$horasMinimas = 0;
+		}
+
+		$minutosMinimos = $horasMinimas * 60;
+
+		$empleados = $this->getEmpleadosVisiblesBasico();
+
+		$quickReportUrl = $this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/quick-report';
+
+		$enviados = [];
+		$omitidos = [];
+
+		foreach ($empleados as $empleado) {
+			$idEmpleado = $empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? null;
+			$uid = $empleado['id_user'] ?? $empleado['Id_user'] ?? null;
+
+			$displayname = $empleado['displayname']
+				?? $empleado['DisplayName']
+				?? $uid
+				?? 'Empleado';
+
+			if (empty($idEmpleado) || empty($uid)) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'nombre' => $displayname,
+					'motivo' => 'Empleado inválido',
+				];
+				continue;
+			}
+
+			$resumen = $this->reportetiempoMapper->getResumenDiaByEmpleado(
+				(int)$idEmpleado,
+				$fecha
+			);
+
+			$registros = (int)($resumen['registros'] ?? 0);
+			$minutosReportados = (float)($resumen['minutos_reportados'] ?? 0);
+			$horasReportadas = $minutosReportados / 60;
+
+			$cumple = $minutosMinimos > 0
+				? $minutosReportados >= $minutosMinimos
+				: $registros > 0;
+
+			if ($cumple) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'nombre' => $displayname,
+					'motivo' => 'Ya cumple con el reporte',
+					'registros' => $registros,
+					'minutos_reportados' => $minutosReportados,
+				];
+				continue;
+			}
+
+			$ultimoRecordatorio = $this->config->getUserValue(
+				(string)$uid,
+				Application::APP_ID,
+				'ultimo_recordatorio_reporte_tiempo',
+				''
+			);
+
+			if ($ultimoRecordatorio === $fecha) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'nombre' => $displayname,
+					'motivo' => 'Ya se envió recordatorio hoy',
+				];
+				continue;
+			}
+
+			$nextcloudUser = $this->userManager->get((string)$uid);
+
+			if ($nextcloudUser === null) {
+				$omitidos[] = [
+					'uid' => $uid,
+					'nombre' => $displayname,
+					'motivo' => 'Usuario Nextcloud no encontrado',
+				];
+				continue;
+			}
+
+			$email = $nextcloudUser->getEMailAddress();
+			$notificacionEnviada = false;
+			$correoEnviado = false;
+			$erroresEnvio = [];
+
+			try {
+				$notification = $this->notificationManager->createNotification();
+
+				$notification
+					->setApp(Application::APP_ID)
+					->setUser((string)$uid)
+					->setDateTime(new \DateTime())
+					->setObject('reporte_tiempo', $fecha)
+					->setSubject('tiempo_pendiente', [
+						'fecha' => $fecha,
+						'horas_reportadas' => round($horasReportadas, 2),
+						'horas_minimas' => round($horasMinimas, 2),
+						'minutos_reportados' => $minutosReportados,
+						'minutos_minimos' => $minutosMinimos,
+					])
+					->setLink($quickReportUrl);
+
+				$this->notificationManager->notify($notification);
+
+				$notificacionEnviada = true;
+			} catch (\Throwable $e) {
+				$erroresEnvio[] = 'Error notificación interna: ' . $e->getMessage();
+			}
+
+			if ($enviarEmail) {
+				if (empty($email)) {
+					$erroresEnvio[] = 'Usuario sin correo';
+				} else {
+					try {
+						$message = $this->mailer->createMessage();
+
+						$message->setTo([
+							$email => $nextcloudUser->getDisplayName() ?: (string)$uid,
+						]);
+
+						$message->setSubject('Recordatorio: registra tu tiempo');
+
+						if ($minutosMinimos > 0) {
+							$estadoTexto = 'Actualmente llevas ' . round($horasReportadas, 2) . ' horas reportadas. '
+								. 'La meta mínima configurada es de ' . round($horasMinimas, 2) . ' horas.';
+						} else {
+							$estadoTexto = 'Aún no tienes reportes de tiempo registrados para la fecha ' . $fecha . '.';
+						}
+
+						$body = implode("\n", [
+							'Hola ' . ($nextcloudUser->getDisplayName() ?: $displayname) . ',',
+							'',
+							$estadoTexto,
+							'',
+							'Puedes registrarlo aquí:',
+							$quickReportUrl,
+							'',
+							'Este es un recordatorio enviado desde el reporte de cumplimiento.',
+						]);
+
+						$message->setPlainBody($body);
+
+						$this->mailer->send($message);
+
+						$correoEnviado = true;
+					} catch (\Throwable $e) {
+						$erroresEnvio[] = 'Error correo: ' . $e->getMessage();
+					}
+				}
+			}
+
+			if ($notificacionEnviada || $correoEnviado) {
+				$this->config->setUserValue(
+					(string)$uid,
+					Application::APP_ID,
+					'ultimo_recordatorio_reporte_tiempo',
+					$fecha
+				);
+
+				$enviados[] = [
+					'uid' => $uid,
+					'nombre' => $displayname,
+					'email' => $email,
+					'notificacion_interna' => $notificacionEnviada,
+					'correo' => $correoEnviado,
+					'registros' => $registros,
+					'minutos_reportados' => $minutosReportados,
+					'horas_reportadas' => round($horasReportadas, 2),
+				];
+
+				continue;
+			}
+
+			$omitidos[] = [
+				'uid' => $uid,
+				'nombre' => $displayname,
+				'motivo' => implode(' | ', $erroresEnvio) ?: 'No se pudo enviar recordatorio',
+			];
+		}
+
+		return new DataResponse([
+			'status' => 'ok',
+			'fecha' => $fecha,
+			'enviados' => count($enviados),
+			'omitidos' => count($omitidos),
+			'detalle_enviados' => $enviados,
+			'detalle_omitidos' => $omitidos,
+		], Http::STATUS_OK);
 	}
 
 	private function clearReporteTiempoNotification(string $uid, string $fecha): void {

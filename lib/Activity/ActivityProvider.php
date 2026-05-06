@@ -1,4 +1,7 @@
-// lib/Activity/ActivityProvider.php
+<?php
+
+declare(strict_types=1);
+
 namespace OCA\Empleados\Activity;
 
 use OCP\Activity\IProvider;

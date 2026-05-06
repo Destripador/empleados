@@ -168,7 +168,7 @@ export default {
 		realTime() {
 			return this.toNumber(
 				this.activity?.tiempo_real
-				?? this.activity?.count
+				?? this.activity?.count,
 			)
 		},
 
