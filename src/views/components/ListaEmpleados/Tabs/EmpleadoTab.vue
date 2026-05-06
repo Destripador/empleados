@@ -148,16 +148,46 @@
 							<span>{{ t('empleados', 'Systems') }}</span>
 						</div>
 						<div class="flexible">
-							<div class="box1Inside">
+							<div class="box1Inside equipo-asignado-field">
 								<label for="Equipo_asignado" class="labeltype">
 									<Laptopaccount :size="20" />
 									{{ t('empleados', 'Assigned equipment') }}
 								</label>
-								<input id="Equipo_asignado"
+
+								<NcSelect
+									id="Equipo_asignado"
 									v-model="Equipo_asignado"
-									type="text"
+									class="equipo-computo-select"
 									:disabled="!show"
-									class="inputtype">
+									:options="inventarioEquipos"
+									:input-label="t('empleados', 'Assigned equipment')"
+									:label-outside="true"
+									:placeholder="t('empleados', 'Select assigned equipment')">
+									<template #selected-option="option">
+										<div class="equipo-selected-option">
+											<strong>{{ equipoOptionTitle(option) }}</strong>
+											<span>{{ equipoOptionSubtitle(option) }}</span>
+										</div>
+									</template>
+
+									<template #option="option">
+										<div class="equipo-dropdown-option">
+											<div class="equipo-dropdown-main">
+												<strong>{{ equipoOptionTitle(option) }}</strong>
+												<span
+													v-if="option.estado"
+													class="equipo-status"
+													:class="`equipo-status--${String(option.estado).toLowerCase()}`">
+													{{ option.estado }}
+												</span>
+											</div>
+
+											<div class="equipo-dropdown-subtitle">
+												{{ equipoOptionSubtitle(option) }}
+											</div>
+										</div>
+									</template>
+								</NcSelect>
 							</div>
 						</div>
 					</div>
@@ -378,6 +408,7 @@ export default {
 			Aniversario: '',
 			Vacaciones: '',
 			state: false,
+			inventarioEquipos: [],
 		}
 	},
 
@@ -390,7 +421,7 @@ export default {
 				this.cambioEstado(newVal ? '1' : '0')
 			}
 		},
-		data(news) {
+		async data(news) {
 			if (news) {
 				this.setAttr(
 					news.Numero_empleado,
@@ -408,11 +439,13 @@ export default {
 					news.dias_disponibles,
 					news.id_aniversario,
 					news.state)
+
+				await this.getInventarioEquipos(news.Equipo_asignado)
 			}
 		},
 	},
 
-	mounted() {
+	async mounted() {
 		this.EmpleadosList = this.empleados.map(empleados => ({
 			id: empleados.Id_user,
 			displayName: empleados.displayname ? empleados.displayname : empleados.Id_user,
@@ -437,6 +470,8 @@ export default {
 			this.data.dias_disponibles,
 			this.data.id_aniversario,
 			this.data.state)
+
+		await this.getInventarioEquipos(this.data.Equipo_asignado)
 	},
 
 	methods: {
@@ -576,7 +611,7 @@ export default {
 					fondoclave: this.checknull(this.Fondo_clave),
 					fondoahorro: this.checknull(this.Fondo_ahorro),
 					numerocuenta: this.checknull(this.Numero_cuenta),
-					equipoasignado: this.checknull(this.Equipo_asignado),
+					equipoasignado: this.getEquipoAsignadoValue(),
 					equipo: this.Equipo.value,
 					sueldo: this.checknull(this.Sueldo),
 					id_aniversario: this.checknull(this.Aniversario),
@@ -618,6 +653,134 @@ export default {
 			console.log(data)
 			this.$bus.emit('send-data', data)
 			this.$bus.emit('show', false)
+		},
+		async getInventarioEquipos(currentEquipoId = null) {
+			try {
+				const current = currentEquipoId || this.getEquipoAsignadoValue()
+
+				const response = await axios.get(generateUrl('/apps/empleados/GetInventarioEquiposSelect'), {
+					params: {
+						current,
+						onlyAvailable: true,
+					},
+				})
+
+				const data = this.normalizeInventarioEquiposResponse(response)
+
+				this.inventarioEquipos = data.map(equipo => ({
+					value: equipo.value || equipo.id_equipo,
+					label: equipo.label || this.inventarioEquipoLabel(equipo),
+					id_equipo: equipo.id_equipo || equipo.value,
+					nombre_dispositivo: equipo.nombre_dispositivo || '',
+					nombre_sistema: equipo.nombre_sistema || '',
+					numero_serie: equipo.numero_serie || '',
+					estado: equipo.estado || '',
+					marca: equipo.marca || '',
+					modelo: equipo.modelo || '',
+					empleado_id: equipo.empleado_id || null,
+					empleado_uid: equipo.empleado_uid || null,
+				}))
+
+				const selected = this.findInventarioEquipo(current)
+
+				if (selected) {
+					this.Equipo_asignado = selected
+				} else if (current) {
+					this.Equipo_asignado = {
+						value: current,
+						label: `${t('empleados', 'Assigned equipment')} #${current}`,
+						id_equipo: current,
+					}
+				} else {
+					this.Equipo_asignado = ''
+				}
+			} catch (err) {
+				showError(t('empleados', 'No se pudo cargar el inventario de equipos [{error}]', {
+					error: String(err),
+					close: true,
+				}))
+			}
+		},
+
+		normalizeInventarioEquiposResponse(response) {
+			const payload = response?.data?.ocs?.data || response?.data || response
+
+			if (Array.isArray(payload)) {
+				return payload
+			}
+
+			if (Array.isArray(payload?.data)) {
+				return payload.data
+			}
+
+			if (Array.isArray(payload?.ocs?.data)) {
+				return payload.ocs.data
+			}
+
+			if (Array.isArray(payload?.ocs?.data?.data)) {
+				return payload.ocs.data.data
+			}
+
+			return []
+		},
+
+		inventarioEquipoLabel(equipo) {
+			return [
+				equipo.nombre_dispositivo,
+				equipo.nombre_sistema,
+				equipo.numero_serie,
+				equipo.marca && equipo.modelo ? `${equipo.marca} ${equipo.modelo}` : '',
+			]
+				.filter(Boolean)
+				.join(' - ')
+		},
+
+		findInventarioEquipo(value) {
+			const id = typeof value === 'object' ? value.value : value
+
+			return this.inventarioEquipos.find(equipo => {
+				return String(equipo.value) === String(id)
+			|| String(equipo.label) === String(id)
+			}) || ''
+		},
+		getEquipoAsignadoValue() {
+			if (!this.Equipo_asignado) {
+				return ''
+			}
+
+			if (typeof this.Equipo_asignado === 'object') {
+				return this.Equipo_asignado.value || ''
+			}
+
+			return this.Equipo_asignado
+		},
+		equipoOptionTitle(option) {
+			if (!option) {
+				return ''
+			}
+
+			return option.nombre_dispositivo
+		|| option.nombre_sistema
+		|| option.label
+		|| `${t('empleados', 'Equipment')} #${option.value || option.id_equipo || ''}`
+		},
+
+		equipoOptionSubtitle(option) {
+			if (!option) {
+				return ''
+			}
+
+			return [
+				option.nombre_sistema && option.nombre_sistema !== option.nombre_dispositivo
+					? option.nombre_sistema
+					: '',
+				option.numero_serie ? `${t('empleados', 'Serial')}: ${option.numero_serie}` : '',
+				option.marca || option.modelo
+					? [option.marca, option.modelo].filter(Boolean).join(' ')
+					: '',
+			]
+				.filter(Boolean)
+				.join(' · ')
 		},
 	},
 }
@@ -943,5 +1106,187 @@ export default {
 		width: 100%;
 		margin-top: 4px;
 	}
+	.equipo-asignado-field {
+		grid-template-columns: 1fr;
+		max-width: none;
+		min-width: 0;
+	}
+
+	.equipo-asignado-field .labeltype {
+		margin-bottom: 6px;
+	}
+}
+.equipo-asignado-field {
+	display: grid;
+	grid-template-columns: 190px minmax(320px, 1fr);
+	align-items: center;
+	column-gap: 18px;
+	row-gap: 8px;
+	flex: 1 1 100%;
+	max-width: 720px;
+	min-width: 320px;
+}
+
+.equipo-asignado-field .labeltype {
+	margin-bottom: 0;
+	justify-content: flex-start;
+}
+
+.equipo-computo-select .vs__dropdown-toggle {
+	min-height: 44px;
+	padding: 4px 8px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.equipo-computo-select.vs--open .vs__dropdown-toggle,
+.equipo-computo-select .vs__dropdown-toggle:focus-within {
+	border-color: var(--color-primary-element);
+	box-shadow: 0 0 0 2px var(--color-primary-element-light);
+}
+
+.equipo-computo-select.vs--disabled .vs__dropdown-toggle {
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+	cursor: not-allowed;
+	opacity: 1;
+}
+
+.equipo-computo-select .vs__selected-options {
+	min-width: 0;
+	padding: 0;
+}
+
+.equipo-computo-select .vs__selected {
+	display: flex;
+	align-items: center;
+	max-width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	color: var(--color-main-text);
+}
+
+.equipo-computo-select .vs__search {
+	min-width: 0;
+	margin: 0;
+	padding: 0 4px;
+	color: var(--color-main-text);
+}
+
+.equipo-computo-select .vs__actions {
+	padding: 0 2px 0 8px;
+}
+
+.equipo-computo-select .vs__dropdown-menu {
+	width: 100%;
+	min-width: 420px;
+	max-height: 320px;
+	padding: 6px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.equipo-computo-select .vs__dropdown-option {
+	padding: 0;
+	border-radius: var(--border-radius-large);
+	color: var(--color-main-text);
+}
+
+.equipo-computo-select .vs__dropdown-option--highlight {
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+}
+.equipo-selected-option {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	line-height: 1.25;
+}
+
+.equipo-selected-option strong {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.equipo-selected-option span {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.equipo-dropdown-option {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 10px 12px;
+}
+
+.equipo-dropdown-main {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: space-between;
+	min-width: 0;
+}
+
+.equipo-dropdown-main strong {
+	overflow: hidden;
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.equipo-dropdown-subtitle {
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.equipo-status {
+	flex-shrink: 0;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: capitalize;
+}
+
+.equipo-status--activo,
+.equipo-status--asignado {
+	background: var(--color-success);
+	color: var(--color-primary-element-text);
+}
+
+.equipo-status--mantenimiento {
+	background: var(--color-warning);
+	color: var(--color-main-text);
+}
+
+.equipo-status--baja,
+.equipo-status--inactivo {
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
 }
 </style>

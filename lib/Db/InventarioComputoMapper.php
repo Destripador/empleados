@@ -17,26 +17,38 @@ class InventarioComputoMapper extends QBMapper {
 	public function findAll(?string $search = null, ?string $estado = null, ?int $idEmpleado = null): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select(
-				'c.id_equipo',
-				'c.id_empleado',
-				'c.id_modelo',
-				'c.nombre_dispositivo',
-				'c.nombre_sistema',
-				'c.numero_serie',
-				'c.estado',
-				'c.info',
-				'c.created_at',
-				'c.updated_at',
-				'm.marca',
-				'm.modelo',
-				'm.procesador',
-				'm.ram',
-				'm.disco_duro',
-				'm.tipo'
-			)
+		$qb->selectAlias('c.id_equipo', 'id_equipo')
+			->selectAlias('c.id_empleado', 'id_empleado')
+			->selectAlias('c.id_modelo', 'id_modelo')
+			->selectAlias('c.nombre_dispositivo', 'nombre_dispositivo')
+			->selectAlias('c.nombre_sistema', 'nombre_sistema')
+			->selectAlias('c.numero_serie', 'numero_serie')
+			->selectAlias('c.estado', 'estado')
+			->selectAlias('c.info', 'info')
+			->selectAlias('c.created_at', 'created_at')
+			->selectAlias('c.updated_at', 'updated_at')
+			->selectAlias('m.marca', 'marca')
+			->selectAlias('m.modelo', 'modelo')
+			->selectAlias('m.procesador', 'procesador')
+			->selectAlias('m.ram', 'ram')
+			->selectAlias('m.disco_duro', 'disco_duro')
+			->selectAlias('m.tipo', 'tipo')
+			->selectAlias('e.Id_empleados', 'empleado_id')
+			->selectAlias('e.Id_user', 'empleado_uid')
+			->selectAlias('e.Numero_empleado', 'numero_empleado')
 			->from($this->getTableName(), 'c')
-			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
+			->leftJoin(
+				'c',
+				'inventario_modelos',
+				'm',
+				$qb->expr()->eq('m.id_modelo', 'c.id_modelo')
+			)
+			->leftJoin(
+				'c',
+				'empleados',
+				'e',
+				$qb->expr()->eq('e.Equipo_asignado', 'c.id_equipo')
+			)
 			->orderBy('c.id_equipo', 'DESC');
 
 		if ($search !== null && trim($search) !== '') {
@@ -44,24 +56,26 @@ class InventarioComputoMapper extends QBMapper {
 
 			$qb->andWhere(
 				$qb->expr()->orX(
-					$qb->expr()->iLike('c.nombre_dispositivo', $qb->createNamedParameter($like)),
-					$qb->expr()->iLike('c.nombre_sistema', $qb->createNamedParameter($like)),
-					$qb->expr()->iLike('c.numero_serie', $qb->createNamedParameter($like)),
-					$qb->expr()->iLike('m.marca', $qb->createNamedParameter($like)),
-					$qb->expr()->iLike('m.modelo', $qb->createNamedParameter($like))
+					$qb->expr()->iLike('c.nombre_dispositivo', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('c.nombre_sistema', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('c.numero_serie', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('m.marca', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('m.modelo', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('e.Id_user', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('e.Numero_empleado', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR))
 				)
 			);
 		}
 
 		if ($estado !== null && trim($estado) !== '') {
 			$qb->andWhere(
-				$qb->expr()->eq('c.estado', $qb->createNamedParameter($estado))
+				$qb->expr()->eq('c.estado', $qb->createNamedParameter($estado, IQueryBuilder::PARAM_STR))
 			);
 		}
 
 		if ($idEmpleado !== null) {
 			$qb->andWhere(
-				$qb->expr()->eq('c.id_empleado', $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT))
+				$qb->expr()->eq('e.Id_empleados', $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT))
 			);
 		}
 
@@ -144,5 +158,103 @@ class InventarioComputoMapper extends QBMapper {
 			);
 
 		$qb->executeStatement();
+	}
+
+	public function findAllForSelect(?int $currentEquipoId = null, bool $onlyAvailable = true): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('c.id_equipo', 'id_equipo')
+			->selectAlias('c.nombre_dispositivo', 'nombre_dispositivo')
+			->selectAlias('c.nombre_sistema', 'nombre_sistema')
+			->selectAlias('c.numero_serie', 'numero_serie')
+			->selectAlias('c.estado', 'estado')
+			->selectAlias('m.marca', 'marca')
+			->selectAlias('m.modelo', 'modelo')
+			->selectAlias('e.Id_empleados', 'empleado_id')
+			->selectAlias('e.Id_user', 'empleado_uid')
+			->from($this->getTableName(), 'c')
+			->leftJoin(
+				'c',
+				'inventario_modelos',
+				'm',
+				$qb->expr()->eq('m.id_modelo', 'c.id_modelo')
+			)
+			->leftJoin(
+				'c',
+				'empleados',
+				'e',
+				$qb->expr()->eq('e.Equipo_asignado', 'c.id_equipo')
+			)
+			->orderBy('c.nombre_dispositivo', 'ASC');
+
+		$qb->andWhere(
+			$qb->expr()->orX(
+				$qb->expr()->isNull('c.estado'),
+				$qb->expr()->notIn(
+					'c.estado',
+					[
+						$qb->createNamedParameter('baja', IQueryBuilder::PARAM_STR),
+						$qb->createNamedParameter('inactivo', IQueryBuilder::PARAM_STR),
+						$qb->createNamedParameter('inactive', IQueryBuilder::PARAM_STR),
+					]
+				)
+			)
+		);
+
+		if ($onlyAvailable) {
+			$availableOrCurrent = $qb->expr()->orX(
+				$qb->expr()->isNull('e.Id_empleados')
+			);
+
+			if ($currentEquipoId !== null && $currentEquipoId > 0) {
+				$availableOrCurrent->add(
+					$qb->expr()->eq(
+						'c.id_equipo',
+						$qb->createNamedParameter($currentEquipoId, IQueryBuilder::PARAM_INT)
+					)
+				);
+			}
+
+			$qb->andWhere($availableOrCurrent);
+		}
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(function (array $row): array {
+			$modelo = trim(($row['marca'] ?? '') . ' ' . ($row['modelo'] ?? ''));
+
+			$labelParts = array_filter([
+				$row['nombre_dispositivo'] ?? '',
+				$row['nombre_sistema'] ?? '',
+				$row['numero_serie'] ?? '',
+				$modelo,
+			]);
+
+			$label = implode(' - ', $labelParts);
+
+			if ($label === '') {
+				$label = 'Equipo #' . ($row['id_equipo'] ?? '');
+			}
+
+			if (!empty($row['empleado_uid'])) {
+				$label .= ' — asignado a ' . $row['empleado_uid'];
+			}
+
+			return [
+				'value' => (int)$row['id_equipo'],
+				'label' => $label,
+				'id_equipo' => (int)$row['id_equipo'],
+				'nombre_dispositivo' => $row['nombre_dispositivo'] ?? '',
+				'nombre_sistema' => $row['nombre_sistema'] ?? '',
+				'numero_serie' => $row['numero_serie'] ?? '',
+				'estado' => $row['estado'] ?? '',
+				'marca' => $row['marca'] ?? '',
+				'modelo' => $row['modelo'] ?? '',
+				'empleado_id' => $row['empleado_id'] ?? null,
+				'empleado_uid' => $row['empleado_uid'] ?? null,
+			];
+		}, $rows);
 	}
 }

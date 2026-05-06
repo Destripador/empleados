@@ -10967,18 +10967,28 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
 /* harmony import */ var _nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/dialogs */ "./node_modules/@nextcloud/dialogs/dist/index.es.js");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
-/* harmony import */ var vue_material_design_icons_Check_vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vue-material-design-icons/Check.vue */ "./node_modules/vue-material-design-icons/Check.vue");
-/* harmony import */ var vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! vue-material-design-icons/Close.vue */ "./node_modules/vue-material-design-icons/Close.vue");
-/* harmony import */ var vue_material_design_icons_Database_vue__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! vue-material-design-icons/Database.vue */ "./node_modules/vue-material-design-icons/Database.vue");
-/* harmony import */ var vue_material_design_icons_Eye_vue__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! vue-material-design-icons/Eye.vue */ "./node_modules/vue-material-design-icons/Eye.vue");
-/* harmony import */ var vue_material_design_icons_History_vue__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! vue-material-design-icons/History.vue */ "./node_modules/vue-material-design-icons/History.vue");
-/* harmony import */ var vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! vue-material-design-icons/Laptop.vue */ "./node_modules/vue-material-design-icons/Laptop.vue");
-/* harmony import */ var vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/Magnify.vue */ "./node_modules/vue-material-design-icons/Magnify.vue");
-/* harmony import */ var vue_material_design_icons_Plus_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/Plus.vue */ "./node_modules/vue-material-design-icons/Plus.vue");
-/* harmony import */ var vue_material_design_icons_Refresh_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/Refresh.vue */ "./node_modules/vue-material-design-icons/Refresh.vue");
-/* harmony import */ var vue_material_design_icons_Wrench_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/Wrench.vue */ "./node_modules/vue-material-design-icons/Wrench.vue");
-/* harmony import */ var _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ../../../services/inventarioService.js */ "./src/services/inventarioService.js");
+/* harmony import */ var _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/axios */ "./node_modules/@nextcloud/axios/dist/index.mjs");
+/* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_Check_vue__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! vue-material-design-icons/Check.vue */ "./node_modules/vue-material-design-icons/Check.vue");
+/* harmony import */ var vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! vue-material-design-icons/Close.vue */ "./node_modules/vue-material-design-icons/Close.vue");
+/* harmony import */ var vue_material_design_icons_Database_vue__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! vue-material-design-icons/Database.vue */ "./node_modules/vue-material-design-icons/Database.vue");
+/* harmony import */ var vue_material_design_icons_Eye_vue__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! vue-material-design-icons/Eye.vue */ "./node_modules/vue-material-design-icons/Eye.vue");
+/* harmony import */ var vue_material_design_icons_History_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/History.vue */ "./node_modules/vue-material-design-icons/History.vue");
+/* harmony import */ var vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/Laptop.vue */ "./node_modules/vue-material-design-icons/Laptop.vue");
+/* harmony import */ var vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/Magnify.vue */ "./node_modules/vue-material-design-icons/Magnify.vue");
+/* harmony import */ var vue_material_design_icons_Plus_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/Plus.vue */ "./node_modules/vue-material-design-icons/Plus.vue");
+/* harmony import */ var vue_material_design_icons_Refresh_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/Refresh.vue */ "./node_modules/vue-material-design-icons/Refresh.vue");
+/* harmony import */ var vue_material_design_icons_Wrench_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! vue-material-design-icons/Wrench.vue */ "./node_modules/vue-material-design-icons/Wrench.vue");
+/* harmony import */ var vue_material_design_icons_Download_vue__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! vue-material-design-icons/Download.vue */ "./node_modules/vue-material-design-icons/Download.vue");
+/* harmony import */ var vue_material_design_icons_Upload_vue__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! vue-material-design-icons/Upload.vue */ "./node_modules/vue-material-design-icons/Upload.vue");
+/* harmony import */ var vue_material_design_icons_Pencil_vue__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! vue-material-design-icons/Pencil.vue */ "./node_modules/vue-material-design-icons/Pencil.vue");
+/* harmony import */ var _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ../../../services/inventarioService.js */ "./src/services/inventarioService.js");
+
+
+
+
+
 
 
 
@@ -10996,32 +11006,40 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'Inventario',
   components: {
-    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcAppContent,
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcButton,
-    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcTextField,
-    NcTextArea: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcTextArea,
-    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcModal,
-    NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcEmptyContent,
-    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcLoadingIcon,
-    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_2__.NcCheckboxRadioSwitch,
-    Check: vue_material_design_icons_Check_vue__WEBPACK_IMPORTED_MODULE_3__["default"],
-    Close: vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
-    Database: vue_material_design_icons_Database_vue__WEBPACK_IMPORTED_MODULE_5__["default"],
-    Eye: vue_material_design_icons_Eye_vue__WEBPACK_IMPORTED_MODULE_6__["default"],
-    History: vue_material_design_icons_History_vue__WEBPACK_IMPORTED_MODULE_7__["default"],
-    Laptop: vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
-    Magnify: vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
-    Plus: vue_material_design_icons_Plus_vue__WEBPACK_IMPORTED_MODULE_10__["default"],
-    Refresh: vue_material_design_icons_Refresh_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
-    Wrench: vue_material_design_icons_Wrench_vue__WEBPACK_IMPORTED_MODULE_12__["default"]
+    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcAppContent,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcButton,
+    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcTextField,
+    NcTextArea: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcTextArea,
+    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcModal,
+    NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcEmptyContent,
+    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcLoadingIcon,
+    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcCheckboxRadioSwitch,
+    NcActions: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcActions,
+    NcActionButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_4__.NcActionButton,
+    Check: vue_material_design_icons_Check_vue__WEBPACK_IMPORTED_MODULE_5__["default"],
+    Close: vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_6__["default"],
+    Database: vue_material_design_icons_Database_vue__WEBPACK_IMPORTED_MODULE_7__["default"],
+    Download: vue_material_design_icons_Download_vue__WEBPACK_IMPORTED_MODULE_15__["default"],
+    Eye: vue_material_design_icons_Eye_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
+    History: vue_material_design_icons_History_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
+    Laptop: vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_10__["default"],
+    Magnify: vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
+    Plus: vue_material_design_icons_Plus_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
+    Pencil: vue_material_design_icons_Pencil_vue__WEBPACK_IMPORTED_MODULE_17__["default"],
+    Refresh: vue_material_design_icons_Refresh_vue__WEBPACK_IMPORTED_MODULE_13__["default"],
+    Upload: vue_material_design_icons_Upload_vue__WEBPACK_IMPORTED_MODULE_16__["default"],
+    Wrench: vue_material_design_icons_Wrench_vue__WEBPACK_IMPORTED_MODULE_14__["default"]
   },
   data() {
     return {
-      tab: 'modelos',
+      tab: 'equipos',
       search: '',
       loading: false,
       showModal: false,
+      editMode: false,
+      editingItem: null,
       modelos: [],
+      modelosCatalogo: [],
       equipos: [],
       soporte: [],
       selectedEquipo: null,
@@ -11035,7 +11053,6 @@ __webpack_require__.r(__webpack_exports__);
         touch: false
       },
       formEquipo: {
-        id_empleado: '',
         id_modelo: '',
         nombre_dispositivo: '',
         nombre_sistema: '',
@@ -11048,16 +11065,16 @@ __webpack_require__.r(__webpack_exports__);
         detalles: '',
         usuario_actual: '',
         usuario_soporte: ''
-      }
+      },
+      showImportModal: false,
+      importing: false,
+      importRows: [],
+      importErrors: []
     };
   },
   computed: {
     tabs() {
       return [{
-        id: 'modelos',
-        name: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Models'),
-        icon: 'Database'
-      }, {
         id: 'equipos',
         name: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Devices'),
         icon: 'Laptop'
@@ -11091,7 +11108,149 @@ __webpack_require__.r(__webpack_exports__);
       return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'New support record');
     },
     modalTitle() {
-      return this.primaryButtonText;
+      if (!this.editMode) {
+        return this.primaryButtonText;
+      }
+      if (this.tab === 'modelos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Edit model');
+      }
+      if (this.tab === 'equipos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Edit device');
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Edit support record');
+    },
+    currentRows() {
+      if (this.tab === 'modelos') {
+        return this.modelos;
+      }
+      if (this.tab === 'equipos') {
+        return this.equipos;
+      }
+      if (this.tab === 'soporte') {
+        return this.soporte;
+      }
+      return [];
+    },
+    importModalTitle() {
+      if (this.tab === 'modelos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import models');
+      }
+      if (this.tab === 'equipos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import devices');
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import support records');
+    },
+    importHelpText() {
+      if (this.tab === 'modelos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import computer models from a CSV file.');
+      }
+      if (this.tab === 'equipos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import devices from a CSV file. You can use id_modelo or marca + modelo.');
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import support records for the selected device.');
+    },
+    importColumns() {
+      if (this.tab === 'modelos') {
+        return [{
+          key: 'marca',
+          label: 'marca',
+          required: true
+        }, {
+          key: 'modelo',
+          label: 'modelo',
+          required: true
+        }, {
+          key: 'procesador',
+          label: 'procesador',
+          required: false
+        }, {
+          key: 'ram',
+          label: 'ram',
+          required: false
+        }, {
+          key: 'disco_duro',
+          label: 'disco_duro',
+          required: false
+        }, {
+          key: 'tipo',
+          label: 'tipo',
+          required: false
+        }, {
+          key: 'touch',
+          label: 'touch',
+          required: false
+        }];
+      }
+      if (this.tab === 'equipos') {
+        return [{
+          key: 'id_modelo',
+          label: 'id_modelo',
+          required: false
+        }, {
+          key: 'marca',
+          label: 'marca',
+          required: false
+        }, {
+          key: 'modelo',
+          label: 'modelo',
+          required: false
+        }, {
+          key: 'nombre_dispositivo',
+          label: 'nombre_dispositivo',
+          required: true
+        }, {
+          key: 'nombre_sistema',
+          label: 'nombre_sistema',
+          required: false
+        }, {
+          key: 'numero_serie',
+          label: 'numero_serie',
+          required: false
+        }, {
+          key: 'estado',
+          label: 'estado',
+          required: false
+        }, {
+          key: 'info',
+          label: 'info',
+          required: false
+        }];
+      }
+      return [{
+        key: 'accion',
+        label: 'accion',
+        required: true
+      }, {
+        key: 'usuario_actual',
+        label: 'usuario_actual',
+        required: false
+      }, {
+        key: 'usuario_soporte',
+        label: 'usuario_soporte',
+        required: false
+      }, {
+        key: 'detalles',
+        label: 'detalles',
+        required: false
+      }];
+    },
+    pageTitle() {
+      if (this.tab === 'modelos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Device models');
+      }
+      if (this.tab === 'soporte') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Support history');
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'IT Inventory');
+    },
+    pageSubtitle() {
+      if (this.tab === 'modelos') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Manage the model catalog used by inventory devices.');
+      }
+      if (this.tab === 'soporte') {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Review and register support records for selected devices.');
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Computer equipment, assignments and device status.');
     }
   },
   watch: {
@@ -11111,19 +11270,19 @@ __webpack_require__.r(__webpack_exports__);
       try {
         this.loading = true;
         if (this.tab === 'modelos') {
-          const res = await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__["default"].getModelos({
+          const res = await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].getModelos({
             search: this.search
           });
           this.modelos = this.normalizeCollection(res);
         }
         if (this.tab === 'equipos') {
-          const res = await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__["default"].getEquipos({
+          const [equiposRes] = await Promise.all([_services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].getEquipos({
             search: this.search
-          });
-          this.equipos = this.normalizeCollection(res);
+          }), this.loadModelosCatalogo()]);
+          this.equipos = this.normalizeCollection(equiposRes);
         }
         if (this.tab === 'soporte' && this.selectedEquipo) {
-          const res = await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__["default"].getSoporteEquipo(this.selectedEquipo.id_equipo);
+          const res = await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].getSoporteEquipo(this.selectedEquipo.id_equipo);
           this.soporte = this.normalizeCollection(res);
         }
       } catch (error) {
@@ -11161,34 +11320,63 @@ __webpack_require__.r(__webpack_exports__);
         'status-pill--muted': !normalized || ['inactivo', 'inactive', 'baja'].includes(normalized)
       };
     },
-    openCreateModal() {
+    async openCreateModal() {
       if (this.tab === 'soporte' && !this.selectedEquipo) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Select a device first.'));
         return;
+      }
+      this.editMode = false;
+      this.editingItem = null;
+      if (this.tab === 'modelos') {
+        this.resetModelo();
+      }
+      if (this.tab === 'equipos') {
+        this.resetEquipo();
+        await this.loadModelosCatalogo();
+        if (this.modelosCatalogo.length === 0) {
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Create a model before registering a device.'));
+          return;
+        }
+      }
+      if (this.tab === 'soporte') {
+        this.resetSoporte();
       }
       this.showModal = true;
     },
     closeModal() {
       this.showModal = false;
+      this.editMode = false;
+      this.editingItem = null;
     },
     async saveModal() {
       try {
         if (this.tab === 'modelos') {
-          await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__["default"].crearModelo(this.formModelo);
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Model created successfully.'));
+          if (this.editMode && this.editingItem?.id_modelo) {
+            await this.updateModelo(this.editingItem.id_modelo, this.formModelo);
+            (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Model updated successfully.'));
+          } else {
+            await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].crearModelo(this.formModelo);
+            (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Model created successfully.'));
+          }
           this.resetModelo();
         }
         if (this.tab === 'equipos') {
-          await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__["default"].crearEquipo({
+          const payload = {
             ...this.formEquipo,
-            id_empleado: this.formEquipo.id_empleado ? Number(this.formEquipo.id_empleado) : null,
             id_modelo: this.formEquipo.id_modelo ? Number(this.formEquipo.id_modelo) : null
-          });
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Device created successfully.'));
+          };
+          if (this.editMode && this.editingItem?.id_equipo) {
+            await this.updateEquipo(this.editingItem.id_equipo, payload);
+            (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Device updated successfully.'));
+          } else {
+            await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].crearEquipo(payload);
+            (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Device created successfully.'));
+          }
           this.resetEquipo();
         }
         if (this.tab === 'soporte') {
-          await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_13__["default"].crearSoporte({
+          this.resetSoporte(false);
+          await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].crearSoporte({
             ...this.formSoporte,
             id_equipo: this.selectedEquipo.id_equipo
           });
@@ -11208,6 +11396,34 @@ __webpack_require__.r(__webpack_exports__);
       this.tab = 'soporte';
       await this.reload();
     },
+    openEditModelo(modelo) {
+      this.editMode = true;
+      this.editingItem = modelo;
+      this.formModelo = {
+        marca: modelo.marca || '',
+        modelo: modelo.modelo || '',
+        procesador: modelo.procesador || '',
+        ram: modelo.ram || '',
+        disco_duro: modelo.disco_duro || '',
+        tipo: modelo.tipo || '',
+        touch: this.isTruthy(modelo.touch)
+      };
+      this.showModal = true;
+    },
+    async openEditEquipo(equipo) {
+      this.editMode = true;
+      this.editingItem = equipo;
+      await this.loadModelosCatalogo();
+      this.formEquipo = {
+        id_modelo: equipo.id_modelo ? String(equipo.id_modelo) : '',
+        nombre_dispositivo: equipo.nombre_dispositivo || '',
+        nombre_sistema: equipo.nombre_sistema || '',
+        numero_serie: equipo.numero_serie || '',
+        estado: equipo.estado || 'activo',
+        info: equipo.info || ''
+      };
+      this.showModal = true;
+    },
     resetModelo() {
       this.formModelo = {
         marca: '',
@@ -11221,7 +11437,6 @@ __webpack_require__.r(__webpack_exports__);
     },
     resetEquipo() {
       this.formEquipo = {
-        id_empleado: '',
         id_modelo: '',
         nombre_dispositivo: '',
         nombre_sistema: '',
@@ -11230,13 +11445,381 @@ __webpack_require__.r(__webpack_exports__);
         info: ''
       };
     },
-    resetSoporte() {
+    resetSoporte(resetFields = true) {
       this.formSoporte = {
-        accion: '',
-        detalles: '',
-        usuario_actual: '',
-        usuario_soporte: ''
+        accion: resetFields ? '' : this.formSoporte.accion,
+        detalles: resetFields ? '' : this.formSoporte.detalles,
+        usuario_actual: this.getSelectedEquipoUser(),
+        usuario_soporte: this.getCurrentSupportUser()
       };
+    },
+    async loadModelosCatalogo(force = false) {
+      if (!force && this.modelosCatalogo.length > 0) {
+        return;
+      }
+      const res = await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].getModelos({});
+      this.modelosCatalogo = this.normalizeCollection(res);
+    },
+    modeloLabel(modelo) {
+      return [modelo.marca, modelo.modelo, modelo.procesador, modelo.ram, modelo.disco_duro].filter(Boolean).join(' - ');
+    },
+    async openImportModal() {
+      this.importRows = [];
+      this.importErrors = [];
+      if (this.tab === 'equipos') {
+        await this.loadModelosCatalogo();
+      }
+      if (this.tab === 'soporte' && !this.selectedEquipo) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Select a device first.'));
+        return;
+      }
+      this.showImportModal = true;
+    },
+    closeImportModal() {
+      this.showImportModal = false;
+      this.importRows = [];
+      this.importErrors = [];
+    },
+    handleImportFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const rows = this.parseCsv(String(reader.result || ''));
+          this.importRows = this.prepareImportRows(rows);
+          this.importErrors = this.validateImportRows(this.importRows);
+        } catch (error) {
+          this.importRows = [];
+          this.importErrors = [String(error)];
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    },
+    parseCsv(text) {
+      const delimiter = this.detectCsvDelimiter(text);
+      const rows = [];
+      let row = [];
+      let value = '';
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+        if (char === '"' && inQuotes && nextChar === '"') {
+          value += '"';
+          i += 1;
+          continue;
+        }
+        if (char === '"') {
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if (char === delimiter && !inQuotes) {
+          row.push(value.trim());
+          value = '';
+          continue;
+        }
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') {
+            i += 1;
+          }
+          row.push(value.trim());
+          if (row.some(cell => cell !== '')) {
+            rows.push(row);
+          }
+          row = [];
+          value = '';
+          continue;
+        }
+        value += char;
+      }
+      row.push(value.trim());
+      if (row.some(cell => cell !== '')) {
+        rows.push(row);
+      }
+      if (rows.length < 2) {
+        throw new Error((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'The CSV file does not contain records.'));
+      }
+      const headers = rows.shift().map(header => this.normalizeCsvKey(header));
+      return rows.map(item => {
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = item[index] ?? '';
+        });
+        return record;
+      });
+    },
+    detectCsvDelimiter(text) {
+      const firstLine = String(text || '').split(/\r?\n/).find(line => line.trim() !== '') || '';
+      const commas = (firstLine.match(/,/g) || []).length;
+      const semicolons = (firstLine.match(/;/g) || []).length;
+      return semicolons > commas ? ';' : ',';
+    },
+    normalizeCsvKey(value) {
+      return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    },
+    prepareImportRows(rows) {
+      return rows.map(row => {
+        if (this.tab === 'modelos') {
+          return {
+            marca: row.marca || '',
+            modelo: row.modelo || '',
+            procesador: row.procesador || row.cpu || '',
+            ram: row.ram || '',
+            disco_duro: row.disco_duro || row.almacenamiento || row.storage || '',
+            tipo: row.tipo || '',
+            touch: this.isTruthy(row.touch) ? '1' : '0'
+          };
+        }
+        if (this.tab === 'equipos') {
+          return {
+            id_modelo: row.id_modelo || this.findModeloId(row),
+            marca: row.marca || '',
+            modelo: row.modelo || '',
+            nombre_dispositivo: row.nombre_dispositivo || row.dispositivo || row.device_name || '',
+            nombre_sistema: row.nombre_sistema || row.hostname || row.system_name || '',
+            numero_serie: row.numero_serie || row.serial || row.service_tag || '',
+            estado: row.estado || 'activo',
+            info: row.info || row.informacion || ''
+          };
+        }
+        return {
+          accion: row.accion || row.action || '',
+          usuario_actual: row.usuario_actual || '',
+          usuario_soporte: row.usuario_soporte || '',
+          detalles: row.detalles || row.details || ''
+        };
+      });
+    },
+    validateImportRows(rows) {
+      const errors = [];
+      rows.forEach((row, index) => {
+        const line = index + 2;
+        this.importColumns.filter(column => column.required).forEach(column => {
+          if (!row[column.key]) {
+            errors.push((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Line {line}: missing required field {field}', {
+              line,
+              field: column.key
+            }));
+          }
+        });
+        if (this.tab === 'equipos' && !row.id_modelo) {
+          errors.push((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Line {line}: model not found. Use id_modelo or valid marca + modelo.', {
+            line
+          }));
+        }
+      });
+      return errors;
+    },
+    findModeloId(row) {
+      const marca = String(row.marca || '').trim().toLowerCase();
+      const modelo = String(row.modelo || '').trim().toLowerCase();
+      if (!marca || !modelo) {
+        return '';
+      }
+      const found = this.modelosCatalogo.find(item => {
+        return String(item.marca || '').trim().toLowerCase() === marca && String(item.modelo || '').trim().toLowerCase() === modelo;
+      });
+      return found?.id_modelo || '';
+    },
+    async saveImport() {
+      try {
+        this.importing = true;
+        if (this.tab === 'modelos') {
+          for (const row of this.importRows) {
+            await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].crearModelo({
+              marca: row.marca,
+              modelo: row.modelo,
+              procesador: row.procesador,
+              ram: row.ram,
+              disco_duro: row.disco_duro,
+              tipo: row.tipo,
+              touch: this.isTruthy(row.touch)
+            });
+          }
+        }
+        if (this.tab === 'equipos') {
+          for (const row of this.importRows) {
+            await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].crearEquipo({
+              id_modelo: row.id_modelo ? Number(row.id_modelo) : null,
+              nombre_dispositivo: row.nombre_dispositivo,
+              nombre_sistema: row.nombre_sistema,
+              numero_serie: row.numero_serie,
+              estado: row.estado || 'activo',
+              info: row.info
+            });
+          }
+        }
+        if (this.tab === 'soporte') {
+          for (const row of this.importRows) {
+            await _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].crearSoporte({
+              id_equipo: this.selectedEquipo.id_equipo,
+              accion: row.accion,
+              usuario_actual: row.usuario_actual,
+              usuario_soporte: row.usuario_soporte,
+              detalles: row.detalles
+            });
+          }
+        }
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Import completed successfully.'));
+        this.closeImportModal();
+        await this.reload();
+      } catch (error) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_1__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Error importing inventory data: {error}', {
+          error: String(error)
+        }));
+      } finally {
+        this.importing = false;
+      }
+    },
+    exportCurrentTab() {
+      const columns = this.getExportColumns();
+      const csv = this.toCsv(this.currentRows, columns);
+      const date = new Date().toISOString().slice(0, 10);
+      this.downloadTextFile(csv, `inventario_${this.tab}_${date}.csv`);
+    },
+    downloadImportTemplate() {
+      const columns = this.importColumns.map(column => column.key);
+      const example = this.getImportExampleRow();
+      const csv = this.toCsv([example], columns);
+      this.downloadTextFile(csv, `plantilla_${this.tab}.csv`);
+    },
+    getExportColumns() {
+      if (this.tab === 'modelos') {
+        return ['id_modelo', 'marca', 'modelo', 'procesador', 'ram', 'disco_duro', 'tipo', 'touch'];
+      }
+      if (this.tab === 'equipos') {
+        return ['id_equipo', 'id_modelo', 'marca', 'modelo', 'nombre_dispositivo', 'nombre_sistema', 'numero_serie', 'estado', 'empleado_uid', 'empleado_id', 'info'];
+      }
+      return ['id_soporte', 'id_equipo', 'fecha', 'accion', 'usuario_actual', 'usuario_soporte', 'detalles'];
+    },
+    getImportExampleRow() {
+      if (this.tab === 'modelos') {
+        return {
+          marca: 'Dell',
+          modelo: 'Latitude 5420',
+          procesador: 'Intel Core i5',
+          ram: '16 GB',
+          disco_duro: '512 GB SSD',
+          tipo: 'Laptop',
+          touch: '0'
+        };
+      }
+      if (this.tab === 'equipos') {
+        return {
+          id_modelo: '',
+          marca: 'Dell',
+          modelo: 'Latitude 5420',
+          nombre_dispositivo: 'LAP-001',
+          nombre_sistema: 'CROWE-LAP-001',
+          numero_serie: 'ABC123456',
+          estado: 'activo',
+          info: 'Equipo disponible para asignación'
+        };
+      }
+      return {
+        accion: 'Mantenimiento preventivo',
+        usuario_actual: this.getSelectedEquipoUser(),
+        usuario_soporte: this.getCurrentSupportUser(),
+        detalles: 'Limpieza general y revisión de actualizaciones'
+      };
+    },
+    toCsv(rows, columns) {
+      const header = columns.join(',');
+      const body = rows.map(row => {
+        return columns.map(column => this.escapeCsvValue(row[column])).join(',');
+      });
+      return `\uFEFF${[header, ...body].join('\n')}`;
+    },
+    escapeCsvValue(value) {
+      const normalized = value === null || value === undefined ? '' : String(value);
+      if (/[",\n\r]/.test(normalized)) {
+        return `"${normalized.replace(/"/g, '""')}"`;
+      }
+      return normalized;
+    },
+    downloadTextFile(content, filename) {
+      const blob = new Blob([content], {
+        type: 'text/csv;charset=utf-8;'
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
+    openModelos() {
+      this.tab = 'modelos';
+    },
+    empleadoAsignadoName(equipo) {
+      if (equipo.empleado_displayname) {
+        return equipo.empleado_displayname;
+      }
+      if (equipo.displayname) {
+        return equipo.displayname;
+      }
+      if (equipo.empleado_uid) {
+        return equipo.empleado_uid;
+      }
+      if (equipo.id_user) {
+        return equipo.id_user;
+      }
+      if (equipo.Id_user) {
+        return equipo.Id_user;
+      }
+      if (equipo.empleado_id) {
+        return `#${equipo.empleado_id}`;
+      }
+      if (equipo.id_empleado) {
+        return `#${equipo.id_empleado}`;
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Unassigned');
+    },
+    getSelectedEquipoUser() {
+      if (!this.selectedEquipo) {
+        return '';
+      }
+      const value = this.empleadoAsignadoName(this.selectedEquipo);
+      return value === (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_0__.translate)('empleados', 'Unassigned') ? '' : value;
+    },
+    getCurrentSupportUser() {
+      const currentUser = window?.OC?.getCurrentUser?.();
+      return currentUser?.displayName || currentUser?.uid || currentUser?.id || window?.OC?.currentUser || '';
+    },
+    async updateModelo(idModelo, data) {
+      if (typeof _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].actualizarModelo === 'function') {
+        return _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].actualizarModelo(idModelo, data);
+      }
+      if (typeof _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].updateModelo === 'function') {
+        return _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].updateModelo(idModelo, data);
+      }
+      return this.updateByHttp(`/apps/empleados/ActualizarInventarioModelo/${idModelo}`, data);
+    },
+    async updateEquipo(idEquipo, data) {
+      if (typeof _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].actualizarEquipo === 'function') {
+        return _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].actualizarEquipo(idEquipo, data);
+      }
+      if (typeof _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].updateEquipo === 'function') {
+        return _services_inventarioService_js__WEBPACK_IMPORTED_MODULE_18__["default"].updateEquipo(idEquipo, data);
+      }
+      return this.updateByHttp(`/apps/empleados/ActualizarInventarioEquipo/${idEquipo}`, data);
+    },
+    async updateByHttp(url, data) {
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].put((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)(url), data);
+        return response.data;
+      } catch (error) {
+        if ([404, 405].includes(error?.response?.status)) {
+          const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)(url), data);
+          return response.data;
+        }
+        throw error;
+      }
     }
   }
 });
@@ -11919,7 +12502,8 @@ __webpack_require__.r(__webpack_exports__);
       EmpleadosList: [],
       Aniversario: '',
       Vacaciones: '',
-      state: false
+      state: false,
+      inventarioEquipos: []
     };
   },
   watch: {
@@ -11931,13 +12515,14 @@ __webpack_require__.r(__webpack_exports__);
         this.cambioEstado(newVal ? '1' : '0');
       }
     },
-    data(news) {
+    async data(news) {
       if (news) {
         this.setAttr(news.Numero_empleado, news.Ingreso, news.Id_departamento, news.Id_puesto, news.Id_gerente, news.Id_socio, news.Fondo_clave, news.Fondo_ahorro, news.Numero_cuenta, news.Id_equipo, news.Equipo_asignado, news.Sueldo, news.dias_disponibles, news.id_aniversario, news.state);
+        await this.getInventarioEquipos(news.Equipo_asignado);
       }
     }
   },
-  mounted() {
+  async mounted() {
     this.EmpleadosList = this.empleados.map(empleados => ({
       id: empleados.Id_user,
       displayName: empleados.displayname ? empleados.displayname : empleados.Id_user,
@@ -11946,6 +12531,7 @@ __webpack_require__.r(__webpack_exports__);
       user: empleados.Id_user
     }));
     this.setAttr(this.data.Numero_empleado, this.data.Ingreso, this.data.Id_departamento, this.data.Id_puesto, this.data.Id_gerente, this.data.Id_socio, this.data.Fondo_clave, this.data.Fondo_ahorro, this.data.Numero_cuenta, this.data.Id_equipo, this.data.Equipo_asignado, this.data.Sueldo, this.data.dias_disponibles, this.data.id_aniversario, this.data.state);
+    await this.getInventarioEquipos(this.data.Equipo_asignado);
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate,
@@ -12088,7 +12674,7 @@ __webpack_require__.r(__webpack_exports__);
           fondoclave: this.checknull(this.Fondo_clave),
           fondoahorro: this.checknull(this.Fondo_ahorro),
           numerocuenta: this.checknull(this.Numero_cuenta),
-          equipoasignado: this.checknull(this.Equipo_asignado),
+          equipoasignado: this.getEquipoAsignadoValue(),
           equipo: this.Equipo.value,
           sueldo: this.checknull(this.Sueldo),
           id_aniversario: this.checknull(this.Aniversario),
@@ -12135,6 +12721,94 @@ __webpack_require__.r(__webpack_exports__);
       console.log(data);
       this.$bus.emit('send-data', data);
       this.$bus.emit('show', false);
+    },
+    async getInventarioEquipos(currentEquipoId = null) {
+      try {
+        const current = currentEquipoId || this.getEquipoAsignadoValue();
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_2__.generateUrl)('/apps/empleados/GetInventarioEquiposSelect'), {
+          params: {
+            current,
+            onlyAvailable: true
+          }
+        });
+        const data = this.normalizeInventarioEquiposResponse(response);
+        this.inventarioEquipos = data.map(equipo => ({
+          value: equipo.value || equipo.id_equipo,
+          label: equipo.label || this.inventarioEquipoLabel(equipo),
+          id_equipo: equipo.id_equipo || equipo.value,
+          nombre_dispositivo: equipo.nombre_dispositivo || '',
+          nombre_sistema: equipo.nombre_sistema || '',
+          numero_serie: equipo.numero_serie || '',
+          estado: equipo.estado || '',
+          marca: equipo.marca || '',
+          modelo: equipo.modelo || '',
+          empleado_id: equipo.empleado_id || null,
+          empleado_uid: equipo.empleado_uid || null
+        }));
+        const selected = this.findInventarioEquipo(current);
+        if (selected) {
+          this.Equipo_asignado = selected;
+        } else if (current) {
+          this.Equipo_asignado = {
+            value: current,
+            label: `${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Assigned equipment')} #${current}`,
+            id_equipo: current
+          };
+        } else {
+          this.Equipo_asignado = '';
+        }
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'No se pudo cargar el inventario de equipos [{error}]', {
+          error: String(err),
+          close: true
+        }));
+      }
+    },
+    normalizeInventarioEquiposResponse(response) {
+      const payload = response?.data?.ocs?.data || response?.data || response;
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+      if (Array.isArray(payload?.data)) {
+        return payload.data;
+      }
+      if (Array.isArray(payload?.ocs?.data)) {
+        return payload.ocs.data;
+      }
+      if (Array.isArray(payload?.ocs?.data?.data)) {
+        return payload.ocs.data.data;
+      }
+      return [];
+    },
+    inventarioEquipoLabel(equipo) {
+      return [equipo.nombre_dispositivo, equipo.nombre_sistema, equipo.numero_serie, equipo.marca && equipo.modelo ? `${equipo.marca} ${equipo.modelo}` : ''].filter(Boolean).join(' - ');
+    },
+    findInventarioEquipo(value) {
+      const id = typeof value === 'object' ? value.value : value;
+      return this.inventarioEquipos.find(equipo => {
+        return String(equipo.value) === String(id) || String(equipo.label) === String(id);
+      }) || '';
+    },
+    getEquipoAsignadoValue() {
+      if (!this.Equipo_asignado) {
+        return '';
+      }
+      if (typeof this.Equipo_asignado === 'object') {
+        return this.Equipo_asignado.value || '';
+      }
+      return this.Equipo_asignado;
+    },
+    equipoOptionTitle(option) {
+      if (!option) {
+        return '';
+      }
+      return option.nombre_dispositivo || option.nombre_sistema || option.label || `${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Equipment')} #${option.value || option.id_equipo || ''}`;
+    },
+    equipoOptionSubtitle(option) {
+      if (!option) {
+        return '';
+      }
+      return [option.nombre_sistema && option.nombre_sistema !== option.nombre_dispositivo ? option.nombre_sistema : '', option.numero_serie ? `${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Serial')}: ${option.numero_serie}` : '', option.marca || option.modelo ? [option.marca, option.modelo].filter(Boolean).join(' ') : ''].filter(Boolean).join(' · ');
     }
   }
 });
@@ -19594,9 +20268,25 @@ var render = function render() {
     staticClass: "inventario-header"
   }, [_c("div", {
     staticClass: "inventario-heading"
-  }, [_c("h2", [_vm._v(_vm._s(_vm.t("empleados", "IT Inventory")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Computer equipment, device models and support history.")))])]), _vm._v(" "), _c("NcButton", {
+  }, [_c("h2", [_vm._v(_vm._s(_vm.pageTitle))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.pageSubtitle))])]), _vm._v(" "), _c("NcActions", {
+    staticClass: "inventario-actions",
     attrs: {
-      type: "primary",
+      "force-menu": true,
+      disabled: _vm.loading
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Plus", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }])
+  }, [_vm._v(" "), _c("NcActionButton", {
+    attrs: {
       disabled: _vm.tab === "soporte" && !_vm.selectedEquipo
     },
     on: {
@@ -19613,7 +20303,90 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.primaryButtonText) + "\n\t\t")])], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.primaryButtonText) + "\n\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
+    on: {
+      click: _vm.downloadImportTemplate
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Download", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }])
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Download CSV template")) + "\n\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
+    attrs: {
+      disabled: _vm.tab === "soporte" && !_vm.selectedEquipo
+    },
+    on: {
+      click: _vm.openImportModal
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Upload", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }])
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Import CSV")) + "\n\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
+    attrs: {
+      disabled: _vm.currentRows.length === 0
+    },
+    on: {
+      click: _vm.exportCurrentTab
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Download", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }])
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Export CSV")) + "\n\t\t\t")]), _vm._v(" "), _vm.tab !== "modelos" ? _c("NcActionButton", {
+    on: {
+      click: _vm.openModelos
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Database", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 4153542637)
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Manage models")) + "\n\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.tab === "modelos" ? _c("NcActionButton", {
+    on: {
+      click: function ($event) {
+        return _vm.setTab("equipos");
+      }
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Laptop", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 2586121374)
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Back to devices")) + "\n\t\t\t")]) : _vm._e()], 1)], 1), _vm._v(" "), _c("div", {
     staticClass: "inventario-summary",
     attrs: {
       "aria-hidden": "true"
@@ -19720,7 +20493,7 @@ var render = function render() {
     staticClass: "table-wrap"
   }, [_vm.modelos.length > 0 ? _c("table", {
     staticClass: "inventario-table"
-  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Brand")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Model")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "CPU")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "RAM")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Storage")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Type")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Touch")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.modelos, function (modelo) {
+  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Brand")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Model")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "CPU")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "RAM")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Storage")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Type")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Touch")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Actions")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.modelos, function (modelo) {
     return _c("tr", {
       key: modelo.id_modelo
     }, [_c("td", {
@@ -19738,7 +20511,30 @@ var render = function render() {
       attrs: {
         size: 16
       }
-    }), _vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.isTruthy(modelo.touch) ? _vm.t("empleados", "Yes") : _vm.t("empleados", "No")) + "\n\t\t\t\t\t\t\t\t")], 1)])]);
+    }), _vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.isTruthy(modelo.touch) ? _vm.t("empleados", "Yes") : _vm.t("empleados", "No")) + "\n\t\t\t\t\t\t\t\t")], 1)]), _vm._v(" "), _c("td", {
+      staticClass: "actions-cell"
+    }, [_c("NcButton", {
+      attrs: {
+        size: "small",
+        "aria-label": _vm.t("empleados", "Edit model")
+      },
+      on: {
+        click: function ($event) {
+          return _vm.openEditModelo(modelo);
+        }
+      },
+      scopedSlots: _vm._u([{
+        key: "icon",
+        fn: function () {
+          return [_c("Pencil", {
+            attrs: {
+              size: 18
+            }
+          })];
+        },
+        proxy: true
+      }], null, true)
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Edit")) + "\n\t\t\t\t\t\t\t\t")])], 1)]);
   }), 0)]) : _c("NcEmptyContent", {
     attrs: {
       name: _vm.t("empleados", "No models found")
@@ -19747,7 +20543,7 @@ var render = function render() {
     staticClass: "table-wrap"
   }, [_vm.equipos.length > 0 ? _c("table", {
     staticClass: "inventario-table"
-  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Device name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "System name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Serial number")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Model")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Employee ID")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Support")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.equipos, function (equipo) {
+  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Device name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "System name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Serial number")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Model")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Assigned employee")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Actions")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.equipos, function (equipo) {
     return _c("tr", {
       key: equipo.id_equipo
     }, [_c("td", {
@@ -19755,9 +20551,32 @@ var render = function render() {
     }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.displayValue(equipo.nombre_dispositivo)) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.displayValue(equipo.nombre_sistema)))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.displayValue(equipo.numero_serie)))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.modeloName(equipo)))]), _vm._v(" "), _c("td", [_c("span", {
       staticClass: "status-pill",
       class: _vm.statusClass(equipo.estado)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.displayValue(equipo.estado)) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.displayValue(equipo.id_empleado)))]), _vm._v(" "), _c("td", {
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.displayValue(equipo.estado)) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.empleadoAsignadoName(equipo)))]), _vm._v(" "), _c("td", {
       staticClass: "actions-cell"
+    }, [_c("div", {
+      staticClass: "row-actions"
     }, [_c("NcButton", {
+      attrs: {
+        size: "small",
+        "aria-label": _vm.t("empleados", "Edit device")
+      },
+      on: {
+        click: function ($event) {
+          return _vm.openEditEquipo(equipo);
+        }
+      },
+      scopedSlots: _vm._u([{
+        key: "icon",
+        fn: function () {
+          return [_c("Pencil", {
+            attrs: {
+              size: 18
+            }
+          })];
+        },
+        proxy: true
+      }], null, true)
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Edit")) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
       attrs: {
         size: "small",
         "aria-label": _vm.t("empleados", "View support history")
@@ -19778,7 +20597,7 @@ var render = function render() {
         },
         proxy: true
       }], null, true)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "View")) + "\n\t\t\t\t\t\t\t\t")])], 1)]);
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Support")) + "\n\t\t\t\t\t\t\t\t\t")])], 1)])]);
   }), 0)]) : _c("NcEmptyContent", {
     attrs: {
       name: _vm.t("empleados", "No devices found")
@@ -19804,6 +20623,7 @@ var render = function render() {
       name: _vm.t("empleados", "No support records found")
     }
   })], 1) : _vm._e()]], 2), _vm._v(" "), _vm.showModal ? _c("NcModal", {
+    staticClass: "inventario-nc-modal",
     attrs: {
       name: _vm.modalTitle
     },
@@ -19884,27 +20704,38 @@ var render = function render() {
     }
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Touch screen")) + "\n\t\t\t\t")])], 1) : _vm._e(), _vm._v(" "), _vm.tab === "equipos" ? _c("div", {
     staticClass: "form-grid"
-  }, [_c("NcTextField", {
-    attrs: {
-      value: _vm.formEquipo.id_empleado,
-      label: _vm.t("empleados", "Employee ID")
-    },
-    on: {
-      "update:value": function ($event) {
-        return _vm.$set(_vm.formEquipo, "id_empleado", $event);
-      }
-    }
-  }), _vm._v(" "), _c("NcTextField", {
-    attrs: {
+  }, [_c("div", {
+    staticClass: "select-field"
+  }, [_c("label", [_vm._v(_vm._s(_vm.t("empleados", "Model")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
       value: _vm.formEquipo.id_modelo,
-      label: _vm.t("empleados", "Model ID")
-    },
+      expression: "formEquipo.id_modelo"
+    }],
     on: {
-      "update:value": function ($event) {
-        return _vm.$set(_vm.formEquipo, "id_modelo", $event);
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.$set(_vm.formEquipo, "id_modelo", $event.target.multiple ? $$selectedVal : $$selectedVal[0]);
       }
     }
-  }), _vm._v(" "), _c("NcTextField", {
+  }, [_c("option", {
+    attrs: {
+      value: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Select a model")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _vm._l(_vm.modelosCatalogo, function (modelo) {
+    return _c("option", {
+      key: modelo.id_modelo,
+      domProps: {
+        value: modelo.id_modelo
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.modeloLabel(modelo)) + "\n\t\t\t\t\t\t")]);
+  })], 2)]), _vm._v(" "), _c("NcTextField", {
     attrs: {
       value: _vm.formEquipo.nombre_dispositivo,
       label: _vm.t("empleados", "Device name")
@@ -19934,17 +20765,48 @@ var render = function render() {
         return _vm.$set(_vm.formEquipo, "numero_serie", $event);
       }
     }
-  }), _vm._v(" "), _c("NcTextField", {
-    attrs: {
+  }), _vm._v(" "), _c("div", {
+    staticClass: "select-field"
+  }, [_c("label", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
       value: _vm.formEquipo.estado,
-      label: _vm.t("empleados", "Status")
-    },
+      expression: "formEquipo.estado"
+    }],
     on: {
-      "update:value": function ($event) {
-        return _vm.$set(_vm.formEquipo, "estado", $event);
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.$set(_vm.formEquipo, "estado", $event.target.multiple ? $$selectedVal : $$selectedVal[0]);
       }
     }
-  }), _vm._v(" "), _c("NcTextArea", {
+  }, [_c("option", {
+    attrs: {
+      value: "activo"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Active")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "asignado"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Assigned")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "mantenimiento"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Maintenance")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "inactivo"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Inactive")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "baja"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Retired")) + "\n\t\t\t\t\t\t")])])]), _vm._v(" "), _c("NcTextArea", {
+    staticClass: "form-field--full",
     attrs: {
       value: _vm.formEquipo.info,
       label: _vm.t("empleados", "Information")
@@ -19958,7 +20820,7 @@ var render = function render() {
     staticClass: "form-grid form-grid--single"
   }, [_vm.selectedEquipo ? _c("p", {
     staticClass: "modal-context"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.displayValue(_vm.selectedEquipo.nombre_dispositivo)) + " - " + _vm._s(_vm.displayValue(_vm.selectedEquipo.numero_serie)) + "\n\t\t\t\t")]) : _vm._e(), _vm._v(" "), _c("NcTextField", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.displayValue(_vm.selectedEquipo.nombre_dispositivo)) + " -\n\t\t\t\t\t" + _vm._s(_vm.displayValue(_vm.selectedEquipo.numero_serie)) + "\n\t\t\t\t")]) : _vm._e(), _vm._v(" "), _c("NcTextField", {
     attrs: {
       value: _vm.formSoporte.accion,
       label: _vm.t("empleados", "Action")
@@ -19968,27 +20830,13 @@ var render = function render() {
         return _vm.$set(_vm.formSoporte, "accion", $event);
       }
     }
-  }), _vm._v(" "), _c("NcTextField", {
-    attrs: {
-      value: _vm.formSoporte.usuario_actual,
-      label: _vm.t("empleados", "Current user")
-    },
-    on: {
-      "update:value": function ($event) {
-        return _vm.$set(_vm.formSoporte, "usuario_actual", $event);
-      }
-    }
-  }), _vm._v(" "), _c("NcTextField", {
-    attrs: {
-      value: _vm.formSoporte.usuario_soporte,
-      label: _vm.t("empleados", "Support user")
-    },
-    on: {
-      "update:value": function ($event) {
-        return _vm.$set(_vm.formSoporte, "usuario_soporte", $event);
-      }
-    }
-  }), _vm._v(" "), _c("NcTextArea", {
+  }), _vm._v(" "), _c("div", {
+    staticClass: "readonly-grid"
+  }, [_c("div", {
+    staticClass: "readonly-field"
+  }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Current user")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.displayValue(_vm.formSoporte.usuario_actual)))])]), _vm._v(" "), _c("div", {
+    staticClass: "readonly-field"
+  }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Support user")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.displayValue(_vm.formSoporte.usuario_soporte)))])])]), _vm._v(" "), _c("NcTextArea", {
     attrs: {
       value: _vm.formSoporte.detalles,
       label: _vm.t("empleados", "Details")
@@ -20012,7 +20860,103 @@ var render = function render() {
     on: {
       click: _vm.saveModal
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save")) + "\n\t\t\t\t")])], 1)])]) : _vm._e()], 1);
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.editMode ? _vm.t("empleados", "Update") : _vm.t("empleados", "Save")) + "\n\t\t\t\t")])], 1)])]) : _vm._e(), _vm._v(" "), _vm.showImportModal ? _c("NcModal", {
+    staticClass: "inventario-nc-modal",
+    attrs: {
+      name: _vm.importModalTitle
+    },
+    on: {
+      close: _vm.closeImportModal
+    }
+  }, [_c("div", {
+    staticClass: "inventario-modal"
+  }, [_c("div", {
+    staticClass: "import-box"
+  }, [_c("p", {
+    staticClass: "modal-context"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.importHelpText) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "import-actions"
+  }, [_c("NcButton", {
+    on: {
+      click: _vm.downloadImportTemplate
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Download", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 3312959228)
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Download template")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("label", {
+    staticClass: "file-input-button"
+  }, [_c("input", {
+    attrs: {
+      type: "file",
+      accept: ".csv,text/csv"
+    },
+    on: {
+      change: _vm.handleImportFile
+    }
+  }), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Select CSV file")))])])], 1), _vm._v(" "), _vm.importErrors.length > 0 ? _c("div", {
+    staticClass: "import-errors"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Import errors")))]), _vm._v(" "), _c("ul", _vm._l(_vm.importErrors, function (error, index) {
+    return _c("li", {
+      key: index
+    }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(error) + "\n\t\t\t\t\t\t")]);
+  }), 0)]) : _vm._e(), _vm._v(" "), _vm.importRows.length > 0 ? _c("div", {
+    staticClass: "import-preview"
+  }, [_c("strong", [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Preview")) + ":\n\t\t\t\t\t\t" + _vm._s(_vm.importRows.length) + "\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "records")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "table-wrap"
+  }, [_c("table", {
+    staticClass: "inventario-table"
+  }, [_c("thead", [_c("tr", _vm._l(_vm.importColumns, function (column) {
+    return _c("th", {
+      key: column.key
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(column.label) + "\n\t\t\t\t\t\t\t\t\t")]);
+  }), 0)]), _vm._v(" "), _c("tbody", _vm._l(_vm.importRows.slice(0, 10), function (row, rowIndex) {
+    return _c("tr", {
+      key: rowIndex
+    }, _vm._l(_vm.importColumns, function (column) {
+      return _c("td", {
+        key: column.key
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.displayValue(row[column.key])) + "\n\t\t\t\t\t\t\t\t\t")]);
+    }), 0);
+  }), 0)])]), _vm._v(" "), _vm.importRows.length > 10 ? _c("p", {
+    staticClass: "modal-context"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only the first 10 records are shown.")) + "\n\t\t\t\t\t")]) : _vm._e()]) : _vm._e()]), _vm._v(" "), _c("div", {
+    staticClass: "inventario-modal-actions"
+  }, [_c("NcButton", {
+    on: {
+      click: _vm.closeImportModal
+    }
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Cancel")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "primary",
+      disabled: _vm.importing || _vm.importRows.length === 0 || _vm.importErrors.length > 0
+    },
+    on: {
+      click: _vm.saveImport
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_vm.importing ? _c("NcLoadingIcon", {
+          attrs: {
+            size: 20
+          }
+        }) : _c("Upload", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 1702756132)
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Import")) + "\n\t\t\t\t")])], 1)])]) : _vm._e()], 1);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -20896,7 +21840,7 @@ var render = function render() {
   }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Systems")))])]), _vm._v(" "), _c("div", {
     staticClass: "flexible"
   }, [_c("div", {
-    staticClass: "box1Inside"
+    staticClass: "box1Inside equipo-asignado-field"
   }, [_c("label", {
     staticClass: "labeltype",
     attrs: {
@@ -20906,29 +21850,46 @@ var render = function render() {
     attrs: {
       size: 20
     }
-  }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Assigned equipment")) + "\n\t\t\t\t\t\t\t")], 1), _vm._v(" "), _c("input", {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: _vm.Equipo_asignado,
-      expression: "Equipo_asignado"
-    }],
-    staticClass: "inputtype",
+  }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Assigned equipment")) + "\n\t\t\t\t\t\t\t")], 1), _vm._v(" "), _c("NcSelect", {
+    staticClass: "equipo-computo-select",
     attrs: {
       id: "Equipo_asignado",
-      type: "text",
-      disabled: !_vm.show
+      disabled: !_vm.show,
+      options: _vm.inventarioEquipos,
+      "input-label": _vm.t("empleados", "Assigned equipment"),
+      "label-outside": true,
+      placeholder: _vm.t("empleados", "Select assigned equipment")
     },
-    domProps: {
-      value: _vm.Equipo_asignado
-    },
-    on: {
-      input: function ($event) {
-        if ($event.target.composing) return;
-        _vm.Equipo_asignado = $event.target.value;
+    scopedSlots: _vm._u([{
+      key: "selected-option",
+      fn: function (option) {
+        return [_c("div", {
+          staticClass: "equipo-selected-option"
+        }, [_c("strong", [_vm._v(_vm._s(_vm.equipoOptionTitle(option)))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.equipoOptionSubtitle(option)))])])];
       }
+    }, {
+      key: "option",
+      fn: function (option) {
+        return [_c("div", {
+          staticClass: "equipo-dropdown-option"
+        }, [_c("div", {
+          staticClass: "equipo-dropdown-main"
+        }, [_c("strong", [_vm._v(_vm._s(_vm.equipoOptionTitle(option)))]), _vm._v(" "), option.estado ? _c("span", {
+          staticClass: "equipo-status",
+          class: `equipo-status--${String(option.estado).toLowerCase()}`
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(option.estado) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e()]), _vm._v(" "), _c("div", {
+          staticClass: "equipo-dropdown-subtitle"
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.equipoOptionSubtitle(option)) + "\n\t\t\t\t\t\t\t\t\t\t")])])];
+      }
+    }]),
+    model: {
+      value: _vm.Equipo_asignado,
+      callback: function ($$v) {
+        _vm.Equipo_asignado = $$v;
+      },
+      expression: "Equipo_asignado"
     }
-  })])])])]), _vm._v(" "), _c("div", {
+  })], 1)])])]), _vm._v(" "), _c("div", {
     staticClass: "box2"
   }, [_c("div", {
     staticClass: "divider"
@@ -47393,16 +48354,21 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	color: var(--color-text-maxcontrast);
 }
 .inventario-modal[data-v-9ac628a0] {
-	padding: 24px;
-	width: min(720px, calc(100vw - 48px));
+	box-sizing: border-box;
+	width: min(960px, calc(100vw - 64px));
+	max-height: calc(100vh - 120px);
+	padding: 28px;
 	display: flex;
 	flex-direction: column;
 	gap: 18px;
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 .form-grid[data-v-9ac628a0] {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 14px;
+	grid-template-columns: repeat(2, minmax(260px, 1fr));
+	gap: 16px;
+	align-items: start;
 }
 .form-grid--single[data-v-9ac628a0] {
 	grid-template-columns: 1fr;
@@ -47423,8 +48389,14 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 }
 @media (max-width: 700px) {
-.inventario-header[data-v-9ac628a0],
-	.inventario-toolbar[data-v-9ac628a0],
+.inventario-header[data-v-9ac628a0] {
+		align-items: stretch;
+		flex-direction: column;
+}
+.inventario-actions[data-v-9ac628a0] {
+		align-self: flex-start;
+}
+.inventario-toolbar[data-v-9ac628a0],
 	.selected-equipo[data-v-9ac628a0] {
 		align-items: stretch;
 		flex-direction: column;
@@ -47432,7 +48404,131 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 .inventario-tabs[data-v-9ac628a0] {
 		overflow-x: auto;
 }
-.form-grid[data-v-9ac628a0] {
+}
+.select-field[data-v-9ac628a0] {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.select-field label[data-v-9ac628a0] {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+.select-field select[data-v-9ac628a0] {
+	width: 100%;
+	min-height: 44px;
+	padding: 8px 12px;
+	border: 2px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+}
+.select-field select[data-v-9ac628a0]:focus {
+	border-color: var(--color-primary-element);
+	outline: none;
+}
+.inventario-nc-modal[data-v-9ac628a0] .modal-container {
+	width: min(980px, calc(100vw - 48px)) !important;
+	max-width: min(980px, calc(100vw - 48px)) !important;
+}
+.inventario-nc-modal[data-v-9ac628a0] .modal-container__content {
+	width: 100%;
+	max-width: none;
+	overflow: visible;
+}
+.form-grid[data-v-9ac628a0] .input-field,
+.form-grid[data-v-9ac628a0] .textarea {
+	min-width: 0;
+}
+.form-grid[data-v-9ac628a0] textarea {
+	min-height: 120px;
+	resize: vertical;
+}
+.form-field--full[data-v-9ac628a0] {
+	grid-column: 1 / -1;
+}
+.import-box[data-v-9ac628a0] {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+.import-actions[data-v-9ac628a0] {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+}
+.file-input-button[data-v-9ac628a0] {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	padding: 0 16px;
+	border-radius: var(--border-radius-pill, 999px);
+	background-color: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-weight: 700;
+	cursor: pointer;
+}
+.file-input-button input[data-v-9ac628a0] {
+	display: none;
+}
+.import-errors[data-v-9ac628a0] {
+	padding: 12px;
+	border: 1px solid var(--color-error);
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-error-hover);
+	color: var(--color-main-text);
+}
+.import-errors ul[data-v-9ac628a0] {
+	margin: 8px 0 0;
+	padding-left: 20px;
+}
+.import-preview[data-v-9ac628a0] {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.inventario-actions[data-v-9ac628a0] {
+	flex-shrink: 0;
+}
+.inventario-header[data-v-9ac628a0] .button-vue {
+	white-space: nowrap;
+}
+.row-actions[data-v-9ac628a0] {
+	display: inline-flex;
+	gap: 8px;
+	align-items: center;
+	white-space: nowrap;
+}
+.readonly-grid[data-v-9ac628a0] {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	grid-column: 1 / -1;
+}
+.readonly-field[data-v-9ac628a0] {
+	display: grid;
+	gap: 4px;
+	min-height: 44px;
+	padding: 10px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-background-hover);
+}
+.readonly-field span[data-v-9ac628a0] {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	font-weight: 600;
+}
+.readonly-field strong[data-v-9ac628a0] {
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 700;
+}
+@media (max-width: 700px) {
+.readonly-grid[data-v-9ac628a0] {
 		grid-template-columns: 1fr;
 }
 }
@@ -47768,6 +48864,166 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 		width: 100%;
 		margin-top: 4px;
 }
+.equipo-asignado-field {
+		grid-template-columns: 1fr;
+		max-width: none;
+		min-width: 0;
+}
+.equipo-asignado-field .labeltype {
+		margin-bottom: 6px;
+}
+}
+.equipo-asignado-field {
+	display: grid;
+	grid-template-columns: 190px minmax(320px, 1fr);
+	align-items: center;
+	column-gap: 18px;
+	row-gap: 8px;
+	flex: 1 1 100%;
+	max-width: 720px;
+	min-width: 320px;
+}
+.equipo-asignado-field .labeltype {
+	margin-bottom: 0;
+	justify-content: flex-start;
+}
+.equipo-computo-select .vs__dropdown-toggle {
+	min-height: 44px;
+	padding: 4px 8px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.equipo-computo-select.vs--open .vs__dropdown-toggle,
+.equipo-computo-select .vs__dropdown-toggle:focus-within {
+	border-color: var(--color-primary-element);
+	box-shadow: 0 0 0 2px var(--color-primary-element-light);
+}
+.equipo-computo-select.vs--disabled .vs__dropdown-toggle {
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+	cursor: not-allowed;
+	opacity: 1;
+}
+.equipo-computo-select .vs__selected-options {
+	min-width: 0;
+	padding: 0;
+}
+.equipo-computo-select .vs__selected {
+	display: flex;
+	align-items: center;
+	max-width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	color: var(--color-main-text);
+}
+.equipo-computo-select .vs__search {
+	min-width: 0;
+	margin: 0;
+	padding: 0 4px;
+	color: var(--color-main-text);
+}
+.equipo-computo-select .vs__actions {
+	padding: 0 2px 0 8px;
+}
+.equipo-computo-select .vs__dropdown-menu {
+	width: 100%;
+	min-width: 420px;
+	max-height: 320px;
+	padding: 6px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.equipo-computo-select .vs__dropdown-option {
+	padding: 0;
+	border-radius: var(--border-radius-large);
+	color: var(--color-main-text);
+}
+.equipo-computo-select .vs__dropdown-option--highlight {
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+}
+.equipo-selected-option {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	line-height: 1.25;
+}
+.equipo-selected-option strong {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.equipo-selected-option span {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.equipo-dropdown-option {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 10px 12px;
+}
+.equipo-dropdown-main {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: space-between;
+	min-width: 0;
+}
+.equipo-dropdown-main strong {
+	overflow: hidden;
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.equipo-dropdown-subtitle {
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.equipo-status {
+	flex-shrink: 0;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: capitalize;
+}
+.equipo-status--activo,
+.equipo-status--asignado {
+	background: var(--color-success);
+	color: var(--color-primary-element-text);
+}
+.equipo-status--mantenimiento {
+	background: var(--color-warning);
+	color: var(--color-main-text);
+}
+.equipo-status--baja,
+.equipo-status--inactivo {
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
 }
 `, ""]);
 // Exports
@@ -73429,6 +74685,78 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/Download.vue":
+/*!*************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/Download.vue ***!
+  \*************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _Download_vue_vue_type_template_id_4c92e0b4__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Download.vue?vue&type=template&id=4c92e0b4 */ "./node_modules/vue-material-design-icons/Download.vue?vue&type=template&id=4c92e0b4");
+/* harmony import */ var _Download_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Download.vue?vue&type=script&lang=js */ "./node_modules/vue-material-design-icons/Download.vue?vue&type=script&lang=js");
+/* harmony import */ var _vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+;
+var component = (0,_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+  _Download_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _Download_vue_vue_type_template_id_4c92e0b4__WEBPACK_IMPORTED_MODULE_0__.render,
+  _Download_vue_vue_type_template_id_4c92e0b4__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  false,
+  null,
+  null,
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "node_modules/vue-material-design-icons/Download.vue"
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Download.vue?vue&type=script&lang=js":
+/*!************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Download.vue?vue&type=script&lang=js ***!
+  \************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  name: "DownloadIcon",
+  emits: ['click'],
+  props: {
+    title: {
+      type: String,
+    },
+    fillColor: {
+      type: String,
+      default: "currentColor"
+    },
+    size: {
+      type: Number,
+      default: 24
+    }
+  }
+});
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/EmailOutline.vue":
 /*!*****************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/EmailOutline.vue ***!
@@ -74850,6 +76178,78 @@ __webpack_require__.r(__webpack_exports__);
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: "PartyPopperIcon",
+  emits: ['click'],
+  props: {
+    title: {
+      type: String,
+    },
+    fillColor: {
+      type: String,
+      default: "currentColor"
+    },
+    size: {
+      type: Number,
+      default: 24
+    }
+  }
+});
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/Pencil.vue":
+/*!***********************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/Pencil.vue ***!
+  \***********************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _Pencil_vue_vue_type_template_id_093f2fb9__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Pencil.vue?vue&type=template&id=093f2fb9 */ "./node_modules/vue-material-design-icons/Pencil.vue?vue&type=template&id=093f2fb9");
+/* harmony import */ var _Pencil_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Pencil.vue?vue&type=script&lang=js */ "./node_modules/vue-material-design-icons/Pencil.vue?vue&type=script&lang=js");
+/* harmony import */ var _vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+;
+var component = (0,_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+  _Pencil_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _Pencil_vue_vue_type_template_id_093f2fb9__WEBPACK_IMPORTED_MODULE_0__.render,
+  _Pencil_vue_vue_type_template_id_093f2fb9__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  false,
+  null,
+  null,
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "node_modules/vue-material-design-icons/Pencil.vue"
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Pencil.vue?vue&type=script&lang=js":
+/*!**********************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Pencil.vue?vue&type=script&lang=js ***!
+  \**********************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  name: "PencilIcon",
   emits: ['click'],
   props: {
     title: {
@@ -80664,6 +82064,22 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/Download.vue?vue&type=script&lang=js":
+/*!*************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/Download.vue?vue&type=script&lang=js ***!
+  \*************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_Download_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./Download.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Download.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_Download_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/EmailOutline.vue?vue&type=script&lang=js":
 /*!*****************************************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/EmailOutline.vue?vue&type=script&lang=js ***!
@@ -80981,6 +82397,22 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_PartyPopper_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./PartyPopper.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/PartyPopper.vue?vue&type=script&lang=js");
  /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_PartyPopper_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/Pencil.vue?vue&type=script&lang=js":
+/*!***********************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/Pencil.vue?vue&type=script&lang=js ***!
+  \***********************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_Pencil_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./Pencil.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Pencil.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_Pencil_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
 
 /***/ }),
 
@@ -81806,6 +83238,23 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/Download.vue?vue&type=template&id=4c92e0b4":
+/*!*******************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/Download.vue?vue&type=template&id=4c92e0b4 ***!
+  \*******************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_Download_vue_vue_type_template_id_4c92e0b4__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_Download_vue_vue_type_template_id_4c92e0b4__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_Download_vue_vue_type_template_id_4c92e0b4__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./Download.vue?vue&type=template&id=4c92e0b4 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Download.vue?vue&type=template&id=4c92e0b4");
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/EmailOutline.vue?vue&type=template&id=58b20c32":
 /*!***********************************************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/EmailOutline.vue?vue&type=template&id=58b20c32 ***!
@@ -82142,6 +83591,23 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_PartyPopper_vue_vue_type_template_id_559cc994__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
 /* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_PartyPopper_vue_vue_type_template_id_559cc994__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./PartyPopper.vue?vue&type=template&id=559cc994 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/PartyPopper.vue?vue&type=template&id=559cc994");
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/Pencil.vue?vue&type=template&id=093f2fb9":
+/*!*****************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/Pencil.vue?vue&type=template&id=093f2fb9 ***!
+  \*****************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_Pencil_vue_vue_type_template_id_093f2fb9__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_Pencil_vue_vue_type_template_id_093f2fb9__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_Pencil_vue_vue_type_template_id_093f2fb9__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./Pencil.vue?vue&type=template&id=093f2fb9 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Pencil.vue?vue&type=template&id=093f2fb9");
 
 
 /***/ }),
@@ -84955,6 +86421,71 @@ render._withStripped = true
 
 /***/ }),
 
+/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Download.vue?vue&type=template&id=4c92e0b4":
+/*!***********************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Download.vue?vue&type=template&id=4c92e0b4 ***!
+  \***********************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render),
+/* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
+/* harmony export */ });
+var render = function render() {
+  var _vm = this,
+    _c = _vm._self._c
+  return _c(
+    "span",
+    _vm._b(
+      {
+        staticClass: "material-design-icon download-icon",
+        attrs: {
+          "aria-hidden": _vm.title ? null : true,
+          "aria-label": _vm.title,
+          role: "img",
+        },
+        on: {
+          click: function ($event) {
+            return _vm.$emit("click", $event)
+          },
+        },
+      },
+      "span",
+      _vm.$attrs,
+      false
+    ),
+    [
+      _c(
+        "svg",
+        {
+          staticClass: "material-design-icon__svg",
+          attrs: {
+            fill: _vm.fillColor,
+            width: _vm.size,
+            height: _vm.size,
+            viewBox: "0 0 24 24",
+          },
+        },
+        [
+          _c(
+            "path",
+            { attrs: { d: "M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" } },
+            [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
+          ),
+        ]
+      ),
+    ]
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/EmailOutline.vue?vue&type=template&id=58b20c32":
 /*!***************************************************************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/EmailOutline.vue?vue&type=template&id=58b20c32 ***!
@@ -86319,6 +87850,75 @@ var render = function render() {
             {
               attrs: {
                 d: "M14.53 1.45L13.45 2.53L15.05 4.13C15.27 4.38 15.38 4.67 15.38 5S15.27 5.64 15.05 5.86L11.5 9.47L12.5 10.55L16.13 6.94C16.66 6.35 16.92 5.7 16.92 5C16.92 4.3 16.66 3.64 16.13 3.05L14.53 1.45M10.55 3.47L9.47 4.55L10.08 5.11C10.3 5.33 10.41 5.63 10.41 6S10.3 6.67 10.08 6.89L9.47 7.45L10.55 8.53L11.11 7.92C11.64 7.33 11.91 6.69 11.91 6C11.91 5.28 11.64 4.63 11.11 4.03L10.55 3.47M21 5.06C20.31 5.06 19.67 5.33 19.08 5.86L13.45 11.5L14.53 12.5L20.11 6.94C20.36 6.69 20.66 6.56 21 6.56S21.64 6.69 21.89 6.94L22.5 7.55L23.53 6.47L22.97 5.86C22.38 5.33 21.72 5.06 21 5.06M7 8L2 22L16 17L7 8M19 11.06C18.3 11.06 17.66 11.33 17.06 11.86L15.47 13.45L16.55 14.53L18.14 12.94C18.39 12.69 18.67 12.56 19 12.56C19.33 12.56 19.63 12.69 19.88 12.94L21.5 14.53L22.55 13.5L20.95 11.86C20.36 11.33 19.7 11.06 19 11.06Z",
+              },
+            },
+            [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
+          ),
+        ]
+      ),
+    ]
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Pencil.vue?vue&type=template&id=093f2fb9":
+/*!*********************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/Pencil.vue?vue&type=template&id=093f2fb9 ***!
+  \*********************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render),
+/* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
+/* harmony export */ });
+var render = function render() {
+  var _vm = this,
+    _c = _vm._self._c
+  return _c(
+    "span",
+    _vm._b(
+      {
+        staticClass: "material-design-icon pencil-icon",
+        attrs: {
+          "aria-hidden": _vm.title ? null : true,
+          "aria-label": _vm.title,
+          role: "img",
+        },
+        on: {
+          click: function ($event) {
+            return _vm.$emit("click", $event)
+          },
+        },
+      },
+      "span",
+      _vm.$attrs,
+      false
+    ),
+    [
+      _c(
+        "svg",
+        {
+          staticClass: "material-design-icon__svg",
+          attrs: {
+            fill: _vm.fillColor,
+            width: _vm.size,
+            height: _vm.size,
+            viewBox: "0 0 24 24",
+          },
+        },
+        [
+          _c(
+            "path",
+            {
+              attrs: {
+                d: "M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z",
               },
             },
             [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]

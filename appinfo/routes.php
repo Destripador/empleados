@@ -188,7 +188,7 @@ return [
 		['name' => 'inventario#CrearInventarioEquipo', 'url' => '/CrearInventarioEquipo', 'verb' => 'POST'],
 		['name' => 'inventario#ActualizarInventarioEquipo', 'url' => '/ActualizarInventarioEquipo', 'verb' => 'POST'],
 		['name' => 'inventario#EliminarInventarioEquipo', 'url' => '/EliminarInventarioEquipo', 'verb' => 'POST'],
-
+		['name' => 'inventario#GetInventarioEquiposSelect', 'url' => '/GetInventarioEquiposSelect', 'verb' => 'GET'],
 		// Historial de soporte
 		['name' => 'inventario#GetSoporteEquipo', 'url' => '/GetSoporteEquipo', 'verb' => 'POST'],
 		['name' => 'inventario#CrearSoporteEquipo', 'url' => '/CrearSoporteEquipo', 'verb' => 'POST'],

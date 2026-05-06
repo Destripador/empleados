@@ -186,6 +186,30 @@ class InventarioController extends BaseController {
 
 	#[UseSession]
 	#[NoAdminRequired]
+	public function GetInventarioEquiposSelect(): DataResponse {
+		try {
+			$this->checkAccess(['admin', 'empleados']);
+
+			$current = $this->request->getParam('current', null);
+			$onlyAvailable = (string)$this->request->getParam('onlyAvailable', 'true') !== 'false';
+
+			$currentEquipoId = null;
+
+			if ($current !== null && $current !== '') {
+				$currentEquipoId = (int)$current;
+			}
+
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->computoMapper->findAllForSelect($currentEquipoId, $onlyAvailable),
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
 	public function GetInventarioEquipo(int $id_equipo): DataResponse {
 		try {
 			$this->checkAccess(['admin', 'empleados']);
