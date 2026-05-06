@@ -254,10 +254,6 @@ class Version2002Date20260504080248 extends SimpleMigrationStep {
 	}
 
 	private function insertConfig(string $nombre, ?string $data): bool {
-		if (!$this->tableExists('empleados_conf')) {
-			return false;
-		}
-
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('Id_conf')
@@ -280,25 +276,18 @@ class Version2002Date20260504080248 extends SimpleMigrationStep {
 
 		$values = [
 			'Nombre' => $qb->createNamedParameter($nombre, IQueryBuilder::PARAM_STR),
+			'Data' => $qb->createNamedParameter($data, IQueryBuilder::PARAM_STR),
 		];
 
-		if ($data !== null) {
-			$values['Data'] = $qb->createNamedParameter($data, IQueryBuilder::PARAM_STR);
-		}
-
 		$qb->insert('empleados_conf')
-			->values($values)
-			->executeStatement();
+			->values($values);
+
+		if (method_exists($qb, 'executeStatement')) {
+			$qb->executeStatement();
+		} else {
+			$qb->execute();
+		}
 
 		return true;
-	}
-
-	private function tableExists(string $table): bool {
-		try {
-			$schema = $this->db->createSchema();
-			return $schema->hasTable($table);
-		} catch (\Throwable) {
-			return false;
-		}
 	}
 }
