@@ -159,6 +159,58 @@
 						</div>
 					</div>
 				</VTab>
+				<!-- Permissions -->
+				<VTab :title="t('empleados', 'Permissions')">
+					<div class="container permisos-container">
+						<div class="permisos-card">
+							<h3>{{ t('empleados', 'User permissions') }}</h3>
+
+							<p class="permisos-help">
+								{{ t('empleados', 'Assign module permissions using controlled Nextcloud groups.') }}
+							</p>
+
+							<div class="permisos-grid">
+								<label>
+									{{ t('empleados', 'User') }}
+									<select v-model="selectedPermisosUid" @change="loadPermisosUsuario">
+										<option value="">
+											{{ t('empleados', 'Select user') }}
+										</option>
+
+										<option
+											v-for="user in permisosUsuarios"
+											:key="user.uid"
+											:value="user.uid">
+											{{ user.displayname || user.uid }}
+										</option>
+									</select>
+								</label>
+							</div>
+
+							<div v-if="selectedPermisosUid" class="permisos-groups">
+								<h4>{{ t('empleados', 'Allowed groups') }}</h4>
+
+								<NcCheckboxRadioSwitch
+									v-for="group in permisosGrupos"
+									:key="group.id"
+									:checked="selectedPermisosGroups.includes(group.id)"
+									type="switch"
+									@update:checked="togglePermisoGroup(group.id)">
+									{{ group.label }}
+								</NcCheckboxRadioSwitch>
+
+								<div class="permisos-actions">
+									<NcButton
+										type="primary"
+										:disabled="loadingPermisos"
+										@click="savePermisosUsuario">
+										{{ t('empleados', 'Save permissions') }}
+									</NcButton>
+								</div>
+							</div>
+						</div>
+					</div>
+				</VTab>
 			</VueTabs>
 		</div>
 
@@ -187,8 +239,18 @@ import AccountOff from 'vue-material-design-icons/AccountOff.vue'
 import AccountPlus from 'vue-material-design-icons/AccountPlus.vue'
 
 // Components & utils
-import { NcActions, NcActionButton, NcLoadingIcon, NcAvatar, NcDialog, NcEmptyContent } from '@nextcloud/vue'
-import { showError } from '@nextcloud/dialogs'
+import {
+	NcActions,
+	NcActionButton,
+	NcLoadingIcon,
+	NcAvatar,
+	NcDialog,
+	NcEmptyContent,
+	NcButton,
+	NcCheckboxRadioSwitch,
+} from '@nextcloud/vue'
+
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -210,6 +272,8 @@ export default {
 		NcDialog,
 		AccountPlus,
 		NcEmptyContent,
+		NcButton,
+		NcCheckboxRadioSwitch,
 	},
 
 	data() {
@@ -238,6 +302,11 @@ export default {
 				},
 			],
 			loadingEmployees: false,
+			permisosUsuarios: [],
+			permisosGrupos: [],
+			selectedPermisosUid: '',
+			selectedPermisosGroups: [],
+			loadingPermisos: false,
 		}
 	},
 
@@ -268,6 +337,9 @@ export default {
 							})
 
 							this.Usuarios = response?.data?.ocs?.data.Users.filter(user => !this.map[user.uid])
+
+							this.buildPermisosUsuarios()
+							this.loadPermisosGrupos()
 
 							this.loading = false
 						},
@@ -351,6 +423,141 @@ export default {
 				showError(t('empleados', 'An exception occurred [02] [{error}]', { error: String(err) }))
 			}
 		},
+		buildPermisosUsuarios() {
+			const users = []
+
+			this.Empleados.forEach(user => {
+				users.push({
+					uid: user.Id_user || user.uid,
+					displayname: user.displayname || user.DisplayName || user.Id_user || user.uid,
+				})
+			})
+
+			this.Desactivados.forEach(user => {
+				users.push({
+					uid: user.Id_user || user.uid,
+					displayname: user.displayname || user.DisplayName || user.Id_user || user.uid,
+				})
+			})
+
+			this.Usuarios.forEach(user => {
+				let displayname = user.uid
+
+				try {
+					displayname = JSON.parse(user.data)?.displayname?.value || user.uid
+				} catch (e) {
+					displayname = user.displayname || user.uid
+				}
+
+				users.push({
+					uid: user.uid,
+					displayname,
+				})
+			})
+
+			const seen = {}
+
+			this.permisosUsuarios = users.filter(user => {
+				if (!user.uid || seen[user.uid]) {
+					return false
+				}
+
+				seen[user.uid] = true
+				return true
+			})
+		},
+
+		async loadPermisosGrupos() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/permisos/grupos'))
+				const payload = this.getPayload(response)
+
+				if (payload.status !== 'ok') {
+					throw new Error(payload.message || 'No se pudieron cargar los grupos.')
+				}
+
+				this.permisosGrupos = payload.data
+			} catch (err) {
+				showError(t('empleados', 'Error loading permission groups: {error}', { error: String(err) }))
+				console.error(err)
+			}
+		},
+
+		async loadPermisosUsuario() {
+			if (!this.selectedPermisosUid) {
+				this.selectedPermisosGroups = []
+				return
+			}
+
+			this.loadingPermisos = true
+
+			try {
+				const response = await axios.get(
+					generateUrl('/apps/empleados/permisos/usuario/{uid}', {
+						uid: this.selectedPermisosUid,
+					}),
+				)
+
+				const payload = this.getPayload(response)
+
+				if (payload.status !== 'ok') {
+					throw new Error(payload.message || 'No se pudieron cargar los permisos.')
+				}
+
+				this.selectedPermisosGroups = payload.data.groups || []
+			} catch (err) {
+				showError(t('empleados', 'Error loading user permissions: {error}', { error: String(err) }))
+				console.error(err)
+			} finally {
+				this.loadingPermisos = false
+			}
+		},
+
+		togglePermisoGroup(groupId) {
+			if (this.selectedPermisosGroups.includes(groupId)) {
+				this.selectedPermisosGroups = this.selectedPermisosGroups.filter(id => id !== groupId)
+				return
+			}
+
+			this.selectedPermisosGroups.push(groupId)
+		},
+
+		async savePermisosUsuario() {
+			if (!this.selectedPermisosUid) {
+				showError(t('empleados', 'Select a user first'))
+				return
+			}
+
+			this.loadingPermisos = true
+
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/empleados/permisos/usuario/{uid}', {
+						uid: this.selectedPermisosUid,
+					}),
+					{
+						groups: this.selectedPermisosGroups,
+					},
+				)
+
+				const payload = this.getPayload(response)
+
+				if (payload.status !== 'ok') {
+					throw new Error(payload.message || 'No se pudieron guardar los permisos.')
+				}
+
+				this.selectedPermisosGroups = payload.data.groups || []
+				showSuccess(t('empleados', 'Permissions updated'))
+			} catch (err) {
+				showError(t('empleados', 'Error saving permissions: {error}', { error: String(err) }))
+				console.error(err)
+			} finally {
+				this.loadingPermisos = false
+			}
+		},
+		getPayload(response) {
+			return response?.data?.ocs?.data || response?.data
+		},
 	},
 }
 </script>
@@ -407,5 +614,60 @@ export default {
 	margin-left: 20px;
 	margin-right: 20px;
 	width: auto;
+}
+.permisos-container {
+	padding-top: 20px;
+}
+
+.permisos-card {
+	max-width: 720px;
+	padding: 20px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.permisos-card h3 {
+	margin-top: 0;
+}
+
+.permisos-help {
+	opacity: .75;
+	margin-bottom: 18px;
+}
+
+.permisos-grid {
+	display: grid;
+	grid-template-columns: minmax(240px, 1fr);
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.permisos-grid label {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-weight: 600;
+}
+
+.permisos-grid select {
+	min-height: 38px;
+	padding: 8px 10px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+}
+
+.permisos-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.permisos-actions {
+	margin-top: 18px;
+	display: flex;
+	justify-content: flex-end;
 }
 </style>

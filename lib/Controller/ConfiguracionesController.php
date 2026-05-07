@@ -190,6 +190,7 @@ class ConfiguracionesController extends Controller {
 
             'modulo_inventario' => $configMap['modulo_inventario'] ?? 'false',
             'modulo_soporte' => $configMap['modulo_soporte'] ?? 'false',
+            'modulo_compras' => $configMap['modulo_compras'] ?? 'false',
         );
 
         return $data;
@@ -325,8 +326,16 @@ class ConfiguracionesController extends Controller {
         }
 	}
 
-    public function ActualizarConfiguracion($id_configuracion, $data){
+    #[NoCSRFRequired]
+    #[AdminRequired]
+    public function ActualizarConfiguracion($id_configuracion, $data): DataResponse {
         $this->configuracionesMapper->ActualizarConfiguracion($id_configuracion, $data);
+
+        return new DataResponse([
+            'status' => 'ok',
+            'id_configuracion' => $id_configuracion,
+            'data' => $data,
+        ]);
     }
 
     #[NoCSRFRequired]

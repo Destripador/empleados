@@ -4,8 +4,7 @@ declare(strict_types=1);
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 return [
-
-	'routes' => [
+'routes' => [
 		/********************************** INDEX **********************************************/ 
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 		
@@ -93,7 +92,10 @@ return [
 		['name' => 'configuraciones#ActualizarGestor', 'url' => '/ActualizarGestor', 'verb' => 'POST'],
 		['name' => 'configuraciones#ActualizarConfiguracion', 'url' => '/ActualizarConfiguracion', 'verb' => 'POST'],
 		['name' => 'configuraciones#ActualizarConfiguracionReportes', 'url' => '/ActualizarConfiguracionReportes', 'verb' => 'POST',],
-		
+		['name' => 'permisos#grupos', 'url' => '/permisos/grupos',	'verb' => 'GET',],
+		['name' => 'permisos#usuario', 'url' => '/permisos/usuario/{uid}',	'verb' => 'GET',],
+		['name' => 'permisos#actualizarUsuario', 'url' => '/permisos/usuario/{uid}',	'verb' => 'POST',],
+
 		/***************************** CAPITAL HUMANO ***************************************/
 		['name' => 'capitalhumano#GetCapitalHumano', 'url' => '/GetCapitalHumano', 'verb' => 'GET'],
 		['name' => 'capitalhumano#UpdateCapitalHumano', 'url' => '/UpdateCapitalHumano', 'verb' => 'POST'],
@@ -194,5 +196,14 @@ return [
 		['name' => 'inventario#CrearSoporteEquipo', 'url' => '/CrearSoporteEquipo', 'verb' => 'POST'],
 		['name' => 'inventario#ActualizarSoporteEquipo', 'url' => '/ActualizarSoporteEquipo', 'verb' => 'POST'],
 		['name' => 'inventario#EliminarSoporteEquipo', 'url' => '/EliminarSoporteEquipo', 'verb' => 'POST'],
+
+		/************************** COMPRAS ************************************/
+		['name' => 'compra_solicitud#index','url' => '/compras/solicitudes','verb' => 'GET'],
+		['name' => 'compra_solicitud#show','url' => '/compras/solicitudes/{id}','verb' => 'GET'],
+		['name' => 'compra_solicitud#create','url' => '/compras/solicitudes','verb' => 'POST'],
+		['name' => 'compra_solicitud#update','url' => '/compras/solicitudes/{id}','verb' => 'PUT'],
+		['name' => 'compra_solicitud#sendToApproval','url' => '/compras/solicitudes/{id}/enviar-autorizacion','verb' => 'POST'],
+		['name' => 'compra_solicitud#approve','url' => '/compras/solicitudes/{id}/autorizar','verb' => 'POST'],
+		['name' => 'compra_solicitud#reject','url' => '/compras/solicitudes/{id}/rechazar','verb' => 'POST'],
 	],
 ];

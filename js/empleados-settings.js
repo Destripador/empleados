@@ -9462,7 +9462,9 @@ __webpack_require__.r(__webpack_exports__);
     AccountOff: vue_material_design_icons_AccountOff_vue__WEBPACK_IMPORTED_MODULE_3__["default"],
     NcDialog: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcDialog,
     AccountPlus: vue_material_design_icons_AccountPlus_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
-    NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcEmptyContent
+    NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcEmptyContent,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcButton,
+    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcCheckboxRadioSwitch
   },
   data() {
     return {
@@ -9489,7 +9491,12 @@ __webpack_require__.r(__webpack_exports__);
           this.DeactiveUser(this.selected.index);
         }
       }],
-      loadingEmployees: false
+      loadingEmployees: false,
+      permisosUsuarios: [],
+      permisosGrupos: [],
+      selectedPermisosUid: '',
+      selectedPermisosGroups: [],
+      loadingPermisos: false
     };
   },
   async mounted() {
@@ -9512,6 +9519,8 @@ __webpack_require__.r(__webpack_exports__);
             this.map[empleado.Id_user] = true;
           });
           this.Usuarios = response?.data?.ocs?.data.Users.filter(user => !this.map[user.uid]);
+          this.buildPermisosUsuarios();
+          this.loadPermisosGrupos();
           this.loading = false;
         }, err => {
           (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(err);
@@ -9595,6 +9604,117 @@ __webpack_require__.r(__webpack_exports__);
           error: String(err)
         }));
       }
+    },
+    buildPermisosUsuarios() {
+      const users = [];
+      this.Empleados.forEach(user => {
+        users.push({
+          uid: user.Id_user || user.uid,
+          displayname: user.displayname || user.DisplayName || user.Id_user || user.uid
+        });
+      });
+      this.Desactivados.forEach(user => {
+        users.push({
+          uid: user.Id_user || user.uid,
+          displayname: user.displayname || user.DisplayName || user.Id_user || user.uid
+        });
+      });
+      this.Usuarios.forEach(user => {
+        let displayname = user.uid;
+        try {
+          displayname = JSON.parse(user.data)?.displayname?.value || user.uid;
+        } catch (e) {
+          displayname = user.displayname || user.uid;
+        }
+        users.push({
+          uid: user.uid,
+          displayname
+        });
+      });
+      const seen = {};
+      this.permisosUsuarios = users.filter(user => {
+        if (!user.uid || seen[user.uid]) {
+          return false;
+        }
+        seen[user.uid] = true;
+        return true;
+      });
+    },
+    async loadPermisosGrupos() {
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/permisos/grupos'));
+        const payload = this.getPayload(response);
+        if (payload.status !== 'ok') {
+          throw new Error(payload.message || 'No se pudieron cargar los grupos.');
+        }
+        this.permisosGrupos = payload.data;
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Error loading permission groups: {error}', {
+          error: String(err)
+        }));
+        console.error(err);
+      }
+    },
+    async loadPermisosUsuario() {
+      if (!this.selectedPermisosUid) {
+        this.selectedPermisosGroups = [];
+        return;
+      }
+      this.loadingPermisos = true;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/permisos/usuario/{uid}', {
+          uid: this.selectedPermisosUid
+        }));
+        const payload = this.getPayload(response);
+        if (payload.status !== 'ok') {
+          throw new Error(payload.message || 'No se pudieron cargar los permisos.');
+        }
+        this.selectedPermisosGroups = payload.data.groups || [];
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Error loading user permissions: {error}', {
+          error: String(err)
+        }));
+        console.error(err);
+      } finally {
+        this.loadingPermisos = false;
+      }
+    },
+    togglePermisoGroup(groupId) {
+      if (this.selectedPermisosGroups.includes(groupId)) {
+        this.selectedPermisosGroups = this.selectedPermisosGroups.filter(id => id !== groupId);
+        return;
+      }
+      this.selectedPermisosGroups.push(groupId);
+    },
+    async savePermisosUsuario() {
+      if (!this.selectedPermisosUid) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Select a user first'));
+        return;
+      }
+      this.loadingPermisos = true;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/permisos/usuario/{uid}', {
+          uid: this.selectedPermisosUid
+        }), {
+          groups: this.selectedPermisosGroups
+        });
+        const payload = this.getPayload(response);
+        if (payload.status !== 'ok') {
+          throw new Error(payload.message || 'No se pudieron guardar los permisos.');
+        }
+        this.selectedPermisosGroups = payload.data.groups || [];
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Permissions updated'));
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Error saving permissions: {error}', {
+          error: String(err)
+        }));
+        console.error(err);
+      } finally {
+        this.loadingPermisos = false;
+      }
+    },
+    getPayload(response) {
+      return response?.data?.ocs?.data || response?.data;
     }
   }
 });
@@ -9679,7 +9799,8 @@ __webpack_require__.r(__webpack_exports__);
       reportes_horas_minimas: 0,
       optionsGroups: [],
       selected_admin_reports_group: null,
-      reportes_admin_reports_group: 'recursos_humanos'
+      reportes_admin_reports_group: 'recursos_humanos',
+      modulo_compras: false
     };
   },
   async mounted() {
@@ -9710,6 +9831,7 @@ __webpack_require__.r(__webpack_exports__);
         this.modulo_reporte_tiempos = response.data.modulo_reporte_tiempos === 'true';
         this.modulo_inventario = response.data.modulo_inventario === 'true';
         this.modulo_soporte = response.data.modulo_soporte === 'true';
+        this.modulo_compras = response.data.modulo_compras === 'true';
         const reportes = response.data.Reportes || {};
         this.reportes_recordatorios_enabled = String(reportes.recordatorios_enabled ?? 'true') === 'true';
         this.reportes_recordatorios_grupo = reportes.recordatorios_grupo || 'empleados';
@@ -10004,6 +10126,24 @@ __webpack_require__.r(__webpack_exports__);
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Configuration updated'));
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Exception [UpdateReportSettings]: {error}', {
+          error: String(err)
+        }));
+        console.error(err);
+      }
+    },
+    /**
+     * Toggle: Purchases module
+     */
+    async onChangemodulo_compras() {
+      this.modulo_compras = !this.modulo_compras;
+      try {
+        await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/ActualizarConfiguracion'), {
+          id_configuracion: 'modulo_compras',
+          data: this.modulo_compras.toString()
+        });
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Configuration updated. Refresh the page to update the navigation menu.'));
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Exception [UpdateConfiguration]: {error}', {
           error: String(err)
         }));
         console.error(err);
@@ -10574,7 +10714,73 @@ var render = function render() {
         proxy: true
       }], null, true)
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Activate")) + "\n\t\t\t\t\t\t\t\t\t\t")])], 1)], 1)]);
-  })], 2)]) : _vm._e()])])], 1)], 1), _vm._v(" "), _c("NcDialog", {
+  })], 2)]) : _vm._e()])]), _vm._v(" "), _c("VTab", {
+    attrs: {
+      title: _vm.t("empleados", "Permissions")
+    }
+  }, [_c("div", {
+    staticClass: "container permisos-container"
+  }, [_c("div", {
+    staticClass: "permisos-card"
+  }, [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "User permissions")))]), _vm._v(" "), _c("p", {
+    staticClass: "permisos-help"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Assign module permissions using controlled Nextcloud groups.")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "permisos-grid"
+  }, [_c("label", [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "User")) + "\n\t\t\t\t\t\t\t\t"), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.selectedPermisosUid,
+      expression: "selectedPermisosUid"
+    }],
+    on: {
+      change: [function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.selectedPermisosUid = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }, _vm.loadPermisosUsuario]
+    }
+  }, [_c("option", {
+    attrs: {
+      value: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Select user")) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _vm._l(_vm.permisosUsuarios, function (user) {
+    return _c("option", {
+      key: user.uid,
+      domProps: {
+        value: user.uid
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(user.displayname || user.uid) + "\n\t\t\t\t\t\t\t\t\t")]);
+  })], 2)])]), _vm._v(" "), _vm.selectedPermisosUid ? _c("div", {
+    staticClass: "permisos-groups"
+  }, [_c("h4", [_vm._v(_vm._s(_vm.t("empleados", "Allowed groups")))]), _vm._v(" "), _vm._l(_vm.permisosGrupos, function (group) {
+    return _c("NcCheckboxRadioSwitch", {
+      key: group.id,
+      attrs: {
+        checked: _vm.selectedPermisosGroups.includes(group.id),
+        type: "switch"
+      },
+      on: {
+        "update:checked": function ($event) {
+          return _vm.togglePermisoGroup(group.id);
+        }
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(group.label) + "\n\t\t\t\t\t\t\t")]);
+  }), _vm._v(" "), _c("div", {
+    staticClass: "permisos-actions"
+  }, [_c("NcButton", {
+    attrs: {
+      type: "primary",
+      disabled: _vm.loadingPermisos
+    },
+    on: {
+      click: _vm.savePermisosUsuario
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save permissions")) + "\n\t\t\t\t\t\t\t\t")])], 1)], 2) : _vm._e()])])])], 1)], 1), _vm._v(" "), _c("NcDialog", {
     attrs: {
       open: _vm.showDeactiveUserDialog,
       name: _vm.t("empleados", "Confirmation"),
@@ -10666,6 +10872,21 @@ var render = function render() {
       "update:checked": _vm.onChangeacumular_vacaciones
     }
   }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Allow all users to accrue vacation")) + "\n\t\t\t")])], 1), _vm._v(" "), _c("div", {
+    staticClass: "settings-card"
+  }, [_c("NcNoteCard", {
+    attrs: {
+      type: "info",
+      heading: _vm.t("empleados", "Purchases module")
+    }
+  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable this module to manage purchase requests, approvals, suppliers, quotations and purchase tracking.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+    attrs: {
+      checked: _vm.modulo_compras,
+      type: "switch"
+    },
+    on: {
+      "update:checked": _vm.onChangemodulo_compras
+    }
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable purchases module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
     staticClass: "settings-card"
   }, [_c("NcNoteCard", {
     attrs: {
@@ -24747,6 +24968,53 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	margin-left: 20px;
 	margin-right: 20px;
 	width: auto;
+}
+.permisos-container {
+	padding-top: 20px;
+}
+.permisos-card {
+	max-width: 720px;
+	padding: 20px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+.permisos-card h3 {
+	margin-top: 0;
+}
+.permisos-help {
+	opacity: .75;
+	margin-bottom: 18px;
+}
+.permisos-grid {
+	display: grid;
+	grid-template-columns: minmax(240px, 1fr);
+	gap: 12px;
+	margin-bottom: 20px;
+}
+.permisos-grid label {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-weight: 600;
+}
+.permisos-grid select {
+	min-height: 38px;
+	padding: 8px 10px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+}
+.permisos-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.permisos-actions {
+	margin-top: 18px;
+	display: flex;
+	justify-content: flex-end;
 }
 `, ""]);
 // Exports
@@ -142971,4 +143239,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=47355d0cdb8e06ce1714
+//# sourceMappingURL=empleados-settings.js.map?v=c1043cfaf55c26a3b7aa

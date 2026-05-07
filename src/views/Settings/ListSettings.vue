@@ -37,6 +37,22 @@
 				</NcCheckboxRadioSwitch>
 			</div>
 
+			<!-- Block: Purchases module -->
+			<div class="settings-card">
+				<NcNoteCard :type="'info'" :heading="t('empleados','Purchases module')">
+					<p>
+						{{ t('empleados', 'Enable this module to manage purchase requests, approvals, suppliers, quotations and purchase tracking.') }}
+					</p>
+
+					<NcCheckboxRadioSwitch
+						:checked="modulo_compras"
+						type="switch"
+						@update:checked="onChangemodulo_compras">
+						{{ t('empleados', 'Enable purchases module') }}
+					</NcCheckboxRadioSwitch>
+				</NcNoteCard>
+			</div>
+
 			<!-- Block: Savings module -->
 			<div class="settings-card">
 				<NcNoteCard :type="'info'" :heading="t('empleados','Savings module')">
@@ -330,6 +346,7 @@ export default {
 			optionsGroups: [],
 			selected_admin_reports_group: null,
 			reportes_admin_reports_group: 'recursos_humanos',
+			modulo_compras: false,
 		}
 	},
 
@@ -368,6 +385,8 @@ export default {
 				this.modulo_reporte_tiempos = (response.data.modulo_reporte_tiempos === 'true')
 				this.modulo_inventario = (response.data.modulo_inventario === 'true')
 				this.modulo_soporte = (response.data.modulo_soporte === 'true')
+				this.modulo_compras = (response.data.modulo_compras === 'true')
+
 				const reportes = response.data.Reportes || {}
 
 				this.reportes_recordatorios_enabled = String(reportes.recordatorios_enabled ?? 'true') === 'true'
@@ -663,6 +682,24 @@ export default {
 				showSuccess(t('empleados', 'Configuration updated'))
 			} catch (err) {
 				showError(t('empleados', 'Exception [UpdateReportSettings]: {error}', { error: String(err) }))
+				console.error(err)
+			}
+		},
+		/**
+		 * Toggle: Purchases module
+		 */
+		async onChangemodulo_compras() {
+			this.modulo_compras = !this.modulo_compras
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/ActualizarConfiguracion'), {
+					id_configuracion: 'modulo_compras',
+					data: this.modulo_compras.toString(),
+				})
+
+				showSuccess(t('empleados', 'Configuration updated. Refresh the page to update the navigation menu.'))
+			} catch (err) {
+				showError(t('empleados', 'Exception [UpdateConfiguration]: {error}', { error: String(err) }))
 				console.error(err)
 			}
 		},

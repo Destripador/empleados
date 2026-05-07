@@ -59,6 +59,24 @@
 			</NcAppNavigationList>
 		</div>
 
+		<!-- Purchases -->
+		<div v-if="canSeePurchases">
+			<NcAppNavigationCaption
+				:heading-id="t('empleados', 'Purchases')"
+				is-heading
+				:name="t('empleados', 'Purchases')" />
+
+			<NcAppNavigationList :aria-labelledby="t('empleados', 'Purchases')">
+				<NcAppNavigationItem
+					:name="t('empleados', 'Purchase requests')"
+					:to="{ name: 'compras' }">
+					<template #icon>
+						<CartOutline :size="20" />
+					</template>
+				</NcAppNavigationItem>
+			</NcAppNavigationList>
+		</div>
+
 		<!-- IT Inventory -->
 		<div v-if="canSeeInventory">
 			<NcAppNavigationCaption
@@ -200,6 +218,7 @@ import FileChartOutline from 'vue-material-design-icons/FileChartOutline.vue'
 import CalendarClock from 'vue-material-design-icons/CalendarClock.vue'
 import CalendarBlank from 'vue-material-design-icons/CalendarBlank.vue'
 import Laptop from 'vue-material-design-icons/Laptop.vue'
+import CartOutline from 'vue-material-design-icons/CartOutline.vue'
 
 import {
 	NcAppNavigation,
@@ -231,6 +250,7 @@ export default {
 		FileChartOutline,
 		CalendarClock,
 		Laptop,
+		CartOutline,
 	},
 
 	inject: ['groupuser', 'configuraciones', 'subordinates'],
@@ -266,6 +286,16 @@ export default {
 
 		absencesEnabled() {
 			return this.isModuleEnabled('modulo_ausencias')
+		},
+		canSeePurchases() {
+			return this.isModuleEnabled('modulo_compras')
+		&& (
+			this.hasGroup('admin')
+			|| this.hasGroup('compras_admin')
+			|| this.hasGroup('compras_autorizadores')
+			|| this.hasGroup('compras_contabilidad')
+			|| this.hasGroup('compras_solicitantes')
+		)
 		},
 	},
 

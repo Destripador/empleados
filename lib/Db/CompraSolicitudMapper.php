@@ -1,0 +1,210 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OCA\Empleados\Db;
+
+use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IDBConnection;
+
+class CompraSolicitudMapper extends QBMapper {
+
+	private const TABLE = 'emp_comp_solicitudes';
+
+	public function __construct(IDBConnection $db) {
+		parent::__construct($db, self::TABLE, CompraSolicitud::class);
+	}
+
+	public function find(int $id): CompraSolicitud {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from(self::TABLE)
+			->where($qb->expr()->eq(
+				'id_solicitud',
+				$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
+			))
+			->setMaxResults(1);
+
+		return $this->findEntity($qb);
+	}
+
+	public function findByFolio(string $folio): CompraSolicitud {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from(self::TABLE)
+			->where($qb->expr()->eq(
+				'folio',
+				$qb->createNamedParameter($folio, IQueryBuilder::PARAM_STR)
+			))
+			->setMaxResults(1);
+
+		return $this->findEntity($qb);
+	}
+
+	public function findByUser(string $idUser, int $limit = 50, int $offset = 0): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from(self::TABLE)
+			->where($qb->expr()->eq(
+				'id_user',
+				$qb->createNamedParameter($idUser, IQueryBuilder::PARAM_STR)
+			))
+			->orderBy('created_at', 'DESC')
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		return $this->findEntities($qb);
+	}
+
+	public function findByEstado(string $estado, int $limit = 100, int $offset = 0): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from(self::TABLE)
+			->where($qb->expr()->eq(
+				'estado',
+				$qb->createNamedParameter($estado, IQueryBuilder::PARAM_STR)
+			))
+			->orderBy('created_at', 'DESC')
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		return $this->findEntities($qb);
+	}
+
+	public function findAll(int $limit = 100, int $offset = 0): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from(self::TABLE)
+			->orderBy('created_at', 'DESC')
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		return $this->findEntities($qb);
+	}
+
+	public function insertSolicitud(array $data): CompraSolicitud {
+		$qb = $this->db->getQueryBuilder();
+
+		$fields = [
+			'folio',
+			'id_user',
+			'id_empleado',
+			'id_departamento',
+			'id_equipo',
+			'id_cliente',
+			'titulo',
+			'descripcion',
+			'justificacion',
+			'monto_estimado',
+			'monto_final',
+			'moneda',
+			'prioridad',
+			'estado',
+			'fecha_requerida',
+			'fecha_envio',
+			'fecha_autorizacion',
+			'fecha_cierre',
+			'proveedor_seleccionado',
+			'created_by',
+			'updated_by',
+		];
+
+		$values = [];
+
+		foreach ($fields as $field) {
+			if (array_key_exists($field, $data)) {
+				$values[$field] = $qb->createNamedParameter($data[$field]);
+			}
+		}
+
+		$qb->insert(self::TABLE)->values($values);
+		$this->executeStatement($qb);
+
+		$id = (int)$this->db->lastInsertId();
+
+		return $this->find($id);
+	}
+
+	public function updateSolicitud(int $id, array $data): CompraSolicitud {
+		$qb = $this->db->getQueryBuilder();
+
+		$fields = [
+			'id_departamento',
+			'id_equipo',
+			'id_cliente',
+			'titulo',
+			'descripcion',
+			'justificacion',
+			'monto_estimado',
+			'monto_final',
+			'moneda',
+			'prioridad',
+			'estado',
+			'fecha_requerida',
+			'fecha_envio',
+			'fecha_autorizacion',
+			'fecha_cierre',
+			'proveedor_seleccionado',
+			'updated_by',
+		];
+
+		$qb->update(self::TABLE);
+
+		foreach ($fields as $field) {
+			if (array_key_exists($field, $data)) {
+				$qb->set($field, $qb->createNamedParameter($data[$field]));
+			}
+		}
+
+		$qb->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+			->where($qb->expr()->eq(
+				'id_solicitud',
+				$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
+			));
+
+		$this->executeStatement($qb);
+
+		return $this->find($id);
+	}
+
+	public function cambiarEstado(
+		int $id,
+		string $estado,
+		string $updatedBy,
+		?string $fechaCampo = null
+	): CompraSolicitud {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update(self::TABLE)
+			->set('estado', $qb->createNamedParameter($estado, IQueryBuilder::PARAM_STR))
+			->set('updated_by', $qb->createNamedParameter($updatedBy, IQueryBuilder::PARAM_STR))
+			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')));
+
+		if ($fechaCampo !== null) {
+			$qb->set($fechaCampo, $qb->createNamedParameter(date('Y-m-d H:i:s')));
+		}
+
+		$qb->where($qb->expr()->eq(
+			'id_solicitud',
+			$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
+		));
+
+		$this->executeStatement($qb);
+
+		return $this->find($id);
+	}
+
+	private function executeStatement(IQueryBuilder $qb): int {
+		if (method_exists($qb, 'executeStatement')) {
+			return $qb->executeStatement();
+		}
+
+		return $qb->execute();
+	}
+}

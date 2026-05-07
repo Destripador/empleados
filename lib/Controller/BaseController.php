@@ -99,6 +99,7 @@ abstract class BaseController extends OCSController {
             "modulo_reporte_tiempos" => $configMap['modulo_reporte_tiempos'] ?? null,
             "modulo_inventario" => $configMap['modulo_inventario'] ?? null,
             "modulo_soporte" => $configMap['modulo_soporte'] ?? null,
+            "modulo_compras" => $configMap['modulo_compras'] ?? null,
         ];
     }
 
