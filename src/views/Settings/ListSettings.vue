@@ -16,126 +16,193 @@
 			</h2>
 		</div>
 
-		<div class="settings-container">
-			<!-- Block: Automatic note saving -->
-			<div class="settings-card settings-card-compact">
-				<NcCheckboxRadioSwitch
-					:checked="guardado_notas"
-					type="switch"
-					@update:checked="onChangeGuardadoNotas">
-					{{ t('empleados', 'Automatic note saving') }}
-				</NcCheckboxRadioSwitch>
-			</div>
-
-			<!-- Block: Accrue vacation -->
-			<div class="settings-card settings-card-compact">
-				<NcCheckboxRadioSwitch
-					:checked="acumular_vacaciones"
-					type="switch"
-					@update:checked="onChangeacumular_vacaciones">
-					{{ t('empleados', 'Allow all users to accrue vacation') }}
-				</NcCheckboxRadioSwitch>
-			</div>
-
-			<!-- Block: Purchases module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','Purchases module')">
-					<p>
-						{{ t('empleados', 'Enable this module to manage purchase requests, approvals, suppliers, quotations and purchase tracking.') }}
+		<div class="settings-layout">
+			<section class="settings-category settings-category-wide">
+				<div class="category-header">
+					<p class="section-label">
+						{{ t('empleados', 'General') }}
 					</p>
+					<h3>{{ t('empleados', 'Base behavior') }}</h3>
+					<p>{{ t('empleados', 'Settings that affect core employee workflows and shared files.') }}</p>
+				</div>
 
-					<NcCheckboxRadioSwitch
-						:checked="modulo_compras"
-						type="switch"
-						@update:checked="onChangemodulo_compras">
-						{{ t('empleados', 'Enable purchases module') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
+				<div class="settings-grid">
+					<div class="settings-card">
+						<div class="setting-row">
+							<div>
+								<strong>{{ t('empleados', 'Automatic note saving') }}</strong>
+								<span>{{ t('empleados', 'Save employee notes without requiring a manual action.') }}</span>
+							</div>
 
-			<!-- Block: Savings module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','Savings module')">
-					<p>
-						{{ t('empleados', 'If the savings module is enabled, users will see the savings option in their menu.') }}
+							<NcCheckboxRadioSwitch
+								:checked="guardado_notas"
+								type="switch"
+								@update:checked="onChangeGuardadoNotas">
+								{{ guardado_notas ? t('empleados', 'Enabled') : t('empleados', 'Disabled') }}
+							</NcCheckboxRadioSwitch>
+						</div>
+					</div>
+
+					<div class="settings-card">
+						<div class="setting-row">
+							<div>
+								<strong>{{ t('empleados', 'Vacation accrual') }}</strong>
+								<span>{{ t('empleados', 'Allow all users to accrue vacation automatically.') }}</span>
+							</div>
+
+							<NcCheckboxRadioSwitch
+								:checked="acumular_vacaciones"
+								type="switch"
+								@update:checked="onChangeacumular_vacaciones">
+								{{ acumular_vacaciones ? t('empleados', 'Enabled') : t('empleados', 'Disabled') }}
+							</NcCheckboxRadioSwitch>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="settings-category settings-category-wide">
+				<div class="category-header">
+					<p class="section-label">
+						{{ t('empleados', 'Modules') }}
 					</p>
-					<p>
-						{{ t('empleados', 'When the module is enabled, all users\\’ states are reset to 0.') }}
+					<h3>{{ t('empleados', 'Available app areas') }}</h3>
+					<p>{{ t('empleados', 'Enable or hide functional areas from the employee navigation.') }}</p>
+				</div>
+
+				<div class="modules-grid">
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','Purchases module') }}</strong>
+							<span>{{ t('empleados', 'Purchase requests, approvals, suppliers and tracking.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_compras"
+							type="switch"
+							@update:checked="onChangemodulo_compras">
+							{{ t('empleados', 'Enable purchases module') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','Savings module') }}</strong>
+							<span>{{ t('empleados', 'Savings menu and related user status.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_ahorro"
+							type="switch"
+							@update:checked="onChangemodulo_ahorro">
+							{{ t('empleados', 'Enable savings module') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','Absences module') }}</strong>
+							<span>{{ t('empleados', 'Absence requests and availability controls.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_ausencias"
+							type="switch"
+							@update:checked="onChangemodulo_ausencias">
+							{{ t('empleados', 'Enable absences module') }}
+						</NcCheckboxRadioSwitch>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_ausencias_readonly"
+							type="switch"
+							@update:checked="onChangemodulo_ausencias_readonly">
+							{{ t('empleados', 'Read-only mode') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','Customers module') }}</strong>
+							<span>{{ t('empleados', 'Customer groups and companies for time reports.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_clientes"
+							type="switch"
+							@update:checked="onChangemodulo_clientes">
+							{{ t('empleados', 'Enable customers module') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','Report times module') }}</strong>
+							<span>{{ t('empleados', 'Time reporting and compliance views.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_reporte_tiempos"
+							type="switch"
+							@update:checked="onChangemodulo_reporte_tiempos">
+							{{ t('empleados', 'Enable report times module') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','IT Inventory module') }}</strong>
+							<span>{{ t('empleados', 'Computer equipment, hardware models and assignments.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_inventario"
+							type="switch"
+							@update:checked="onChangemodulo_inventario">
+							{{ t('empleados', 'Enable IT inventory module') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="settings-card">
+						<div class="module-card-header">
+							<strong>{{ t('empleados','IT Support module') }}</strong>
+							<span>{{ t('empleados', 'Technical support and device maintenance history.') }}</span>
+						</div>
+
+						<NcCheckboxRadioSwitch
+							:checked="modulo_soporte"
+							type="switch"
+							@update:checked="onChangemodulo_soporte">
+							{{ t('empleados', 'Enable IT support module') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+				</div>
+			</section>
+
+			<section class="settings-category settings-category-wide">
+				<div class="category-header">
+					<p class="section-label">
+						{{ t('empleados', 'Time reports') }}
 					</p>
-					<NcCheckboxRadioSwitch
-						:checked="modulo_ahorro"
-						type="switch"
-						@update:checked="onChangemodulo_ahorro">
-						{{ t('empleados', 'Enable savings module') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
+					<h3>{{ t('empleados','Report times settings') }}</h3>
+					<p>{{ t('empleados', 'Reminder and compliance settings for the time reports module.') }}</p>
+				</div>
 
-			<!-- Block: Absences module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','Absences module')">
-					<p>
-						{{ t('empleados', 'If the absences module is enabled, users will see the absences option in their menu.') }}
-					</p>
-					<NcCheckboxRadioSwitch
-						:checked="modulo_ausencias"
-						type="switch"
-						@update:checked="onChangemodulo_ausencias">
-						{{ t('empleados', 'Enable absences module') }}
-					</NcCheckboxRadioSwitch>
+				<div class="settings-card settings-form-card">
+					<div class="switch-grid">
+						<NcCheckboxRadioSwitch
+							:checked="reportes_recordatorios_enabled"
+							type="switch"
+							@update:checked="reportes_recordatorios_enabled = !reportes_recordatorios_enabled">
+							{{ t('empleados', 'Enable automatic reminders') }}
+						</NcCheckboxRadioSwitch>
 
-					<NcCheckboxRadioSwitch
-						:checked="modulo_ausencias_readonly"
-						type="switch"
-						@update:checked="onChangemodulo_ausencias_readonly">
-						{{ t('empleados', 'Read-only (no one can request absences)') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
-
-			<!-- Block: Customers module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','Customers module')">
-					<NcCheckboxRadioSwitch
-						:checked="modulo_clientes"
-						type="switch"
-						@update:checked="onChangemodulo_clientes">
-						{{ t('empleados', 'Enable customers module') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
-
-			<!-- Block: report times module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','Report times module')">
-					<NcCheckboxRadioSwitch
-						:checked="modulo_reporte_tiempos"
-						type="switch"
-						@update:checked="onChangemodulo_reporte_tiempos">
-						{{ t('empleados', 'Enable report times module') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
-
-			<div class="settings-card settings-card-wide">
-				<NcNoteCard :type="'info'" :heading="t('empleados','Report times settings')">
-					<p>
-						{{ t('empleados', 'Reminder and compliance settings for the time reports module.') }}
-					</p>
-
-					<NcCheckboxRadioSwitch
-						:checked="reportes_recordatorios_enabled"
-						type="switch"
-						@update:checked="reportes_recordatorios_enabled = !reportes_recordatorios_enabled">
-						{{ t('empleados', 'Enable automatic reminders') }}
-					</NcCheckboxRadioSwitch>
-
-					<NcCheckboxRadioSwitch
-						:checked="reportes_recordatorios_email"
-						type="switch"
-						@update:checked="reportes_recordatorios_email = !reportes_recordatorios_email">
-						{{ t('empleados', 'Send reminders by email') }}
-					</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch
+							:checked="reportes_recordatorios_email"
+							type="switch"
+							@update:checked="reportes_recordatorios_email = !reportes_recordatorios_email">
+							{{ t('empleados', 'Send reminders by email') }}
+						</NcCheckboxRadioSwitch>
+					</div>
 
 					<div class="settings-grid">
 						<NcTextField
@@ -174,95 +241,57 @@
 							{{ t('empleados','Apply changes') }}
 						</NcButton>
 					</div>
-				</NcNoteCard>
-			</div>
-
-			<!-- Block: IT Inventory module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','IT Inventory module')">
-					<p>
-						{{ t('empleados', 'Enable this module to manage computer equipment, hardware models, serial numbers and device assignments.') }}
-					</p>
-
-					<NcCheckboxRadioSwitch
-						:checked="modulo_inventario"
-						type="switch"
-						@update:checked="onChangemodulo_inventario">
-						{{ t('empleados', 'Enable IT inventory module') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
-
-			<!-- Block: IT Support module -->
-			<div class="settings-card">
-				<NcNoteCard :type="'info'" :heading="t('empleados','IT Support module')">
-					<p>
-						{{ t('empleados', 'Enable this module to track technical support, maintenance history and actions performed on assigned devices.') }}
-					</p>
-
-					<NcCheckboxRadioSwitch
-						:checked="modulo_soporte"
-						type="switch"
-						@update:checked="onChangemodulo_soporte">
-						{{ t('empleados', 'Enable IT support module') }}
-					</NcCheckboxRadioSwitch>
-				</NcNoteCard>
-			</div>
-
-			<!-- Block: Single select for Data Manager -->
-			<div class="settings-card settings-card-wide">
-				<NcNoteCard v-if="selected_user" :type="'warning'" :heading="t('empleados','ATTENTION')">
-					<p>
-						{{ t('empleados', 'If you change the file manager user after it has already been set, file loss may occur. Consider making a backup before proceeding.') }}
-					</p>
-				</NcNoteCard>
-
-				<NcSelect
-					v-model="selected_user"
-					:input-label="t('empleados','Data manager user')"
-					:options="optionsGestor"
-					:user-select="true" />
-
-				<div class="actions-row">
-					<NcButton
-						:aria-label="t('empleados','Apply changes')"
-						type="primary"
-						@click="saveGestor">
-						{{ t('empleados','Apply changes') }}
-					</NcButton>
 				</div>
-			</div>
+			</section>
 
-			<!-- Block: Multi-select for Human Resources -->
-			<div class="settings-card settings-card-wide">
-				<NcSelect
-					v-bind="propsCapitalHumano"
-					v-model="selectedUsers"
-					:input-label="t('empleados','Select Human Resources users')" />
-
-				<div class="actions-row">
-					<NcButton
-						:aria-label="t('empleados','Apply changes')"
-						type="primary"
-						@click="saveCapitalHumano">
-						{{ t('empleados','Apply changes') }}
-					</NcButton>
+			<section class="settings-category settings-category-wide">
+				<div class="category-header">
+					<p class="section-label">
+						{{ t('empleados', 'Files and security') }}
+					</p>
+					<h3>{{ t('empleados', 'Data manager and provisioning') }}</h3>
+					<p>{{ t('empleados', 'Control the account used for shared employee files and the provisioning token.') }}</p>
 				</div>
-			</div>
 
-			<div class="settings-card settings-card-wide">
-				<NcPasswordField :value.sync="secrettoken"
-					:label="t('empleados', 'Secret token to admin moves')"
-					as-text />
-				<div class="actions-row">
-					<NcButton
-						:aria-label="t('empleados','Apply changes')"
-						type="primary"
-						@click="saveSecretToken">
-						{{ t('empleados','Apply changes') }}
-					</NcButton>
+				<div class="settings-grid">
+					<div class="settings-card settings-form-card">
+						<NcNoteCard v-if="selected_user" :type="'warning'" :heading="t('empleados','ATTENTION')">
+							<p>
+								{{ t('empleados', 'If you change the file manager user after it has already been set, file loss may occur. Consider making a backup before proceeding.') }}
+							</p>
+						</NcNoteCard>
+
+						<NcSelect
+							v-model="selected_user"
+							:input-label="t('empleados','Data manager user')"
+							:options="optionsGestor"
+							:user-select="true" />
+
+						<div class="actions-row">
+							<NcButton
+								:aria-label="t('empleados','Apply changes')"
+								type="primary"
+								@click="saveGestor">
+								{{ t('empleados','Apply changes') }}
+							</NcButton>
+						</div>
+					</div>
+
+					<div class="settings-card settings-form-card">
+						<NcPasswordField :value.sync="secrettoken"
+							:label="t('empleados', 'Secret token to admin moves')"
+							as-text />
+						<div class="actions-row">
+							<NcButton
+								:aria-label="t('empleados','Apply changes')"
+								type="primary"
+								@click="saveSecretToken">
+								{{ t('empleados','Apply changes') }}
+							</NcButton>
+						</div>
+					</div>
 				</div>
-			</div>
+			</section>
 		</div>
 	</div>
 </template>
@@ -308,7 +337,7 @@ export default {
 			// General configurations
 			configuraciones: [],
 
-			// Users list (from GetConfigurations) used for Data Manager and HR selector
+			// Users list (from GetConfigurations) used for Data Manager selector
 			optionsGestor: [],
 
 			selected_user: null, // Selected Data Manager
@@ -322,19 +351,6 @@ export default {
 
 			modulo_inventario: false,
 			modulo_soporte: false,
-			// MULTI SELECT — Human Resources
-			propsCapitalHumano: {
-				userSelect: true,
-				multiple: true,
-				closeOnSelect: false,
-				options: [], // Filled with optionsGestor
-			},
-
-			// Selected uids for HR
-			selectedUsers: [],
-
-			// From GetCapitalHumano (actual HR users)
-			capitalHumano: [],
 			secrettoken: null,
 
 			reportes_recordatorios_enabled: true,
@@ -345,22 +361,13 @@ export default {
 			reportes_horas_minimas: 0,
 			optionsGroups: [],
 			selected_admin_reports_group: null,
-			reportes_admin_reports_group: 'recursos_humanos',
+			reportes_admin_reports_group: '',
 			modulo_compras: false,
 		}
 	},
 
 	async mounted() {
-		// Load settings and HR list in parallel
-		await Promise.all([
-			this.getall(),
-			this.fetchCapitalHumano(),
-		])
-
-		// Setup HR selector with options and pre-selected users
-		this.setupCapitalHumanoSelector()
-
-		this.loading = false
+		await this.getall()
 	},
 
 	methods: {
@@ -400,14 +407,16 @@ export default {
 					label: group.label || group.id,
 				}))
 
-				this.reportes_admin_reports_group = reportes.admin_reports_group || 'recursos_humanos'
+				this.reportes_admin_reports_group = reportes.admin_reports_group || ''
 
 				this.selected_admin_reports_group = this.optionsGroups.find(
 					group => group.id === this.reportes_admin_reports_group,
-				) || {
-					id: this.reportes_admin_reports_group,
-					label: this.reportes_admin_reports_group,
-				}
+				) || (this.reportes_admin_reports_group
+					? {
+						id: this.reportes_admin_reports_group,
+						label: this.reportes_admin_reports_group,
+					}
+					: null)
 
 				this.loading = false
 			} catch (err) {
@@ -433,21 +442,6 @@ export default {
 				this.$bus?.emit('GetDataManager') // Notify other components
 			} catch (err) {
 				showError(t('empleados', 'Error updating manager: {error}', { error: String(err) }))
-				console.error(err)
-			}
-		},
-
-		/**
-		 * Update Human Resources list
-		 */
-		async saveCapitalHumano() {
-			try {
-				await axios.post(generateUrl('/apps/empleados/UpdateCapitalHumano'), {
-					capitalhumano: this.selectedUsers,
-				})
-				showSuccess(t('empleados', 'Human Resources updated'))
-			} catch (err) {
-				showError(t('empleados', 'Error updating Human Resources: {error}', { error: String(err) }))
 				console.error(err)
 			}
 		},
@@ -611,48 +605,6 @@ export default {
 		},
 
 		/**
-		 * Get current Human Resources users
-		 */
-		async fetchCapitalHumano() {
-			try {
-				const response = await axios.get(generateUrl('/apps/empleados/GetCapitalHumano'))
-				this.capitalHumano = response.data
-			} catch (error) {
-				showError(t('empleados', 'Error fetching Human Resources users'))
-				console.error(error)
-			}
-		},
-
-		/**
-		 * Configure multi-select for HR:
-		 * - Use ALL users from "optionsGestor" as options
-		 * - Preselect those present in "capitalHumano"
-		 */
-		setupCapitalHumanoSelector() {
-			// 1) Convert optionsGestor to NcSelect format
-			this.propsCapitalHumano.options = this.optionsGestor.map(user => ({
-				id: user.id,
-				displayName: user.displayName || user.uid,
-				isNoUser: false,
-				icon: '',
-				user: user.uid,
-				preloadedUserStatus: {
-					icon: '',
-					status: user.isEnabled ? 'online' : 'offline',
-					message: user.isEnabled ? this.t('empleados', 'Active') : this.t('empleados', 'Inactive'),
-				},
-			}))
-
-			// 2) Extract ids from capitalHumano
-			const capitalHumanoIds = this.capitalHumano.map(u => u.id)
-
-			// 3) Preselect
-			this.selectedUsers = this.propsCapitalHumano.options
-				.filter(opt => capitalHumanoIds.includes(opt.id))
-				.map(opt => opt.id)
-		},
-
-		/**
 		 * Save secret token for admin moves
 		 */
 		async saveSecretToken() {
@@ -728,12 +680,66 @@ export default {
 	text-align: center;
 }
 
-/* Container */
-.settings-container {
+.settings-layout {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 16px;
+	gap: 18px;
 	padding: 0 20px 28px;
+}
+
+.settings-category {
+	min-width: 0;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.settings-category-wide {
+	grid-column: 1 / -1;
+}
+
+.category-header {
+	margin-bottom: 16px;
+}
+
+.section-label {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.category-header h3 {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 20px;
+	font-weight: 700;
+}
+
+.category-header p {
+	max-width: 820px;
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.settings-grid,
+.modules-grid {
+	display: grid;
+	gap: 12px;
+}
+
+.settings-grid {
+	grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
+.modules-grid {
+	grid-template-columns: repeat(3, minmax(220px, 1fr));
 }
 
 .settings-card {
@@ -741,22 +747,15 @@ export default {
 	padding: 16px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.settings-form-card {
 	background: var(--color-main-background);
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.settings-card-compact {
-	display: flex;
-	align-items: center;
-	min-height: 58px;
-}
-
-.settings-card-wide {
-	grid-column: 1 / -1;
 }
 
 .settings-card :deep(.notecard) {
-	margin: 0;
+	margin: 0 0 14px;
 }
 
 .settings-card :deep(p) {
@@ -765,21 +764,55 @@ export default {
 }
 
 .settings-card :deep(.checkbox-radio-switch) {
-	margin-top: 8px;
+	margin-top: 10px;
+}
+
+.setting-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	min-height: 58px;
+}
+
+.setting-row strong,
+.module-card-header strong {
+	display: block;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+
+.setting-row span,
+.module-card-header span {
+	display: block;
+	margin-top: 4px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.module-card-header {
+	min-height: 64px;
+	margin-bottom: 8px;
+}
+
+.switch-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	gap: 10px 16px;
+	margin-bottom: 16px;
 }
 
 .actions-row {
 	display: flex;
 	justify-content: flex-end;
-	margin-top: 14px;
+	margin-top: 16px;
 }
 
-.settings-grid {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
-	gap: 12px;
-	max-width: 760px;
-	margin-top: 14px;
+@media (max-width: 1100px) {
+	.modules-grid {
+		grid-template-columns: repeat(2, minmax(220px, 1fr));
+	}
 }
 
 @media (max-width: 700px) {
@@ -788,17 +821,24 @@ export default {
 		font-size: 22px;
 	}
 
-	.settings-container {
+	.settings-layout {
 		grid-template-columns: 1fr;
 		padding: 0 14px 20px;
 	}
 
-	.settings-card-wide {
+	.settings-category-wide {
 		grid-column: auto;
 	}
 
-	.settings-grid {
+	.settings-grid,
+	.modules-grid,
+	.switch-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.setting-row {
+		align-items: flex-start;
+		flex-direction: column;
 	}
 
 	.actions-row {

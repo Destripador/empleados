@@ -103,13 +103,19 @@ class CompraSolicitudController extends Controller {
 	}
 
 	/**
-	 * @NoAdminRequired
-	 */
+	* @NoAdminRequired
+	*/
 	public function update(int $id): DataResponse {
 		try {
+			$payload = $this->getPayload();
+
 			return new DataResponse([
 				'success' => true,
-				'data' => $this->service->actualizar($id, $this->getPayload(), $this->getUserId()),
+				'data' => $this->service->actualizar(
+					$id,
+					$payload,
+					$this->getUserId()
+				),
 			]);
 		} catch (Exception $e) {
 			return $this->errorResponse($e);
@@ -206,5 +212,38 @@ class CompraSolicitudController extends Controller {
 			'success' => false,
 			'message' => $e->getMessage(),
 		], Http::STATUS_BAD_REQUEST);
+	}
+
+	/**
+	* @NoAdminRequired
+	*/
+	public function cancel(int $id): DataResponse {
+		try {
+			$payload = $this->getPayload();
+
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->service->cancelar(
+					$id,
+					$this->getUserId(),
+					isset($payload['comentario']) ? (string)$payload['comentario'] : null
+				),
+			]);
+		} catch (Exception $e) {
+			return $this->errorResponse($e);
+		}
+	}
+	/**
+	* @NoAdminRequired
+	*/
+	public function context(): DataResponse {
+		try {
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->service->contexto($this->getUserId()),
+			]);
+		} catch (Exception $e) {
+			return $this->errorResponse($e);
+		}
 	}
 }

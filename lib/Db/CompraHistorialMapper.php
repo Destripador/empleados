@@ -67,7 +67,7 @@ class CompraHistorialMapper extends QBMapper {
 
 		$this->executeStatement($qb);
 
-		$id = (int)$this->db->lastInsertId();
+		$id = (int)$this->db->lastInsertId(self::TABLE);
 
 		return $this->find($id);
 	}

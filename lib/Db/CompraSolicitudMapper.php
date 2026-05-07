@@ -91,29 +91,7 @@ class CompraSolicitudMapper extends QBMapper {
 	public function insertSolicitud(array $data): CompraSolicitud {
 		$qb = $this->db->getQueryBuilder();
 
-		$fields = [
-			'folio',
-			'id_user',
-			'id_empleado',
-			'id_departamento',
-			'id_equipo',
-			'id_cliente',
-			'titulo',
-			'descripcion',
-			'justificacion',
-			'monto_estimado',
-			'monto_final',
-			'moneda',
-			'prioridad',
-			'estado',
-			'fecha_requerida',
-			'fecha_envio',
-			'fecha_autorizacion',
-			'fecha_cierre',
-			'proveedor_seleccionado',
-			'created_by',
-			'updated_by',
-		];
+		$fields = $this->getWritableFields();
 
 		$values = [];
 
@@ -126,7 +104,7 @@ class CompraSolicitudMapper extends QBMapper {
 		$qb->insert(self::TABLE)->values($values);
 		$this->executeStatement($qb);
 
-		$id = (int)$this->db->lastInsertId();
+		$id = (int)$this->db->lastInsertId(self::TABLE);
 
 		return $this->find($id);
 	}
@@ -134,25 +112,7 @@ class CompraSolicitudMapper extends QBMapper {
 	public function updateSolicitud(int $id, array $data): CompraSolicitud {
 		$qb = $this->db->getQueryBuilder();
 
-		$fields = [
-			'id_departamento',
-			'id_equipo',
-			'id_cliente',
-			'titulo',
-			'descripcion',
-			'justificacion',
-			'monto_estimado',
-			'monto_final',
-			'moneda',
-			'prioridad',
-			'estado',
-			'fecha_requerida',
-			'fecha_envio',
-			'fecha_autorizacion',
-			'fecha_cierre',
-			'proveedor_seleccionado',
-			'updated_by',
-		];
+		$fields = $this->getWritableFields();
 
 		$qb->update(self::TABLE);
 
@@ -198,6 +158,59 @@ class CompraSolicitudMapper extends QBMapper {
 		$this->executeStatement($qb);
 
 		return $this->find($id);
+	}
+
+	private function getWritableFields(): array {
+		return [
+			'folio',
+			'id_user',
+			'id_empleado',
+			'id_departamento',
+			'id_equipo',
+			'id_cliente',
+			'titulo',
+			'descripcion',
+			'justificacion',
+			'monto_estimado',
+			'monto_final',
+			'moneda',
+			'prioridad',
+			'estado',
+			'fecha_requerida',
+			'fecha_envio',
+			'fecha_autorizacion',
+			'fecha_cierre',
+			'proveedor_seleccionado',
+			'created_by',
+			'updated_by',
+
+			'solicitante_nombre',
+			'solicitante_depto',
+			'solicitante_cargo',
+			'jefe_directo_nombre',
+			'tipo_compra',
+			'garantia',
+			'uso_compra',
+			'informacion',
+			'motivo',
+			'proveedor_nombre',
+			'atencion',
+			'entrega',
+			'marca_modelo',
+			'especificaciones',
+			'comentarios_req',
+			'oficina_pct',
+			'empleado_pct',
+			'tipo_pago',
+			'quincenas',
+			'total_excl_iva',
+			'iva',
+			'total_incl_iva',
+			'comentarios_admin',
+			'pdf_file_id',
+			'pdf_nombre',
+			'pdf_generado_at',
+		];
 	}
 
 	private function executeStatement(IQueryBuilder $qb): int {

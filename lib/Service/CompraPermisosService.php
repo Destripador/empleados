@@ -79,4 +79,10 @@ class CompraPermisosService {
 
 		return (string)$row['Data'];
 	}
+	public function canSelectRequester(string $userId): bool {
+		return $this->groupManager->isInGroup($userId, 'admin')
+			|| $this->canViewAll($userId)
+			|| $this->canApprove($userId)
+			|| $this->canProcessPurchase($userId);
+	}
 }

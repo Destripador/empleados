@@ -34,10 +34,40 @@ class CompraSolicitud extends Entity implements JsonSerializable {
 	protected $createdBy;
 	protected $updatedBy;
 
+	protected $solicitanteNombre;
+	protected $solicitanteDepto;
+	protected $solicitanteCargo;
+	protected $jefeDirectoNombre;
+	protected $tipoCompra;
+	protected $garantia;
+	protected $usoCompra;
+	protected $informacion;
+	protected $motivo;
+	protected $proveedorNombre;
+	protected $atencion;
+	protected $entrega;
+	protected $marcaModelo;
+	protected $especificaciones;
+	protected $comentariosReq;
+	protected $oficinaPct;
+	protected $empleadoPct;
+	protected $tipoPago;
+	protected $quincenas;
+	protected $totalExclIva;
+	protected $iva;
+	protected $totalInclIva;
+	protected $comentariosAdmin;
+	protected $pdfFileId;
+	protected $pdfNombre;
+	protected $pdfGeneradoAt;
+
 	public function __construct() {
 		$this->addType('idSolicitud', 'integer');
 		$this->addType('idCliente', 'integer');
 		$this->addType('proveedorSeleccionado', 'integer');
+		$this->addType('garantia', 'integer');
+		$this->addType('quincenas', 'integer');
+		$this->addType('pdfFileId', 'integer');
 	}
 
 	public function jsonSerialize(): array {
@@ -66,6 +96,33 @@ class CompraSolicitud extends Entity implements JsonSerializable {
 			'updated_at' => $this->updatedAt,
 			'created_by' => $this->createdBy,
 			'updated_by' => $this->updatedBy,
+
+			'solicitante_nombre' => $this->solicitanteNombre,
+			'solicitante_depto' => $this->solicitanteDepto,
+			'solicitante_cargo' => $this->solicitanteCargo,
+			'jefe_directo_nombre' => $this->jefeDirectoNombre,
+			'tipo_compra' => $this->tipoCompra,
+			'garantia' => $this->garantia,
+			'uso_compra' => $this->usoCompra,
+			'informacion' => $this->informacion,
+			'motivo' => $this->motivo,
+			'proveedor_nombre' => $this->proveedorNombre,
+			'atencion' => $this->atencion,
+			'entrega' => $this->entrega,
+			'marca_modelo' => $this->marcaModelo,
+			'especificaciones' => $this->especificaciones,
+			'comentarios_req' => $this->comentariosReq,
+			'oficina_pct' => $this->oficinaPct,
+			'empleado_pct' => $this->empleadoPct,
+			'tipo_pago' => $this->tipoPago,
+			'quincenas' => $this->quincenas,
+			'total_excl_iva' => $this->totalExclIva,
+			'iva' => $this->iva,
+			'total_incl_iva' => $this->totalInclIva,
+			'comentarios_admin' => $this->comentariosAdmin,
+			'pdf_file_id' => $this->pdfFileId,
+			'pdf_nombre' => $this->pdfNombre,
+			'pdf_generado_at' => $this->pdfGeneradoAt,
 		];
 	}
 }

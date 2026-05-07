@@ -9464,13 +9464,20 @@ __webpack_require__.r(__webpack_exports__);
     AccountPlus: vue_material_design_icons_AccountPlus_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
     NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcEmptyContent,
     NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcButton,
-    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcCheckboxRadioSwitch
+    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcCheckboxRadioSwitch,
+    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcNoteCard,
+    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcTextField
   },
   data() {
     return {
       showDeactiveUserDialog: false,
       showEliminarUserDialog: false,
+      showPermisosDialog: false,
       selected: [],
+      selectedPermisosUser: {
+        uid: '',
+        displayname: ''
+      },
       loading: true,
       Empleados: [],
       Usuarios: [],
@@ -9492,12 +9499,25 @@ __webpack_require__.r(__webpack_exports__);
         }
       }],
       loadingEmployees: false,
-      permisosUsuarios: [],
       permisosGrupos: [],
       selectedPermisosUid: '',
       selectedPermisosGroups: [],
-      loadingPermisos: false
+      loadingPermisos: false,
+      activeSearch: '',
+      inactiveSearch: '',
+      pendingSearch: ''
     };
+  },
+  computed: {
+    filteredEmpleados() {
+      return this.filterUsers(this.Empleados, this.activeSearch, this.getEmpleadoDisplayName);
+    },
+    filteredDesactivados() {
+      return this.filterUsers(this.Desactivados, this.inactiveSearch, this.getEmpleadoDisplayName);
+    },
+    filteredUsuarios() {
+      return this.filterUsers(this.Usuarios, this.pendingSearch, this.getUsuarioDisplayName);
+    }
   },
   async mounted() {
     this.getall();
@@ -9509,18 +9529,19 @@ __webpack_require__.r(__webpack_exports__);
       try {
         await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetUserLists')).then(response => {
           this.Usuarios = [];
-          this.Empleados = response?.data?.ocs?.data.Empleados;
-          this.Desactivados = response?.data?.ocs?.data.Desactivados;
+          this.Empleados = response?.data?.ocs?.data.Empleados || [];
+          this.Desactivados = response?.data?.ocs?.data.Desactivados || [];
           this.map = {};
-          response?.data?.ocs?.data.Empleados.forEach(empleado => {
+          this.Empleados.forEach(empleado => {
             this.map[empleado.Id_user] = true;
           });
-          response?.data?.ocs?.data.Desactivados.forEach(empleado => {
+          this.Desactivados.forEach(empleado => {
             this.map[empleado.Id_user] = true;
           });
-          this.Usuarios = response?.data?.ocs?.data.Users.filter(user => !this.map[user.uid]);
-          this.buildPermisosUsuarios();
-          this.loadPermisosGrupos();
+          this.Usuarios = (response?.data?.ocs?.data.Users || []).filter(user => !this.map[user.uid]);
+          if (this.permisosGrupos.length === 0) {
+            this.loadPermisosGrupos();
+          }
           this.loading = false;
         }, err => {
           (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(err);
@@ -9536,8 +9557,9 @@ __webpack_require__.r(__webpack_exports__);
       this.selected.name = name;
       this.showDeactiveUserDialog = true;
     },
-    EliminarUserDialog(index) {
+    EliminarUserDialog(index, name) {
       this.selected.index = index;
+      this.selected.name = name;
       this.showEliminarUserDialog = true;
     },
     async ActivarUsuario(index) {
@@ -9556,7 +9578,7 @@ __webpack_require__.r(__webpack_exports__);
       }
     },
     async EliminarUser(index) {
-      this.showDeactiveUserDialog = false;
+      this.showEliminarUserDialog = false;
       try {
         await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/EliminarEmpleado'), {
           id_empleados: this.Desactivados[index].Id_empleados,
@@ -9603,42 +9625,26 @@ __webpack_require__.r(__webpack_exports__);
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception occurred [02] [{error}]', {
           error: String(err)
         }));
+        this.loadingEmployees = false;
       }
     },
-    buildPermisosUsuarios() {
-      const users = [];
-      this.Empleados.forEach(user => {
-        users.push({
-          uid: user.Id_user || user.uid,
-          displayname: user.displayname || user.DisplayName || user.Id_user || user.uid
-        });
-      });
-      this.Desactivados.forEach(user => {
-        users.push({
-          uid: user.Id_user || user.uid,
-          displayname: user.displayname || user.DisplayName || user.Id_user || user.uid
-        });
-      });
-      this.Usuarios.forEach(user => {
-        let displayname = user.uid;
-        try {
-          displayname = JSON.parse(user.data)?.displayname?.value || user.uid;
-        } catch (e) {
-          displayname = user.displayname || user.uid;
-        }
-        users.push({
-          uid: user.uid,
-          displayname
-        });
-      });
-      const seen = {};
-      this.permisosUsuarios = users.filter(user => {
-        if (!user.uid || seen[user.uid]) {
-          return false;
-        }
-        seen[user.uid] = true;
-        return true;
-      });
+    async openPermisosDialog(user) {
+      const uid = this.getEmpleadoUid(user);
+      if (!uid) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'User id was not found'));
+        return;
+      }
+      this.selectedPermisosUser = {
+        uid,
+        displayname: this.getEmpleadoDisplayName(user)
+      };
+      this.selectedPermisosUid = uid;
+      this.selectedPermisosGroups = [];
+      this.showPermisosDialog = true;
+      if (this.permisosGrupos.length === 0) {
+        await this.loadPermisosGrupos();
+      }
+      await this.loadPermisosUsuario();
     },
     async loadPermisosGrupos() {
       try {
@@ -9647,7 +9653,7 @@ __webpack_require__.r(__webpack_exports__);
         if (payload.status !== 'ok') {
           throw new Error(payload.message || 'No se pudieron cargar los grupos.');
         }
-        this.permisosGrupos = payload.data;
+        this.permisosGrupos = payload.data || [];
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Error loading permission groups: {error}', {
           error: String(err)
@@ -9703,6 +9709,7 @@ __webpack_require__.r(__webpack_exports__);
           throw new Error(payload.message || 'No se pudieron guardar los permisos.');
         }
         this.selectedPermisosGroups = payload.data.groups || [];
+        this.showPermisosDialog = false;
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Permissions updated'));
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Error saving permissions: {error}', {
@@ -9715,6 +9722,41 @@ __webpack_require__.r(__webpack_exports__);
     },
     getPayload(response) {
       return response?.data?.ocs?.data || response?.data;
+    },
+    getEmpleadoUid(user) {
+      return user?.Id_user || user?.uid || '';
+    },
+    getEmpleadoDisplayName(user) {
+      return user?.displayname || user?.DisplayName || user?.nombre || user?.Id_user || user?.uid || '';
+    },
+    getUsuarioDisplayName(user) {
+      try {
+        return JSON.parse(user.data)?.displayname?.value || user.displayname || user.uid;
+      } catch (e) {
+        return user.displayname || user.uid;
+      }
+    },
+    filterUsers(users, search, displayNameGetter) {
+      const query = String(search || '').trim().toLowerCase();
+      if (!query) {
+        return users;
+      }
+      return users.filter(user => {
+        const uid = this.getEmpleadoUid(user) || user?.uid || '';
+        const displayName = displayNameGetter(user);
+        return `${displayName} ${uid}`.toLowerCase().includes(query);
+      });
+    },
+    getEmpleadoIndex(item) {
+      const uid = this.getEmpleadoUid(item);
+      return this.Empleados.findIndex(empleado => this.getEmpleadoUid(empleado) === uid);
+    },
+    getDesactivadoIndex(item) {
+      const uid = this.getEmpleadoUid(item);
+      return this.Desactivados.findIndex(empleado => this.getEmpleadoUid(empleado) === uid);
+    },
+    getUsuarioIndex(item) {
+      return this.Usuarios.findIndex(user => user.uid === item.uid);
     }
   }
 });
@@ -9766,7 +9808,7 @@ __webpack_require__.r(__webpack_exports__);
       loading: true,
       // General configurations
       configuraciones: [],
-      // Users list (from GetConfigurations) used for Data Manager and HR selector
+      // Users list (from GetConfigurations) used for Data Manager selector
       optionsGestor: [],
       selected_user: null,
       // Selected Data Manager
@@ -9779,17 +9821,6 @@ __webpack_require__.r(__webpack_exports__);
       modulo_reporte_tiempos: false,
       modulo_inventario: false,
       modulo_soporte: false,
-      // MULTI SELECT — Human Resources
-      propsCapitalHumano: {
-        userSelect: true,
-        multiple: true,
-        closeOnSelect: false,
-        options: [] // Filled with optionsGestor
-      },
-      // Selected uids for HR
-      selectedUsers: [],
-      // From GetCapitalHumano (actual HR users)
-      capitalHumano: [],
       secrettoken: null,
       reportes_recordatorios_enabled: true,
       reportes_recordatorios_grupo: 'empleados',
@@ -9799,17 +9830,12 @@ __webpack_require__.r(__webpack_exports__);
       reportes_horas_minimas: 0,
       optionsGroups: [],
       selected_admin_reports_group: null,
-      reportes_admin_reports_group: 'recursos_humanos',
+      reportes_admin_reports_group: '',
       modulo_compras: false
     };
   },
   async mounted() {
-    // Load settings and HR list in parallel
-    await Promise.all([this.getall(), this.fetchCapitalHumano()]);
-
-    // Setup HR selector with options and pre-selected users
-    this.setupCapitalHumanoSelector();
-    this.loading = false;
+    await this.getall();
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate,
@@ -9843,11 +9869,11 @@ __webpack_require__.r(__webpack_exports__);
           id: group.id,
           label: group.label || group.id
         }));
-        this.reportes_admin_reports_group = reportes.admin_reports_group || 'recursos_humanos';
-        this.selected_admin_reports_group = this.optionsGroups.find(group => group.id === this.reportes_admin_reports_group) || {
+        this.reportes_admin_reports_group = reportes.admin_reports_group || '';
+        this.selected_admin_reports_group = this.optionsGroups.find(group => group.id === this.reportes_admin_reports_group) || (this.reportes_admin_reports_group ? {
           id: this.reportes_admin_reports_group,
           label: this.reportes_admin_reports_group
-        };
+        } : null);
         this.loading = false;
       } catch (err) {
         this.loading = false;
@@ -9873,22 +9899,6 @@ __webpack_require__.r(__webpack_exports__);
         this.$bus?.emit('GetDataManager'); // Notify other components
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Error updating manager: {error}', {
-          error: String(err)
-        }));
-        console.error(err);
-      }
-    },
-    /**
-     * Update Human Resources list
-     */
-    async saveCapitalHumano() {
-      try {
-        await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/UpdateCapitalHumano'), {
-          capitalhumano: this.selectedUsers
-        });
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Human Resources updated'));
-      } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Error updating Human Resources: {error}', {
           error: String(err)
         }));
         console.error(err);
@@ -10056,44 +10066,6 @@ __webpack_require__.r(__webpack_exports__);
         }));
         console.error(err);
       }
-    },
-    /**
-     * Get current Human Resources users
-     */
-    async fetchCapitalHumano() {
-      try {
-        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/GetCapitalHumano'));
-        this.capitalHumano = response.data;
-      } catch (error) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Error fetching Human Resources users'));
-        console.error(error);
-      }
-    },
-    /**
-     * Configure multi-select for HR:
-     * - Use ALL users from "optionsGestor" as options
-     * - Preselect those present in "capitalHumano"
-     */
-    setupCapitalHumanoSelector() {
-      // 1) Convert optionsGestor to NcSelect format
-      this.propsCapitalHumano.options = this.optionsGestor.map(user => ({
-        id: user.id,
-        displayName: user.displayName || user.uid,
-        isNoUser: false,
-        icon: '',
-        user: user.uid,
-        preloadedUserStatus: {
-          icon: '',
-          status: user.isEnabled ? 'online' : 'offline',
-          message: user.isEnabled ? this.t('empleados', 'Active') : this.t('empleados', 'Inactive')
-        }
-      }));
-
-      // 2) Extract ids from capitalHumano
-      const capitalHumanoIds = this.capitalHumano.map(u => u.id);
-
-      // 3) Preselect
-      this.selectedUsers = this.propsCapitalHumano.options.filter(opt => capitalHumanoIds.includes(opt.id)).map(opt => opt.id);
     },
     /**
      * Save secret token for admin moves
@@ -10502,11 +10474,10 @@ __webpack_require__.r(__webpack_exports__);
 var render = function render() {
   var _vm = this,
     _c = _vm._self._c;
-  return _c("div", [_vm.loading ? _c("div", [_c("div", {
-    staticClass: "center-screen",
-    staticStyle: {
-      "background-color": "#fff"
-    }
+  return _c("div", {
+    staticClass: "empleados-settings"
+  }, [_vm.loading ? _c("div", [_c("div", {
+    staticClass: "center-screen"
   }, [_c("NcLoadingIcon", {
     attrs: {
       size: 64,
@@ -10517,42 +10488,108 @@ var render = function render() {
     attrs: {
       id: "admin"
     }
-  }, [_c("div", [_c("h2", {
-    staticClass: "board-title"
+  }, [_c("div", {
+    staticClass: "stats-grid"
+  }, [_c("div", {
+    staticClass: "stat-card"
+  }, [_c("div", {
+    staticClass: "stat-card__icon"
   }, [_c("AccountGroup", {
-    staticClass: "icon",
     attrs: {
-      size: 20,
-      decorative: ""
+      size: 22
     }
-  }), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Employees")))])], 1)]), _vm._v(" "), _c("VueTabs", [_c("VTab", {
+  })], 1), _vm._v(" "), _c("div", [_c("span", {
+    staticClass: "stat-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Active employees")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.Empleados.length))])])]), _vm._v(" "), _c("div", {
+    staticClass: "stat-card"
+  }, [_c("div", {
+    staticClass: "stat-card__icon"
+  }, [_c("AccountOff", {
+    attrs: {
+      size: 22
+    }
+  })], 1), _vm._v(" "), _c("div", [_c("span", {
+    staticClass: "stat-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Deactivated employees")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.Desactivados.length))])])]), _vm._v(" "), _c("div", {
+    staticClass: "stat-card"
+  }, [_c("div", {
+    staticClass: "stat-card__icon"
+  }, [_c("AccountPlus", {
+    attrs: {
+      size: 22
+    }
+  })], 1), _vm._v(" "), _c("div", [_c("span", {
+    staticClass: "stat-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Users without employee record")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.Usuarios.length))])])])]), _vm._v(" "), _c("VueTabs", [_c("VTab", {
     attrs: {
       title: _vm.t("empleados", "Active employees")
     }
-  }, [_vm.Empleados.length > 0 ? _c("div", {
-    staticClass: "container",
-    staticStyle: {
-      "max-height": "calc(80vh - 4rem)",
-      "overflow-y": "auto"
+  }, [_c("div", {
+    staticClass: "tab-toolbar"
+  }, [_c("div", [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Active employees")))]), _vm._v(" "), _c("p", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Open the action menu of an employee to edit module permissions.")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("NcTextField", {
+    staticClass: "tab-search",
+    attrs: {
+      value: _vm.activeSearch,
+      label: _vm.t("empleados", "Search active employees")
+    },
+    on: {
+      "update:value": function ($event) {
+        _vm.activeSearch = $event;
+      }
     }
+  })], 1), _vm._v(" "), _vm.filteredEmpleados.length > 0 ? _c("div", {
+    staticClass: "container list-container"
   }, [_c("table", {
-    staticClass: "grid"
+    staticClass: "grid empleados-table"
   }, [_c("tr", [_c("th", {
     staticClass: "header__cell header__cell--avatar"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t \n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Options")))])]), _vm._v(" "), _vm._l(_vm.Empleados, function (item, index) {
-    return _c("tr", _vm._b({}, "tr", _vm.$attrs, false), [_c("td", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t \n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", {
+    staticClass: "employee-id-column"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "User")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Options")))])]), _vm._v(" "), _vm._l(_vm.filteredEmpleados, function (item) {
+    return _c("tr", _vm._b({
+      key: _vm.getEmpleadoUid(item)
+    }, "tr", _vm.$attrs, false), [_c("td", {
       staticClass: "row__cell row__cell--avatar"
     }, [_c("NcAvatar", {
       attrs: {
-        user: item.uid,
-        "display-name": item.displayname,
+        user: _vm.getEmpleadoUid(item),
+        "display-name": _vm.getEmpleadoDisplayName(item),
         "show-user-status-compact": false,
         "show-user-status": false
       }
-    })], 1), _vm._v(" "), item.displayname ? _c("td", [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.displayname) + "\n\t\t\t\t\t\t\t")]) : _c("td", [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.uid) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("td", [_c("NcActions", [_c("NcActionButton", {
+    })], 1), _vm._v(" "), _c("td", [_c("div", {
+      staticClass: "employee-main-cell"
+    }, [_c("strong", [_vm._v(_vm._s(_vm.getEmpleadoDisplayName(item)))]), _vm._v(" "), _c("span", {
+      staticClass: "status-badge status-badge--active"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Employee record enabled")) + "\n\t\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("td", {
+      staticClass: "employee-id-column"
+    }, [_c("code", [_vm._v(_vm._s(_vm.getEmpleadoUid(item)))])]), _vm._v(" "), _c("td", [_c("NcActions", [_c("NcActionButton", {
+      attrs: {
+        "close-after-click": ""
+      },
       on: {
         click: function ($event) {
-          return _vm.DeactiveUserDialog(index, item.displayname);
+          return _vm.openPermisosDialog(item);
+        }
+      },
+      scopedSlots: _vm._u([{
+        key: "icon",
+        fn: function () {
+          return [_c("AccountGroup", {
+            attrs: {
+              size: 20
+            }
+          })];
+        },
+        proxy: true
+      }], null, true)
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "View permissions")) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
+      attrs: {
+        "close-after-click": ""
+      },
+      on: {
+        click: function ($event) {
+          _vm.DeactiveUserDialog(_vm.getEmpleadoIndex(item), _vm.getEmpleadoDisplayName(item));
         }
       },
       scopedSlots: _vm._u([{
@@ -10568,10 +10605,10 @@ var render = function render() {
       }], null, true)
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Disable account")) + "\n\t\t\t\t\t\t\t\t\t")])], 1)], 1)]);
   })], 2)]) : _c("div", {
-    staticClass: "container"
-  }, [_c("br"), _vm._v(" "), _c("NcEmptyContent", {
+    staticClass: "container empty-container"
+  }, [_c("NcEmptyContent", {
     attrs: {
-      name: _vm.t("empleados", "No users yet")
+      name: _vm.activeSearch ? _vm.t("empleados", "No employees match the search") : _vm.t("empleados", "No users yet")
     },
     scopedSlots: _vm._u([{
       key: "icon",
@@ -10588,33 +10625,52 @@ var render = function render() {
     attrs: {
       title: _vm.t("empleados", "Deactivated employees")
     }
-  }, [_vm.Desactivados.length > 0 ? _c("div", {
-    staticClass: "container",
-    staticStyle: {
-      "max-height": "calc(80vh - 4rem)",
-      "overflow-y": "auto"
+  }, [_c("div", {
+    staticClass: "tab-toolbar"
+  }, [_c("div", [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Deactivated employees")))]), _vm._v(" "), _c("p", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reactivate or delete employee records that are no longer active.")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("NcTextField", {
+    staticClass: "tab-search",
+    attrs: {
+      value: _vm.inactiveSearch,
+      label: _vm.t("empleados", "Search deactivated employees")
+    },
+    on: {
+      "update:value": function ($event) {
+        _vm.inactiveSearch = $event;
+      }
     }
+  })], 1), _vm._v(" "), _vm.filteredDesactivados.length > 0 ? _c("div", {
+    staticClass: "container list-container"
   }, [_c("table", {
-    staticClass: "grid"
+    staticClass: "grid empleados-table"
   }, [_c("tr", [_c("th", {
     staticClass: "header__cell header__cell--avatar"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t \n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Options")))])]), _vm._v(" "), _vm._l(_vm.Desactivados, function (item, index) {
-    return _c("tr", _vm._b({}, "tr", _vm.$attrs, false), [_c("td", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t \n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", {
+    staticClass: "employee-id-column"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "User")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Options")))])]), _vm._v(" "), _vm._l(_vm.filteredDesactivados, function (item) {
+    return _c("tr", _vm._b({
+      key: _vm.getEmpleadoUid(item)
+    }, "tr", _vm.$attrs, false), [_c("td", {
       staticClass: "row__cell row__cell--avatar"
     }, [_c("NcAvatar", {
       attrs: {
-        user: item.uid,
-        "display-name": item.displayname,
+        user: _vm.getEmpleadoUid(item),
+        "display-name": _vm.getEmpleadoDisplayName(item),
         "show-user-status-compact": false,
         "show-user-status": false
       }
-    })], 1), _vm._v(" "), item.displayname ? _c("td", [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.displayname) + "\n\t\t\t\t\t\t\t")]) : _c("td", [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.uid) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("td", [_c("NcActions", [_c("NcActionButton", {
+    })], 1), _vm._v(" "), _c("td", [_c("div", {
+      staticClass: "employee-main-cell"
+    }, [_c("strong", [_vm._v(_vm._s(_vm.getEmpleadoDisplayName(item)))]), _vm._v(" "), _c("span", {
+      staticClass: "status-badge status-badge--disabled"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Employee record disabled")) + "\n\t\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("td", {
+      staticClass: "employee-id-column"
+    }, [_c("code", [_vm._v(_vm._s(_vm.getEmpleadoUid(item)))])]), _vm._v(" "), _c("td", [_c("NcActions", [_c("NcActionButton", {
       attrs: {
         "close-after-click": ""
       },
       on: {
         click: function ($event) {
-          return _vm.ActivarUsuario(index);
+          _vm.ActivarUsuario(_vm.getDesactivadoIndex(item));
         }
       },
       scopedSlots: _vm._u([{
@@ -10634,7 +10690,7 @@ var render = function render() {
       },
       on: {
         click: function ($event) {
-          return _vm.EliminarUserDialog(index);
+          _vm.EliminarUserDialog(_vm.getDesactivadoIndex(item), _vm.getEmpleadoDisplayName(item));
         }
       },
       scopedSlots: _vm._u([{
@@ -10650,10 +10706,10 @@ var render = function render() {
       }], null, true)
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete")) + "\n\t\t\t\t\t\t\t\t\t")])], 1)], 1)]);
   })], 2)]) : _c("div", {
-    staticClass: "container"
-  }, [_c("br"), _vm._v(" "), _c("NcEmptyContent", {
+    staticClass: "container empty-container"
+  }, [_c("NcEmptyContent", {
     attrs: {
-      name: _vm.t("empleados", "No users yet")
+      name: _vm.inactiveSearch ? _vm.t("empleados", "No deactivated employees match the search") : _vm.t("empleados", "No users yet")
     },
     scopedSlots: _vm._u([{
       key: "icon",
@@ -10670,36 +10726,58 @@ var render = function render() {
     attrs: {
       title: _vm.t("empleados", "Users without employee record")
     }
-  }, [_vm.loadingEmployees ? _c("div", {
+  }, [_c("div", {
+    staticClass: "tab-toolbar"
+  }, [_c("div", [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Users without employee record")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Enable an employee record for existing Nextcloud users.")))])]), _vm._v(" "), _c("NcTextField", {
+    staticClass: "tab-search",
+    attrs: {
+      value: _vm.pendingSearch,
+      label: _vm.t("empleados", "Search pending users")
+    },
+    on: {
+      "update:value": function ($event) {
+        _vm.pendingSearch = $event;
+      }
+    }
+  })], 1), _vm._v(" "), _vm.loadingEmployees ? _c("div", {
     staticClass: "loader-settings"
   }, [_c("NcLoadingIcon", {
     attrs: {
       size: 70
     }
-  })], 1) : _c("div", [_vm.Usuarios.length > 0 ? _c("div", {
-    staticClass: "container",
-    staticStyle: {
-      "max-height": "calc(80vh - 4rem)",
-      "overflow-y": "auto"
-    }
+  })], 1) : _c("div", [_vm.filteredUsuarios.length > 0 ? _c("div", {
+    staticClass: "container list-container"
   }, [_c("table", {
-    staticClass: "grid"
+    staticClass: "grid empleados-table"
   }, [_c("tr", [_c("th", {
     staticClass: "header__cell header__cell--avatar"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t \n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Options")))])]), _vm._v(" "), _vm._l(_vm.Usuarios, function (item, index) {
-    return _c("tr", _vm._b({}, "tr", _vm.$attrs, false), [_c("td", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t \n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", {
+    staticClass: "employee-id-column"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "User")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Options")))])]), _vm._v(" "), _vm._l(_vm.filteredUsuarios, function (item) {
+    return _c("tr", _vm._b({
+      key: item.uid
+    }, "tr", _vm.$attrs, false), [_c("td", {
       staticClass: "row__cell row__cell--avatar"
     }, [_c("NcAvatar", {
       attrs: {
         user: item.uid,
-        "display-name": item.displayname,
+        "display-name": _vm.getUsuarioDisplayName(item),
         "show-user-status-compact": false,
         "show-user-status": false
       }
-    })], 1), _vm._v(" "), _c("td", [_vm._v(_vm._s(JSON.parse(item.data).displayname.value))]), _vm._v(" "), _c("td", [_c("NcActions", [_c("NcActionButton", {
+    })], 1), _vm._v(" "), _c("td", [_c("div", {
+      staticClass: "employee-main-cell"
+    }, [_c("strong", [_vm._v(_vm._s(_vm.getUsuarioDisplayName(item)))]), _vm._v(" "), _c("span", {
+      staticClass: "status-badge status-badge--pending"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Pending employee record")) + "\n\t\t\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("td", {
+      staticClass: "employee-id-column"
+    }, [_c("code", [_vm._v(_vm._s(item.uid))])]), _vm._v(" "), _c("td", [_c("NcActions", [_c("NcActionButton", {
+      attrs: {
+        "close-after-click": ""
+      },
       on: {
         click: function ($event) {
-          return _vm.ActivarUser(index);
+          _vm.ActivarUser(_vm.getUsuarioIndex(item));
         }
       },
       scopedSlots: _vm._u([{
@@ -10714,50 +10792,58 @@ var render = function render() {
         proxy: true
       }], null, true)
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Activate")) + "\n\t\t\t\t\t\t\t\t\t\t")])], 1)], 1)]);
-  })], 2)]) : _vm._e()])]), _vm._v(" "), _c("VTab", {
+  })], 2)]) : _c("div", {
+    staticClass: "container empty-container"
+  }, [_c("NcEmptyContent", {
     attrs: {
-      title: _vm.t("empleados", "Permissions")
-    }
-  }, [_c("div", {
-    staticClass: "container permisos-container"
-  }, [_c("div", {
-    staticClass: "permisos-card"
-  }, [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "User permissions")))]), _vm._v(" "), _c("p", {
-    staticClass: "permisos-help"
-  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Assign module permissions using controlled Nextcloud groups.")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
-    staticClass: "permisos-grid"
-  }, [_c("label", [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "User")) + "\n\t\t\t\t\t\t\t\t"), _c("select", {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: _vm.selectedPermisosUid,
-      expression: "selectedPermisosUid"
-    }],
+      name: _vm.pendingSearch ? _vm.t("empleados", "No pending users match the search") : _vm.t("empleados", "No pending users")
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("AccountPlus", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }])
+  })], 1)])])], 1)], 1), _vm._v(" "), _c("NcDialog", {
+    attrs: {
+      open: _vm.showPermisosDialog,
+      name: _vm.t("empleados", "User permissions")
+    },
     on: {
-      change: [function ($event) {
-        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
-          return o.selected;
-        }).map(function (o) {
-          var val = "_value" in o ? o._value : o.value;
-          return val;
-        });
-        _vm.selectedPermisosUid = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
-      }, _vm.loadPermisosUsuario]
-    }
-  }, [_c("option", {
-    attrs: {
-      value: ""
-    }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Select user")) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _vm._l(_vm.permisosUsuarios, function (user) {
-    return _c("option", {
-      key: user.uid,
-      domProps: {
-        value: user.uid
+      "update:open": function ($event) {
+        _vm.showPermisosDialog = $event;
       }
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(user.displayname || user.uid) + "\n\t\t\t\t\t\t\t\t\t")]);
-  })], 2)])]), _vm._v(" "), _vm.selectedPermisosUid ? _c("div", {
+    }
+  }, [_c("div", {
+    staticClass: "permisos-dialog"
+  }, [_c("div", {
+    staticClass: "permisos-user-card"
+  }, [_c("NcAvatar", {
+    attrs: {
+      user: _vm.selectedPermisosUser.uid,
+      "display-name": _vm.selectedPermisosUser.displayname,
+      "show-user-status-compact": false,
+      "show-user-status": false
+    }
+  }), _vm._v(" "), _c("div", [_c("strong", [_vm._v(_vm._s(_vm.selectedPermisosUser.displayname))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.selectedPermisosUser.uid))])])], 1), _vm._v(" "), _c("NcNoteCard", {
+    staticClass: "permisos-help",
+    attrs: {
+      type: "info"
+    }
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Assign module permissions using controlled Nextcloud groups.")) + "\n\t\t\t")]), _vm._v(" "), _vm.loadingPermisos ? _c("div", {
+    staticClass: "permisos-loader"
+  }, [_c("NcLoadingIcon", {
+    attrs: {
+      size: 44
+    }
+  })], 1) : _c("div", {
     staticClass: "permisos-groups"
-  }, [_c("h4", [_vm._v(_vm._s(_vm.t("empleados", "Allowed groups")))]), _vm._v(" "), _vm._l(_vm.permisosGrupos, function (group) {
+  }, [_vm._l(_vm.permisosGrupos, function (group) {
     return _c("NcCheckboxRadioSwitch", {
       key: group.id,
       attrs: {
@@ -10769,18 +10855,41 @@ var render = function render() {
           return _vm.togglePermisoGroup(group.id);
         }
       }
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(group.label) + "\n\t\t\t\t\t\t\t")]);
-  }), _vm._v(" "), _c("div", {
+    }, [_c("span", {
+      staticClass: "permission-option"
+    }, [_c("strong", [_vm._v(_vm._s(group.label))]), _vm._v(" "), _c("small", [_vm._v(_vm._s(group.id))])])]);
+  }), _vm._v(" "), _vm.permisosGrupos.length === 0 ? _c("NcEmptyContent", {
+    attrs: {
+      name: _vm.t("empleados", "No permission groups found")
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("AccountGroup", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 4176711638)
+  }) : _vm._e()], 2), _vm._v(" "), _c("div", {
     staticClass: "permisos-actions"
   }, [_c("NcButton", {
+    on: {
+      click: function ($event) {
+        _vm.showPermisosDialog = false;
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Cancel")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "primary",
-      disabled: _vm.loadingPermisos
+      disabled: _vm.loadingPermisos || !_vm.selectedPermisosUid
     },
     on: {
       click: _vm.savePermisosUsuario
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save permissions")) + "\n\t\t\t\t\t\t\t\t")])], 1)], 2) : _vm._e()])])])], 1)], 1), _vm._v(" "), _c("NcDialog", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save permissions")) + "\n\t\t\t\t")])], 1)], 1)]), _vm._v(" "), _c("NcDialog", {
     attrs: {
       open: _vm.showDeactiveUserDialog,
       name: _vm.t("empleados", "Confirmation"),
@@ -10798,7 +10907,9 @@ var render = function render() {
     attrs: {
       open: _vm.showEliminarUserDialog,
       name: _vm.t("empleados", "Are you sure you want to delete?"),
-      message: _vm.t("empleados", "This action will delete all employee information"),
+      message: _vm.t("empleados", "This action will delete all employee information for {name}.", {
+        name: _vm.selected.name || ""
+      }),
       buttons: _vm.ButtonsEliminarUser
     },
     on: {
@@ -10850,10 +10961,20 @@ var render = function render() {
       decorative: ""
     }
   }), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Global settings")))])], 1)]), _vm._v(" "), _c("div", {
-    staticClass: "settings-container"
+    staticClass: "settings-layout"
+  }, [_c("section", {
+    staticClass: "settings-category settings-category-wide"
   }, [_c("div", {
-    staticClass: "settings-card settings-card-compact"
-  }, [_c("NcCheckboxRadioSwitch", {
+    staticClass: "category-header"
+  }, [_c("p", {
+    staticClass: "section-label"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "General")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Base behavior")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Settings that affect core employee workflows and shared files.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "settings-grid"
+  }, [_c("div", {
+    staticClass: "settings-card"
+  }, [_c("div", {
+    staticClass: "setting-row"
+  }, [_c("div", [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Automatic note saving")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Save employee notes without requiring a manual action.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.guardado_notas,
       type: "switch"
@@ -10861,9 +10982,11 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangeGuardadoNotas
     }
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Automatic note saving")) + "\n\t\t\t")])], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card settings-card-compact"
-  }, [_c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.guardado_notas ? _vm.t("empleados", "Enabled") : _vm.t("empleados", "Disabled")) + "\n\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _c("div", {
+    staticClass: "settings-card"
+  }, [_c("div", {
+    staticClass: "setting-row"
+  }, [_c("div", [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Vacation accrual")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Allow all users to accrue vacation automatically.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.acumular_vacaciones,
       type: "switch"
@@ -10871,14 +10994,19 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangeacumular_vacaciones
     }
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Allow all users to accrue vacation")) + "\n\t\t\t")])], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.acumular_vacaciones ? _vm.t("empleados", "Enabled") : _vm.t("empleados", "Disabled")) + "\n\t\t\t\t\t\t")])], 1)])])]), _vm._v(" "), _c("section", {
+    staticClass: "settings-category settings-category-wide"
+  }, [_c("div", {
+    staticClass: "category-header"
+  }, [_c("p", {
+    staticClass: "section-label"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Modules")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Available app areas")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Enable or hide functional areas from the employee navigation.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "modules-grid"
+  }, [_c("div", {
     staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "Purchases module")
-    }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable this module to manage purchase requests, approvals, suppliers, quotations and purchase tracking.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Purchases module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Purchase requests, approvals, suppliers and tracking.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.modulo_compras,
       type: "switch"
@@ -10886,14 +11014,11 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangemodulo_compras
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable purchases module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable purchases module")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "Savings module")
-    }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "If the savings module is enabled, users will see the savings option in their menu.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "When the module is enabled, all users\\’ states are reset to 0.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Savings module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Savings menu and related user status.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.modulo_ahorro,
       type: "switch"
@@ -10901,14 +11026,11 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangemodulo_ahorro
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable savings module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable savings module")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "Absences module")
-    }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "If the absences module is enabled, users will see the absences option in their menu.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Absences module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Absence requests and availability controls.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.modulo_ausencias,
       type: "switch"
@@ -10916,7 +11038,7 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangemodulo_ausencias
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable absences module")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable absences module")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.modulo_ausencias_readonly,
       type: "switch"
@@ -10924,14 +11046,11 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangemodulo_ausencias_readonly
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Read-only (no one can request absences)")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Read-only mode")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "Customers module")
-    }
-  }, [_c("NcCheckboxRadioSwitch", {
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Customers module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Customer groups and companies for time reports.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.modulo_clientes,
       type: "switch"
@@ -10939,14 +11058,11 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangemodulo_clientes
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable customers module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable customers module")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "Report times module")
-    }
-  }, [_c("NcCheckboxRadioSwitch", {
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Report times module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Time reporting and compliance views.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.modulo_reporte_tiempos,
       type: "switch"
@@ -10954,14 +11070,41 @@ var render = function render() {
     on: {
       "update:checked": _vm.onChangemodulo_reporte_tiempos
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable report times module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card settings-card-wide"
-  }, [_c("NcNoteCard", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable report times module")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
+    staticClass: "settings-card"
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "IT Inventory module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Computer equipment, hardware models and assignments.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "Report times settings")
+      checked: _vm.modulo_inventario,
+      type: "switch"
+    },
+    on: {
+      "update:checked": _vm.onChangemodulo_inventario
     }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reminder and compliance settings for the time reports module.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable IT inventory module")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
+    staticClass: "settings-card"
+  }, [_c("div", {
+    staticClass: "module-card-header"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "IT Support module")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Technical support and device maintenance history.")))])]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+    attrs: {
+      checked: _vm.modulo_soporte,
+      type: "switch"
+    },
+    on: {
+      "update:checked": _vm.onChangemodulo_soporte
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable IT support module")) + "\n\t\t\t\t\t")])], 1)])]), _vm._v(" "), _c("section", {
+    staticClass: "settings-category settings-category-wide"
+  }, [_c("div", {
+    staticClass: "category-header"
+  }, [_c("p", {
+    staticClass: "section-label"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Time reports")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Report times settings")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Reminder and compliance settings for the time reports module.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "settings-card settings-form-card"
+  }, [_c("div", {
+    staticClass: "switch-grid"
+  }, [_c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.reportes_recordatorios_enabled,
       type: "switch"
@@ -10971,7 +11114,7 @@ var render = function render() {
         _vm.reportes_recordatorios_enabled = !_vm.reportes_recordatorios_enabled;
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable automatic reminders")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable automatic reminders")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
     attrs: {
       checked: _vm.reportes_recordatorios_email,
       type: "switch"
@@ -10981,7 +11124,7 @@ var render = function render() {
         _vm.reportes_recordatorios_email = !_vm.reportes_recordatorios_email;
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Send reminders by email")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Send reminders by email")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "settings-grid"
   }, [_c("NcTextField", {
     attrs: {
@@ -11051,44 +11194,22 @@ var render = function render() {
     on: {
       click: _vm.saveConfiguracionReportes
     }
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t\t")])], 1)], 1)], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "IT Inventory module")
-    }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable this module to manage computer equipment, hardware models, serial numbers and device assignments.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
-    attrs: {
-      checked: _vm.modulo_inventario,
-      type: "switch"
-    },
-    on: {
-      "update:checked": _vm.onChangemodulo_inventario
-    }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable IT inventory module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card"
-  }, [_c("NcNoteCard", {
-    attrs: {
-      type: "info",
-      heading: _vm.t("empleados", "IT Support module")
-    }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable this module to track technical support, maintenance history and actions performed on assigned devices.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
-    attrs: {
-      checked: _vm.modulo_soporte,
-      type: "switch"
-    },
-    on: {
-      "update:checked": _vm.onChangemodulo_soporte
-    }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable IT support module")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card settings-card-wide"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t\t")])], 1)])]), _vm._v(" "), _c("section", {
+    staticClass: "settings-category settings-category-wide"
+  }, [_c("div", {
+    staticClass: "category-header"
+  }, [_c("p", {
+    staticClass: "section-label"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Files and security")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Data manager and provisioning")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Control the account used for shared employee files and the provisioning token.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "settings-grid"
+  }, [_c("div", {
+    staticClass: "settings-card settings-form-card"
   }, [_vm.selected_user ? _c("NcNoteCard", {
     attrs: {
       type: "warning",
       heading: _vm.t("empleados", "ATTENTION")
     }
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "If you change the file manager user after it has already been set, file loss may occur. Consider making a backup before proceeding.")) + "\n\t\t\t\t")])]) : _vm._e(), _vm._v(" "), _c("NcSelect", {
+  }, [_c("p", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "If you change the file manager user after it has already been set, file loss may occur. Consider making a backup before proceeding.")) + "\n\t\t\t\t\t\t")])]) : _vm._e(), _vm._v(" "), _c("NcSelect", {
     attrs: {
       "input-label": _vm.t("empleados", "Data manager user"),
       options: _vm.optionsGestor,
@@ -11111,31 +11232,8 @@ var render = function render() {
     on: {
       click: _vm.saveGestor
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card settings-card-wide"
-  }, [_c("NcSelect", _vm._b({
-    attrs: {
-      "input-label": _vm.t("empleados", "Select Human Resources users")
-    },
-    model: {
-      value: _vm.selectedUsers,
-      callback: function ($$v) {
-        _vm.selectedUsers = $$v;
-      },
-      expression: "selectedUsers"
-    }
-  }, "NcSelect", _vm.propsCapitalHumano, false)), _vm._v(" "), _c("div", {
-    staticClass: "actions-row"
-  }, [_c("NcButton", {
-    attrs: {
-      "aria-label": _vm.t("empleados", "Apply changes"),
-      type: "primary"
-    },
-    on: {
-      click: _vm.saveCapitalHumano
-    }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
-    staticClass: "settings-card settings-card-wide"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
+    staticClass: "settings-card settings-form-card"
   }, [_c("NcPasswordField", {
     attrs: {
       value: _vm.secrettoken,
@@ -11157,7 +11255,7 @@ var render = function render() {
     on: {
       click: _vm.saveSecretToken
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t")])], 1)], 1)])]);
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Apply changes")) + "\n\t\t\t\t\t\t")])], 1)], 1)])])])]);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -24917,39 +25015,68 @@ __webpack_require__.r(__webpack_exports__);
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, `
+.empleados-settings {
+	color: var(--color-main-text);
+}
+
 /* Board title */
-.board-title {
-	padding-left: 20px;
-	margin-right: 10px;
-	margin-top: 14px;
-	font-size: 25px;
+.settings-header {
 	display: flex;
+	align-items: flex-start;
+	gap: 14px;
+	margin: 0 20px 8px;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+.settings-header__icon,
+.stat-card__icon {
+	display: inline-flex;
+	flex: 0 0 auto;
 	align-items: center;
+	justify-content: center;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	color: var(--color-primary-element);
+}
+.settings-header__icon {
+	width: 52px;
+	height: 52px;
+}
+.settings-header__content {
+	min-width: 0;
+}
+.section-label {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+.board-title {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 24px;
 	font-weight: bold;
 }
-.board-title .icon {
-	margin-right: 8px;
+.settings-description {
+	max-width: 820px;
+	margin: 8px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	line-height: 1.4;
 }
 
 /* Centered loading */
 .center-screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 100vh;
-}
-
-/* Subtitles */
-.titles {
-	margin-right: 10px;
-	margin-top: 14px;
-	font-size: 17px;
 	display: flex;
+	justify-content: center;
 	align-items: center;
-}
-.titles .icon {
-	margin-right: 8px;
+	text-align: center;
+	min-height: 100vh;
+	background: var(--color-main-background);
 }
 
 /* Container */
@@ -24957,64 +25084,208 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	padding-left: 20px;
 	padding-right: 20px;
 }
-
-/* Table wrapper demo */
-.rsg {
-	padding-top: 16px;
-	padding-bottom: 16px;
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
+.stats-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(160px, 1fr));
+	gap: 12px;
+	padding: 8px 20px 16px;
+}
+.stat-card {
 	display: flex;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-}
-.permisos-container {
-	padding-top: 20px;
-}
-.permisos-card {
-	max-width: 720px;
-	padding: 20px;
+	align-items: center;
+	gap: 12px;
+	padding: 16px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .04);
 }
-.permisos-card h3 {
-	margin-top: 0;
+.stat-card__icon {
+	width: 42px;
+	height: 42px;
 }
-.permisos-help {
-	opacity: .75;
-	margin-bottom: 18px;
+.stat-card__label {
+	display: block;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	margin-bottom: 6px;
 }
-.permisos-grid {
-	display: grid;
-	grid-template-columns: minmax(240px, 1fr);
-	gap: 12px;
-	margin-bottom: 20px;
+.stat-card strong {
+	font-size: 28px;
+	line-height: 1;
 }
-.permisos-grid label {
+.tab-toolbar {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 16px 20px 8px;
+}
+.tab-toolbar h3 {
+	margin: 0;
+	font-size: 18px;
+}
+.tab-toolbar p {
+	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.4;
+}
+.tab-search {
+	width: min(320px, 100%);
+	flex: 0 0 min(320px, 100%);
+}
+.list-container {
+	max-height: calc(80vh - 10rem);
+	overflow-y: auto;
+}
+.empty-container {
+	padding-top: 24px;
+}
+.empleados-table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
+	background: var(--color-main-background);
+}
+.empleados-table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 700;
+	text-align: left;
+	text-transform: uppercase;
+}
+.empleados-table th,
+.empleados-table td {
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--color-border);
+	vertical-align: middle;
+}
+.empleados-table tr:last-child td {
+	border-bottom: 0;
+}
+.header__cell--avatar,
+.row__cell--avatar {
+	width: 56px;
+}
+.employee-main-cell {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	font-weight: 600;
+	gap: 3px;
 }
-.permisos-grid select {
-	min-height: 38px;
-	padding: 8px 10px;
+.employee-main-cell span {
+	width: fit-content;
+}
+.status-badge {
+	display: inline-flex;
+	align-items: center;
+	min-height: 22px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 700;
+}
+.status-badge--active {
+	background: var(--color-success, #008000);
+	color: var(--color-success-text, #fff);
+}
+.status-badge--disabled {
+	background: var(--color-warning, #eca700);
+	color: var(--color-warning-text, #222);
+}
+.status-badge--pending {
+	background: var(--color-primary-element-light, var(--color-background-hover));
+	color: var(--color-primary-element);
+}
+.employee-id-column code {
+	padding: 3px 6px;
+	border-radius: var(--border-radius-small);
+	background: var(--color-background-dark);
+	font-size: 12px;
+}
+.permisos-dialog {
+	min-width: min(560px, calc(100vw - 48px));
+	padding-top: 4px;
+}
+.permisos-user-card {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px;
 	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius);
-	background: var(--color-main-background);
-	color: var(--color-main-text);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	margin-bottom: 14px;
+}
+.permisos-user-card div {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.permisos-user-card span {
+	opacity: .65;
+	font-size: 12px;
+}
+.permisos-help {
+	margin: 0 0 18px;
+}
+.permisos-loader {
+	display: flex;
+	justify-content: center;
+	padding: 28px 0;
 }
 .permisos-groups {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	padding: 4px 0;
+}
+.permission-option {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	line-height: 1.3;
+}
+.permission-option small {
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
 }
 .permisos-actions {
-	margin-top: 18px;
+	margin-top: 22px;
 	display: flex;
 	justify-content: flex-end;
+	gap: 10px;
+}
+.loader-settings {
+	display: flex;
+	justify-content: center;
+	padding: 40px 0;
+}
+@media (max-width: 800px) {
+.settings-header,
+	.tab-toolbar {
+		align-items: stretch;
+		flex-direction: column;
+}
+.stats-grid {
+		grid-template-columns: 1fr;
+}
+.tab-search {
+		flex-basis: auto;
+		width: 100%;
+}
+.employee-id-column {
+		display: none;
+}
+.empleados-table th,
+	.empleados-table td {
+		padding: 10px;
+}
 }
 `, ""]);
 // Exports
@@ -25063,66 +25334,139 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	min-height: 55vh;
 	text-align: center;
 }
-
-/* Container */
-.settings-container[data-v-3fa77923] {
+.settings-layout[data-v-3fa77923] {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 16px;
+	gap: 18px;
 	padding: 0 20px 28px;
+}
+.settings-category[data-v-3fa77923] {
+	min-width: 0;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.settings-category-wide[data-v-3fa77923] {
+	grid-column: 1 / -1;
+}
+.category-header[data-v-3fa77923] {
+	margin-bottom: 16px;
+}
+.section-label[data-v-3fa77923] {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+.category-header h3[data-v-3fa77923] {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 20px;
+	font-weight: 700;
+}
+.category-header p[data-v-3fa77923] {
+	max-width: 820px;
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	line-height: 1.4;
+}
+.settings-grid[data-v-3fa77923],
+.modules-grid[data-v-3fa77923] {
+	display: grid;
+	gap: 12px;
+}
+.settings-grid[data-v-3fa77923] {
+	grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+.modules-grid[data-v-3fa77923] {
+	grid-template-columns: repeat(3, minmax(220px, 1fr));
 }
 .settings-card[data-v-3fa77923] {
 	min-width: 0;
 	padding: 16px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+.settings-form-card[data-v-3fa77923] {
 	background: var(--color-main-background);
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-.settings-card-compact[data-v-3fa77923] {
-	display: flex;
-	align-items: center;
-	min-height: 58px;
-}
-.settings-card-wide[data-v-3fa77923] {
-	grid-column: 1 / -1;
 }
 .settings-card[data-v-3fa77923] .notecard {
-	margin: 0;
+	margin: 0 0 14px;
 }
 .settings-card[data-v-3fa77923] p {
 	margin: 0 0 10px;
 	line-height: 1.45;
 }
 .settings-card[data-v-3fa77923] .checkbox-radio-switch {
-	margin-top: 8px;
+	margin-top: 10px;
+}
+.setting-row[data-v-3fa77923] {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	min-height: 58px;
+}
+.setting-row strong[data-v-3fa77923],
+.module-card-header strong[data-v-3fa77923] {
+	display: block;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+.setting-row span[data-v-3fa77923],
+.module-card-header span[data-v-3fa77923] {
+	display: block;
+	margin-top: 4px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.module-card-header[data-v-3fa77923] {
+	min-height: 64px;
+	margin-bottom: 8px;
+}
+.switch-grid[data-v-3fa77923] {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	gap: 10px 16px;
+	margin-bottom: 16px;
 }
 .actions-row[data-v-3fa77923] {
 	display: flex;
 	justify-content: flex-end;
-	margin-top: 14px;
+	margin-top: 16px;
 }
-.settings-grid[data-v-3fa77923] {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
-	gap: 12px;
-	max-width: 760px;
-	margin-top: 14px;
+@media (max-width: 1100px) {
+.modules-grid[data-v-3fa77923] {
+		grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
 }
 @media (max-width: 700px) {
 .board-title[data-v-3fa77923] {
 		margin: 10px 14px 14px;
 		font-size: 22px;
 }
-.settings-container[data-v-3fa77923] {
+.settings-layout[data-v-3fa77923] {
 		grid-template-columns: 1fr;
 		padding: 0 14px 20px;
 }
-.settings-card-wide[data-v-3fa77923] {
+.settings-category-wide[data-v-3fa77923] {
 		grid-column: auto;
 }
-.settings-grid[data-v-3fa77923] {
+.settings-grid[data-v-3fa77923],
+	.modules-grid[data-v-3fa77923],
+	.switch-grid[data-v-3fa77923] {
 		grid-template-columns: 1fr;
+}
+.setting-row[data-v-3fa77923] {
+		align-items: flex-start;
+		flex-direction: column;
 }
 .actions-row[data-v-3fa77923] {
 		justify-content: stretch;
@@ -143239,4 +143583,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=c1043cfaf55c26a3b7aa
+//# sourceMappingURL=empleados-settings.js.map?v=ec73ce20ad19e608f3dd

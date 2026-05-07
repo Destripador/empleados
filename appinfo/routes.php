@@ -205,5 +205,9 @@ return [
 		['name' => 'compra_solicitud#sendToApproval','url' => '/compras/solicitudes/{id}/enviar-autorizacion','verb' => 'POST'],
 		['name' => 'compra_solicitud#approve','url' => '/compras/solicitudes/{id}/autorizar','verb' => 'POST'],
 		['name' => 'compra_solicitud#reject','url' => '/compras/solicitudes/{id}/rechazar','verb' => 'POST'],
+		['name' => 'compra_documento#documento','url' => '/compras/solicitudes/{id}/documento','verb' => 'GET',],
+		['name' => 'compra_solicitud#cancel', 'url' => '/compras/solicitudes/{id}/cancelar', 'verb' => 'POST'],
+		['name' => 'compra_solicitud#update','url' => '/compras/solicitudes/{id}','verb' => 'PUT'],
+		['name' => 'compra_solicitud#context', 'url' => '/compras/contexto', 'verb' => 'GET'],
 	],
 ];

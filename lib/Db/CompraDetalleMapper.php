@@ -55,6 +55,13 @@ class CompraDetalleMapper extends QBMapper {
 			'precio_estimado',
 			'subtotal',
 			'notas',
+			'marca_modelo',
+			'especificaciones',
+			'iva',
+			'total',
+			'proveedor_nombre',
+			'entrega',
+			'atencion',
 		];
 
 		$values = [];
@@ -68,7 +75,7 @@ class CompraDetalleMapper extends QBMapper {
 		$qb->insert(self::TABLE)->values($values);
 		$this->executeStatement($qb);
 
-		$id = (int)$this->db->lastInsertId();
+		$id = (int)$this->db->lastInsertId(self::TABLE);
 
 		return $this->find($id);
 	}

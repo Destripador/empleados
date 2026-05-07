@@ -20,6 +20,14 @@ class CompraDetalle extends Entity implements JsonSerializable {
 	protected $createdAt;
 	protected $updatedAt;
 
+	protected $marcaModelo;
+	protected $especificaciones;
+	protected $iva;
+	protected $total;
+	protected $proveedorNombre;
+	protected $entrega;
+	protected $atencion;
+
 	public function __construct() {
 		$this->addType('idDetalle', 'integer');
 		$this->addType('idSolicitud', 'integer');
@@ -37,6 +45,14 @@ class CompraDetalle extends Entity implements JsonSerializable {
 			'notas' => $this->notas,
 			'created_at' => $this->createdAt,
 			'updated_at' => $this->updatedAt,
+
+			'marca_modelo' => $this->marcaModelo,
+			'especificaciones' => $this->especificaciones,
+			'iva' => $this->iva,
+			'total' => $this->total,
+			'proveedor_nombre' => $this->proveedorNombre,
+			'entrega' => $this->entrega,
+			'atencion' => $this->atencion,
 		];
 	}
 }

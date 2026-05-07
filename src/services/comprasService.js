@@ -46,3 +46,15 @@ export async function rechazarSolicitud(id, comentario = '') {
 	})
 	return response.data
 }
+
+export async function cancelarSolicitud(id, comentario = '') {
+	const response = await axios.post(generateUrl(`${BASE_URL}/${id}/cancelar`), {
+		comentario,
+	})
+	return response.data
+}
+
+export async function obtenerContextoCompras() {
+	const response = await axios.get(generateUrl('/apps/empleados/compras/contexto'))
+	return response.data
+}
