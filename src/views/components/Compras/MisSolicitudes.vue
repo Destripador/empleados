@@ -1,60 +1,6 @@
 <template>
 	<NcAppContent :name="t('empleados', 'Purchases')">
 		<div class="compras-page">
-			<div class="compras-header">
-				<div class="header-title">
-					<p class="section-label">
-						{{ t('empleados', 'Purchases module') }}
-					</p>
-					<h2>{{ t('empleados', 'Purchases') }}</h2>
-					<p class="section-description">
-						{{ t('empleados', 'Manage purchase requests, approvals and tracking from one place.') }}
-					</p>
-				</div>
-
-				<div class="header-actions">
-					<NcButton @click="cargarSolicitudes">
-						{{ t('empleados', 'Refresh') }}
-					</NcButton>
-
-					<NcButton type="primary" @click="toggleForm">
-						{{ showForm ? t('empleados', 'Close') : t('empleados', 'New request') }}
-					</NcButton>
-				</div>
-			</div>
-
-			<div class="stats-grid">
-				<div class="stat-card">
-					<div class="stat-icon">
-						<CartOutline :size="22" />
-					</div>
-					<div>
-						<span>{{ t('empleados', 'Total requests') }}</span>
-						<strong>{{ solicitudesFiltradas.length }}</strong>
-					</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-icon">
-						<FileChartOutline :size="22" />
-					</div>
-					<div>
-						<span>{{ t('empleados', 'Pending approval') }}</span>
-						<strong>{{ totalPendientes }}</strong>
-					</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-icon">
-						<FileChartOutline :size="22" />
-					</div>
-					<div>
-						<span>{{ t('empleados', 'Estimated amount') }}</span>
-						<strong>{{ formatMoney(totalListado) }}</strong>
-					</div>
-				</div>
-			</div>
-
 			<NcModal v-if="showForm"
 				class="purchase-request-modal"
 				size="large"
@@ -185,8 +131,7 @@
 								<span class="field-label">
 									{{ t('empleados', 'Required date') }}
 								</span>
-								<NcDateTimePicker
-									v-model="requiredDateValue"
+								<NcDateTimePicker v-model="requiredDateValue"
 									type="date"
 									:placeholder="t('empleados', 'Select a required date')" />
 							</div>
@@ -252,52 +197,39 @@
 							</div>
 
 							<div class="concept-fields">
-								<NcTextField
-									class="span-2"
+								<NcTextField class="span-2"
 									:value.sync="concepto.descripcion"
 									:label="t('empleados', 'Description')" />
 
-								<NcTextField
-									:value.sync="concepto.cantidad"
+								<NcTextField :value.sync="concepto.cantidad"
 									type="number"
 									min="1"
 									step="1"
 									:label="t('empleados', 'Quantity')" />
 
-								<NcTextField
-									:value.sync="concepto.unidad"
-									:label="t('empleados', 'Unit')" />
+								<NcTextField :value.sync="concepto.unidad" :label="t('empleados', 'Unit')" />
 
-								<NcTextField
-									:value.sync="concepto.precio_estimado"
+								<NcTextField :value.sync="concepto.precio_estimado"
 									type="number"
 									min="0"
 									step="0.01"
 									:label="t('empleados', 'Price without VAT')" />
 
-								<NcTextField
-									:value="formatMoney(getDetalleIva(concepto))"
+								<NcTextField :value="formatMoney(getDetalleIva(concepto))"
 									:label="t('empleados', 'VAT (16%)')"
 									:disabled="true" />
 
-								<NcTextField
-									:value.sync="concepto.proveedor_nombre"
+								<NcTextField :value.sync="concepto.proveedor_nombre"
 									:label="t('empleados', 'Supplier')" />
 
-								<NcTextField
-									:value.sync="concepto.atencion"
-									:label="t('empleados', 'Attention')" />
+								<NcTextField :value.sync="concepto.atencion" :label="t('empleados', 'Attention')" />
 
-								<NcTextField
-									:value.sync="concepto.entrega"
-									:label="t('empleados', 'Delivery')" />
+								<NcTextField :value.sync="concepto.entrega" :label="t('empleados', 'Delivery')" />
 
-								<NcTextField
-									:value.sync="concepto.marca_modelo"
+								<NcTextField :value.sync="concepto.marca_modelo"
 									:label="t('empleados', 'Brand / Model')" />
 
-								<NcTextArea
-									class="span-2"
+								<NcTextArea class="span-2"
 									resize="vertical"
 									:value.sync="concepto.especificaciones"
 									:label="t('empleados', 'Specifications')" />
@@ -372,107 +304,188 @@
 				</div>
 			</NcModal>
 
-			<section class="panel-card">
-				<div class="panel-header">
-					<div>
-						<p class="section-label">
-							{{ t('empleados', 'Tracking') }}
-						</p>
-						<h3>{{ t('empleados', 'My requests') }}</h3>
-						<p>{{ t('empleados', 'Review the status of your purchase requests.') }}</p>
+			<div class="compras-layout">
+				<section class="panel-card requests-panel">
+					<div class="panel-header">
+						<div>
+							<p class="section-label">
+								{{ t('empleados', 'Tracking') }}
+							</p>
+							<h3>{{ t('empleados', 'My requests') }}</h3>
+							<p>{{ t('empleados', 'Review the status of your purchase requests.') }}</p>
+						</div>
+
+						<div class="filters">
+							<NcSelect v-model="selectedEstadoFiltro"
+								class="status-filter"
+								:input-label="t('empleados', 'Status filter')"
+								:options="estadoFiltroOptions"
+								:clearable="false" />
+
+							<NcCheckboxRadioSwitch :checked="verTodas" type="switch" @update:checked="onToggleVerTodas">
+								{{ t('empleados', 'Show all') }}
+							</NcCheckboxRadioSwitch>
+						</div>
 					</div>
 
-					<div class="filters">
-						<NcSelect v-model="selectedEstadoFiltro"
-							class="status-filter"
-							:input-label="t('empleados', 'Status filter')"
-							:options="estadoFiltroOptions"
-							:clearable="false" />
-
-						<NcCheckboxRadioSwitch :checked="verTodas" type="switch" @update:checked="onToggleVerTodas">
-							{{ t('empleados', 'Show all') }}
-						</NcCheckboxRadioSwitch>
+					<div v-if="loading" class="empty-state">
+						{{ t('empleados', 'Loading...') }}
 					</div>
-				</div>
 
-				<div v-if="loading" class="empty-state">
-					{{ t('empleados', 'Loading...') }}
-				</div>
+					<NcEmptyContent v-else-if="solicitudesFiltradas.length === 0"
+						:name="t('empleados', 'No purchase requests found')"
+						:description="t('empleados', 'Try changing the status filter or create a new request.')">
+						<template #icon>
+							<CartOutline />
+						</template>
+					</NcEmptyContent>
 
-				<NcEmptyContent v-else-if="solicitudesFiltradas.length === 0"
-					:name="t('empleados', 'No purchase requests found')"
-					:description="t('empleados', 'Try changing the status filter or create a new request.')">
-					<template #icon>
-						<CartOutline />
-					</template>
-				</NcEmptyContent>
+					<div v-else class="table-scroll">
+						<table class="compras-table">
+							<thead>
+								<tr>
+									<th>{{ t('empleados', 'Folio') }}</th>
+									<th>{{ t('empleados', 'Title') }}</th>
+									<th>{{ t('empleados', 'Requester') }}</th>
+									<th>{{ t('empleados', 'Amount') }}</th>
+									<th>{{ t('empleados', 'Status') }}</th>
+									<th>{{ t('empleados', 'Date') }}</th>
+									<th>{{ t('empleados', 'Actions') }}</th>
+								</tr>
+							</thead>
 
-				<div v-else class="table-scroll">
-					<table class="compras-table">
-						<thead>
-							<tr>
-								<th>{{ t('empleados', 'Folio') }}</th>
-								<th>{{ t('empleados', 'Title') }}</th>
-								<th>{{ t('empleados', 'Requester') }}</th>
-								<th>{{ t('empleados', 'Amount') }}</th>
-								<th>{{ t('empleados', 'Status') }}</th>
-								<th>{{ t('empleados', 'Date') }}</th>
-								<th>{{ t('empleados', 'Actions') }}</th>
-							</tr>
-						</thead>
+							<tbody>
+								<tr v-for="item in solicitudesFiltradas" :key="item.id_solicitud">
+									<td><strong>{{ item.folio }}</strong></td>
 
-						<tbody>
-							<tr v-for="item in solicitudesFiltradas" :key="item.id_solicitud">
-								<td><strong>{{ item.folio }}</strong></td>
-								<td>{{ item.titulo }}</td>
-								<td>{{ formatRequesterLabel(item) }}</td>
-								<td>{{ formatMoney(item.monto_estimado) }}</td>
-								<td>
-									<span :class="['badge', `estado-${item.estado}`]">
-										{{ formatEstado(item.estado) }}
-									</span>
-								</td>
-								<td>{{ formatDateTime(item.created_at) }}</td>
-								<td>
-									<div class="row-actions">
-										<NcButton @click="verDetalle(item.id_solicitud)">
-											{{ t('empleados', 'View') }}
-										</NcButton>
+									<td>{{ item.titulo }}</td>
 
-										<NcButton v-if="item.estado === 'borrador'" @click="editar(item.id_solicitud)">
-											{{ t('empleados', 'Edit') }}
-										</NcButton>
+									<td>{{ formatRequesterLabel(item) }}</td>
 
-										<NcButton @click="abrirDocumento(item.id_solicitud)">
-											{{ t('empleados', 'Document') }}
-										</NcButton>
+									<td>{{ formatMoney(item.monto_estimado) }}</td>
 
-										<NcButton v-if="canCancelRequest(item)" @click="cancelar(item.id_solicitud)">
-											{{ t('empleados', 'Delete') }}
-										</NcButton>
+									<td>
+										<span :class="['badge', `estado-${item.estado}`]">
+											{{ formatEstado(item.estado) }}
+										</span>
+									</td>
 
-										<NcButton v-if="item.estado === 'borrador'" @click="enviar(item.id_solicitud)">
-											{{ t('empleados', 'Send') }}
-										</NcButton>
+									<td>{{ formatDateTime(item.created_at) }}</td>
 
-										<NcButton v-if="item.estado === 'pendiente_autorizacion'"
-											type="primary"
-											@click="autorizar(item.id_solicitud)">
-											{{ t('empleados', 'Approve') }}
-										</NcButton>
+									<td class="col-actions">
+										<div class="row-actions table-actions">
+											<NcButton :aria-label="t('empleados', 'View request')"
+												:title="t('empleados', 'View request')"
+												@click="verDetalle(item.id_solicitud)">
+												<template #icon>
+													<EyeOutline :size="20" />
+												</template>
+											</NcButton>
 
-										<NcButton v-if="item.estado === 'pendiente_autorizacion'"
-											@click="rechazar(item.id_solicitud)">
-											{{ t('empleados', 'Reject') }}
-										</NcButton>
-									</div>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</section>
+											<NcActions :aria-label="t('empleados', 'More actions')" :force-menu="true">
+												<NcActionButton v-if="item.estado === 'borrador'"
+													@click="editar(item.id_solicitud)">
+													<template #icon>
+														<PencilOutline :size="20" />
+													</template>
+													{{ t('empleados', 'Edit') }}
+												</NcActionButton>
 
+												<NcActionButton v-if="canCancelRequest(item)"
+													@click="cancelar(item.id_solicitud)">
+													<template #icon>
+														<DeleteOutline :size="20" />
+													</template>
+													{{ t('empleados', 'Delete') }}
+												</NcActionButton>
+
+												<NcActionButton v-if="item.estado === 'borrador'"
+													@click="enviar(item.id_solicitud)">
+													<template #icon>
+														<SendOutline :size="20" />
+													</template>
+													{{ t('empleados', 'Send') }}
+												</NcActionButton>
+
+												<NcActionButton v-if="item.estado === 'pendiente_autorizacion'"
+													@click="autorizar(item.id_solicitud)">
+													<template #icon>
+														<CheckCircleOutline :size="20" />
+													</template>
+													{{ t('empleados', 'Approve') }}
+												</NcActionButton>
+
+												<NcActionButton v-if="item.estado === 'pendiente_autorizacion'"
+													@click="rechazar(item.id_solicitud)">
+													<template #icon>
+														<CloseCircleOutline :size="20" />
+													</template>
+													{{ t('empleados', 'Reject') }}
+												</NcActionButton>
+											</NcActions>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+				<aside class="purchases-side-panel">
+					<div class="compras-header">
+						<div class="header-title">
+							<p class="section-label">
+								{{ t('empleados', 'Purchases module') }}
+							</p>
+							<h2>{{ t('empleados', 'Purchases') }}</h2>
+							<p class="section-description">
+								{{ t('empleados', 'Manage purchase requests, approvals and tracking from one place.') }}
+							</p>
+						</div>
+
+						<div class="header-actions">
+							<NcButton @click="cargarSolicitudes">
+								{{ t('empleados', 'Refresh') }}
+							</NcButton>
+
+							<NcButton type="primary" @click="toggleForm">
+								{{ showForm ? t('empleados', 'Close') : t('empleados', 'New request') }}
+							</NcButton>
+						</div>
+					</div>
+
+					<div class="stats-grid">
+						<div class="stat-card">
+							<div class="stat-icon">
+								<CartOutline :size="22" />
+							</div>
+							<div>
+								<span>{{ t('empleados', 'Total requests') }}</span>
+								<strong>{{ solicitudesFiltradas.length }}</strong>
+							</div>
+						</div>
+
+						<div class="stat-card">
+							<div class="stat-icon">
+								<FileChartOutline :size="22" />
+							</div>
+							<div>
+								<span>{{ t('empleados', 'Pending approval') }}</span>
+								<strong>{{ totalPendientes }}</strong>
+							</div>
+						</div>
+
+						<div class="stat-card">
+							<div class="stat-icon">
+								<FileChartOutline :size="22" />
+							</div>
+							<div>
+								<span>{{ t('empleados', 'Estimated amount') }}</span>
+								<strong>{{ formatMoney(totalListado) }}</strong>
+							</div>
+						</div>
+					</div>
+				</aside>
+			</div>
 			<NcModal v-if="detalle"
 				class="purchase-detail-modal"
 				size="large"
@@ -666,6 +679,13 @@
 </template>
 
 <script>
+import EyeOutline from 'vue-material-design-icons/EyeOutline.vue'
+import PencilOutline from 'vue-material-design-icons/PencilOutline.vue'
+import DeleteOutline from 'vue-material-design-icons/DeleteOutline.vue'
+import SendOutline from 'vue-material-design-icons/SendOutline.vue'
+import CheckCircleOutline from 'vue-material-design-icons/CheckCircleOutline.vue'
+import CloseCircleOutline from 'vue-material-design-icons/CloseCircleOutline.vue'
+
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
@@ -676,7 +696,10 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
 import {
+	NcActionButton,
+	NcActions,
 	NcAppContent,
+	NcAvatar,
 	NcButton,
 	NcCheckboxRadioSwitch,
 	NcDateTimePicker,
@@ -686,7 +709,6 @@ import {
 	NcSelect,
 	NcTextArea,
 	NcTextField,
-	NcAvatar,
 } from '@nextcloud/vue'
 
 import {
@@ -711,7 +733,10 @@ export default {
 	name: 'MisSolicitudes',
 
 	components: {
+		NcActionButton,
+		NcActions,
 		NcAppContent,
+		NcAvatar,
 		NcButton,
 		NcCheckboxRadioSwitch,
 		NcDateTimePicker,
@@ -722,8 +747,13 @@ export default {
 		NcTextField,
 		CartOutline,
 		FileChartOutline,
+		EyeOutline,
+		PencilOutline,
+		DeleteOutline,
+		SendOutline,
+		CheckCircleOutline,
+		CloseCircleOutline,
 		NcModal,
-		NcAvatar,
 	},
 
 	data() {
@@ -1704,12 +1734,33 @@ export default {
 	padding: 24px;
 }
 
+.compras-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 380px;
+	gap: 16px;
+	align-items: start;
+	width: 100%;
+}
+
+.requests-panel {
+	min-width: 0;
+}
+
+.purchases-side-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-width: 0;
+}
+
 .compras-header {
 	display: flex;
-	align-items: flex-end;
+	flex-direction: column;
+	align-items: stretch;
 	justify-content: space-between;
-	gap: 16px;
-	padding: 18px;
+	gap: 18px;
+	min-height: 220px;
+	padding: 22px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
@@ -1719,45 +1770,24 @@ export default {
 	min-width: 0;
 }
 
-.section-label,
-.eyebrow {
-	margin: 0 0 4px;
-	color: var(--color-primary-element);
-	font-size: 12px;
-	font-weight: 700;
-	letter-spacing: .04em;
-	text-transform: uppercase;
-}
-
-.compras-header h2,
-.panel-header h3,
-.section-head h3,
-.details-title h2 {
+.compras-header h2 {
 	margin: 0;
 	color: var(--color-main-text);
-	font-size: 24px;
-	font-weight: 700;
-}
-
-.section-description,
-.panel-header p,
-.details-title p {
-	margin: 6px 0 0;
-	color: var(--color-text-maxcontrast);
-	font-size: 14px;
-	line-height: 1.4;
+	font-size: 30px;
+	font-weight: 800;
+	line-height: 1.15;
 }
 
 .header-actions {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	gap: 8px;
 }
 
 .stats-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: 1fr;
 	gap: 12px;
 }
 
@@ -1765,7 +1795,7 @@ export default {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 14px;
+	padding: 16px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
@@ -1783,8 +1813,8 @@ export default {
 }
 
 .stat-icon {
-	width: 42px;
-	height: 42px;
+	width: 46px;
+	height: 46px;
 }
 
 .stat-card span {
@@ -1799,7 +1829,7 @@ export default {
 	margin-top: 2px;
 	color: var(--color-main-text);
 	font-size: 22px;
-	font-weight: 700;
+	font-weight: 800;
 }
 
 .panel-card {
@@ -1821,6 +1851,32 @@ export default {
 	margin-bottom: 18px;
 }
 
+.panel-header h3 {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 28px;
+	font-weight: 800;
+	line-height: 1.15;
+}
+
+.row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+}
+.table-actions {
+	flex-wrap: nowrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.col-actions {
+	width: 96px;
+	text-align: right;
+	white-space: nowrap;
+}
 .filters,
 .row-actions,
 .details-actions {
@@ -2368,6 +2424,7 @@ export default {
 	gap: 4px;
 	min-width: 0;
 }
+
 .action-modal-header p {
 	margin: 6px 0 0;
 	color: var(--color-text-maxcontrast);
@@ -2381,6 +2438,7 @@ export default {
 	font-size: 22px;
 	font-weight: 800;
 }
+
 .detail-modal .details-title h2 {
 	margin: 0;
 	color: var(--color-main-text);
@@ -2516,6 +2574,7 @@ export default {
 	margin-bottom: 4px;
 
 }
+
 .detail-modal .historial-list span,
 .detail-modal .historial-list small {
 	display: block;
@@ -2570,6 +2629,34 @@ export default {
 }
 
 @media (max-width: 900px) {
+	.compras-table {
+			min-width: 980px;
+		}
+	.compras-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.purchases-side-panel {
+		order: -1;
+	}
+
+	.compras-header {
+		min-height: auto;
+	}
+
+	.stats-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.panel-header {
+		flex-direction: column;
+	}
+
+	.filters {
+		justify-content: flex-start;
+		width: 100%;
+	}
+
 	.purchase-request-modal {
 		:deep(.modal-container) {
 			width: min(96vw, 1180px) !important;
@@ -2651,6 +2738,7 @@ export default {
 		padding: 10px 12px;
 	}
 }
+
 .status-filter {
 	min-width: 230px;
 }
@@ -2658,6 +2746,7 @@ export default {
 .filters {
 	align-items: center;
 }
+
 .purchase-action-modal {
 	:deep(.modal-container) {
 		width: min(560px, calc(100vw - 48px)) !important;
