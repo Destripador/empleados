@@ -24,6 +24,7 @@ class CompraSolicitudService {
 	private CompraFolioService $folioService;
 	private CompraPermisosService $permisosService;
 	private empleadosMapper $empleadosMapper;
+	private CompraNotificacionService $notificacionService;
 
 	public function __construct(
 		CompraSolicitudMapper $solicitudMapper,
@@ -31,7 +32,8 @@ class CompraSolicitudService {
 		CompraHistorialMapper $historialMapper,
 		CompraFolioService $folioService,
 		CompraPermisosService $permisosService,
-		empleadosMapper $empleadosMapper
+		empleadosMapper $empleadosMapper,
+		CompraNotificacionService $notificacionService
 	) {
 		$this->solicitudMapper = $solicitudMapper;
 		$this->detalleMapper = $detalleMapper;
@@ -39,6 +41,7 @@ class CompraSolicitudService {
 		$this->folioService = $folioService;
 		$this->permisosService = $permisosService;
 		$this->empleadosMapper = $empleadosMapper;
+		$this->notificacionService = $notificacionService;
 	}
 
 	public function listar(string $userId, bool $todas = false, int $limit = 50, int $offset = 0): array {
@@ -73,6 +76,7 @@ class CompraSolicitudService {
 
 	public function crear(array $data, string $userId): array {
 		$data = $this->applyRequesterRules($data, $userId);
+
 		if (!$this->permisosService->canCreateSolicitud($userId)) {
 			throw new Exception('No tienes permisos para crear solicitudes de compra.');
 		}
@@ -171,7 +175,7 @@ class CompraSolicitudService {
 		$data = $this->applyRequesterRules($data, $userId);
 		$solicitud = $this->solicitudMapper->find($idSolicitud);
 
-		if ((string)$solicitud->getIdUser() !== $userId && !$this->permisosService->canViewAll($userId)) {
+		if (!$this->canModifyDraft($solicitud, $userId)) {
 			throw new Exception('No tienes permisos para editar esta solicitud.');
 		}
 
@@ -275,7 +279,7 @@ class CompraSolicitudService {
 	public function enviarAutorizacion(int $idSolicitud, string $userId): array {
 		$solicitud = $this->solicitudMapper->find($idSolicitud);
 
-		if ((string)$solicitud->getIdUser() !== $userId && !$this->permisosService->canViewAll($userId)) {
+		if (!$this->canSendSolicitud($solicitud, $userId)) {
 			throw new Exception('No tienes permisos para enviar esta solicitud.');
 		}
 
@@ -299,6 +303,8 @@ class CompraSolicitudService {
 			null,
 			$userId
 		);
+
+		$this->notificacionService->notificarPendienteAutorizacion($solicitud, $userId);
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
 	}
@@ -485,7 +491,7 @@ class CompraSolicitudService {
 	public function cancelar(int $idSolicitud, string $userId, ?string $comentario = null): array {
 		$solicitud = $this->solicitudMapper->find($idSolicitud);
 
-		if ((string)$solicitud->getIdUser() !== $userId && !$this->permisosService->canViewAll($userId)) {
+		if (!$this->canCancelSolicitud($solicitud, $userId)) {
 			throw new Exception('No tienes permisos para cancelar esta solicitud.');
 		}
 
@@ -518,14 +524,22 @@ class CompraSolicitudService {
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
 	}
-	public function canSelectRequester(string $userId): bool {
-			return $this->isInConfiguredGroup($userId, 'compras_grupo_admin', 'compras_admin')
-				|| $this->groupManager->isInGroup($userId, 'admin');
-		}
-		public function contexto(string $userId): array {
+
+	public function contexto(string $userId): array {
 		return [
 			'uid' => $userId,
+
+			// Compatibilidad con el frontend anterior.
 			'can_select_requester' => $this->permisosService->canSelectRequester($userId),
+
+			'permissions' => [
+				'can_create' => $this->permisosService->canCreateSolicitud($userId),
+				'can_view_all' => $this->permisosService->canViewAll($userId),
+				'can_approve' => $this->permisosService->canApprove($userId),
+				'can_process_purchase' => $this->permisosService->canProcessPurchase($userId),
+				'can_select_requester' => $this->permisosService->canSelectRequester($userId),
+			],
+
 			'requester' => $this->getRequesterData($userId),
 		];
 	}
@@ -564,9 +578,46 @@ class CompraSolicitudService {
 			'solicitante_cargo' => (string)($empleado['Id_puesto'] ?? $empleado['id_puesto'] ?? ''),
 			'jefe_directo_uid' => $managerUid,
 			'jefe_directo_nombre' => $managerName,
-			'raw' => $empleado,
+			'raw' => $this->sanitizeEmployeeRaw($empleado),
 		];
 	}
+
+	private function sanitizeEmployeeRaw(array $raw): array {
+		unset($raw['password']);
+		unset($raw['token']);
+		unset($raw['session']);
+		unset($raw['salt']);
+
+		return $raw;
+	}
+
+	private function isSolicitudOwner($solicitud, string $userId): bool {
+		return (string)$solicitud->getIdUser() === $userId;
+	}
+
+	private function canManageSolicitud(string $userId): bool {
+		/*
+		 * En nuestro flujo, canSelectRequester() solo lo tiene compras_admin/admin.
+		 * Lo usamos como permiso fuerte de administración de compras.
+		 */
+		return $this->permisosService->canSelectRequester($userId);
+	}
+
+	private function canModifyDraft($solicitud, string $userId): bool {
+		return $this->isSolicitudOwner($solicitud, $userId)
+			|| $this->canManageSolicitud($userId);
+	}
+
+	private function canSendSolicitud($solicitud, string $userId): bool {
+		return $this->isSolicitudOwner($solicitud, $userId)
+			|| $this->canManageSolicitud($userId);
+	}
+
+	private function canCancelSolicitud($solicitud, string $userId): bool {
+		return $this->isSolicitudOwner($solicitud, $userId)
+			|| $this->canManageSolicitud($userId);
+	}
+
 	private function applyRequesterRules(array $data, string $userId): array {
 		if ($this->permisosService->canSelectRequester($userId)) {
 			return $data;
@@ -579,10 +630,10 @@ class CompraSolicitudService {
 		$data['jefe_directo_nombre'] = $requester['jefe_directo_nombre'];
 
 		/*
-		* Departamento y puesto se muestran en frontend como etiqueta usando GetAreasFix/GetPuestosFix.
-		* Si el frontend ya mandó la etiqueta, la respetamos.
-		* Si no mandó nada, usamos el ID como fallback.
-		*/
+		 * Departamento y puesto se muestran en frontend como etiqueta usando GetAreasFix/GetPuestosFix.
+		 * Si el frontend ya mandó la etiqueta, la respetamos.
+		 * Si no mandó nada, usamos el ID como fallback.
+		 */
 		if (!isset($data['solicitante_depto']) || trim((string)$data['solicitante_depto']) === '') {
 			$data['solicitante_depto'] = $requester['solicitante_depto'];
 		}

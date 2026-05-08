@@ -322,8 +322,11 @@
 								:options="estadoFiltroOptions"
 								:clearable="false" />
 
-							<NcCheckboxRadioSwitch :checked="verTodas" type="switch" @update:checked="onToggleVerTodas">
-								{{ t('empleados', 'Show all') }}
+							<NcCheckboxRadioSwitch v-if="canToggleShowOnlyMine"
+								:checked="showOnlyMine"
+								type="switch"
+								@update:checked="onToggleShowOnlyMine">
+								{{ t('empleados', 'Show only my requests') }}
 							</NcCheckboxRadioSwitch>
 						</div>
 					</div>
@@ -332,102 +335,120 @@
 						{{ t('empleados', 'Loading...') }}
 					</div>
 
-					<NcEmptyContent v-else-if="solicitudesFiltradas.length === 0"
-						:name="t('empleados', 'No purchase requests found')"
-						:description="t('empleados', 'Try changing the status filter or create a new request.')">
-						<template #icon>
-							<CartOutline />
-						</template>
-					</NcEmptyContent>
+					<div v-else class="request-sections">
+						<section v-for="section in requestSections"
+							:key="section.id"
+							class="request-section"
+							:class="{ 'request-section--pending': section.highlight }">
+							<div class="request-section-header">
+								<div>
+									<p class="section-label">
+										{{ section.title }}
+									</p>
+									<h4>{{ section.items.length }} {{ t('empleados', 'request(s)') }}</h4>
+									<p>{{ section.description }}</p>
+								</div>
+							</div>
 
-					<div v-else class="table-scroll">
-						<table class="compras-table">
-							<thead>
-								<tr>
-									<th>{{ t('empleados', 'Folio') }}</th>
-									<th>{{ t('empleados', 'Title') }}</th>
-									<th>{{ t('empleados', 'Requester') }}</th>
-									<th>{{ t('empleados', 'Amount') }}</th>
-									<th>{{ t('empleados', 'Status') }}</th>
-									<th>{{ t('empleados', 'Date') }}</th>
-									<th>{{ t('empleados', 'Actions') }}</th>
-								</tr>
-							</thead>
+							<NcEmptyContent v-if="section.items.length === 0"
+								:name="section.emptyName"
+								:description="section.emptyDescription">
+								<template #icon>
+									<CartOutline />
+								</template>
+							</NcEmptyContent>
 
-							<tbody>
-								<tr v-for="item in solicitudesFiltradas" :key="item.id_solicitud">
-									<td><strong>{{ item.folio }}</strong></td>
+							<div v-else class="table-scroll">
+								<table class="compras-table">
+									<thead>
+										<tr>
+											<th>{{ t('empleados', 'Folio') }}</th>
+											<th>{{ t('empleados', 'Title') }}</th>
+											<th>{{ t('empleados', 'Requester') }}</th>
+											<th>{{ t('empleados', 'Amount') }}</th>
+											<th>{{ t('empleados', 'Status') }}</th>
+											<th>{{ t('empleados', 'Date') }}</th>
+											<th>{{ t('empleados', 'Actions') }}</th>
+										</tr>
+									</thead>
 
-									<td>{{ item.titulo }}</td>
+									<tbody>
+										<tr v-for="item in section.items" :key="item.id_solicitud">
+											<td><strong>{{ item.folio }}</strong></td>
 
-									<td>{{ formatRequesterLabel(item) }}</td>
+											<td>{{ item.titulo }}</td>
 
-									<td>{{ formatMoney(item.monto_estimado) }}</td>
+											<td>{{ formatRequesterLabel(item) }}</td>
 
-									<td>
-										<span :class="['badge', `estado-${item.estado}`]">
-											{{ formatEstado(item.estado) }}
-										</span>
-									</td>
+											<td>{{ formatMoney(item.monto_estimado) }}</td>
 
-									<td>{{ formatDateTime(item.created_at) }}</td>
+											<td>
+												<span :class="['badge', `estado-${item.estado}`]">
+													{{ formatEstado(item.estado) }}
+												</span>
+											</td>
 
-									<td class="col-actions">
-										<div class="row-actions table-actions">
-											<NcButton :aria-label="t('empleados', 'View request')"
-												:title="t('empleados', 'View request')"
-												@click="verDetalle(item.id_solicitud)">
-												<template #icon>
-													<EyeOutline :size="20" />
-												</template>
-											</NcButton>
+											<td>{{ formatDateTime(item.created_at) }}</td>
 
-											<NcActions :aria-label="t('empleados', 'More actions')" :force-menu="true">
-												<NcActionButton v-if="item.estado === 'borrador'"
-													@click="editar(item.id_solicitud)">
-													<template #icon>
-														<PencilOutline :size="20" />
-													</template>
-													{{ t('empleados', 'Edit') }}
-												</NcActionButton>
+											<td class="col-actions">
+												<div class="row-actions table-actions">
+													<NcButton :aria-label="t('empleados', 'View request')"
+														:title="t('empleados', 'View request')"
+														@click="verDetalle(item.id_solicitud)">
+														<template #icon>
+															<EyeOutline :size="20" />
+														</template>
+													</NcButton>
 
-												<NcActionButton v-if="canCancelRequest(item)"
-													@click="cancelar(item.id_solicitud)">
-													<template #icon>
-														<DeleteOutline :size="20" />
-													</template>
-													{{ t('empleados', 'Delete') }}
-												</NcActionButton>
+													<NcActions :aria-label="t('empleados', 'More actions')"
+														:force-menu="true">
+														<NcActionButton v-if="canEditRequest(item)"
+															@click="editar(item.id_solicitud)">
+															<template #icon>
+																<PencilOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Edit') }}
+														</NcActionButton>
 
-												<NcActionButton v-if="item.estado === 'borrador'"
-													@click="enviar(item.id_solicitud)">
-													<template #icon>
-														<SendOutline :size="20" />
-													</template>
-													{{ t('empleados', 'Send') }}
-												</NcActionButton>
+														<NcActionButton v-if="canCancelRequest(item)"
+															@click="cancelar(item.id_solicitud)">
+															<template #icon>
+																<DeleteOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Delete') }}
+														</NcActionButton>
 
-												<NcActionButton v-if="item.estado === 'pendiente_autorizacion'"
-													@click="autorizar(item.id_solicitud)">
-													<template #icon>
-														<CheckCircleOutline :size="20" />
-													</template>
-													{{ t('empleados', 'Approve') }}
-												</NcActionButton>
+														<NcActionButton v-if="canSendRequest(item)"
+															@click="enviar(item.id_solicitud)">
+															<template #icon>
+																<SendOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Send') }}
+														</NcActionButton>
 
-												<NcActionButton v-if="item.estado === 'pendiente_autorizacion'"
-													@click="rechazar(item.id_solicitud)">
-													<template #icon>
-														<CloseCircleOutline :size="20" />
-													</template>
-													{{ t('empleados', 'Reject') }}
-												</NcActionButton>
-											</NcActions>
-										</div>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+														<NcActionButton v-if="canApproveRequest(item)"
+															@click="autorizar(item.id_solicitud)">
+															<template #icon>
+																<CheckCircleOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Approve') }}
+														</NcActionButton>
+
+														<NcActionButton v-if="canRejectRequest(item)"
+															@click="rechazar(item.id_solicitud)">
+															<template #icon>
+																<CloseCircleOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Reject') }}
+														</NcActionButton>
+													</NcActions>
+												</div>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
 					</div>
 				</section>
 				<aside class="purchases-side-panel">
@@ -447,7 +468,7 @@
 								{{ t('empleados', 'Refresh') }}
 							</NcButton>
 
-							<NcButton type="primary" @click="toggleForm">
+							<NcButton v-if="canCreatePurchaseRequest" type="primary" @click="toggleForm">
 								{{ showForm ? t('empleados', 'Close') : t('empleados', 'New request') }}
 							</NcButton>
 						</div>
@@ -460,7 +481,7 @@
 							</div>
 							<div>
 								<span>{{ t('empleados', 'Total requests') }}</span>
-								<strong>{{ solicitudesFiltradas.length }}</strong>
+								<strong>{{ totalSolicitudesVisibles }}</strong>
 							</div>
 						</div>
 
@@ -724,6 +745,7 @@ import {
 } from '../../../services/comprasService.js'
 
 const IVA_RATE = 0.16
+const SHOW_ONLY_MINE_KEY = 'empleados.compras.showOnlyMine'
 
 function roundMoney(value) {
 	return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
@@ -760,7 +782,10 @@ export default {
 		return {
 			loading: false,
 			showForm: false,
-			verTodas: false,
+			showOnlyMine: true,
+			hasSavedShowOnlyMinePreference: false,
+			contextLoaded: false,
+			currentUserId: '',
 			solicitudes: [],
 			detalle: null,
 			form: this.getEmptyForm(),
@@ -809,58 +834,34 @@ export default {
 			editingSolicitudId: null,
 			canSelectRequester: false,
 			currentRequester: null,
+			purchasePermissions: {
+				can_create: false,
+				can_view_all: false,
+				can_approve: false,
+				can_process_purchase: false,
+				can_select_requester: false,
+			},
 		}
 	},
 
 	computed: {
+		canCreatePurchaseRequest() {
+			return this.purchasePermissions.can_create
+		},
+
+		canApprovePurchaseRequest() {
+			return this.purchasePermissions.can_approve
+		},
+
+		canProcessPurchaseRequest() {
+			return this.purchasePermissions.can_process_purchase
+		},
 		totalEstimado() {
 			return this.form.detalles.reduce((total, item) => {
 				return total + this.getDetalleSubtotal(item)
 			}, 0)
 		},
 
-		totalPendientes() {
-			return this.solicitudesFiltradas
-				.filter((item) => item.estado === 'pendiente_autorizacion')
-				.length
-		},
-
-		totalListado() {
-			return this.solicitudesFiltradas
-				.filter((item) => !['cancelada', 'rechazada'].includes(String(item.estado || '')))
-				.reduce((total, item) => {
-					return total + Number(item.monto_estimado || 0)
-				}, 0)
-		},
-
-		selectedPriority: {
-			get() {
-				return this.priorityOptions.find(option => option.id === this.form.prioridad)
-					|| this.priorityOptions.find(option => option.id === 'normal')
-			},
-			set(value) {
-				this.form.prioridad = value?.id || 'normal'
-			},
-		},
-
-		selectedCurrency: {
-			get() {
-				return this.currencyOptions.find(option => option.id === this.form.moneda)
-					|| this.currencyOptions.find(option => option.id === 'MXN')
-			},
-			set(value) {
-				this.form.moneda = value?.id || 'MXN'
-			},
-		},
-
-		isFormValid() {
-			const hasTitle = String(this.form.titulo || '').trim().length > 0
-			const hasConcept = this.form.detalles.some((detalle) => {
-				return String(detalle.descripcion || '').trim().length > 0
-			})
-
-			return hasTitle && hasConcept
-		},
 		totalIva() {
 			return this.form.detalles.reduce((total, item) => {
 				return total + this.getDetalleIva(item)
@@ -871,20 +872,72 @@ export default {
 			return this.totalEstimado + this.totalIva
 		},
 
+		isFormValid() {
+			const hasTitle = String(this.form.titulo || '').trim().length > 0
+			const hasConcept = this.form.detalles.some((detalle) => {
+				return String(detalle.descripcion || '').trim().length > 0
+			})
+
+			return hasTitle && hasConcept
+		},
+
+		isEditingRequest() {
+			return Boolean(this.editingSolicitudId)
+		},
+
+		requestModalTitle() {
+			return this.isEditingRequest
+				? t('empleados', 'Edit purchase request')
+				: t('empleados', 'New purchase request')
+		},
+
 		selectedRequester: {
 			get() {
-				return this.requesterOptions.find(option => option.uid === this.selectedRequesterUid) || null
+				return this.requesterOptions.find((option) => {
+					return option.uid === this.selectedRequesterUid
+				}) || null
 			},
+
 			set(value) {
 				this.selectedRequesterUid = value?.uid || ''
 			},
 		},
 
+		selectedPriority: {
+			get() {
+				return this.priorityOptions.find((option) => {
+					return option.id === this.form.prioridad
+				}) || this.priorityOptions.find((option) => {
+					return option.id === 'normal'
+				})
+			},
+
+			set(value) {
+				this.form.prioridad = value?.id || 'normal'
+			},
+		},
+
+		selectedCurrency: {
+			get() {
+				return this.currencyOptions.find((option) => {
+					return option.id === this.form.moneda
+				}) || this.currencyOptions.find((option) => {
+					return option.id === 'MXN'
+				})
+			},
+
+			set(value) {
+				this.form.moneda = value?.id || 'MXN'
+			},
+		},
+
 		selectedTipoCompra: {
 			get() {
-				return this.tipoCompraOptions.find(option => option.id === this.form.tipo_compra)
-					|| this.tipoCompraOptions[0]
+				return this.tipoCompraOptions.find((option) => {
+					return option.id === this.form.tipo_compra
+				}) || this.tipoCompraOptions[0]
 			},
+
 			set(value) {
 				this.form.tipo_compra = value?.id || 'refaccion'
 			},
@@ -892,9 +945,11 @@ export default {
 
 		selectedUsoCompra: {
 			get() {
-				return this.usoCompraOptions.find(option => option.id === this.form.uso_compra)
-					|| this.usoCompraOptions[0]
+				return this.usoCompraOptions.find((option) => {
+					return option.id === this.form.uso_compra
+				}) || this.usoCompraOptions[0]
 			},
+
 			set(value) {
 				this.form.uso_compra = value?.id || 'empresa'
 			},
@@ -902,8 +957,11 @@ export default {
 
 		selectedTipoPago: {
 			get() {
-				return this.tipoPagoOptions.find(option => option.id === this.form.tipo_pago) || null
+				return this.tipoPagoOptions.find((option) => {
+					return option.id === this.form.tipo_pago
+				}) || null
 			},
+
 			set(value) {
 				this.form.tipo_pago = value?.id || ''
 			},
@@ -918,6 +976,7 @@ export default {
 				const parsed = new Date(`${this.form.fecha_requerida}T00:00:00`)
 				return Number.isNaN(parsed.getTime()) ? null : parsed
 			},
+
 			set(value) {
 				if (!value) {
 					this.form.fecha_requerida = ''
@@ -925,6 +984,7 @@ export default {
 				}
 
 				const date = value instanceof Date ? value : new Date(value)
+
 				if (Number.isNaN(date.getTime())) {
 					this.form.fecha_requerida = ''
 					return
@@ -933,43 +993,156 @@ export default {
 				this.form.fecha_requerida = date.toISOString().slice(0, 10)
 			},
 		},
-		selectedEstadoFiltro: {
-			get() {
-				return this.estadoFiltroOptions.find(option => option.id === this.estadoFiltroId)
-					|| this.estadoFiltroOptions[0]
-			},
-			set(value) {
-				this.estadoFiltroId = value?.id || 'todos'
-			},
-		},
 
-		solicitudesFiltradas() {
-			if (this.estadoFiltroId === 'todos') {
-				return this.solicitudes
-			}
-
-			return this.solicitudes.filter((item) => {
-				return String(item.estado || '') === this.estadoFiltroId
-			})
-		},
 		actionModalIsInvalid() {
 			return this.actionModal.requireComment
 				&& String(this.actionModal.comentario || '').trim().length === 0
 		},
-		isEditingRequest() {
-			return Boolean(this.editingSolicitudId)
+		selectedEstadoFiltro: {
+			get() {
+				return this.estadoFiltroOptions.find((option) => {
+					return option.id === this.estadoFiltroId
+				}) || this.estadoFiltroOptions[0]
+			},
+
+			set(value) {
+				this.estadoFiltroId = value?.id || 'todos'
+			},
+		},
+		canToggleShowOnlyMine() {
+			return Boolean(
+				this.purchasePermissions.can_view_all
+				|| this.purchasePermissions.can_approve
+				|| this.purchasePermissions.can_process_purchase
+				|| this.purchasePermissions.can_select_requester,
+			)
 		},
 
-		requestModalTitle() {
-			return this.isEditingRequest
-				? t('empleados', 'Edit purchase request')
-				: t('empleados', 'New purchase request')
+		isShowingOthers() {
+			return this.canToggleShowOnlyMine && !this.showOnlyMine
+		},
+
+		solicitudesPorAlcance() {
+			if (!this.canToggleShowOnlyMine || this.showOnlyMine) {
+				return this.solicitudes.filter((item) => this.isMyRequest(item))
+			}
+
+			return this.solicitudes.filter((item) => !this.isMyRequest(item))
+		},
+
+		solicitudesSinCanceladas() {
+			return this.solicitudesPorAlcance.filter((item) => {
+				return String(item.estado || '') !== 'cancelada'
+			})
+		},
+
+		solicitudesPendientes() {
+			return this.solicitudesSinCanceladas.filter((item) => {
+				return String(item.estado || '') === 'pendiente_autorizacion'
+			})
+		},
+
+		solicitudesFiltradas() {
+			if (this.estadoFiltroId === 'todos') {
+				return this.solicitudesSinCanceladas
+			}
+
+			return this.solicitudesPorAlcance.filter((item) => {
+				return String(item.estado || '') === this.estadoFiltroId
+			})
+		},
+
+		requestSections() {
+			const sectionMap = {
+				todos: {
+					id: 'all',
+					title: t('empleados', 'All statuses'),
+					description: t('empleados', 'All active requests except cancelled requests.'),
+					highlight: false,
+				},
+				borrador: {
+					id: 'draft',
+					title: t('empleados', 'Draft'),
+					description: t('empleados', 'Requests that have not been sent for approval yet.'),
+					highlight: false,
+				},
+				pendiente_autorizacion: {
+					id: 'pending',
+					title: t('empleados', 'Pending approval'),
+					description: this.pendingApprovalDescription,
+					highlight: true,
+				},
+				autorizada: {
+					id: 'approved',
+					title: t('empleados', 'Approved'),
+					description: t('empleados', 'Requests that have already been approved.'),
+					highlight: false,
+				},
+				rechazada: {
+					id: 'rejected',
+					title: t('empleados', 'Rejected'),
+					description: t('empleados', 'Requests that were rejected during approval.'),
+					highlight: false,
+				},
+				cancelada: {
+					id: 'cancelled',
+					title: t('empleados', 'Cancelled requests'),
+					description: t('empleados', 'Cancelled requests are shown only when this status is selected.'),
+					highlight: false,
+				},
+			}
+
+			const section = sectionMap[this.estadoFiltroId] || sectionMap.todos
+
+			return [
+				{
+					...section,
+					items: this.solicitudesFiltradas,
+					emptyName: t('empleados', 'No purchase requests found'),
+					emptyDescription: t('empleados', 'Try changing the status filter or create a new request.'),
+				},
+			]
+		},
+
+		totalPendientes() {
+			return this.solicitudesPendientes.length
+		},
+
+		totalListado() {
+			return this.solicitudesSinCanceladas
+				.filter((item) => !['rechazada'].includes(String(item.estado || '')))
+				.reduce((total, item) => {
+					return total + Number(item.monto_estimado || 0)
+				}, 0)
+		},
+
+		totalSolicitudesVisibles() {
+			return this.solicitudesSinCanceladas.length
+		},
+
+		pendingApprovalDescription() {
+			if (!this.canToggleShowOnlyMine || this.showOnlyMine) {
+				return t('empleados', 'Your requests waiting for approval.')
+			}
+
+			return t('empleados', 'Other users requests waiting for approval.')
 		},
 	},
 
 	async mounted() {
+		this.showOnlyMine = this.getSavedShowOnlyMine()
+
+		const canAccess = await this.cargarContextoCompras()
+
+		if (!canAccess) {
+			return
+		}
+
 		await this.cargarCatalogosEmpleado()
-		await this.cargarContextoCompras()
+
+		if (!this.canToggleShowOnlyMine) {
+			this.showOnlyMine = true
+		}
 
 		if (this.canSelectRequester) {
 			await this.cargarEmpleadosParaSolicitud()
@@ -1041,11 +1214,6 @@ export default {
 			this.form = this.getEmptyForm()
 		},
 
-		onToggleVerTodas(value) {
-			this.verTodas = Boolean(value)
-			this.cargarSolicitudes()
-		},
-
 		addDetalle() {
 			this.form.detalles.push({
 				descripcion: '',
@@ -1093,7 +1261,7 @@ export default {
 
 			try {
 				const response = await listarSolicitudes({
-					todas: this.verTodas ? 1 : 0,
+					todas: this.canToggleShowOnlyMine ? 1 : 0,
 				})
 
 				const payload = this.getApiPayload(response)
@@ -1105,7 +1273,7 @@ export default {
 				this.solicitudes = Array.isArray(payload.data) ? payload.data : []
 			} catch (error) {
 				console.error(error)
-				showError(error.message || t('empleados', 'Error loading requests.'))
+				showError(this.getErrorMessage(error, t('empleados', 'Error loading requests.')))
 			} finally {
 				this.loading = false
 			}
@@ -1144,7 +1312,7 @@ export default {
 				)
 			} catch (error) {
 				console.error(error)
-				showError(error.message || t('empleados', 'Error saving request.'))
+				showError(this.getErrorMessage(error, t('empleados', 'Error saving request.')))
 			} finally {
 				this.loading = false
 			}
@@ -1164,7 +1332,7 @@ export default {
 				this.detalle = payload.data
 			} catch (error) {
 				console.error(error)
-				showError(error.message || t('empleados', 'Error loading request details.'))
+				showError(this.getErrorMessage(error, t('empleados', 'Error loading request details.')))
 			} finally {
 				this.loading = false
 			}
@@ -1187,7 +1355,7 @@ export default {
 				showSuccess(t('empleados', 'Request sent for approval'))
 			} catch (error) {
 				console.error(error)
-				showError(error.message || t('empleados', 'Error sending request.'))
+				showError(this.getErrorMessage(error, t('empleados', 'Error sending request.')))
 			} finally {
 				this.loading = false
 			}
@@ -1453,7 +1621,17 @@ export default {
 			window.open(url, '_blank', 'noopener,noreferrer')
 		},
 		canCancelRequest(item) {
-			return ['borrador', 'pendiente_autorizacion'].includes(String(item?.estado || ''))
+			const estado = String(item?.estado || '')
+
+			if (!['borrador', 'pendiente_autorizacion'].includes(estado)) {
+				return false
+			}
+
+			if (this.purchasePermissions.can_approve) {
+				return true
+			}
+
+			return this.isMyRequest(item)
 		},
 
 		getEmptyActionModal() {
@@ -1587,7 +1765,7 @@ export default {
 				showSuccess(successMessage)
 			} catch (error) {
 				console.error(error)
-				showError(error.message || t('empleados', 'Error completing action.'))
+				showError(this.getErrorMessage(error, t('empleados', 'Error completing action.')))
 			} finally {
 				this.actionModal.loading = false
 				this.loading = false
@@ -1668,7 +1846,7 @@ export default {
 				this.showForm = true
 			} catch (error) {
 				console.error(error)
-				showError(error.message || t('empleados', 'Error loading request for editing.'))
+				showError(this.getErrorMessage(error, t('empleados', 'Error loading request for editing.')))
 			} finally {
 				this.loading = false
 			}
@@ -1683,8 +1861,43 @@ export default {
 					throw new Error(payload.message || t('empleados', 'Could not load purchase context.'))
 				}
 
-				this.canSelectRequester = Boolean(payload.data?.can_select_requester)
+				const permissions = payload.data?.permissions || {}
+
+				const canSelectRequester = permissions.can_select_requester
+					?? payload.data?.can_select_requester
+					?? false
+				const canApprove = permissions.can_approve
+					?? payload.data?.can_approve
+					?? false
+				const canProcessPurchase = permissions.can_process_purchase
+					?? payload.data?.can_process_purchase
+					?? false
+				const canViewAll = permissions.can_view_all
+					?? payload.data?.can_view_all
+					?? canSelectRequester
+					?? canApprove
+					?? canProcessPurchase
+				const canCreate = permissions.can_create
+					?? payload.data?.can_create
+					?? true
+
+				this.purchasePermissions = {
+					can_create: Boolean(canCreate),
+					can_view_all: Boolean(canViewAll),
+					can_approve: Boolean(canApprove),
+					can_process_purchase: Boolean(canProcessPurchase),
+					can_select_requester: Boolean(canSelectRequester),
+				}
+
+				this.canSelectRequester = this.purchasePermissions.can_select_requester
 				this.contextLoaded = true
+				this.currentUserId = payload.data?.uid || payload.data?.user_id || ''
+
+				if (!this.canToggleShowOnlyMine) {
+					this.showOnlyMine = true
+				} else if (!this.hasSavedShowOnlyMinePreference) {
+					this.showOnlyMine = false
+				}
 
 				const requesterData = payload.data?.requester || null
 
@@ -1707,10 +1920,26 @@ export default {
 						this.applyRequesterData(requester)
 					}
 				}
+
+				return true
 			} catch (error) {
 				this.contextLoaded = true
+
+				const status = error?.response?.status
+				const message = this.getErrorMessage(
+					error,
+					t('empleados', 'You do not have permission to access the purchases module.'),
+				)
+
+				showError(message)
+
+				if (status === 403) {
+					this.redirectToDashboard()
+					return false
+				}
+
 				console.error(error)
-				showError(error.message || t('empleados', 'Could not load purchase context.'))
+				return false
 			}
 		},
 		applyRequesterData(requester) {
@@ -1721,6 +1950,103 @@ export default {
 			this.form.solicitante_cargo = requester.cargo || ''
 			this.form.jefe_directo_nombre = requester.jefe_directo || ''
 			this.form.jefe_directo_uid = requester.jefe_directo_uid || requester.gerente_uid || ''
+		},
+		getSavedShowOnlyMine() {
+			this.hasSavedShowOnlyMinePreference = false
+
+			if (typeof window === 'undefined') {
+				return true
+			}
+
+			try {
+				const value = window.localStorage.getItem(SHOW_ONLY_MINE_KEY)
+
+				if (value === null) {
+					return true
+				}
+
+				this.hasSavedShowOnlyMinePreference = true
+				return value === 'true'
+			} catch (error) {
+				return true
+			}
+		},
+
+		saveShowOnlyMine(value) {
+			if (typeof window === 'undefined') {
+				return
+			}
+
+			try {
+				window.localStorage.setItem(SHOW_ONLY_MINE_KEY, String(Boolean(value)))
+			} catch (error) {
+				// localStorage puede fallar en modo privado o contextos restringidos.
+			}
+		},
+
+		onToggleShowOnlyMine(value) {
+			this.showOnlyMine = Boolean(value)
+			this.hasSavedShowOnlyMinePreference = true
+			this.saveShowOnlyMine(this.showOnlyMine)
+			this.cargarSolicitudes()
+		},
+
+		isMyRequest(item) {
+			const currentUserId = String(this.currentUserId || '')
+
+			if (!currentUserId) {
+				return true
+			}
+
+			const candidates = [
+				item?.id_user,
+				item?.created_by,
+				item?.created_by_uid,
+				item?.requester_uid,
+				item?.solicitante_uid,
+				item?.solicitante_id_user,
+				item?.id_user_solicitante,
+				item?.usuario_solicitante,
+				item?.owner_uid,
+				item?.uid,
+				item?.user_id,
+			].map((value) => String(value || ''))
+
+			return candidates.includes(currentUserId)
+		},
+		redirectToDashboard() {
+			if (this.$router && this.$router.currentRoute?.name !== 'Home') {
+				this.$router.replace({ name: 'Home' })
+				return
+			}
+
+			window.location.hash = '#/'
+		},
+
+		getErrorMessage(error, fallback) {
+			return error?.response?.data?.ocs?.data?.message
+				|| error?.response?.data?.message
+				|| error?.message
+				|| fallback
+		},
+		canEditRequest(item) {
+			return String(item?.estado || '') === 'borrador'
+				&& (this.purchasePermissions.can_select_requester || this.isMyRequest(item))
+		},
+
+		canSendRequest(item) {
+			return String(item?.estado || '') === 'borrador'
+				&& (this.purchasePermissions.can_select_requester || this.isMyRequest(item))
+		},
+
+		canApproveRequest(item) {
+			return this.purchasePermissions.can_approve
+				&& String(item?.estado || '') === 'pendiente_autorizacion'
+		},
+
+		canRejectRequest(item) {
+			return this.purchasePermissions.can_approve
+				&& String(item?.estado || '') === 'pendiente_autorizacion'
 		},
 	},
 }
@@ -1865,6 +2191,7 @@ export default {
 	justify-content: flex-end;
 	gap: 8px;
 }
+
 .table-actions {
 	flex-wrap: nowrap;
 	align-items: center;
@@ -1877,6 +2204,7 @@ export default {
 	text-align: right;
 	white-space: nowrap;
 }
+
 .filters,
 .row-actions,
 .details-actions {
@@ -1963,6 +2291,51 @@ export default {
 	padding: 28px;
 	color: var(--color-text-maxcontrast);
 	text-align: center;
+}
+
+.request-sections {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.request-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.request-section-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 14px 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.request-section-header h4 {
+	margin: 2px 0 0;
+	color: var(--color-main-text);
+	font-size: 20px;
+	font-weight: 800;
+}
+
+.request-section-header p {
+	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.request-section--pending .request-section-header {
+	border-color: var(--color-warning);
+	background: var(--color-warning-hover);
+}
+
+.request-section--pending .compras-table {
+	border-left: 4px solid var(--color-warning);
 }
 
 .detail-panel {
@@ -2630,8 +3003,9 @@ export default {
 
 @media (max-width: 900px) {
 	.compras-table {
-			min-width: 980px;
-		}
+		min-width: 980px;
+	}
+
 	.compras-layout {
 		grid-template-columns: 1fr;
 	}
@@ -2810,6 +3184,49 @@ export default {
 	.action-modal-actions {
 		flex-direction: column-reverse;
 	}
-}
 
+	.pending-approval-summary {
+		display: grid;
+		grid-template-columns: 52px minmax(0, 1fr) auto;
+		gap: 12px;
+		align-items: center;
+		padding: 16px;
+		border: 1px solid #e6b800;
+		border-radius: var(--border-radius-large);
+		background: #fff8d6;
+	}
+
+	.pending-approval-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 52px;
+		height: 52px;
+		border-radius: var(--border-radius-large);
+		background: var(--color-main-background);
+		color: #7a5a00;
+	}
+
+	.pending-approval-content {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.pending-approval-content strong {
+		color: var(--color-main-text);
+		font-size: 30px;
+		font-weight: 800;
+		line-height: 1;
+	}
+
+	.pending-approval-content span {
+		overflow: hidden;
+		margin-top: 4px;
+		color: var(--color-text-maxcontrast);
+		font-size: 13px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
 </style>

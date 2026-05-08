@@ -3,8 +3,43 @@
 		<!-- Empty state -->
 		<div v-if="Object.keys(data).length === 0">
 			<div class="emptycontent">
-				<img src="../../../../img/crowesito-think.png" width="170px">
-				<h2>{{ t('empleados', 'Select an employee to start') }}</h2>
+				<!-- Empty state -->
+				<div v-if="Object.keys(data).length === 0" class="employee-empty-state">
+					<div class="employee-empty-card">
+						<img class="employee-empty-image"
+							src="../../../../img/crowesito-think.png"
+							alt="Empty employee state">
+
+						<h2>{{ t('empleados', 'Select an employee to start') }}</h2>
+
+						<p class="employee-empty-description">
+							{{ t('empleados', 'Choose an employee from the list to view their profile, notes, personal information and files.') }}
+						</p>
+
+						<div class="employee-empty-stats">
+							<div class="employee-empty-stat">
+								<strong>{{ empleadosProp.length }}</strong>
+								<span>{{ t('empleados', 'Employees') }}</span>
+							</div>
+
+							<div class="employee-empty-stat">
+								<strong>{{ activeEmployees }}</strong>
+								<span>{{ t('empleados', 'Active') }}</span>
+							</div>
+
+							<div class="employee-empty-stat">
+								<strong>{{ inactiveEmployees }}</strong>
+								<span>{{ t('empleados', 'Inactive') }}</span>
+							</div>
+						</div>
+
+						<div class="employee-empty-actions">
+							<NcButton @click="$bus.emit('getall')">
+								{{ t('empleados', 'Refresh list') }}
+							</NcButton>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 
@@ -191,6 +226,24 @@ export default {
 		avatarUrl() {
 			return generateUrl(`/avatar/${this.data.uid}/512?v=${this.avatarVersion}`)
 		},
+
+		activeEmployees() {
+			return this.empleadosProp.filter((empleado) => {
+				return empleado.estado === 1
+					|| empleado.estado === '1'
+					|| empleado.enabled === true
+					|| empleado.disabled === false
+			}).length
+		},
+
+		inactiveEmployees() {
+			return this.empleadosProp.filter((empleado) => {
+				return empleado.estado === 0
+					|| empleado.estado === '0'
+					|| empleado.enabled === false
+					|| empleado.disabled === true
+			}).length
+		},
 	},
 	mounted() {
 		this.$bus.on('show', (data) => {
@@ -292,4 +345,91 @@ export default {
 .card-container { display: flex; justify-content: center; align-items: center; }
 .avatar { padding-right: 10px; }
 .file-input { display: none; }
+.employee-empty-state {
+	min-height: calc(100vh - var(--header-height) - 80px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+}
+
+.employee-empty-card {
+	width: min(720px, 100%);
+	padding: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+
+.employee-empty-image {
+	width: 150px;
+	margin-bottom: 16px;
+	opacity: 0.95;
+}
+
+.employee-empty-card h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+
+.employee-empty-description {
+	max-width: 520px;
+	margin: 0 auto 24px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+
+.employee-empty-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 24px 0;
+}
+
+.employee-empty-stat {
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+}
+
+.employee-empty-stat strong {
+	display: block;
+	font-size: 26px;
+	font-weight: 700;
+	color: var(--color-primary-element);
+}
+
+.employee-empty-stat span {
+	display: block;
+	margin-top: 4px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.employee-empty-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+
+@media (max-width: 700px) {
+	.employee-empty-state {
+		align-items: flex-start;
+		padding: 20px 12px;
+	}
+
+	.employee-empty-card {
+		padding: 24px 16px;
+	}
+
+	.employee-empty-stats {
+		grid-template-columns: 1fr;
+	}
+}
 </style>

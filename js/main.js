@@ -9517,6 +9517,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 const IVA_RATE = 0.16;
+const SHOW_ONLY_MINE_KEY = 'empleados.compras.showOnlyMine';
 function roundMoney(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
@@ -9549,7 +9550,10 @@ function roundMoney(value) {
     return {
       loading: false,
       showForm: false,
-      verTodas: false,
+      showOnlyMine: true,
+      hasSavedShowOnlyMinePreference: false,
+      contextLoaded: false,
+      currentUserId: '',
       solicitudes: [],
       detalle: null,
       form: this.getEmptyForm(),
@@ -9637,45 +9641,30 @@ function roundMoney(value) {
       actionModal: this.getEmptyActionModal(),
       editingSolicitudId: null,
       canSelectRequester: false,
-      currentRequester: null
+      currentRequester: null,
+      purchasePermissions: {
+        can_create: false,
+        can_view_all: false,
+        can_approve: false,
+        can_process_purchase: false,
+        can_select_requester: false
+      }
     };
   },
   computed: {
+    canCreatePurchaseRequest() {
+      return this.purchasePermissions.can_create;
+    },
+    canApprovePurchaseRequest() {
+      return this.purchasePermissions.can_approve;
+    },
+    canProcessPurchaseRequest() {
+      return this.purchasePermissions.can_process_purchase;
+    },
     totalEstimado() {
       return this.form.detalles.reduce((total, item) => {
         return total + this.getDetalleSubtotal(item);
       }, 0);
-    },
-    totalPendientes() {
-      return this.solicitudesFiltradas.filter(item => item.estado === 'pendiente_autorizacion').length;
-    },
-    totalListado() {
-      return this.solicitudesFiltradas.filter(item => !['cancelada', 'rechazada'].includes(String(item.estado || ''))).reduce((total, item) => {
-        return total + Number(item.monto_estimado || 0);
-      }, 0);
-    },
-    selectedPriority: {
-      get() {
-        return this.priorityOptions.find(option => option.id === this.form.prioridad) || this.priorityOptions.find(option => option.id === 'normal');
-      },
-      set(value) {
-        this.form.prioridad = value?.id || 'normal';
-      }
-    },
-    selectedCurrency: {
-      get() {
-        return this.currencyOptions.find(option => option.id === this.form.moneda) || this.currencyOptions.find(option => option.id === 'MXN');
-      },
-      set(value) {
-        this.form.moneda = value?.id || 'MXN';
-      }
-    },
-    isFormValid() {
-      const hasTitle = String(this.form.titulo || '').trim().length > 0;
-      const hasConcept = this.form.detalles.some(detalle => {
-        return String(detalle.descripcion || '').trim().length > 0;
-      });
-      return hasTitle && hasConcept;
     },
     totalIva() {
       return this.form.detalles.reduce((total, item) => {
@@ -9685,17 +9674,58 @@ function roundMoney(value) {
     totalInclIva() {
       return this.totalEstimado + this.totalIva;
     },
+    isFormValid() {
+      const hasTitle = String(this.form.titulo || '').trim().length > 0;
+      const hasConcept = this.form.detalles.some(detalle => {
+        return String(detalle.descripcion || '').trim().length > 0;
+      });
+      return hasTitle && hasConcept;
+    },
+    isEditingRequest() {
+      return Boolean(this.editingSolicitudId);
+    },
+    requestModalTitle() {
+      return this.isEditingRequest ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Edit purchase request') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'New purchase request');
+    },
     selectedRequester: {
       get() {
-        return this.requesterOptions.find(option => option.uid === this.selectedRequesterUid) || null;
+        return this.requesterOptions.find(option => {
+          return option.uid === this.selectedRequesterUid;
+        }) || null;
       },
       set(value) {
         this.selectedRequesterUid = value?.uid || '';
       }
     },
+    selectedPriority: {
+      get() {
+        return this.priorityOptions.find(option => {
+          return option.id === this.form.prioridad;
+        }) || this.priorityOptions.find(option => {
+          return option.id === 'normal';
+        });
+      },
+      set(value) {
+        this.form.prioridad = value?.id || 'normal';
+      }
+    },
+    selectedCurrency: {
+      get() {
+        return this.currencyOptions.find(option => {
+          return option.id === this.form.moneda;
+        }) || this.currencyOptions.find(option => {
+          return option.id === 'MXN';
+        });
+      },
+      set(value) {
+        this.form.moneda = value?.id || 'MXN';
+      }
+    },
     selectedTipoCompra: {
       get() {
-        return this.tipoCompraOptions.find(option => option.id === this.form.tipo_compra) || this.tipoCompraOptions[0];
+        return this.tipoCompraOptions.find(option => {
+          return option.id === this.form.tipo_compra;
+        }) || this.tipoCompraOptions[0];
       },
       set(value) {
         this.form.tipo_compra = value?.id || 'refaccion';
@@ -9703,7 +9733,9 @@ function roundMoney(value) {
     },
     selectedUsoCompra: {
       get() {
-        return this.usoCompraOptions.find(option => option.id === this.form.uso_compra) || this.usoCompraOptions[0];
+        return this.usoCompraOptions.find(option => {
+          return option.id === this.form.uso_compra;
+        }) || this.usoCompraOptions[0];
       },
       set(value) {
         this.form.uso_compra = value?.id || 'empresa';
@@ -9711,7 +9743,9 @@ function roundMoney(value) {
     },
     selectedTipoPago: {
       get() {
-        return this.tipoPagoOptions.find(option => option.id === this.form.tipo_pago) || null;
+        return this.tipoPagoOptions.find(option => {
+          return option.id === this.form.tipo_pago;
+        }) || null;
       },
       set(value) {
         this.form.tipo_pago = value?.id || '';
@@ -9738,35 +9772,124 @@ function roundMoney(value) {
         this.form.fecha_requerida = date.toISOString().slice(0, 10);
       }
     },
+    actionModalIsInvalid() {
+      return this.actionModal.requireComment && String(this.actionModal.comentario || '').trim().length === 0;
+    },
     selectedEstadoFiltro: {
       get() {
-        return this.estadoFiltroOptions.find(option => option.id === this.estadoFiltroId) || this.estadoFiltroOptions[0];
+        return this.estadoFiltroOptions.find(option => {
+          return option.id === this.estadoFiltroId;
+        }) || this.estadoFiltroOptions[0];
       },
       set(value) {
         this.estadoFiltroId = value?.id || 'todos';
       }
     },
+    canToggleShowOnlyMine() {
+      return Boolean(this.purchasePermissions.can_view_all || this.purchasePermissions.can_approve || this.purchasePermissions.can_process_purchase || this.purchasePermissions.can_select_requester);
+    },
+    isShowingOthers() {
+      return this.canToggleShowOnlyMine && !this.showOnlyMine;
+    },
+    solicitudesPorAlcance() {
+      if (!this.canToggleShowOnlyMine || this.showOnlyMine) {
+        return this.solicitudes.filter(item => this.isMyRequest(item));
+      }
+      return this.solicitudes.filter(item => !this.isMyRequest(item));
+    },
+    solicitudesSinCanceladas() {
+      return this.solicitudesPorAlcance.filter(item => {
+        return String(item.estado || '') !== 'cancelada';
+      });
+    },
+    solicitudesPendientes() {
+      return this.solicitudesSinCanceladas.filter(item => {
+        return String(item.estado || '') === 'pendiente_autorizacion';
+      });
+    },
     solicitudesFiltradas() {
       if (this.estadoFiltroId === 'todos') {
-        return this.solicitudes;
+        return this.solicitudesSinCanceladas;
       }
-      return this.solicitudes.filter(item => {
+      return this.solicitudesPorAlcance.filter(item => {
         return String(item.estado || '') === this.estadoFiltroId;
       });
     },
-    actionModalIsInvalid() {
-      return this.actionModal.requireComment && String(this.actionModal.comentario || '').trim().length === 0;
+    requestSections() {
+      const sectionMap = {
+        todos: {
+          id: 'all',
+          title: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'All statuses'),
+          description: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'All active requests except cancelled requests.'),
+          highlight: false
+        },
+        borrador: {
+          id: 'draft',
+          title: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Draft'),
+          description: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Requests that have not been sent for approval yet.'),
+          highlight: false
+        },
+        pendiente_autorizacion: {
+          id: 'pending',
+          title: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Pending approval'),
+          description: this.pendingApprovalDescription,
+          highlight: true
+        },
+        autorizada: {
+          id: 'approved',
+          title: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Approved'),
+          description: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Requests that have already been approved.'),
+          highlight: false
+        },
+        rechazada: {
+          id: 'rejected',
+          title: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Rejected'),
+          description: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Requests that were rejected during approval.'),
+          highlight: false
+        },
+        cancelada: {
+          id: 'cancelled',
+          title: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Cancelled requests'),
+          description: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Cancelled requests are shown only when this status is selected.'),
+          highlight: false
+        }
+      };
+      const section = sectionMap[this.estadoFiltroId] || sectionMap.todos;
+      return [{
+        ...section,
+        items: this.solicitudesFiltradas,
+        emptyName: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'No purchase requests found'),
+        emptyDescription: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Try changing the status filter or create a new request.')
+      }];
     },
-    isEditingRequest() {
-      return Boolean(this.editingSolicitudId);
+    totalPendientes() {
+      return this.solicitudesPendientes.length;
     },
-    requestModalTitle() {
-      return this.isEditingRequest ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Edit purchase request') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'New purchase request');
+    totalListado() {
+      return this.solicitudesSinCanceladas.filter(item => !['rechazada'].includes(String(item.estado || ''))).reduce((total, item) => {
+        return total + Number(item.monto_estimado || 0);
+      }, 0);
+    },
+    totalSolicitudesVisibles() {
+      return this.solicitudesSinCanceladas.length;
+    },
+    pendingApprovalDescription() {
+      if (!this.canToggleShowOnlyMine || this.showOnlyMine) {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Your requests waiting for approval.');
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Other users requests waiting for approval.');
     }
   },
   async mounted() {
+    this.showOnlyMine = this.getSavedShowOnlyMine();
+    const canAccess = await this.cargarContextoCompras();
+    if (!canAccess) {
+      return;
+    }
     await this.cargarCatalogosEmpleado();
-    await this.cargarContextoCompras();
+    if (!this.canToggleShowOnlyMine) {
+      this.showOnlyMine = true;
+    }
     if (this.canSelectRequester) {
       await this.cargarEmpleadosParaSolicitud();
     }
@@ -9823,10 +9946,6 @@ function roundMoney(value) {
       this.editingSolicitudId = null;
       this.form = this.getEmptyForm();
     },
-    onToggleVerTodas(value) {
-      this.verTodas = Boolean(value);
-      this.cargarSolicitudes();
-    },
     addDetalle() {
       this.form.detalles.push({
         descripcion: '',
@@ -9865,7 +9984,7 @@ function roundMoney(value) {
       this.loading = true;
       try {
         const response = await (0,_services_comprasService_js__WEBPACK_IMPORTED_MODULE_13__.listarSolicitudes)({
-          todas: this.verTodas ? 1 : 0
+          todas: this.canToggleShowOnlyMine ? 1 : 0
         });
         const payload = this.getApiPayload(response);
         if (!payload.success) {
@@ -9874,7 +9993,7 @@ function roundMoney(value) {
         this.solicitudes = Array.isArray(payload.data) ? payload.data : [];
       } catch (error) {
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error loading requests.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error loading requests.')));
       } finally {
         this.loading = false;
       }
@@ -9900,7 +10019,7 @@ function roundMoney(value) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showSuccess)(wasEditing ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Purchase request updated successfully') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Purchase request created successfully'));
       } catch (error) {
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error saving request.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error saving request.')));
       } finally {
         this.loading = false;
       }
@@ -9916,7 +10035,7 @@ function roundMoney(value) {
         this.detalle = payload.data;
       } catch (error) {
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error loading request details.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error loading request details.')));
       } finally {
         this.loading = false;
       }
@@ -9934,7 +10053,7 @@ function roundMoney(value) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Request sent for approval'));
       } catch (error) {
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error sending request.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error sending request.')));
       } finally {
         this.loading = false;
       }
@@ -10123,7 +10242,14 @@ function roundMoney(value) {
       window.open(url, '_blank', 'noopener,noreferrer');
     },
     canCancelRequest(item) {
-      return ['borrador', 'pendiente_autorizacion'].includes(String(item?.estado || ''));
+      const estado = String(item?.estado || '');
+      if (!['borrador', 'pendiente_autorizacion'].includes(estado)) {
+        return false;
+      }
+      if (this.purchasePermissions.can_approve) {
+        return true;
+      }
+      return this.isMyRequest(item);
     },
     getEmptyActionModal() {
       return {
@@ -10236,7 +10362,7 @@ function roundMoney(value) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showSuccess)(successMessage);
       } catch (error) {
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error completing action.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error completing action.')));
       } finally {
         this.actionModal.loading = false;
         this.loading = false;
@@ -10302,7 +10428,7 @@ function roundMoney(value) {
         this.showForm = true;
       } catch (error) {
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error loading request for editing.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Error loading request for editing.')));
       } finally {
         this.loading = false;
       }
@@ -10314,8 +10440,27 @@ function roundMoney(value) {
         if (!payload.success) {
           throw new Error(payload.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Could not load purchase context.'));
         }
-        this.canSelectRequester = Boolean(payload.data?.can_select_requester);
+        const permissions = payload.data?.permissions || {};
+        const canSelectRequester = permissions.can_select_requester ?? payload.data?.can_select_requester ?? false;
+        const canApprove = permissions.can_approve ?? payload.data?.can_approve ?? false;
+        const canProcessPurchase = permissions.can_process_purchase ?? payload.data?.can_process_purchase ?? false;
+        const canViewAll = permissions.can_view_all ?? payload.data?.can_view_all ?? canSelectRequester ?? canApprove ?? canProcessPurchase;
+        const canCreate = permissions.can_create ?? payload.data?.can_create ?? true;
+        this.purchasePermissions = {
+          can_create: Boolean(canCreate),
+          can_view_all: Boolean(canViewAll),
+          can_approve: Boolean(canApprove),
+          can_process_purchase: Boolean(canProcessPurchase),
+          can_select_requester: Boolean(canSelectRequester)
+        };
+        this.canSelectRequester = this.purchasePermissions.can_select_requester;
         this.contextLoaded = true;
+        this.currentUserId = payload.data?.uid || payload.data?.user_id || '';
+        if (!this.canToggleShowOnlyMine) {
+          this.showOnlyMine = true;
+        } else if (!this.hasSavedShowOnlyMinePreference) {
+          this.showOnlyMine = false;
+        }
         const requesterData = payload.data?.requester || null;
         if (requesterData) {
           const requester = this.normalizarEmpleadoOption({
@@ -10334,10 +10479,18 @@ function roundMoney(value) {
             this.applyRequesterData(requester);
           }
         }
+        return true;
       } catch (error) {
         this.contextLoaded = true;
+        const status = error?.response?.status;
+        const message = this.getErrorMessage(error, (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'You do not have permission to access the purchases module.'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(message);
+        if (status === 403) {
+          this.redirectToDashboard();
+          return false;
+        }
         console.error(error);
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)(error.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Could not load purchase context.'));
+        return false;
       }
     },
     applyRequesterData(requester) {
@@ -10348,6 +10501,70 @@ function roundMoney(value) {
       this.form.solicitante_cargo = requester.cargo || '';
       this.form.jefe_directo_nombre = requester.jefe_directo || '';
       this.form.jefe_directo_uid = requester.jefe_directo_uid || requester.gerente_uid || '';
+    },
+    getSavedShowOnlyMine() {
+      this.hasSavedShowOnlyMinePreference = false;
+      if (typeof window === 'undefined') {
+        return true;
+      }
+      try {
+        const value = window.localStorage.getItem(SHOW_ONLY_MINE_KEY);
+        if (value === null) {
+          return true;
+        }
+        this.hasSavedShowOnlyMinePreference = true;
+        return value === 'true';
+      } catch (error) {
+        return true;
+      }
+    },
+    saveShowOnlyMine(value) {
+      if (typeof window === 'undefined') {
+        return;
+      }
+      try {
+        window.localStorage.setItem(SHOW_ONLY_MINE_KEY, String(Boolean(value)));
+      } catch (error) {
+        // localStorage puede fallar en modo privado o contextos restringidos.
+      }
+    },
+    onToggleShowOnlyMine(value) {
+      this.showOnlyMine = Boolean(value);
+      this.hasSavedShowOnlyMinePreference = true;
+      this.saveShowOnlyMine(this.showOnlyMine);
+      this.cargarSolicitudes();
+    },
+    isMyRequest(item) {
+      const currentUserId = String(this.currentUserId || '');
+      if (!currentUserId) {
+        return true;
+      }
+      const candidates = [item?.id_user, item?.created_by, item?.created_by_uid, item?.requester_uid, item?.solicitante_uid, item?.solicitante_id_user, item?.id_user_solicitante, item?.usuario_solicitante, item?.owner_uid, item?.uid, item?.user_id].map(value => String(value || ''));
+      return candidates.includes(currentUserId);
+    },
+    redirectToDashboard() {
+      if (this.$router && this.$router.currentRoute?.name !== 'Home') {
+        this.$router.replace({
+          name: 'Home'
+        });
+        return;
+      }
+      window.location.hash = '#/';
+    },
+    getErrorMessage(error, fallback) {
+      return error?.response?.data?.ocs?.data?.message || error?.response?.data?.message || error?.message || fallback;
+    },
+    canEditRequest(item) {
+      return String(item?.estado || '') === 'borrador' && (this.purchasePermissions.can_select_requester || this.isMyRequest(item));
+    },
+    canSendRequest(item) {
+      return String(item?.estado || '') === 'borrador' && (this.purchasePermissions.can_select_requester || this.isMyRequest(item));
+    },
+    canApproveRequest(item) {
+      return this.purchasePermissions.can_approve && String(item?.estado || '') === 'pendiente_autorizacion';
+    },
+    canRejectRequest(item) {
+      return this.purchasePermissions.can_approve && String(item?.estado || '') === 'pendiente_autorizacion';
     }
   }
 });
@@ -11248,6 +11465,11 @@ __webpack_require__.r(__webpack_exports__);
         }
       }]
     };
+  },
+  computed: {
+    memberCount() {
+      return this.peopleArea?.equipo?.length || 0;
+    }
   },
   mounted() {
     this.$root.$on('show', data => {
@@ -13034,6 +13256,16 @@ __webpack_require__.r(__webpack_exports__);
   computed: {
     avatarUrl() {
       return (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_9__.generateUrl)(`/avatar/${this.data.uid}/512?v=${this.avatarVersion}`);
+    },
+    activeEmployees() {
+      return this.empleadosProp.filter(empleado => {
+        return empleado.estado === 1 || empleado.estado === '1' || empleado.enabled === true || empleado.disabled === false;
+      }).length;
+    },
+    inactiveEmployees() {
+      return this.empleadosProp.filter(empleado => {
+        return empleado.estado === 0 || empleado.estado === '0' || empleado.enabled === false || empleado.disabled === true;
+      }).length;
     }
   },
   mounted() {
@@ -15917,6 +16149,9 @@ __webpack_require__.r(__webpack_exports__);
     };
   },
   computed: {
+    employeeCount() {
+      return this.peopleArea?.area?.length || 0;
+    },
     buttons() {
       return [{
         label: this.t('empleados', 'Cancelar'),
@@ -17383,6 +17618,11 @@ __webpack_require__.r(__webpack_exports__);
       preferencias_puestos: null
     };
   },
+  computed: {
+    employeeCount() {
+      return this.peopleArea?.puesto?.length || 0;
+    }
+  },
   mounted() {
     this.$root.$on('show', data => {
       this.show = data;
@@ -17413,7 +17653,7 @@ __webpack_require__.r(__webpack_exports__);
         await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/EliminarPuesto'), {
           id_puesto: puesto
         });
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_5__.showSuccess)(this.t('empleados', 'Department removed successfully'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_5__.showSuccess)(this.t('empleados', 'Position removed successfully'));
         this.$root.$emit('reload');
         this.$root.$emit('send-data-puestos', {});
       } catch (err) {
@@ -17445,7 +17685,7 @@ __webpack_require__.r(__webpack_exports__);
           id_puestos: this.data.Id_puestos,
           nombre: this.area
         });
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_5__.showSuccess)(this.t('empleados', 'Department updated successfully'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_5__.showSuccess)(this.t('empleados', 'Position updated successfully'));
         this.$root.$emit('reload');
         this.$root.$emit('send-data-puestos', {});
         this.showEdit();
@@ -20241,154 +20481,168 @@ var render = function render() {
       },
       expression: "selectedEstadoFiltro"
     }
-  }), _vm._v(" "), _c("NcCheckboxRadioSwitch", {
+  }), _vm._v(" "), _vm.canToggleShowOnlyMine ? _c("NcCheckboxRadioSwitch", {
     attrs: {
-      checked: _vm.verTodas,
+      checked: _vm.showOnlyMine,
       type: "switch"
     },
     on: {
-      "update:checked": _vm.onToggleVerTodas
+      "update:checked": _vm.onToggleShowOnlyMine
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show all")) + "\n\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _vm.loading ? _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show only my requests")) + "\n\t\t\t\t\t\t")]) : _vm._e()], 1)]), _vm._v(" "), _vm.loading ? _c("div", {
     staticClass: "empty-state"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Loading...")) + "\n\t\t\t\t")]) : _vm.solicitudesFiltradas.length === 0 ? _c("NcEmptyContent", {
-    attrs: {
-      name: _vm.t("empleados", "No purchase requests found"),
-      description: _vm.t("empleados", "Try changing the status filter or create a new request.")
-    },
-    scopedSlots: _vm._u([{
-      key: "icon",
-      fn: function () {
-        return [_c("CartOutline")];
-      },
-      proxy: true
-    }])
-  }) : _c("div", {
-    staticClass: "table-scroll"
-  }, [_c("table", {
-    staticClass: "compras-table"
-  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Folio")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Title")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Requester")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Amount")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Date")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Actions")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.solicitudesFiltradas, function (item) {
-    return _c("tr", {
-      key: item.id_solicitud
-    }, [_c("td", [_c("strong", [_vm._v(_vm._s(item.folio))])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(item.titulo))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.formatRequesterLabel(item)))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.formatMoney(item.monto_estimado)))]), _vm._v(" "), _c("td", [_c("span", {
-      class: ["badge", `estado-${item.estado}`]
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatEstado(item.estado)) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.formatDateTime(item.created_at)))]), _vm._v(" "), _c("td", {
-      staticClass: "col-actions"
-    }, [_c("div", {
-      staticClass: "row-actions table-actions"
-    }, [_c("NcButton", {
-      attrs: {
-        "aria-label": _vm.t("empleados", "View request"),
-        title: _vm.t("empleados", "View request")
-      },
-      on: {
-        click: function ($event) {
-          return _vm.verDetalle(item.id_solicitud);
-        }
-      },
-      scopedSlots: _vm._u([{
-        key: "icon",
-        fn: function () {
-          return [_c("EyeOutline", {
-            attrs: {
-              size: 20
-            }
-          })];
-        },
-        proxy: true
-      }], null, true)
-    }), _vm._v(" "), _c("NcActions", {
-      attrs: {
-        "aria-label": _vm.t("empleados", "More actions"),
-        "force-menu": true
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Loading...")) + "\n\t\t\t\t")]) : _c("div", {
+    staticClass: "request-sections"
+  }, _vm._l(_vm.requestSections, function (section) {
+    return _c("section", {
+      key: section.id,
+      staticClass: "request-section",
+      class: {
+        "request-section--pending": section.highlight
       }
-    }, [item.estado === "borrador" ? _c("NcActionButton", {
-      on: {
-        click: function ($event) {
-          return _vm.editar(item.id_solicitud);
-        }
+    }, [_c("div", {
+      staticClass: "request-section-header"
+    }, [_c("div", [_c("p", {
+      staticClass: "section-label"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(section.title) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("h4", [_vm._v(_vm._s(section.items.length) + " " + _vm._s(_vm.t("empleados", "request(s)")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(section.description))])])]), _vm._v(" "), section.items.length === 0 ? _c("NcEmptyContent", {
+      attrs: {
+        name: section.emptyName,
+        description: section.emptyDescription
       },
       scopedSlots: _vm._u([{
         key: "icon",
         fn: function () {
-          return [_c("PencilOutline", {
-            attrs: {
-              size: 20
-            }
-          })];
+          return [_c("CartOutline")];
         },
         proxy: true
       }], null, true)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Edit")) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.canCancelRequest(item) ? _c("NcActionButton", {
-      on: {
-        click: function ($event) {
-          return _vm.cancelar(item.id_solicitud);
+    }) : _c("div", {
+      staticClass: "table-scroll"
+    }, [_c("table", {
+      staticClass: "compras-table"
+    }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Folio")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Title")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Requester")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Amount")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Date")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Actions")))])])]), _vm._v(" "), _c("tbody", _vm._l(section.items, function (item) {
+      return _c("tr", {
+        key: item.id_solicitud
+      }, [_c("td", [_c("strong", [_vm._v(_vm._s(item.folio))])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(item.titulo))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.formatRequesterLabel(item)))]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.formatMoney(item.monto_estimado)))]), _vm._v(" "), _c("td", [_c("span", {
+        class: ["badge", `estado-${item.estado}`]
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatEstado(item.estado)) + "\n\t\t\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(_vm.formatDateTime(item.created_at)))]), _vm._v(" "), _c("td", {
+        staticClass: "col-actions"
+      }, [_c("div", {
+        staticClass: "row-actions table-actions"
+      }, [_c("NcButton", {
+        attrs: {
+          "aria-label": _vm.t("empleados", "View request"),
+          title: _vm.t("empleados", "View request")
+        },
+        on: {
+          click: function ($event) {
+            return _vm.verDetalle(item.id_solicitud);
+          }
+        },
+        scopedSlots: _vm._u([{
+          key: "icon",
+          fn: function () {
+            return [_c("EyeOutline", {
+              attrs: {
+                size: 20
+              }
+            })];
+          },
+          proxy: true
+        }], null, true)
+      }), _vm._v(" "), _c("NcActions", {
+        attrs: {
+          "aria-label": _vm.t("empleados", "More actions"),
+          "force-menu": true
         }
-      },
-      scopedSlots: _vm._u([{
-        key: "icon",
-        fn: function () {
-          return [_c("DeleteOutline", {
-            attrs: {
-              size: 20
-            }
-          })];
+      }, [_vm.canEditRequest(item) ? _c("NcActionButton", {
+        on: {
+          click: function ($event) {
+            return _vm.editar(item.id_solicitud);
+          }
         },
-        proxy: true
-      }], null, true)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete")) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), item.estado === "borrador" ? _c("NcActionButton", {
-      on: {
-        click: function ($event) {
-          return _vm.enviar(item.id_solicitud);
-        }
-      },
-      scopedSlots: _vm._u([{
-        key: "icon",
-        fn: function () {
-          return [_c("SendOutline", {
-            attrs: {
-              size: 20
-            }
-          })];
+        scopedSlots: _vm._u([{
+          key: "icon",
+          fn: function () {
+            return [_c("PencilOutline", {
+              attrs: {
+                size: 20
+              }
+            })];
+          },
+          proxy: true
+        }], null, true)
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Edit")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.canCancelRequest(item) ? _c("NcActionButton", {
+        on: {
+          click: function ($event) {
+            return _vm.cancelar(item.id_solicitud);
+          }
         },
-        proxy: true
-      }], null, true)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Send")) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), item.estado === "pendiente_autorizacion" ? _c("NcActionButton", {
-      on: {
-        click: function ($event) {
-          return _vm.autorizar(item.id_solicitud);
-        }
-      },
-      scopedSlots: _vm._u([{
-        key: "icon",
-        fn: function () {
-          return [_c("CheckCircleOutline", {
-            attrs: {
-              size: 20
-            }
-          })];
+        scopedSlots: _vm._u([{
+          key: "icon",
+          fn: function () {
+            return [_c("DeleteOutline", {
+              attrs: {
+                size: 20
+              }
+            })];
+          },
+          proxy: true
+        }], null, true)
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.canSendRequest(item) ? _c("NcActionButton", {
+        on: {
+          click: function ($event) {
+            return _vm.enviar(item.id_solicitud);
+          }
         },
-        proxy: true
-      }], null, true)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Approve")) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), item.estado === "pendiente_autorizacion" ? _c("NcActionButton", {
-      on: {
-        click: function ($event) {
-          return _vm.rechazar(item.id_solicitud);
-        }
-      },
-      scopedSlots: _vm._u([{
-        key: "icon",
-        fn: function () {
-          return [_c("CloseCircleOutline", {
-            attrs: {
-              size: 20
-            }
-          })];
+        scopedSlots: _vm._u([{
+          key: "icon",
+          fn: function () {
+            return [_c("SendOutline", {
+              attrs: {
+                size: 20
+              }
+            })];
+          },
+          proxy: true
+        }], null, true)
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Send")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.canApproveRequest(item) ? _c("NcActionButton", {
+        on: {
+          click: function ($event) {
+            return _vm.autorizar(item.id_solicitud);
+          }
         },
-        proxy: true
-      }], null, true)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reject")) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e()], 1)], 1)])]);
-  }), 0)])])], 1), _vm._v(" "), _c("aside", {
+        scopedSlots: _vm._u([{
+          key: "icon",
+          fn: function () {
+            return [_c("CheckCircleOutline", {
+              attrs: {
+                size: 20
+              }
+            })];
+          },
+          proxy: true
+        }], null, true)
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Approve")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.canRejectRequest(item) ? _c("NcActionButton", {
+        on: {
+          click: function ($event) {
+            return _vm.rechazar(item.id_solicitud);
+          }
+        },
+        scopedSlots: _vm._u([{
+          key: "icon",
+          fn: function () {
+            return [_c("CloseCircleOutline", {
+              attrs: {
+                size: 20
+              }
+            })];
+          },
+          proxy: true
+        }], null, true)
+      }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Reject")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e()], 1)], 1)])]);
+    }), 0)])])], 1);
+  }), 0)]), _vm._v(" "), _c("aside", {
     staticClass: "purchases-side-panel"
   }, [_c("div", {
     staticClass: "compras-header"
@@ -20404,14 +20658,14 @@ var render = function render() {
     on: {
       click: _vm.cargarSolicitudes
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _vm.canCreatePurchaseRequest ? _c("NcButton", {
     attrs: {
       type: "primary"
     },
     on: {
       click: _vm.toggleForm
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.showForm ? _vm.t("empleados", "Close") : _vm.t("empleados", "New request")) + "\n\t\t\t\t\t\t")])], 1)]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.showForm ? _vm.t("empleados", "Close") : _vm.t("empleados", "New request")) + "\n\t\t\t\t\t\t")]) : _vm._e()], 1)]), _vm._v(" "), _c("div", {
     staticClass: "stats-grid"
   }, [_c("div", {
     staticClass: "stat-card"
@@ -20421,7 +20675,7 @@ var render = function render() {
     attrs: {
       size: 22
     }
-  })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Total requests")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.solicitudesFiltradas.length))])])]), _vm._v(" "), _c("div", {
+  })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Total requests")))]), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.totalSolicitudesVisibles))])])]), _vm._v(" "), _c("div", {
     staticClass: "stat-card"
   }, [_c("div", {
     staticClass: "stat-icon"
@@ -21214,17 +21468,75 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("div", {
     staticClass: "contacts-list__item-wrapper"
-  }, [Object.keys(_vm.data).length === 0 ? _c("div", [_c("div", {
-    staticClass: "emptycontent"
+  }, [Object.keys(_vm.data).length === 0 ? _c("div", [Object.keys(_vm.data).length === 0 ? _c("div", {
+    staticClass: "teams-empty-state"
+  }, [_c("div", {
+    staticClass: "teams-empty-card"
   }, [_c("img", {
+    staticClass: "teams-empty-image",
     attrs: {
       src: __webpack_require__(/*! ../../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
-      width: "170px"
+      alt: "Empty team state"
     }
-  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select a team for more details")))])])]) : _c("div", [_c("div", {
-    staticClass: "container-search-profile"
+  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select a team for more details")))]), _vm._v(" "), _c("p", {
+    staticClass: "teams-empty-description"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose a team from the list to view its members, team lead and available actions.")) + "\n\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "teams-empty-grid"
   }, [_c("div", {
-    staticClass: "button-container-profile"
+    staticClass: "teams-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Team members")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Review the employees assigned to each work team.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "teams-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Team lead")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Check or update the person responsible for the team.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "teams-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Change view")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Switch between card view and list view.")))])])]), _vm._v(" "), _c("div", {
+    staticClass: "teams-empty-actions"
+  }, [_c("NcButton", {
+    attrs: {
+      type: "primary"
+    },
+    on: {
+      click: function ($event) {
+        return _vm.$root.$emit("reload");
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh teams")) + "\n\t\t\t\t\t")])], 1)])]) : _vm._e()]) : _c("div", [_c("div", {
+    staticClass: "team-details"
+  }, [_c("div", {
+    staticClass: "team-hero"
+  }, [_c("div", {
+    staticClass: "team-hero__content"
+  }, [_c("span", {
+    staticClass: "team-hero__eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Team details")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "team-hero__title-row"
+  }, [_c("h2", {
+    staticClass: "team-hero__title"
+  }, [_vm._v(_vm._s(_vm.data.Nombre))]), _vm._v(" "), _c("span", {
+    staticClass: "team-hero__count"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.memberCount) + " " + _vm._s(_vm.t("empleados", "members")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("p", {
+    staticClass: "team-hero__description"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Review the people assigned to this team, update its lead and switch between available display modes.")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "team-hero__meta"
+  }, [_c("div", {
+    staticClass: "team-meta-card"
+  }, [_c("span", {
+    staticClass: "team-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Team")))]), _vm._v(" "), _c("strong", {
+    staticClass: "team-meta-card__value"
+  }, [_vm._v(_vm._s(_vm.data.Nombre))])]), _vm._v(" "), _c("div", {
+    staticClass: "team-meta-card"
+  }, [_c("span", {
+    staticClass: "team-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Team lead")))]), _vm._v(" "), _c("strong", {
+    staticClass: "team-meta-card__value"
+  }, [_vm._v(_vm._s(_vm.data.Id_jefe_equipo || _vm.t("empleados", "Not assigned")))])]), _vm._v(" "), _c("div", {
+    staticClass: "team-meta-card"
+  }, [_c("span", {
+    staticClass: "team-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Display mode")))]), _vm._v(" "), _c("strong", {
+    staticClass: "team-meta-card__value"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.preferencias_equipos ? _vm.t("empleados", "Cards") : _vm.t("empleados", "List")) + "\n\t\t\t\t\t\t\t")])])])]), _vm._v(" "), _c("div", {
+    staticClass: "team-hero__actions"
   }, [_c("NcActions", {
     scopedSlots: _vm._u([{
       key: "icon",
@@ -21257,7 +21569,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable editing")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable editing")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
     attrs: {
       "close-after-click": true
     },
@@ -21277,7 +21589,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Change view type")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionSeparator"), _vm._v(" "), _c("NcActionButton", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Change view type")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcActionSeparator"), _vm._v(" "), _c("NcActionButton", {
     attrs: {
       "close-after-click": true
     },
@@ -21297,7 +21609,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete team")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcDialog", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete team")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcDialog", {
     attrs: {
       open: _vm.showDialog,
       name: _vm.t("empleados", "Confirm"),
@@ -21312,35 +21624,43 @@ var render = function render() {
       }
     }
   })], 1)], 1)]), _vm._v(" "), _c("div", {
-    staticClass: "center"
-  }, [_c("div", [_c("h2", [_vm._v(_vm._s(_vm.data.Nombre))])]), _vm._v(" "), _c("div", {
-    staticClass: "rsg-title"
-  }, [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Team")))])]), _vm._v(" "), _c("div", [_vm.preferencias_equipos ? _c("div", {
-    staticClass: "rsg"
+    staticClass: "members-panel"
+  }, [_c("div", {
+    staticClass: "members-panel__header"
+  }, [_c("div", [_c("h3", {
+    staticClass: "members-panel__title"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Team members")))]), _vm._v(" "), _c("p", {
+    staticClass: "members-panel__subtitle"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.memberCount) + " " + _vm._s(_vm.t("empleados", "people assigned to this team")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("span", {
+    staticClass: "members-panel__view-badge"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.preferencias_equipos ? _vm.t("empleados", "Card view") : _vm.t("empleados", "List view")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _vm.preferencias_equipos ? _c("div", {
+    staticClass: "members-grid-panel"
   }, [_c("ul", {
-    staticClass: "container flex"
+    staticClass: "members-grid"
   }, _vm._l(_vm.peopleArea.equipo, function (item) {
     return _c("li", {
       key: item.Id_empleados,
-      staticClass: "flex-item"
+      staticClass: "members-grid__item"
     }, [_c("div", {
-      staticClass: "card"
-    }, [_c("div", [_c("NcAvatar", {
+      staticClass: "member-card"
+    }, [_c("NcAvatar", {
       attrs: {
         user: item.Id_user,
         "display-name": item.Id_user,
         size: 60
       }
-    })], 1), _vm._v(" "), _c("div", {
-      staticClass: "right"
+    }), _vm._v(" "), _c("div", {
+      staticClass: "member-card__body"
     }, [_c("div", {
-      staticClass: "card-1"
+      staticClass: "member-card__name"
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.displayname ? item.displayname : item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
-      staticClass: "card-2"
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")])])])]);
+      staticClass: "member-card__user"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")])])], 1)]);
   }), 0)]) : _c("div", {
-    staticClass: "rsgd"
-  }, [_c("ul", _vm._l(_vm.peopleArea.equipo, function (item) {
+    staticClass: "members-list-panel"
+  }, [_c("ul", {
+    staticClass: "members-list"
+  }, _vm._l(_vm.peopleArea.equipo, function (item) {
     return _c("NcListItem", {
       key: item.Id_empleados,
       attrs: {
@@ -21383,7 +21703,7 @@ var render = function render() {
   }, [_c("div", {
     staticClass: "modal__content"
   }, [_c("div", {
-    staticClass: "container"
+    staticClass: "modal-form"
   }, [_c("div", {
     staticClass: "form-group"
   }, [_c("NcTextField", {
@@ -22949,12 +23269,35 @@ var render = function render() {
     staticClass: "contacts-list__item-wrapper"
   }, [Object.keys(_vm.data).length === 0 ? _c("div", [_c("div", {
     staticClass: "emptycontent"
+  }, [Object.keys(_vm.data).length === 0 ? _c("div", {
+    staticClass: "employee-empty-state"
+  }, [_c("div", {
+    staticClass: "employee-empty-card"
   }, [_c("img", {
+    staticClass: "employee-empty-image",
     attrs: {
       src: __webpack_require__(/*! ../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
-      width: "170px"
+      alt: "Empty employee state"
     }
-  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select an employee to start")))])])]) : _c("div", {
+  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select an employee to start")))]), _vm._v(" "), _c("p", {
+    staticClass: "employee-empty-description"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose an employee from the list to view their profile, notes, personal information and files.")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "employee-empty-stats"
+  }, [_c("div", {
+    staticClass: "employee-empty-stat"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.empleadosProp.length))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Employees")))])]), _vm._v(" "), _c("div", {
+    staticClass: "employee-empty-stat"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.activeEmployees))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Active")))])]), _vm._v(" "), _c("div", {
+    staticClass: "employee-empty-stat"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.inactiveEmployees))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Inactive")))])])]), _vm._v(" "), _c("div", {
+    staticClass: "employee-empty-actions"
+  }, [_c("NcButton", {
+    on: {
+      click: function ($event) {
+        return _vm.$bus.emit("getall");
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh list")) + "\n\t\t\t\t\t\t")])], 1)])]) : _vm._e()])]) : _c("div", {
     staticClass: "container"
   }, [_c("div", {
     staticClass: "container-search-profile"
@@ -26283,16 +26626,76 @@ var render = function render() {
   return _c("div", {
     staticClass: "contacts-list__item-wrapper"
   }, [Object.keys(_vm.data).length == 0 ? _c("div", [_c("div", {
-    staticClass: "emptycontent"
+    staticClass: "empty"
+  }, [Object.keys(_vm.data).length === 0 ? _c("div", {
+    staticClass: "areas-empty-state"
+  }, [_c("div", {
+    staticClass: "areas-empty-card"
   }, [_c("img", {
+    staticClass: "areas-empty-image",
     attrs: {
       src: __webpack_require__(/*! ../../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
-      width: "170px"
+      alt: "Empty area state"
     }
-  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select an area for more details")))])])]) : _c("div", [_c("div", [_c("div", {
-    staticClass: "container container-search-profile"
+  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select an area for more details")))]), _vm._v(" "), _c("p", {
+    staticClass: "areas-empty-description"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose a department or area from the list to view assigned employees, edit its information or change the display mode.")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "areas-empty-grid"
   }, [_c("div", {
-    staticClass: "button-container-profile"
+    staticClass: "areas-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "View employees")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Check who belongs to each department or area.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "areas-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Edit areas")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Update area names and parent departments.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "areas-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Change view")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Switch between card view and list view.")))])])]), _vm._v(" "), _c("div", {
+    staticClass: "areas-empty-actions"
+  }, [_c("NcButton", {
+    attrs: {
+      type: "primary"
+    },
+    on: {
+      click: function ($event) {
+        return _vm.$root.$emit("reload");
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh areas")) + "\n\t\t\t\t\t\t")])], 1)])]) : _vm._e()])]) : _c("div", [_c("div", {
+    staticClass: "area-details"
+  }, [_c("div", {
+    staticClass: "area-hero"
+  }, [_c("div", {
+    staticClass: "area-hero__content"
+  }, [_c("span", {
+    staticClass: "area-hero__eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Area details")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "area-hero__title-row"
+  }, [_c("h2", {
+    staticClass: "area-hero__title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.data.Nombre) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
+    staticClass: "area-hero__count"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.employeeCount) + " " + _vm._s(_vm.t("empleados", "employees")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("p", {
+    staticClass: "area-hero__description"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Review the assigned employees, update the structure of the area and switch between different display modes.")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "area-hero__meta"
+  }, [_c("div", {
+    staticClass: "area-meta-card"
+  }, [_c("span", {
+    staticClass: "area-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Department / area")))]), _vm._v(" "), _c("strong", {
+    staticClass: "area-meta-card__value"
+  }, [_vm._v(_vm._s(_vm.data.Nombre))])]), _vm._v(" "), _c("div", {
+    staticClass: "area-meta-card"
+  }, [_c("span", {
+    staticClass: "area-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Parent area")))]), _vm._v(" "), _c("strong", {
+    staticClass: "area-meta-card__value"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.data.Id_padre || _vm.t("empleados", "No parent area")) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    staticClass: "area-meta-card"
+  }, [_c("span", {
+    staticClass: "area-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Display mode")))]), _vm._v(" "), _c("strong", {
+    staticClass: "area-meta-card__value"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.preferencias_areas ? _vm.t("empleados", "Cards") : _vm.t("empleados", "List")) + "\n\t\t\t\t\t\t\t")])])])]), _vm._v(" "), _c("div", {
+    staticClass: "area-hero__actions"
   }, [_c("NcActions", {
     scopedSlots: _vm._u([{
       key: "icon",
@@ -26379,36 +26782,44 @@ var render = function render() {
         _vm.showDialog = $event;
       }
     }
-  })], 1)], 1)])]), _vm._v(" "), _c("div", {
-    staticClass: "center"
-  }, [_c("div", [_c("div", [_c("h2", [_vm._v(_vm._s(_vm.data.Nombre))])]), _vm._v(" "), _vm.data.Id_padre ? _c("div", [_c("h1", [_vm._v(_vm._s(_vm.data.Id_padre))])]) : _vm._e()]), _vm._v(" "), _c("div", {
-    staticClass: "rsg-title"
-  }, [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Employees in department / Area")))])]), _vm._v(" "), _c("div", [_vm.preferencias_areas ? _c("div", {
-    staticClass: "rsg"
+  })], 1)], 1)]), _vm._v(" "), _c("div", {
+    staticClass: "employees-panel"
+  }, [_c("div", {
+    staticClass: "employees-panel__header"
+  }, [_c("div", [_c("h3", {
+    staticClass: "employees-panel__title"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Employees in department / Area")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("p", {
+    staticClass: "employees-panel__subtitle"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.employeeCount) + " " + _vm._s(_vm.t("empleados", "people assigned to this area")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("span", {
+    staticClass: "employees-panel__view-badge"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.preferencias_areas ? _vm.t("empleados", "Card view") : _vm.t("empleados", "List view")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _vm.preferencias_areas ? _c("div", {
+    staticClass: "employees-grid-panel"
   }, [_c("ul", {
-    staticClass: "container flex"
+    staticClass: "employees-grid"
   }, _vm._l(_vm.peopleArea.area, function (item) {
     return _c("li", {
       key: item.Id_empleados,
-      staticClass: "flex-item"
+      staticClass: "employees-grid__item"
     }, [_c("div", {
-      staticClass: "card"
-    }, [_c("div", [_c("NcAvatar", {
+      staticClass: "employee-card"
+    }, [_c("NcAvatar", {
       attrs: {
         user: item.Id_user,
         "display-name": item.Id_user,
         size: 60
       }
-    })], 1), _vm._v(" "), _c("div", {
-      staticClass: "right"
+    }), _vm._v(" "), _c("div", {
+      staticClass: "employee-card__body"
     }, [_c("div", {
-      staticClass: "card-1"
+      staticClass: "employee-card__name"
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.displayname ? item.displayname : item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
-      staticClass: "card-2"
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")])])])]);
+      staticClass: "employee-card__user"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")])])], 1)]);
   }), 0)]) : _c("div", {
-    staticClass: "rsgd"
-  }, [_c("ul", _vm._l(_vm.peopleArea.area, function (item) {
+    staticClass: "employees-list-panel"
+  }, [_c("ul", {
+    staticClass: "employees-list"
+  }, _vm._l(_vm.peopleArea.area, function (item) {
     return _c("NcListItem", {
       key: item.Id_empleados,
       attrs: {
@@ -26451,7 +26862,7 @@ var render = function render() {
   }, [_c("div", {
     staticClass: "modal__content"
   }, [_c("div", {
-    staticClass: "container"
+    staticClass: "modal-form"
   }, [_c("div", {
     staticClass: "form-group"
   }, [_c("NcTextField", {
@@ -27835,16 +28246,76 @@ var render = function render() {
   return _c("div", {
     staticClass: "contacts-list__item-wrapper"
   }, [Object.keys(_vm.data).length === 0 ? _c("div", [_c("div", {
-    staticClass: "emptycontent"
+    staticClass: "empty"
+  }, [Object.keys(_vm.data).length === 0 ? _c("div", {
+    staticClass: "positions-empty-state"
+  }, [_c("div", {
+    staticClass: "positions-empty-card"
   }, [_c("img", {
+    staticClass: "positions-empty-image",
     attrs: {
       src: __webpack_require__(/*! ../../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
-      width: "170px"
+      alt: "Empty position state"
     }
-  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select an area for more details")))])])]) : _c("div", [_c("div", {
-    staticClass: "container-search-profile"
+  }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select a position for more details")))]), _vm._v(" "), _c("p", {
+    staticClass: "positions-empty-description"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose a position from the list to view assigned employees, edit its name or change the display mode.")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "positions-empty-grid"
   }, [_c("div", {
-    staticClass: "button-container-profile"
+    staticClass: "positions-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "View assigned employees")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Check which employees currently have this position.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "positions-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Edit positions")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Update position names.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "positions-empty-item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Change view")))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Switch between card view and list view.")))])])]), _vm._v(" "), _c("div", {
+    staticClass: "positions-empty-actions"
+  }, [_c("NcButton", {
+    attrs: {
+      type: "primary"
+    },
+    on: {
+      click: function ($event) {
+        return _vm.$root.$emit("reload");
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh positions")) + "\n\t\t\t\t\t\t")])], 1)])]) : _vm._e()])]) : _c("div", [_c("div", {
+    staticClass: "position-details"
+  }, [_c("div", {
+    staticClass: "position-hero"
+  }, [_c("div", {
+    staticClass: "position-hero__content"
+  }, [_c("span", {
+    staticClass: "position-hero__eyebrow"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Position details")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "position-hero__title-row"
+  }, [_c("h2", {
+    staticClass: "position-hero__title"
+  }, [_vm._v(_vm._s(_vm.data.Nombre))]), _vm._v(" "), _c("span", {
+    staticClass: "position-hero__count"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.employeeCount) + " " + _vm._s(_vm.t("empleados", "employees")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("p", {
+    staticClass: "position-hero__description"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Review the employees assigned to this position, rename it when needed and switch between available display modes.")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+    staticClass: "position-hero__meta"
+  }, [_c("div", {
+    staticClass: "position-meta-card"
+  }, [_c("span", {
+    staticClass: "position-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Position")))]), _vm._v(" "), _c("strong", {
+    staticClass: "position-meta-card__value"
+  }, [_vm._v(_vm._s(_vm.data.Nombre))])]), _vm._v(" "), _c("div", {
+    staticClass: "position-meta-card"
+  }, [_c("span", {
+    staticClass: "position-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Assigned employees")))]), _vm._v(" "), _c("strong", {
+    staticClass: "position-meta-card__value"
+  }, [_vm._v(_vm._s(_vm.employeeCount))])]), _vm._v(" "), _c("div", {
+    staticClass: "position-meta-card"
+  }, [_c("span", {
+    staticClass: "position-meta-card__label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Display mode")))]), _vm._v(" "), _c("strong", {
+    staticClass: "position-meta-card__value"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.preferencias_puestos ? _vm.t("empleados", "Cards") : _vm.t("empleados", "List")) + "\n\t\t\t\t\t\t\t")])])])]), _vm._v(" "), _c("div", {
+    staticClass: "position-hero__actions"
   }, [_c("NcActions", {
     scopedSlots: _vm._u([{
       key: "icon",
@@ -27877,7 +28348,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable editing")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable editing")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
     attrs: {
       "close-after-click": true
     },
@@ -27897,7 +28368,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Change view type")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionSeparator"), _vm._v(" "), _c("NcActionButton", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Change view type")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcActionSeparator"), _vm._v(" "), _c("NcActionButton", {
     attrs: {
       "close-after-click": true
     },
@@ -27917,12 +28388,12 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete department")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcDialog", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Delete position")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("NcDialog", {
     attrs: {
       open: _vm.showDialog,
       name: _vm.t("empleados", "Confirm"),
-      message: _vm.t("empleados", "Do you want to delete {departamento}?", {
-        departamento: _vm.data.Nombre
+      message: _vm.t("empleados", "Do you want to delete {position}?", {
+        position: _vm.data.Nombre
       }),
       buttons: _vm.buttons
     },
@@ -27932,35 +28403,43 @@ var render = function render() {
       }
     }
   })], 1)], 1)]), _vm._v(" "), _c("div", {
-    staticClass: "center"
-  }, [_c("div", [_c("h2", [_vm._v(_vm._s(_vm.data.Nombre))])]), _vm._v(" "), _c("div", {
-    staticClass: "rsg-title"
-  }, [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Employees in department")))])]), _vm._v(" "), _c("div", [_vm.preferencias_puestos ? _c("div", {
-    staticClass: "rsg"
+    staticClass: "employees-panel"
+  }, [_c("div", {
+    staticClass: "employees-panel__header"
+  }, [_c("div", [_c("h3", {
+    staticClass: "employees-panel__title"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Employees in position")))]), _vm._v(" "), _c("p", {
+    staticClass: "employees-panel__subtitle"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.employeeCount) + " " + _vm._s(_vm.t("empleados", "people assigned to this position")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("span", {
+    staticClass: "employees-panel__view-badge"
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.preferencias_puestos ? _vm.t("empleados", "Card view") : _vm.t("empleados", "List view")) + "\n\t\t\t\t\t")])]), _vm._v(" "), _vm.preferencias_puestos ? _c("div", {
+    staticClass: "employees-grid-panel"
   }, [_c("ul", {
-    staticClass: "container flex"
+    staticClass: "employees-grid"
   }, _vm._l(_vm.peopleArea.puesto, function (item) {
     return _c("li", {
       key: item.Id_empleados,
-      staticClass: "flex-item"
+      staticClass: "employees-grid__item"
     }, [_c("div", {
-      staticClass: "card"
-    }, [_c("div", [_c("NcAvatar", {
+      staticClass: "employee-card"
+    }, [_c("NcAvatar", {
       attrs: {
         user: item.Id_user,
         "display-name": item.Id_user,
         size: 60
       }
-    })], 1), _vm._v(" "), _c("div", {
-      staticClass: "right"
+    }), _vm._v(" "), _c("div", {
+      staticClass: "employee-card__body"
     }, [_c("div", {
-      staticClass: "card-1"
+      staticClass: "employee-card__name"
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.displayname ? item.displayname : item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
-      staticClass: "card-2"
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")])])])]);
+      staticClass: "employee-card__user"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.Id_user) + "\n\t\t\t\t\t\t\t\t\t")])])], 1)]);
   }), 0)]) : _c("div", {
-    staticClass: "rsgd"
-  }, [_c("ul", _vm._l(_vm.peopleArea.puesto, function (item) {
+    staticClass: "employees-list-panel"
+  }, [_c("ul", {
+    staticClass: "employees-list"
+  }, _vm._l(_vm.peopleArea.puesto, function (item) {
     return _c("NcListItem", {
       key: item.Id_empleados,
       attrs: {
@@ -28003,14 +28482,14 @@ var render = function render() {
   }, [_c("div", {
     staticClass: "modal__content"
   }, [_c("div", {
-    staticClass: "container"
+    staticClass: "modal-form"
   }, [_c("div", {
     staticClass: "form-group"
   }, [_c("NcTextField", {
     attrs: {
       value: _vm.area,
       "v-model": _vm.area,
-      label: _vm.t("empleados", "Department/area name")
+      label: _vm.t("empleados", "Position name")
     },
     on: {
       "update:value": function ($event) {
@@ -47733,6 +48212,44 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.compras-page[data-v-057223c4] {
   color: var(--color-text-maxcontrast);
   text-align: center;
 }
+.request-sections[data-v-057223c4] {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.request-section[data-v-057223c4] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.request-section-header[data-v-057223c4] {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-large);
+  background: var(--color-main-background);
+}
+.request-section-header h4[data-v-057223c4] {
+  margin: 2px 0 0;
+  color: var(--color-main-text);
+  font-size: 20px;
+  font-weight: 800;
+}
+.request-section-header p[data-v-057223c4] {
+  margin: 4px 0 0;
+  color: var(--color-text-maxcontrast);
+  font-size: 13px;
+}
+.request-section--pending .request-section-header[data-v-057223c4] {
+  border-color: var(--color-warning);
+  background: var(--color-warning-hover);
+}
+.request-section--pending .compras-table[data-v-057223c4] {
+  border-left: 4px solid var(--color-warning);
+}
 .detail-panel[data-v-057223c4] {
   margin-bottom: 24px;
 }
@@ -48442,6 +48959,45 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.compras-page[data-v-057223c4] {
 .action-modal-actions[data-v-057223c4] {
     flex-direction: column-reverse;
 }
+.pending-approval-summary[data-v-057223c4] {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid #e6b800;
+    border-radius: var(--border-radius-large);
+    background: #fff8d6;
+}
+.pending-approval-icon[data-v-057223c4] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--border-radius-large);
+    background: var(--color-main-background);
+    color: #7a5a00;
+}
+.pending-approval-content[data-v-057223c4] {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.pending-approval-content strong[data-v-057223c4] {
+    color: var(--color-main-text);
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
+}
+.pending-approval-content span[data-v-057223c4] {
+    overflow: hidden;
+    margin-top: 4px;
+    color: var(--color-text-maxcontrast);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -49021,6 +49577,81 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.envelope .app-content-list-item-icon[
 }
 .file-input[data-v-afd2534e] {
   display: none;
+}
+.employee-empty-state[data-v-afd2534e] {
+  min-height: calc(100vh - var(--header-height) - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.employee-empty-card[data-v-afd2534e] {
+  width: min(720px, 100%);
+  padding: 36px;
+  border-radius: var(--border-radius-large);
+  background: var(--color-main-background);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+.employee-empty-image[data-v-afd2534e] {
+  width: 150px;
+  margin-bottom: 16px;
+  opacity: 0.95;
+}
+.employee-empty-card h2[data-v-afd2534e] {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-main-text);
+}
+.employee-empty-description[data-v-afd2534e] {
+  max-width: 520px;
+  margin: 0 auto 24px;
+  color: var(--color-text-maxcontrast);
+  line-height: 1.5;
+}
+.employee-empty-stats[data-v-afd2534e] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.employee-empty-stat[data-v-afd2534e] {
+  padding: 16px;
+  border-radius: var(--border-radius-large);
+  background: var(--color-background-hover);
+  border: 1px solid var(--color-border);
+}
+.employee-empty-stat strong[data-v-afd2534e] {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-primary-element);
+}
+.employee-empty-stat span[data-v-afd2534e] {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-maxcontrast);
+  font-size: 13px;
+}
+.employee-empty-actions[data-v-afd2534e] {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+@media (max-width: 700px) {
+.employee-empty-state[data-v-afd2534e] {
+    align-items: flex-start;
+    padding: 20px 12px;
+}
+.employee-empty-card[data-v-afd2534e] {
+    padding: 24px 16px;
+}
+.employee-empty-stats[data-v-afd2534e] {
+    grid-template-columns: 1fr;
+}
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -50977,96 +51608,302 @@ __webpack_require__.r(__webpack_exports__);
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, `
-.button-container-profile {
-  float: right;
-  margin-top: -10px;
+.team-details {
+	padding: 20px;
 }
-.container {
-  margin-right: 10px;
-  margin-left: 10px;
-  margin-top: 20px;
-  align-items: center;
-}
-.rsg {
-	padding-top: 16px;
-	padding-bottom: 16px;
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
+.team-hero {
 	display: flex;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-	justify-content: center;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 24px;
+	border: 1px solid var(--color-border);
+	border-radius: 22px;
+	background:
+		radial-gradient(circle at top right, rgba(52, 120, 246, 0.14), transparent 26%),
+		linear-gradient(135deg, var(--color-main-background), var(--color-background-dark));
+	box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
 }
-.rsg-title {
-	background-color: rgba(240, 240, 240, 0.37);
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
+.team-hero__content {
+	flex: 1;
+	min-width: 0;
+}
+.team-hero__eyebrow {
+	display: inline-flex;
+	margin-bottom: 10px;
+	padding: 5px 11px;
+	border-radius: 999px;
+	background: rgba(52, 120, 246, 0.12);
+	color: var(--color-primary-element);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.team-hero__title-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+.team-hero__title {
+	margin: 0;
+	font-size: 28px;
+	line-height: 1.1;
+}
+.team-hero__count {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-weight: 700;
+}
+.team-hero__description {
+	max-width: 680px;
+	margin: 12px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.55;
+}
+.team-hero__meta {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
 	margin-top: 20px;
 }
-.item {
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
-  width: 100px;
-  margin: 10px;
-  border-radius: 15px;
+.team-meta-card {
+	padding: 14px 16px;
+	border: 1px solid rgba(255, 255, 255, 0.65);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.72);
+	backdrop-filter: blur(8px);
 }
-
-/*float layout*/
-.float { max-width: 1200px; margin: 0 auto;
+.team-meta-card__label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
-.float:after { content: "."; display: block; height: 0; clear: both; visibility: hidden;
+.team-meta-card__value {
+	display: block;
+	font-size: 15px;
+	line-height: 1.4;
+	color: var(--color-main-text);
+	word-break: break-word;
 }
-.float-item { float: left;
+.team-hero__actions {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
 }
-
-/*inline-block*/
-.inline-b { max-width:1200px; margin:0 auto;
+.members-panel {
+	margin-top: 20px;
+	padding: 20px;
+	border: 1px solid var(--color-border);
+	border-radius: 22px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), var(--color-main-background));
+	box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
-.inline-b-item { display: inline-block;
+.members-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
 }
-
-/*Flexbox*/
-.flex {
-  padding: 0; margin: 0; list-style: none;
-  display: -webkit-box; display: -moz-box; display: -ms-flexbox; display: -webkit-flex; display: flex;
-  -webkit-flex-flow: row wrap; justify-content: space-around;
+.members-panel__title {
+	margin: 0;
+	font-size: 20px;
 }
-h2 { font-size: 28px; margin-bottom: auto;
+.members-panel__subtitle {
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
 }
-.wrapper { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap;
+.members-panel__view-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-weight: 600;
 }
-.external-label { display: flex; width: 100%; margin-top: 1rem;
+.members-grid-panel,
+.members-list-panel {
+	padding: 8px;
+	border-radius: 18px;
+	background: rgba(148, 163, 184, 0.08);
 }
-.external-label label { padding-top: 7px; padding-right: 14px; white-space: nowrap;
+.members-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 14px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
 }
-.grid { display: grid; grid-template-columns: repeat(1, 500px); gap: 10px;
+.members-grid__item {
+	min-width: 0;
 }
-.card {
-  --gray: rgba(229, 231, 235, 1);
-  width: 350px; display: flex; gap: 1.25rem; border-radius: 1rem;
-  background-color: #fff; padding: 1.5rem;
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
+.member-card {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	height: 100%;
+	padding: 16px;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 18px;
+	background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.96));
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+	transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.card-1 { font-size: 14px; font-weight: bold;
+.member-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
 }
-.right { display: flex; flex: 1 1 0%; flex-direction: column; gap: 1.25rem;
+.member-card__body {
+	min-width: 0;
 }
-.card-2 { font-size: 14px;
+.member-card__name {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	word-break: break-word;
 }
-@keyframes pulse {
-to { opacity: .2;
+.member-card__user {
+	margin-top: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	word-break: break-word;
 }
+.members-list {
+	padding: 0;
+	margin: 0;
+	list-style: none;
 }
-.modal__content { margin: 50px;
+.modal__content {
+	margin: 40px;
 }
-.modal__content h2 { text-align: center;
+.modal-form {
+	display: flex;
+	flex-direction: column;
 }
 .form-group {
 	margin: calc(var(--default-grid-baseline) * 4) 0;
-	display: flex; flex-direction: column; align-items: flex-start;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+.teams-empty-state {
+	min-height: calc(100vh - var(--header-height) - 80px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+}
+.teams-empty-card {
+	width: min(760px, 100%);
+	padding: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+.teams-empty-image {
+	width: 150px;
+	margin-bottom: 16px;
+	opacity: 0.95;
+}
+.teams-empty-card h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+.teams-empty-description {
+	max-width: 560px;
+	margin: 0 auto 24px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+.teams-empty-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 24px 0;
+}
+.teams-empty-item {
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	text-align: left;
+}
+.teams-empty-item strong {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+.teams-empty-item span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.teams-empty-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+@media (max-width: 960px) {
+.team-hero {
+		flex-direction: column;
+}
+.team-hero__meta {
+		grid-template-columns: 1fr;
+}
+.team-hero__actions {
+		justify-content: flex-start;
+}
+}
+@media (max-width: 700px) {
+.team-details {
+		padding: 12px;
+}
+.team-hero,
+	.members-panel {
+		padding: 18px;
+		border-radius: 18px;
+}
+.team-hero__title {
+		font-size: 24px;
+}
+.modal__content {
+		margin: 24px 18px;
+}
+.teams-empty-state {
+		align-items: flex-start;
+		padding: 20px 12px;
+}
+.teams-empty-card {
+		padding: 24px 16px;
+}
+.teams-empty-grid {
+		grid-template-columns: 1fr;
+}
+.teams-empty-item {
+		text-align: center;
+}
 }
 `, ""]);
 // Exports
@@ -53191,94 +54028,301 @@ __webpack_require__.r(__webpack_exports__);
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, `
-.button-container-profile {
-  float: right;
-  margin-top: -10px;
+.area-details {
+	padding: 20px;
 }
-.container {
-  margin-right: 10px;
-  margin-left: 10px;
-  margin-top: 20px;
-  align-items: center;
+.area-hero {
+	display: flex;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 28px;
+	border: 1px solid var(--color-border);
+	border-radius: 24px;
+	background:
+		radial-gradient(circle at top right, rgba(52, 120, 246, 0.16), transparent 28%),
+		linear-gradient(135deg, var(--color-main-background), var(--color-background-dark));
+	box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
-.rsgd {
-	padding-top: 16px;
-	padding-bottom: 16px;
-	border: 1px solid rgb(232, 232, 232);
-	margin-left: 20px;
-	margin-right: 20px;
+.area-hero__content {
+	flex: 1;
+	min-width: 0;
 }
-.rsg-title {
-	background-color: rgba(240, 240, 240, 0.37);
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-	margin-top: 20px;
+.area-hero__eyebrow {
+	display: inline-flex;
+	margin-bottom: 12px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: rgba(52, 120, 246, 0.12);
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
-.item {
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
-  width: 100px;
-  margin: 10px;
-  border-radius: 15px;
+.area-hero__title-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
 }
-.float { max-width: 1200px; margin: 0 auto;
+.area-hero__title {
+	margin: 0;
+	font-size: 34px;
+	line-height: 1.05;
+	letter-spacing: -0.02em;
 }
-.float:after { content: "."; display: block; height: 0; clear: both; visibility: hidden;
+.area-hero__count {
+	display: inline-flex;
+	align-items: center;
+	padding: 8px 14px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 700;
 }
-.float-item { float: left;
+.area-hero__description {
+	max-width: 720px;
+	margin: 14px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.6;
 }
-.inline-b { max-width:1200px; margin:0 auto;
+.area-hero__meta {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
+	margin-top: 22px;
 }
-.inline-b-item { display: inline-block;
+.area-meta-card {
+	padding: 16px 18px;
+	border: 1px solid rgba(255, 255, 255, 0.65);
+	border-radius: 18px;
+	background: rgba(255, 255, 255, 0.72);
+	backdrop-filter: blur(8px);
 }
-.flex {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: space-around;
+.area-meta-card__label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
-h2 { font-size: 28px; margin-bottom: auto;
+.area-meta-card__value {
+	display: block;
+	font-size: 16px;
+	line-height: 1.4;
+	color: var(--color-main-text);
 }
-.wrapper { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap;
+.area-hero__actions {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
 }
-.external-label { display: flex; width: 100%; margin-top: 1rem;
+.employees-panel {
+	margin-top: 22px;
+	padding: 22px;
+	border: 1px solid var(--color-border);
+	border-radius: 24px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), var(--color-main-background));
+	box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
-.external-label label { padding-top: 7px; padding-right: 14px; white-space: nowrap;
+.employees-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 18px;
 }
-.grid { display: grid; grid-template-columns: repeat(1, 500px); gap: 10px;
+.employees-panel__title {
+	margin: 0;
+	font-size: 22px;
 }
-.card {
-  width: 350px;
-  display: flex;
-  gap: 1.25rem;
-  border-radius: 1rem;
-  background-color: #fff;
-  padding: 1.5rem;
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
+.employees-panel__subtitle {
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
 }
-.card-1 { font-size: 14px; font-weight: bold;
+.employees-panel__view-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 8px 14px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 600;
 }
-.right { display: flex; flex: 1 1 0%; flex-direction: column; gap: 1.25rem;
+.employees-grid-panel,
+.employees-list-panel {
+	padding: 8px;
+	border-radius: 20px;
+	background: rgba(148, 163, 184, 0.08);
 }
-.card-2 { font-size: 14px;
+.employees-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 16px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
 }
-@keyframes pulse {
-to { opacity: .2;
+.employees-grid__item {
+	min-width: 0;
 }
+.employee-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	height: 100%;
+	padding: 18px;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 20px;
+	background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.96));
+	box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+	transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.modal__content { margin: 50px;
+.employee-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
 }
-.modal__content h2 { text-align: center;
+.employee-card__body {
+	min-width: 0;
+}
+.employee-card__name {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	word-break: break-word;
+}
+.employee-card__user {
+	margin-top: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	word-break: break-word;
+}
+.employees-list {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+.modal__content {
+	margin: 40px;
+}
+.modal-form {
+	display: flex;
+	flex-direction: column;
 }
 .form-group {
 	margin: calc(var(--default-grid-baseline) * 4) 0;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
+}
+.areas-empty-state {
+	min-height: calc(100vh - var(--header-height) - 80px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+}
+.areas-empty-card {
+	width: min(760px, 100%);
+	padding: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+.areas-empty-image {
+	width: 150px;
+	margin-bottom: 16px;
+	opacity: 0.95;
+}
+.areas-empty-card h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+.areas-empty-description {
+	max-width: 560px;
+	margin: 0 auto 24px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+.areas-empty-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 24px 0;
+}
+.areas-empty-item {
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	text-align: left;
+}
+.areas-empty-item strong {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+.areas-empty-item span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.areas-empty-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+@media (max-width: 960px) {
+.area-hero {
+		flex-direction: column;
+}
+.area-hero__meta {
+		grid-template-columns: 1fr;
+}
+.area-hero__actions {
+		justify-content: flex-start;
+}
+}
+@media (max-width: 700px) {
+.area-details {
+		padding: 12px;
+}
+.area-hero,
+	.employees-panel {
+		padding: 18px;
+		border-radius: 20px;
+}
+.area-hero__title {
+		font-size: 28px;
+}
+.modal__content {
+		margin: 24px 18px;
+}
+.areas-empty-state {
+		align-items: flex-start;
+		padding: 20px 12px;
+}
+.areas-empty-card {
+		padding: 24px 16px;
+}
+.areas-empty-grid {
+		grid-template-columns: 1fr;
+}
+.areas-empty-item {
+		text-align: center;
+}
 }
 `, ""]);
 // Exports
@@ -53472,103 +54516,301 @@ __webpack_require__.r(__webpack_exports__);
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, `
-.button-container-profile {
-  float: right;
-  margin-top: -10px;
+.position-details {
+	padding: 20px;
 }
-.container {
-  margin-right: 10px;
-  margin-left: 10px;
-  margin-top: 20px;
-  align-items: center;
-}
-.rsg {
-	padding-top: 16px;
-	padding-bottom: 16px;
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
+.position-hero {
 	display: flex;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-	justify-content: center;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 24px;
+	border: 1px solid var(--color-border);
+	border-radius: 22px;
+	background:
+		radial-gradient(circle at top right, rgba(52, 120, 246, 0.14), transparent 26%),
+		linear-gradient(135deg, var(--color-main-background), var(--color-background-dark));
+	box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
 }
-.rsg-title {
-	background-color: rgba(240, 240, 240, 0.37);
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-	margin-top: 20px;
+.position-hero__content {
+	flex: 1;
+	min-width: 0;
 }
-.item {
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
-  width: 100px;
-  margin: 10px;
-  border-radius: 15px;
+.position-hero__eyebrow {
+	display: inline-flex;
+	margin-bottom: 10px;
+	padding: 5px 11px;
+	border-radius: 999px;
+	background: rgba(52, 120, 246, 0.12);
+	color: var(--color-primary-element);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
-.float { max-width: 1200px; margin: 0 auto;
-}
-.float:after { content: "."; display: block; height: 0; clear: both; visibility: hidden;
-}
-.float-item { float: left;
-}
-.inline-b { max-width:1200px; margin:0 auto;
-}
-.inline-b-item { display: inline-block;
-}
-.flex {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: space-around;
-}
-h2 { font-size: 28px; margin-bottom: auto;
-}
-.wrapper {
+.position-hero__title-row {
 	display: flex;
-	gap: 4px;
-	align-items: flex-end;
+	align-items: center;
+	gap: 10px;
 	flex-wrap: wrap;
 }
-.external-label { display: flex; width: 100%; margin-top: 1rem;
+.position-hero__title {
+	margin: 0;
+	font-size: 28px;
+	line-height: 1.1;
 }
-.external-label label { padding-top: 7px; padding-right: 14px; white-space: nowrap;
+.position-hero__count {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-weight: 700;
 }
-.grid { display: grid; grid-template-columns: repeat(1, 500px); gap: 10px;
+.position-hero__description {
+	max-width: 680px;
+	margin: 12px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.55;
 }
-.card {
-  --gray: rgba(229, 231, 235, 1);
-  width: 350px;
-  display: flex;
-  gap: 1.25rem;
-  border-radius: 1rem;
-  background-color: #fff;
-  padding: 1.5rem;
-  box-shadow: rgba(0, 41, 0, 0.15) 0 0 11px 1px;
+.position-hero__meta {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
+	margin-top: 20px;
 }
-.card-1 { font-size: 14px; font-weight: bold;
+.position-meta-card {
+	padding: 14px 16px;
+	border: 1px solid rgba(255, 255, 255, 0.65);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.72);
+	backdrop-filter: blur(8px);
 }
-.right { display: flex; flex: 1 1 0%; flex-direction: column; gap: 1.25rem;
+.position-meta-card__label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
-.card-2 { font-size: 14px;
+.position-meta-card__value {
+	display: block;
+	font-size: 15px;
+	line-height: 1.4;
+	color: var(--color-main-text);
 }
-@keyframes pulse {
-to { opacity: .2;
+.position-hero__actions {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
 }
+.employees-panel {
+	margin-top: 20px;
+	padding: 20px;
+	border: 1px solid var(--color-border);
+	border-radius: 22px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), var(--color-main-background));
+	box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
-.modal__content { margin: 50px;
+.employees-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
 }
-.modal__content h2 { text-align: center;
+.employees-panel__title {
+	margin: 0;
+	font-size: 20px;
+}
+.employees-panel__subtitle {
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+}
+.employees-panel__view-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-weight: 600;
+}
+.employees-grid-panel,
+.employees-list-panel {
+	padding: 8px;
+	border-radius: 18px;
+	background: rgba(148, 163, 184, 0.08);
+}
+.employees-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 14px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+.employees-grid__item {
+	min-width: 0;
+}
+.employee-card {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	height: 100%;
+	padding: 16px;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 18px;
+	background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.96));
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+	transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.employee-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+.employee-card__body {
+	min-width: 0;
+}
+.employee-card__name {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	word-break: break-word;
+}
+.employee-card__user {
+	margin-top: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	word-break: break-word;
+}
+.employees-list {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+.modal__content {
+	margin: 40px;
+}
+.modal-form {
+	display: flex;
+	flex-direction: column;
 }
 .form-group {
 	margin: calc(var(--default-grid-baseline) * 4) 0;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
+}
+.positions-empty-state {
+	min-height: calc(100vh - var(--header-height) - 80px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+}
+.positions-empty-card {
+	width: min(760px, 100%);
+	padding: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+.positions-empty-image {
+	width: 150px;
+	margin-bottom: 16px;
+	opacity: 0.95;
+}
+.positions-empty-card h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+.positions-empty-description {
+	max-width: 560px;
+	margin: 0 auto 24px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+.positions-empty-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 24px 0;
+}
+.positions-empty-item {
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	text-align: left;
+}
+.positions-empty-item strong {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+.positions-empty-item span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.positions-empty-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+@media (max-width: 960px) {
+.position-hero {
+		flex-direction: column;
+}
+.position-hero__meta {
+		grid-template-columns: 1fr;
+}
+.position-hero__actions {
+		justify-content: flex-start;
+}
+}
+@media (max-width: 700px) {
+.position-details {
+		padding: 12px;
+}
+.position-hero,
+	.employees-panel {
+		padding: 18px;
+		border-radius: 18px;
+}
+.position-hero__title {
+		font-size: 24px;
+}
+.modal__content {
+		margin: 24px 18px;
+}
+.positions-empty-state {
+		align-items: flex-start;
+		padding: 20px 12px;
+}
+.positions-empty-card {
+		padding: 24px 16px;
+}
+.positions-empty-grid {
+		grid-template-columns: 1fr;
+}
+.positions-empty-item {
+		text-align: center;
+}
 }
 `, ""]);
 // Exports

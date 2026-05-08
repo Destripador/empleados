@@ -21,31 +21,65 @@ class CompraPermisosService {
 		$this->groupManager = $groupManager;
 	}
 
+	public function isNextcloudAdmin(string $userId): bool {
+		return $this->groupManager->isInGroup($userId, 'admin');
+	}
+
+	public function isComprasAdmin(string $userId): bool {
+		return $this->isNextcloudAdmin($userId)
+			|| $this->isInConfiguredGroup($userId, 'compras_grupo_admin', 'compras_admin');
+	}
+
+	public function isComprasApprover(string $userId): bool {
+		return $this->isInConfiguredGroup($userId, 'compras_grupo_autorizadores', 'compras_autorizadores');
+	}
+
+	public function isComprasAccounting(string $userId): bool {
+		return $this->isInConfiguredGroup($userId, 'compras_grupo_contabilidad', 'compras_contabilidad');
+	}
+
+	public function isComprasRequester(string $userId): bool {
+		return $this->isInConfiguredGroup($userId, 'compras_grupo_solicitantes', 'compras_solicitantes');
+	}
+
+	public function canAccessModule(string $userId): bool {
+		return $this->isComprasAdmin($userId)
+			|| $this->isComprasApprover($userId)
+			|| $this->isComprasAccounting($userId)
+			|| $this->isComprasRequester($userId);
+	}
+
 	public function canCreateSolicitud(string $userId): bool {
-		return $userId !== '';
+		return $this->isComprasAdmin($userId)
+			|| $this->isComprasRequester($userId);
 	}
 
 	public function canViewAll(string $userId): bool {
-		return $this->isInConfiguredGroup($userId, 'compras_grupo_admin', 'compras_admin')
-			|| $this->isInConfiguredGroup($userId, 'compras_grupo_contabilidad', 'compras_contabilidad');
+		return $this->isComprasAdmin($userId)
+			|| $this->isComprasApprover($userId)
+			|| $this->isComprasAccounting($userId);
 	}
 
 	public function canApprove(string $userId): bool {
-		return $this->isInConfiguredGroup($userId, 'compras_grupo_admin', 'compras_admin')
-			|| $this->isInConfiguredGroup($userId, 'compras_grupo_autorizadores', 'compras_autorizadores');
+		return $this->isComprasAdmin($userId)
+			|| $this->isComprasApprover($userId);
 	}
 
 	public function canProcessPurchase(string $userId): bool {
-		return $this->isInConfiguredGroup($userId, 'compras_grupo_admin', 'compras_admin')
-			|| $this->isInConfiguredGroup($userId, 'compras_grupo_contabilidad', 'compras_contabilidad');
+		return $this->isComprasAdmin($userId)
+			|| $this->isComprasAccounting($userId);
+	}
+
+	public function canSelectRequester(string $userId): bool {
+		return $this->isComprasAdmin($userId);
 	}
 
 	public function canViewSolicitud(string $userId, string $ownerUserId): bool {
 		if ($userId === $ownerUserId) {
-			return true;
+			return $this->canAccessModule($userId);
 		}
 
-		return $this->canViewAll($userId) || $this->canApprove($userId);
+		return $this->canViewAll($userId);
 	}
 
 	private function isInConfiguredGroup(string $userId, string $configName, string $defaultGroup): bool {
@@ -79,10 +113,10 @@ class CompraPermisosService {
 
 		return (string)$row['Data'];
 	}
-	public function canSelectRequester(string $userId): bool {
-		return $this->groupManager->isInGroup($userId, 'admin')
-			|| $this->canViewAll($userId)
-			|| $this->canApprove($userId)
-			|| $this->canProcessPurchase($userId);
+	public function getApproverGroupIds(): array {
+		return array_values(array_unique(array_filter([
+			$this->getConfig('compras_grupo_admin', 'compras_admin'),
+			$this->getConfig('compras_grupo_autorizadores', 'compras_autorizadores'),
+		])));
 	}
 }

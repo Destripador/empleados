@@ -2,15 +2,83 @@
 <template>
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys(data).length == 0">
-			<div class="emptycontent">
-				<img src="../../../../../img/crowesito-think.png" width="170px">
-				<h2>{{ t('empleados', 'Select an area for more details') }}</h2>
+			<div class="empty">
+				<div v-if="Object.keys(data).length === 0" class="areas-empty-state">
+					<div class="areas-empty-card">
+						<img class="areas-empty-image"
+							src="../../../../../img/crowesito-think.png"
+							alt="Empty area state">
+
+						<h2>{{ t('empleados', 'Select an area for more details') }}</h2>
+
+						<p class="areas-empty-description">
+							{{ t('empleados', 'Choose a department or area from the list to view assigned employees, edit its information or change the display mode.') }}
+						</p>
+
+						<div class="areas-empty-grid">
+							<div class="areas-empty-item">
+								<strong>{{ t('empleados', 'View employees') }}</strong>
+								<span>{{ t('empleados', 'Check who belongs to each department or area.') }}</span>
+							</div>
+
+							<div class="areas-empty-item">
+								<strong>{{ t('empleados', 'Edit areas') }}</strong>
+								<span>{{ t('empleados', 'Update area names and parent departments.') }}</span>
+							</div>
+
+							<div class="areas-empty-item">
+								<strong>{{ t('empleados', 'Change view') }}</strong>
+								<span>{{ t('empleados', 'Switch between card view and list view.') }}</span>
+							</div>
+						</div>
+
+						<div class="areas-empty-actions">
+							<NcButton type="primary" @click="$root.$emit('reload')">
+								{{ t('empleados', 'Refresh areas') }}
+							</NcButton>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div v-else>
-			<div>
-				<div class="container container-search-profile">
-					<div class="button-container-profile">
+			<div class="area-details">
+				<div class="area-hero">
+					<div class="area-hero__content">
+						<span class="area-hero__eyebrow">
+							{{ t('empleados', 'Area details') }}
+						</span>
+						<div class="area-hero__title-row">
+							<h2 class="area-hero__title">
+								{{ data.Nombre }}
+							</h2>
+							<span class="area-hero__count">
+								{{ employeeCount }} {{ t('empleados', 'employees') }}
+							</span>
+						</div>
+						<p class="area-hero__description">
+							{{ t('empleados', 'Review the assigned employees, update the structure of the area and switch between different display modes.') }}
+						</p>
+						<div class="area-hero__meta">
+							<div class="area-meta-card">
+								<span class="area-meta-card__label">{{ t('empleados', 'Department / area') }}</span>
+								<strong class="area-meta-card__value">{{ data.Nombre }}</strong>
+							</div>
+							<div class="area-meta-card">
+								<span class="area-meta-card__label">{{ t('empleados', 'Parent area') }}</span>
+								<strong class="area-meta-card__value">
+									{{ data.Id_padre || t('empleados', 'No parent area') }}
+								</strong>
+							</div>
+							<div class="area-meta-card">
+								<span class="area-meta-card__label">{{ t('empleados', 'Display mode') }}</span>
+								<strong class="area-meta-card__value">
+									{{ preferencias_areas ? t('empleados', 'Cards') : t('empleados', 'List') }}
+								</strong>
+							</div>
+						</div>
+					</div>
+					<div class="area-hero__actions">
 						<NcActions>
 							<template #icon>
 								<AccountCog :size="20" />
@@ -48,34 +116,32 @@
 						</NcActions>
 					</div>
 				</div>
-			</div>
-			<div class="center">
-				<div>
-					<div>
-						<h2>{{ data.Nombre }}</h2>
+				<div class="employees-panel">
+					<div class="employees-panel__header">
+						<div>
+							<h3 class="employees-panel__title">
+								{{ t('empleados', 'Employees in department / Area') }}
+							</h3>
+							<p class="employees-panel__subtitle">
+								{{ employeeCount }} {{ t('empleados', 'people assigned to this area') }}
+							</p>
+						</div>
+						<span class="employees-panel__view-badge">
+							{{ preferencias_areas ? t('empleados', 'Card view') : t('empleados', 'List view') }}
+						</span>
 					</div>
-					<div v-if="data.Id_padre">
-						<h1>{{ data.Id_padre }}</h1>
-					</div>
-				</div>
-				<div class="rsg-title">
-					<h3>{{ t('empleados', 'Employees in department / Area') }}</h3>
-				</div>
-				<div>
-					<div v-if="preferencias_areas" class="rsg">
-						<ul class="container flex">
+					<div v-if="preferencias_areas" class="employees-grid-panel">
+						<ul class="employees-grid">
 							<li v-for="(item) in peopleArea.area"
 								:key="item.Id_empleados"
-								class="flex-item">
-								<div class="card">
-									<div>
-										<NcAvatar :user="item.Id_user" :display-name="item.Id_user" :size="60" />
-									</div>
-									<div class="right">
-										<div class="card-1">
+								class="employees-grid__item">
+								<div class="employee-card">
+									<NcAvatar :user="item.Id_user" :display-name="item.Id_user" :size="60" />
+									<div class="employee-card__body">
+										<div class="employee-card__name">
 											{{ item.displayname ? item.displayname : item.Id_user }}
 										</div>
-										<div class="card-2">
+										<div class="employee-card__user">
 											{{ item.Id_user }}
 										</div>
 									</div>
@@ -83,8 +149,8 @@
 							</li>
 						</ul>
 					</div>
-					<div v-else class="rsgd">
-						<ul>
+					<div v-else class="employees-list-panel">
+						<ul class="employees-list">
 							<NcListItem v-for="(item) in peopleArea.area"
 								:key="item.Id_empleados"
 								bold
@@ -112,7 +178,7 @@
 			:name="t('empleados', 'Edit')"
 			@close="closeModal">
 			<div class="modal__content">
-				<div class="container">
+				<div class="modal-form">
 					<div class="form-group">
 						<NcTextField
 							:value.sync="area"
@@ -207,6 +273,10 @@ export default {
 	},
 
 	computed: {
+		employeeCount() {
+			return this.peopleArea?.area?.length || 0
+		},
+
 		buttons() {
 			return [
 				{
@@ -309,86 +379,349 @@ export default {
 </script>
 
 <style>
-.button-container-profile {
-  float: right;
-  margin-top: -10px;
-}
-.container {
-  margin-right: 10px;
-  margin-left: 10px;
-  margin-top: 20px;
-  align-items: center;
-}
-.rsgd {
-	padding-top: 16px;
-	padding-bottom: 16px;
-	border: 1px solid rgb(232, 232, 232);
-	margin-left: 20px;
-	margin-right: 20px;
-}
-.rsg-title {
-	background-color: rgba(240, 240, 240, 0.37);
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-	margin-top: 20px;
+.area-details {
+	padding: 20px;
 }
 
-.item {
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
-  width: 100px;
-  margin: 10px;
-  border-radius: 15px;
+.area-hero {
+	display: flex;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 28px;
+	border: 1px solid var(--color-border);
+	border-radius: 24px;
+	background:
+		radial-gradient(circle at top right, rgba(52, 120, 246, 0.16), transparent 28%),
+		linear-gradient(135deg, var(--color-main-background), var(--color-background-dark));
+	box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
 
-.float { max-width: 1200px; margin: 0 auto; }
-.float:after { content: "."; display: block; height: 0; clear: both; visibility: hidden; }
-.float-item { float: left; }
-
-.inline-b { max-width:1200px; margin:0 auto; }
-.inline-b-item { display: inline-block; }
-
-.flex {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: space-around;
+.area-hero__content {
+	flex: 1;
+	min-width: 0;
 }
 
-h2 { font-size: 28px; margin-bottom: auto; }
-
-.wrapper { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap; }
-.external-label { display: flex; width: 100%; margin-top: 1rem; }
-.external-label label { padding-top: 7px; padding-right: 14px; white-space: nowrap; }
-
-.grid { display: grid; grid-template-columns: repeat(1, 500px); gap: 10px; }
-
-.card {
-  width: 350px;
-  display: flex;
-  gap: 1.25rem;
-  border-radius: 1rem;
-  background-color: #fff;
-  padding: 1.5rem;
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
+.area-hero__eyebrow {
+	display: inline-flex;
+	margin-bottom: 12px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: rgba(52, 120, 246, 0.12);
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
-.card-1 { font-size: 14px; font-weight: bold; }
-.right { display: flex; flex: 1 1 0%; flex-direction: column; gap: 1.25rem; }
-.card-2 { font-size: 14px; }
 
-@keyframes pulse { to { opacity: .2; } }
+.area-hero__title-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
 
-.modal__content { margin: 50px; }
-.modal__content h2 { text-align: center; }
+.area-hero__title {
+	margin: 0;
+	font-size: 34px;
+	line-height: 1.05;
+	letter-spacing: -0.02em;
+}
+
+.area-hero__count {
+	display: inline-flex;
+	align-items: center;
+	padding: 8px 14px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.area-hero__description {
+	max-width: 720px;
+	margin: 14px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.6;
+}
+
+.area-hero__meta {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
+	margin-top: 22px;
+}
+
+.area-meta-card {
+	padding: 16px 18px;
+	border: 1px solid rgba(255, 255, 255, 0.65);
+	border-radius: 18px;
+	background: rgba(255, 255, 255, 0.72);
+	backdrop-filter: blur(8px);
+}
+
+.area-meta-card__label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.area-meta-card__value {
+	display: block;
+	font-size: 16px;
+	line-height: 1.4;
+	color: var(--color-main-text);
+}
+
+.area-hero__actions {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+}
+
+.employees-panel {
+	margin-top: 22px;
+	padding: 22px;
+	border: 1px solid var(--color-border);
+	border-radius: 24px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), var(--color-main-background));
+	box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.employees-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 18px;
+}
+
+.employees-panel__title {
+	margin: 0;
+	font-size: 22px;
+}
+
+.employees-panel__subtitle {
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.employees-panel__view-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 8px 14px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.employees-grid-panel,
+.employees-list-panel {
+	padding: 8px;
+	border-radius: 20px;
+	background: rgba(148, 163, 184, 0.08);
+}
+
+.employees-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 16px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.employees-grid__item {
+	min-width: 0;
+}
+
+.employee-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	height: 100%;
+	padding: 18px;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 20px;
+	background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.96));
+	box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+	transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.employee-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
+}
+
+.employee-card__body {
+	min-width: 0;
+}
+
+.employee-card__name {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	word-break: break-word;
+}
+
+.employee-card__user {
+	margin-top: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	word-break: break-word;
+}
+
+.employees-list {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.modal__content {
+	margin: 40px;
+}
+
+.modal-form {
+	display: flex;
+	flex-direction: column;
+}
 
 .form-group {
 	margin: calc(var(--default-grid-baseline) * 4) 0;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
+}
+.areas-empty-state {
+	min-height: calc(100vh - var(--header-height) - 80px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+}
+
+.areas-empty-card {
+	width: min(760px, 100%);
+	padding: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+
+.areas-empty-image {
+	width: 150px;
+	margin-bottom: 16px;
+	opacity: 0.95;
+}
+
+.areas-empty-card h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+
+.areas-empty-description {
+	max-width: 560px;
+	margin: 0 auto 24px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+
+.areas-empty-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 24px 0;
+}
+
+.areas-empty-item {
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	text-align: left;
+}
+
+.areas-empty-item strong {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+
+.areas-empty-item span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.areas-empty-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+
+@media (max-width: 960px) {
+	.area-hero {
+		flex-direction: column;
+	}
+
+	.area-hero__meta {
+		grid-template-columns: 1fr;
+	}
+
+	.area-hero__actions {
+		justify-content: flex-start;
+	}
+}
+
+@media (max-width: 700px) {
+	.area-details {
+		padding: 12px;
+	}
+
+	.area-hero,
+	.employees-panel {
+		padding: 18px;
+		border-radius: 20px;
+	}
+
+	.area-hero__title {
+		font-size: 28px;
+	}
+
+	.modal__content {
+		margin: 24px 18px;
+	}
+
+	.areas-empty-state {
+		align-items: flex-start;
+		padding: 20px 12px;
+	}
+
+	.areas-empty-card {
+		padding: 24px 16px;
+	}
+
+	.areas-empty-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.areas-empty-item {
+		text-align: center;
+	}
 }
 </style>

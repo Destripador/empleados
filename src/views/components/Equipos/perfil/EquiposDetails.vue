@@ -2,75 +2,135 @@
 <template>
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys(data).length === 0">
-			<div class="emptycontent">
-				<img src="../../../../../img/crowesito-think.png" width="170px">
-				<h2>{{ t('empleados', 'Select a team for more details') }}</h2>
+			<div v-if="Object.keys(data).length === 0" class="teams-empty-state">
+				<div class="teams-empty-card">
+					<img class="teams-empty-image" src="../../../../../img/crowesito-think.png" alt="Empty team state">
+
+					<h2>{{ t('empleados', 'Select a team for more details') }}</h2>
+
+					<p class="teams-empty-description">
+						{{ t('empleados', 'Choose a team from the list to view its members, team lead and available actions.') }}
+					</p>
+
+					<div class="teams-empty-grid">
+						<div class="teams-empty-item">
+							<strong>{{ t('empleados', 'Team members') }}</strong>
+							<span>{{ t('empleados', 'Review the employees assigned to each work team.') }}</span>
+						</div>
+
+						<div class="teams-empty-item">
+							<strong>{{ t('empleados', 'Team lead') }}</strong>
+							<span>{{ t('empleados', 'Check or update the person responsible for the team.') }}</span>
+						</div>
+
+						<div class="teams-empty-item">
+							<strong>{{ t('empleados', 'Change view') }}</strong>
+							<span>{{ t('empleados', 'Switch between card view and list view.') }}</span>
+						</div>
+					</div>
+
+					<div class="teams-empty-actions">
+						<NcButton type="primary" @click="$root.$emit('reload')">
+							{{ t('empleados', 'Refresh teams') }}
+						</NcButton>
+					</div>
+				</div>
 			</div>
 		</div>
 
 		<div v-else>
-			<div class="container-search-profile">
-				<div class="button-container-profile">
-					<NcActions>
-						<template #icon>
-							<AccountCog :size="20" />
-						</template>
-
-						<NcActionButton :close-after-click="true" @click="showEdit()">
+			<div class="team-details">
+				<div class="team-hero">
+					<div class="team-hero__content">
+						<span class="team-hero__eyebrow">
+							{{ t('empleados', 'Team details') }}
+						</span>
+						<div class="team-hero__title-row">
+							<h2 class="team-hero__title">{{ data.Nombre }}</h2>
+							<span class="team-hero__count">
+								{{ memberCount }} {{ t('empleados', 'members') }}
+							</span>
+						</div>
+						<p class="team-hero__description">
+							{{ t('empleados', 'Review the people assigned to this team, update its lead and switch between available display modes.') }}
+						</p>
+						<div class="team-hero__meta">
+							<div class="team-meta-card">
+								<span class="team-meta-card__label">{{ t('empleados', 'Team') }}</span>
+								<strong class="team-meta-card__value">{{ data.Nombre }}</strong>
+							</div>
+							<div class="team-meta-card">
+								<span class="team-meta-card__label">{{ t('empleados', 'Team lead') }}</span>
+								<strong class="team-meta-card__value">{{ data.Id_jefe_equipo || t('empleados', 'Not assigned') }}</strong>
+							</div>
+							<div class="team-meta-card">
+								<span class="team-meta-card__label">{{ t('empleados', 'Display mode') }}</span>
+								<strong class="team-meta-card__value">
+									{{ preferencias_equipos ? t('empleados', 'Cards') : t('empleados', 'List') }}
+								</strong>
+							</div>
+						</div>
+					</div>
+					<div class="team-hero__actions">
+						<NcActions>
 							<template #icon>
-								<AccountEdit :size="20" />
+								<AccountCog :size="20" />
 							</template>
-							{{ t('empleados', 'Enable editing') }}
-						</NcActionButton>
 
-						<NcActionButton :close-after-click="true" @click="ChangeView()">
-							<template #icon>
-								<AccountEdit :size="20" />
-							</template>
-							{{ t('empleados', 'Change view type') }}
-						</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="showEdit()">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								{{ t('empleados', 'Enable editing') }}
+							</NcActionButton>
 
-						<NcActionSeparator />
+							<NcActionButton :close-after-click="true" @click="ChangeView()">
+								<template #icon>
+									<AccountEdit :size="20" />
+								</template>
+								{{ t('empleados', 'Change view type') }}
+							</NcActionButton>
 
-						<NcActionButton :close-after-click="true" @click="showDialog = true">
-							<template #icon>
-								<DeleteAlert :size="20" />
-							</template>
-							{{ t('empleados', 'Delete team') }}
-						</NcActionButton>
+							<NcActionSeparator />
 
-						<NcDialog
-							:open.sync="showDialog"
-							:name="t('empleados', 'Confirm')"
-							:message="t('empleados', 'Do you want to delete {name}?', { name: data.Nombre })"
-							:buttons="buttons" />
-					</NcActions>
+							<NcActionButton :close-after-click="true" @click="showDialog = true">
+								<template #icon>
+									<DeleteAlert :size="20" />
+								</template>
+								{{ t('empleados', 'Delete team') }}
+							</NcActionButton>
+
+							<NcDialog
+								:open.sync="showDialog"
+								:name="t('empleados', 'Confirm')"
+								:message="t('empleados', 'Do you want to delete {name}?', { name: data.Nombre })"
+								:buttons="buttons" />
+						</NcActions>
+					</div>
 				</div>
-			</div>
-
-			<div class="center">
-				<div>
-					<h2>{{ data.Nombre }}</h2>
-				</div>
-
-				<div class="rsg-title">
-					<h3>{{ t('empleados', 'Team') }}</h3>
-				</div>
-
-				<div>
+				<div class="members-panel">
+					<div class="members-panel__header">
+						<div>
+							<h3 class="members-panel__title">{{ t('empleados', 'Team members') }}</h3>
+							<p class="members-panel__subtitle">
+								{{ memberCount }} {{ t('empleados', 'people assigned to this team') }}
+							</p>
+						</div>
+						<span class="members-panel__view-badge">
+							{{ preferencias_equipos ? t('empleados', 'Card view') : t('empleados', 'List view') }}
+						</span>
+					</div>
 					<!-- Cards -->
-					<div v-if="preferencias_equipos" class="rsg">
-						<ul class="container flex">
-							<li v-for="item in peopleArea.equipo" :key="item.Id_empleados" class="flex-item">
-								<div class="card">
-									<div>
-										<NcAvatar :user="item.Id_user" :display-name="item.Id_user" :size="60" />
-									</div>
-									<div class="right">
-										<div class="card-1">
+					<div v-if="preferencias_equipos" class="members-grid-panel">
+						<ul class="members-grid">
+							<li v-for="item in peopleArea.equipo" :key="item.Id_empleados" class="members-grid__item">
+								<div class="member-card">
+									<NcAvatar :user="item.Id_user" :display-name="item.Id_user" :size="60" />
+									<div class="member-card__body">
+										<div class="member-card__name">
 											{{ item.displayname ? item.displayname : item.Id_user }}
 										</div>
-										<div class="card-2">
+										<div class="member-card__user">
 											{{ item.Id_user }}
 										</div>
 									</div>
@@ -80,8 +140,8 @@
 					</div>
 
 					<!-- List -->
-					<div v-else class="rsgd">
-						<ul>
+					<div v-else class="members-list-panel">
+						<ul class="members-list">
 							<NcListItem
 								v-for="item in peopleArea.equipo"
 								:key="item.Id_empleados"
@@ -110,7 +170,7 @@
 			:name="t('empleados', 'Edit')"
 			@close="closeModal">
 			<div class="modal__content">
-				<div class="container">
+				<div class="modal-form">
 					<div class="form-group">
 						<NcTextField
 							:value.sync="equipo_nombre"
@@ -215,6 +275,12 @@ export default {
 		}
 	},
 
+	computed: {
+		memberCount() {
+			return this.peopleArea?.equipo?.length || 0
+		},
+	},
+
 	mounted() {
 		this.$root.$on('show', (data) => { this.show = data })
 		this.preferencias_equipos = localStorage.getItem('nextcloud_empleados_preferencias_equipos')
@@ -302,87 +368,350 @@ export default {
 </script>
 
 <style>
-.button-container-profile {
-  float: right;
-  margin-top: -10px;
+.team-details {
+	padding: 20px;
 }
-.container {
-  margin-right: 10px;
-  margin-left: 10px;
-  margin-top: 20px;
-  align-items: center;
-}
-.rsg {
-	padding-top: 16px;
-	padding-bottom: 16px;
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
+
+.team-hero {
 	display: flex;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
-	justify-content: center;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 24px;
+	border: 1px solid var(--color-border);
+	border-radius: 22px;
+	background:
+		radial-gradient(circle at top right, rgba(52, 120, 246, 0.14), transparent 26%),
+		linear-gradient(135deg, var(--color-main-background), var(--color-background-dark));
+	box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
 }
-.rsg-title {
-	background-color: rgba(240, 240, 240, 0.37);
-	border: 1px solid rgb(232, 232, 232);
-	border-radius: 3px;
-	margin-left: 20px;
-	margin-right: 20px;
-	width: auto;
+
+.team-hero__content {
+	flex: 1;
+	min-width: 0;
+}
+
+.team-hero__eyebrow {
+	display: inline-flex;
+	margin-bottom: 10px;
+	padding: 5px 11px;
+	border-radius: 999px;
+	background: rgba(52, 120, 246, 0.12);
+	color: var(--color-primary-element);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.team-hero__title-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.team-hero__title {
+	margin: 0;
+	font-size: 28px;
+	line-height: 1.1;
+}
+
+.team-hero__count {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.team-hero__description {
+	max-width: 680px;
+	margin: 12px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.55;
+}
+
+.team-hero__meta {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
 	margin-top: 20px;
 }
 
-.item {
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
-  width: 100px;
-  margin: 10px;
-  border-radius: 15px;
+.team-meta-card {
+	padding: 14px 16px;
+	border: 1px solid rgba(255, 255, 255, 0.65);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.72);
+	backdrop-filter: blur(8px);
 }
 
-/*float layout*/
-.float { max-width: 1200px; margin: 0 auto; }
-.float:after { content: "."; display: block; height: 0; clear: both; visibility: hidden; }
-.float-item { float: left; }
-
-/*inline-block*/
-.inline-b { max-width:1200px; margin:0 auto; }
-.inline-b-item { display: inline-block; }
-
-/*Flexbox*/
-.flex {
-  padding: 0; margin: 0; list-style: none;
-  display: -webkit-box; display: -moz-box; display: -ms-flexbox; display: -webkit-flex; display: flex;
-  -webkit-flex-flow: row wrap; justify-content: space-around;
+.team-meta-card__label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
 
-h2 { font-size: 28px; margin-bottom: auto; }
-
-.wrapper { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap; }
-
-.external-label { display: flex; width: 100%; margin-top: 1rem; }
-.external-label label { padding-top: 7px; padding-right: 14px; white-space: nowrap; }
-
-.grid { display: grid; grid-template-columns: repeat(1, 500px); gap: 10px; }
-
-.card {
-  --gray: rgba(229, 231, 235, 1);
-  width: 350px; display: flex; gap: 1.25rem; border-radius: 1rem;
-  background-color: #fff; padding: 1.5rem;
-  box-shadow: rgba(0, 41, 0, 0.15) 0px 0px 11px 1px;
+.team-meta-card__value {
+	display: block;
+	font-size: 15px;
+	line-height: 1.4;
+	color: var(--color-main-text);
+	word-break: break-word;
 }
 
-.card-1 { font-size: 14px; font-weight: bold; }
-.right { display: flex; flex: 1 1 0%; flex-direction: column; gap: 1.25rem; }
-.card-2 { font-size: 14px; }
+.team-hero__actions {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+}
 
-@keyframes pulse { to { opacity: .2; } }
+.members-panel {
+	margin-top: 20px;
+	padding: 20px;
+	border: 1px solid var(--color-border);
+	border-radius: 22px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), var(--color-main-background));
+	box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
 
-.modal__content { margin: 50px; }
-.modal__content h2 { text-align: center; }
+.members-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
+}
+
+.members-panel__title {
+	margin: 0;
+	font-size: 20px;
+}
+
+.members-panel__subtitle {
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+}
+
+.members-panel__view-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.members-grid-panel,
+.members-list-panel {
+	padding: 8px;
+	border-radius: 18px;
+	background: rgba(148, 163, 184, 0.08);
+}
+
+.members-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 14px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.members-grid__item {
+	min-width: 0;
+}
+
+.member-card {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	height: 100%;
+	padding: 16px;
+	border: 1px solid rgba(148, 163, 184, 0.2);
+	border-radius: 18px;
+	background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.96));
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+	transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.member-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+
+.member-card__body {
+	min-width: 0;
+}
+
+.member-card__name {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	word-break: break-word;
+}
+
+.member-card__user {
+	margin-top: 6px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	word-break: break-word;
+}
+
+.members-list {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.modal__content {
+	margin: 40px;
+}
+
+.modal-form {
+	display: flex;
+	flex-direction: column;
+}
 
 .form-group {
 	margin: calc(var(--default-grid-baseline) * 4) 0;
-	display: flex; flex-direction: column; align-items: flex-start;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+.teams-empty-state {
+	min-height: calc(100vh - var(--header-height) - 80px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+}
+
+.teams-empty-card {
+	width: min(760px, 100%);
+	padding: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+	text-align: center;
+}
+
+.teams-empty-image {
+	width: 150px;
+	margin-bottom: 16px;
+	opacity: 0.95;
+}
+
+.teams-empty-card h2 {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+
+.teams-empty-description {
+	max-width: 560px;
+	margin: 0 auto 24px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.5;
+}
+
+.teams-empty-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 24px 0;
+}
+
+.teams-empty-item {
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	text-align: left;
+}
+
+.teams-empty-item strong {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+
+.teams-empty-item span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.teams-empty-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+
+@media (max-width: 960px) {
+	.team-hero {
+		flex-direction: column;
+	}
+
+	.team-hero__meta {
+		grid-template-columns: 1fr;
+	}
+
+	.team-hero__actions {
+		justify-content: flex-start;
+	}
+}
+
+@media (max-width: 700px) {
+	.team-details {
+		padding: 12px;
+	}
+
+	.team-hero,
+	.members-panel {
+		padding: 18px;
+		border-radius: 18px;
+	}
+
+	.team-hero__title {
+		font-size: 24px;
+	}
+
+	.modal__content {
+		margin: 24px 18px;
+	}
+
+	.teams-empty-state {
+		align-items: flex-start;
+		padding: 20px 12px;
+	}
+
+	.teams-empty-card {
+		padding: 24px 16px;
+	}
+
+	.teams-empty-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.teams-empty-item {
+		text-align: center;
+	}
 }
 </style>

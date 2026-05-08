@@ -9447,6 +9447,9 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+const COMPRAS_GROUPS = ['compras_solicitantes', 'compras_autorizadores', 'compras_admin', 'compras_contabilidad'];
+const COMPRAS_ADMIN_GROUP = 'compras_admin';
+const GLOBAL_ADMIN_GROUP = 'admin';
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'EmpleadosSettings',
   components: {
@@ -9466,7 +9469,8 @@ __webpack_require__.r(__webpack_exports__);
     NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcButton,
     NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcCheckboxRadioSwitch,
     NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcNoteCard,
-    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcTextField
+    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcTextField,
+    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_5__.NcModal
   },
   data() {
     return {
@@ -9517,6 +9521,19 @@ __webpack_require__.r(__webpack_exports__);
     },
     filteredUsuarios() {
       return this.filterUsers(this.Usuarios, this.pendingSearch, this.getUsuarioDisplayName);
+    },
+    permisosGruposDecorados() {
+      return this.permisosGrupos.map(group => {
+        return {
+          ...group,
+          description: this.getPermisoDescription(group.id),
+          restriction: this.getPermisoRestriction(group.id),
+          disabled: this.isPermissionDisabled(group.id)
+        };
+      });
+    },
+    hasAdminPermissionSelected() {
+      return this.selectedPermisosGroups.includes(GLOBAL_ADMIN_GROUP) || this.selectedPermisosGroups.includes(COMPRAS_ADMIN_GROUP);
     }
   },
   async mounted() {
@@ -9675,7 +9692,7 @@ __webpack_require__.r(__webpack_exports__);
         if (payload.status !== 'ok') {
           throw new Error(payload.message || 'No se pudieron cargar los permisos.');
         }
-        this.selectedPermisosGroups = payload.data.groups || [];
+        this.selectedPermisosGroups = this.normalizeSelectedPermisosGroups(payload.data.groups || []);
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Error loading user permissions: {error}', {
           error: String(err)
@@ -9685,12 +9702,19 @@ __webpack_require__.r(__webpack_exports__);
         this.loadingPermisos = false;
       }
     },
-    togglePermisoGroup(groupId) {
-      if (this.selectedPermisosGroups.includes(groupId)) {
-        this.selectedPermisosGroups = this.selectedPermisosGroups.filter(id => id !== groupId);
+    togglePermisoGroup(groupId, checked) {
+      const shouldEnable = Boolean(checked);
+      if (shouldEnable && this.isPermissionDisabled(groupId)) {
         return;
       }
-      this.selectedPermisosGroups.push(groupId);
+      let groups = [...this.selectedPermisosGroups];
+      if (!shouldEnable) {
+        groups = groups.filter(id => id !== groupId);
+        this.selectedPermisosGroups = this.normalizeSelectedPermisosGroups(groups);
+        return;
+      }
+      groups.push(groupId);
+      this.selectedPermisosGroups = this.normalizeSelectedPermisosGroups(groups);
     },
     async savePermisosUsuario() {
       if (!this.selectedPermisosUid) {
@@ -9699,16 +9723,17 @@ __webpack_require__.r(__webpack_exports__);
       }
       this.loadingPermisos = true;
       try {
+        const groups = this.normalizeSelectedPermisosGroups(this.selectedPermisosGroups);
         const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/permisos/usuario/{uid}', {
           uid: this.selectedPermisosUid
         }), {
-          groups: this.selectedPermisosGroups
+          groups
         });
         const payload = this.getPayload(response);
         if (payload.status !== 'ok') {
           throw new Error(payload.message || 'No se pudieron guardar los permisos.');
         }
-        this.selectedPermisosGroups = payload.data.groups || [];
+        this.selectedPermisosGroups = this.normalizeSelectedPermisosGroups(payload.data.groups || groups);
         this.showPermisosDialog = false;
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Permissions updated'));
       } catch (err) {
@@ -9757,6 +9782,51 @@ __webpack_require__.r(__webpack_exports__);
     },
     getUsuarioIndex(item) {
       return this.Usuarios.findIndex(user => user.uid === item.uid);
+    },
+    normalizeSelectedPermisosGroups(groups) {
+      const normalized = [...new Set(groups.filter(Boolean))];
+      if (normalized.includes(GLOBAL_ADMIN_GROUP)) {
+        return normalized.filter(id => {
+          return id === GLOBAL_ADMIN_GROUP || !COMPRAS_GROUPS.includes(id);
+        });
+      }
+      if (normalized.includes(COMPRAS_ADMIN_GROUP)) {
+        return normalized.filter(id => {
+          return id === COMPRAS_ADMIN_GROUP || !COMPRAS_GROUPS.includes(id);
+        });
+      }
+      return normalized;
+    },
+    isPermissionDisabled(groupId) {
+      if (this.selectedPermisosGroups.includes(GLOBAL_ADMIN_GROUP)) {
+        return COMPRAS_GROUPS.includes(groupId);
+      }
+      if (this.selectedPermisosGroups.includes(COMPRAS_ADMIN_GROUP)) {
+        return COMPRAS_GROUPS.includes(groupId) && groupId !== COMPRAS_ADMIN_GROUP;
+      }
+      return false;
+    },
+    getPermisoDescription(groupId) {
+      const descriptions = {
+        admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Global Nextcloud administrator. This role already has full access and should be assigned only when strictly necessary.'),
+        compras_admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Full control of the purchases module: view all requests, create requests, select requester, approve, reject and process purchases.'),
+        compras_solicitantes: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can access the purchases module, create own purchase requests, edit drafts, send them for approval and follow their own requests.'),
+        compras_autorizadores: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can view purchase requests from all users and approve or reject requests pending approval.'),
+        compras_contabilidad: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can view purchase requests from all users for accounting review and tracking. Cannot approve or reject requests.'),
+        recursos_humanos: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can manage employee-related information in the employees module. This does not grant purchase approval permissions.')
+      };
+      return descriptions[groupId] || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Controlled group used to grant access to a specific module or workflow.');
+    },
+    getPermisoRestriction(groupId) {
+      const restrictions = {
+        admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Do not combine with purchase groups unless there is a specific reason.'),
+        compras_admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Includes requester, approver and accounting purchase permissions. Other purchase groups will be ignored.'),
+        compras_solicitantes: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Does not allow viewing requests from other users.'),
+        compras_autorizadores: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Does not allow selecting another requester when creating a request.'),
+        compras_contabilidad: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Read-only for approvals: approval and rejection actions are hidden.'),
+        recursos_humanos: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Independent from purchase permissions.')
+      };
+      return restrictions[groupId] || '';
     }
   }
 });
@@ -10809,14 +10879,15 @@ var render = function render() {
       },
       proxy: true
     }])
-  })], 1)])])], 1)], 1), _vm._v(" "), _c("NcDialog", {
+  })], 1)])])], 1)], 1), _vm._v(" "), _vm.showPermisosDialog ? _c("NcModal", {
+    staticClass: "permisos-dialog-modal",
     attrs: {
-      open: _vm.showPermisosDialog,
+      size: "large",
       name: _vm.t("empleados", "User permissions")
     },
     on: {
-      "update:open": function ($event) {
-        _vm.showPermisosDialog = $event;
+      close: function ($event) {
+        _vm.showPermisosDialog = false;
       }
     }
   }, [_c("div", {
@@ -10843,21 +10914,32 @@ var render = function render() {
     }
   })], 1) : _c("div", {
     staticClass: "permisos-groups"
-  }, [_vm._l(_vm.permisosGrupos, function (group) {
+  }, [_vm.hasAdminPermissionSelected ? _c("NcNoteCard", {
+    staticClass: "permisos-admin-note",
+    attrs: {
+      type: "warning"
+    }
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Administrator permission already includes all purchase permissions Additional purchase groups are not required.")) + "\n\t\t\t\t")]) : _vm._e(), _vm._v(" "), _vm._l(_vm.permisosGruposDecorados, function (group) {
     return _c("NcCheckboxRadioSwitch", {
       key: group.id,
       attrs: {
         checked: _vm.selectedPermisosGroups.includes(group.id),
+        disabled: group.disabled,
         type: "switch"
       },
       on: {
         "update:checked": function ($event) {
-          return _vm.togglePermisoGroup(group.id);
+          return _vm.togglePermisoGroup(group.id, $event);
         }
       }
     }, [_c("span", {
-      staticClass: "permission-option"
-    }, [_c("strong", [_vm._v(_vm._s(group.label))]), _vm._v(" "), _c("small", [_vm._v(_vm._s(group.id))])])]);
+      staticClass: "permission-option",
+      class: {
+        "permission-option--disabled": group.disabled
+      }
+    }, [_c("strong", [_vm._v(_vm._s(group.label))]), _vm._v(" "), _c("small", [_vm._v(_vm._s(group.id))]), _vm._v(" "), _c("span", {
+      staticClass: "permission-description"
+    }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(group.description) + "\n\t\t\t\t\t\t")]), _vm._v(" "), group.restriction ? _c("em", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(group.restriction) + "\n\t\t\t\t\t\t")]) : _vm._e()])]);
   }), _vm._v(" "), _vm.permisosGrupos.length === 0 ? _c("NcEmptyContent", {
     attrs: {
       name: _vm.t("empleados", "No permission groups found")
@@ -10889,7 +10971,7 @@ var render = function render() {
     on: {
       click: _vm.savePermisosUsuario
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save permissions")) + "\n\t\t\t\t")])], 1)], 1)]), _vm._v(" "), _c("NcDialog", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save permissions")) + "\n\t\t\t\t")])], 1)], 1)]) : _vm._e(), _vm._v(" "), _c("NcDialog", {
     attrs: {
       open: _vm.showDeactiveUserDialog,
       name: _vm.t("empleados", "Confirmation"),
@@ -25208,28 +25290,38 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	background: var(--color-background-dark);
 	font-size: 12px;
 }
+.permisos-dialog-modal {
+	--permissions-modal-width: min(980px, calc(100vw - 48px));
+}
 .permisos-dialog {
-	min-width: min(560px, calc(100vw - 48px));
-	padding-top: 4px;
+	max-height: min(78vh, 780px);
+	padding: 4px 4px 0;
+	overflow-y: auto;
 }
 .permisos-user-card {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 14px;
+	margin-bottom: 14px;
+	padding: 16px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
-	margin-bottom: 14px;
 }
 .permisos-user-card div {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
+	min-width: 0;
+}
+.permisos-user-card strong {
+	color: var(--color-main-text);
+	font-size: 16px;
 }
 .permisos-user-card span {
-	opacity: .65;
+	color: var(--color-text-maxcontrast);
 	font-size: 12px;
+	overflow-wrap: anywhere;
 }
 .permisos-help {
 	margin: 0 0 18px;
@@ -25240,31 +25332,66 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	padding: 28px 0;
 }
 .permisos-groups {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	padding: 4px 0;
+	padding: 0px 10px 0px 5px;
+}
+.permisos-admin-note {
+	grid-column: 1 / -1;
+	margin: 0 0 4px;
+}
+.permisos-groups .checkbox-radio-switch {
+	align-items: flex-start;
+	min-height: 100%;
+	padding: 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+.permisos-groups .checkbox-radio-switch:hover {
+	background: var(--color-background-hover);
 }
 .permission-option {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
-	line-height: 1.3;
+	gap: 4px;
+	min-width: 0;
+	line-height: 1.35;
+}
+.permission-option strong {
+	color: var(--color-main-text);
+	font-size: 14px;
 }
 .permission-option small {
 	color: var(--color-text-maxcontrast);
 	font-size: 12px;
+	overflow-wrap: anywhere;
+}
+.permission-description {
+	margin-top: 2px;
+	color: var(--color-main-text);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.permission-option em {
+	margin-top: 2px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-style: normal;
+	line-height: 1.35;
+}
+.permission-option--disabled {
+	opacity: .55;
 }
 .permisos-actions {
-	margin-top: 22px;
+	position: sticky;
+	right: 0;
+	bottom: 0;
 	display: flex;
 	justify-content: flex-end;
 	gap: 10px;
-}
-.loader-settings {
-	display: flex;
-	justify-content: center;
-	padding: 40px 0;
+	margin-top: 22px;
+	padding: 14px 0 4px;
+	border-top: 1px solid var(--color-border);
+	background: var(--color-main-background);
 }
 @media (max-width: 800px) {
 .settings-header,
@@ -25285,6 +25412,16 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 .empleados-table th,
 	.empleados-table td {
 		padding: 10px;
+}
+.permisos-dialog-modal {
+		--permissions-modal-width: calc(100vw - 24px);
+}
+.permisos-groups {
+		grid-template-columns: 1fr;
+}
+.permisos-dialog {
+		width: calc(100vw - 40px);
+		max-height: 78vh;
 }
 }
 `, ""]);
@@ -143583,4 +143720,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=ec73ce20ad19e608f3dd
+//# sourceMappingURL=empleados-settings.js.map?v=78b472d08028cfce1270

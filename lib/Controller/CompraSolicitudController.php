@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Controller;
 
 use Exception;
+use OCA\Empleados\Service\CompraPermisosService;
 use OCA\Empleados\Service\CompraSolicitudService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -15,17 +16,20 @@ use OCP\IUserSession;
 class CompraSolicitudController extends Controller {
 
 	private CompraSolicitudService $service;
+	private CompraPermisosService $permisosService;
 	private IUserSession $userSession;
 
 	public function __construct(
 		string $appName,
 		IRequest $request,
 		CompraSolicitudService $service,
+		CompraPermisosService $permisosService,
 		IUserSession $userSession
 	) {
 		parent::__construct($appName, $request);
 
 		$this->service = $service;
+		$this->permisosService = $permisosService;
 		$this->userSession = $userSession;
 	}
 
@@ -34,6 +38,8 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function index(): DataResponse {
 		try {
+			$this->requireModuleAccess();
+
 			$userId = $this->getUserId();
 
 			$todas = $this->toBool($this->request->getParam('todas', false));
@@ -57,6 +63,8 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function pendientes(): DataResponse {
 		try {
+			$this->requireModuleAccess();
+
 			$userId = $this->getUserId();
 
 			$limit = (int)$this->request->getParam('limit', 100);
@@ -79,6 +87,8 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function show(int $id): DataResponse {
 		try {
+			$this->requireModuleAccess();
+
 			return new DataResponse([
 				'success' => true,
 				'data' => $this->service->obtenerDetalle($id, $this->getUserId()),
@@ -93,9 +103,17 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function create(): DataResponse {
 		try {
+			$userId = $this->getUserId();
+
+			$this->requireModuleAccess();
+
+			if (!$this->permisosService->canCreateSolicitud($userId)) {
+				throw new Exception('No tienes permisos para crear solicitudes de compra.');
+			}
+
 			return new DataResponse([
 				'success' => true,
-				'data' => $this->service->crear($this->getPayload(), $this->getUserId()),
+				'data' => $this->service->crear($this->getPayload(), $userId),
 			], Http::STATUS_CREATED);
 		} catch (Exception $e) {
 			return $this->errorResponse($e);
@@ -103,10 +121,12 @@ class CompraSolicitudController extends Controller {
 	}
 
 	/**
-	* @NoAdminRequired
-	*/
+	 * @NoAdminRequired
+	 */
 	public function update(int $id): DataResponse {
 		try {
+			$this->requireModuleAccess();
+
 			$payload = $this->getPayload();
 
 			return new DataResponse([
@@ -127,6 +147,8 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function sendToApproval(int $id): DataResponse {
 		try {
+			$this->requireModuleAccess();
+
 			return new DataResponse([
 				'success' => true,
 				'data' => $this->service->enviarAutorizacion($id, $this->getUserId()),
@@ -141,13 +163,21 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function approve(int $id): DataResponse {
 		try {
+			$userId = $this->getUserId();
+
+			$this->requireModuleAccess();
+
+			if (!$this->permisosService->canApprove($userId)) {
+				throw new Exception('No tienes permisos para aprobar solicitudes de compra.');
+			}
+
 			$payload = $this->getPayload();
 
 			return new DataResponse([
 				'success' => true,
 				'data' => $this->service->autorizar(
 					$id,
-					$this->getUserId(),
+					$userId,
 					isset($payload['comentario']) ? (string)$payload['comentario'] : null
 				),
 			]);
@@ -161,11 +191,41 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function reject(int $id): DataResponse {
 		try {
+			$userId = $this->getUserId();
+
+			$this->requireModuleAccess();
+
+			if (!$this->permisosService->canApprove($userId)) {
+				throw new Exception('No tienes permisos para rechazar solicitudes de compra.');
+			}
+
 			$payload = $this->getPayload();
 
 			return new DataResponse([
 				'success' => true,
 				'data' => $this->service->rechazar(
+					$id,
+					$userId,
+					isset($payload['comentario']) ? (string)$payload['comentario'] : null
+				),
+			]);
+		} catch (Exception $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	/**
+	 * @NoAdminRequired
+	 */
+	public function cancel(int $id): DataResponse {
+		try {
+			$this->requireModuleAccess();
+
+			$payload = $this->getPayload();
+
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->service->cancelar(
 					$id,
 					$this->getUserId(),
 					isset($payload['comentario']) ? (string)$payload['comentario'] : null
@@ -173,6 +233,30 @@ class CompraSolicitudController extends Controller {
 			]);
 		} catch (Exception $e) {
 			return $this->errorResponse($e);
+		}
+	}
+
+	/**
+	 * @NoAdminRequired
+	 */
+	public function context(): DataResponse {
+		try {
+			$this->requireModuleAccess();
+
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->service->contexto($this->getUserId()),
+			]);
+		} catch (Exception $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	private function requireModuleAccess(): void {
+		$userId = $this->getUserId();
+
+		if (!$this->permisosService->canAccessModule($userId)) {
+			throw new Exception('No tienes permisos para acceder al módulo de compras.');
 		}
 	}
 
@@ -208,42 +292,28 @@ class CompraSolicitudController extends Controller {
 	}
 
 	private function errorResponse(Exception $e): DataResponse {
+		$message = $e->getMessage();
+		$status = Http::STATUS_BAD_REQUEST;
+
+		$permissionPatterns = [
+			'permiso',
+			'permisos',
+			'no autorizado',
+			'unauthorized',
+			'forbidden',
+			'acceso',
+		];
+
+		foreach ($permissionPatterns as $pattern) {
+			if (stripos($message, $pattern) !== false) {
+				$status = Http::STATUS_FORBIDDEN;
+				break;
+			}
+		}
+
 		return new DataResponse([
 			'success' => false,
-			'message' => $e->getMessage(),
-		], Http::STATUS_BAD_REQUEST);
-	}
-
-	/**
-	* @NoAdminRequired
-	*/
-	public function cancel(int $id): DataResponse {
-		try {
-			$payload = $this->getPayload();
-
-			return new DataResponse([
-				'success' => true,
-				'data' => $this->service->cancelar(
-					$id,
-					$this->getUserId(),
-					isset($payload['comentario']) ? (string)$payload['comentario'] : null
-				),
-			]);
-		} catch (Exception $e) {
-			return $this->errorResponse($e);
-		}
-	}
-	/**
-	* @NoAdminRequired
-	*/
-	public function context(): DataResponse {
-		try {
-			return new DataResponse([
-				'success' => true,
-				'data' => $this->service->contexto($this->getUserId()),
-			]);
-		} catch (Exception $e) {
-			return $this->errorResponse($e);
-		}
+			'message' => $message,
+		], $status);
 	}
 }
