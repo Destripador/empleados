@@ -82,6 +82,13 @@ class CompraPermisosService {
 		return $this->canViewAll($userId);
 	}
 
+	public function getApproverGroupIds(): array {
+		return array_values(array_unique(array_filter([
+			$this->getConfig('compras_grupo_admin', 'compras_admin'),
+			$this->getConfig('compras_grupo_autorizadores', 'compras_autorizadores'),
+		])));
+	}
+
 	private function isInConfiguredGroup(string $userId, string $configName, string $defaultGroup): bool {
 		$group = $this->getConfig($configName, $defaultGroup);
 
@@ -107,16 +114,10 @@ class CompraPermisosService {
 		$row = $result->fetch();
 		$result->closeCursor();
 
-		if (!$row || !isset($row['Data']) || $row['Data'] === null) {
+		if (!$row || !isset($row['Data']) || $row['Data'] === null || trim((string)$row['Data']) === '') {
 			return $default;
 		}
 
 		return (string)$row['Data'];
-	}
-	public function getApproverGroupIds(): array {
-		return array_values(array_unique(array_filter([
-			$this->getConfig('compras_grupo_admin', 'compras_admin'),
-			$this->getConfig('compras_grupo_autorizadores', 'compras_autorizadores'),
-		])));
 	}
 }

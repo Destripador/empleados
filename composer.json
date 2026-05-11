@@ -31,6 +31,7 @@
 	"require": {
 		"php": "^8.1",
 		"bamarni/composer-bin-plugin": "^1.8",
+		"dompdf/dompdf": "^3.1",
 		"nesbot/carbon": "^3.10"
 	},
 	"require-dev": {

@@ -4,28 +4,22 @@
 	</NcAppContent>
 
 	<NcAppContent v-else name="Loading">
-		<div class="main-content">
-			<!-- State: can request -->
-			<div v-if="userdata.state == 1" class="pack_card">
-				<div class="pack_name">
-					{{ t('empleados', 'You can now request your savings!') }}
+		<div class="savings-page">
+			<section class="savings-hero">
+				<div class="savings-hero__copy">
+					<p class="section-label">
+						{{ t('empleados', 'Savings loan') }}
+					</p>
+					<h2>{{ t('empleados', 'Request and track your savings loan') }}</h2>
+					<p>
+						{{ t('empleados', 'Check your available balance, request a loan and review previous movements from one place.') }}
+					</p>
 				</div>
 
-				<p class="description">
-					{{ t('empleados', 'Request up to {percent} of your accumulated Savings Fund balance, considering both the employee and employer contributions.', { percent: '90%' }) }}
-				</p>
-
-				<div class="bottom">
-					<div class="price_container">
-						<span class="devise">$</span>
-						<span class="price">{{ employee[0].Fondo_ahorro }}</span>
-						<span class="date">
-							<small><strong>{{ t('empleados', 'my savings') }}</strong></small>
-						</span>
-					</div>
-
+				<div class="hero-actions">
 					<NcButton
-						aria-label="center (default)"
+						v-if="userdata.state == 1"
+						:aria-label="t('empleados', 'Create request')"
 						type="primary"
 						wide
 						@click="showSolicitud()">
@@ -35,21 +29,37 @@
 						{{ t('empleados', 'Create request') }}
 					</NcButton>
 				</div>
-			</div>
+			</section>
 
-			<!-- State: request sent -->
-			<div v-if="userdata.state == 2">
-				<NcNoteCard
-					type="success"
-					:text="t('empleados', 'Your request has been sent, please wait for a response.')" />
-			</div>
+			<section class="summary-grid">
+				<article class="summary-card summary-card-accent">
+					<span>{{ t('empleados', 'Current savings') }}</span>
+					<strong>{{ ahorroFormateado }}</strong>
+					<small>{{ t('empleados', 'Savings fund balance') }}</small>
+				</article>
 
-			<!-- State: read-only -->
-			<div v-if="userdata.state == 0 || !userdata.state">
-				<NcNoteCard
-					type="info"
-					:text="t('empleados', 'Your profile is in read-only mode.')" />
-			</div>
+				<article class="summary-card">
+					<span>{{ t('empleados', 'Available to request') }}</span>
+					<strong>{{ aproxFormateado }}</strong>
+					<small>{{ t('empleados', 'Up to {percent} of your balance', { percent: '90%' }) }}</small>
+				</article>
+
+				<article class="summary-card">
+					<span>{{ t('empleados', 'Request status') }}</span>
+					<strong>{{ estadoSolicitud.label }}</strong>
+					<small>{{ estadoSolicitud.description }}</small>
+				</article>
+			</section>
+
+			<NcNoteCard
+				v-if="userdata.state == 2"
+				type="success"
+				:text="t('empleados', 'Your request has been sent, please wait for a response.')" />
+
+			<NcNoteCard
+				v-if="userdata.state == 0 || !userdata.state"
+				type="info"
+				:text="t('empleados', 'Your profile is in read-only mode.')" />
 		</div>
 
 		<!-- Request modal -->
@@ -60,42 +70,25 @@
 			:name="t('empleados', 'Request')"
 			@close="showSolicitud()">
 			<div class="modal__content">
-				<div class="semi-container">
-					<div class="content-box">
-						<div style="padding: 25px; display: flex;">
-							<div>
-								<ul class="list-style">
-									<li>
-										<p class="mb-0">
-											{{ t('empleados', 'On June 30th, the deposit corresponding to the Savings Fund Loan will be made. This loan does not accrue interest.') }}
-										</p>
-									</li>
-									<li>
-										<p class="mb-0">
-											{{ t('empleados', 'The available amount may be up to {percent} of the total accumulated to date, considering both the worker and the employer contributions.', { percent: '90%' }) }}
-										</p>
-									</li>
-									<li>
-										<p class="mb-0">
-											{{ t('empleados', 'In this form, the amount must be entered in pesos. If you wish to request a specific percentage, you can indicate it in the notes field.') }}
-										</p>
-									</li>
-									<li>
-										<p class="mb-0">
-											<strong>{{ t('empleados', 'Important:') }}</strong>
-											{{ t('empleados', 'Carefully verify the information before submitting your request, as it cannot be canceled or modified.') }}
-										</p>
-									</li>
-								</ul>
-							</div>
+				<div class="request-layout">
+					<div class="request-info">
+						<p class="section-label">
+							{{ t('empleados', 'Loan conditions') }}
+						</p>
+						<h3>{{ t('empleados', 'Before submitting') }}</h3>
+						<ul class="info-list">
+							<li>{{ t('empleados', 'On June 30th, the deposit corresponding to the Savings Fund Loan will be made. This loan does not accrue interest.') }}</li>
+							<li>{{ t('empleados', 'The available amount may be up to {percent} of the total accumulated to date, considering both the worker and the employer contributions.', { percent: '90%' }) }}</li>
+							<li>{{ t('empleados', 'Enter the amount in pesos. If you wish to request a specific percentage, add it in the notes field.') }}</li>
+							<li>{{ t('empleados', 'Carefully verify the information before submitting your request, as it cannot be canceled or modified.') }}</li>
+						</ul>
+					</div>
+
+					<div class="request-form">
+						<div class="available-card">
+							<span>{{ t('empleados', 'Maximum available') }}</span>
+							<strong>{{ aproxFormateado }}</strong>
 						</div>
-					</div>
-
-					<div class="mymoney">
-						{{ t('empleados', '90% of your savings is: {amount}', { amount: aproxFormateado }) }}
-					</div>
-
-					<div class="form-box">
 						<NcTextField
 							:model-value="cantidadFormateada"
 							:label="t('empleados', 'Amount to request')"
@@ -109,36 +102,28 @@
 							</template>
 						</NcTextField>
 
-						<br>
-
 						<NcTextArea
 							v-model="notas"
 							:label="t('empleados', 'Notes')"
 							:placeholder="t('empleados', 'Notes')" />
 
-						<br>
+						<NcCheckboxRadioSwitch
+							:checked.sync="acept_terms"
+							value="true"
+							name="acept_terms">
+							<strong class="terms-text">
+								{{ t('empleados', 'I authorize to deduct from my savings the corresponding amount according to the loan conditions.') }}
+							</strong>
+						</NcCheckboxRadioSwitch>
 
-						<div>
-							<div class="center-box">
-								<NcCheckboxRadioSwitch
-									:checked.sync="acept_terms"
-									value="true"
-									name="acept_terms">
-									<strong style="font-size: 12px; margin-left: 10px;">
-										{{ t('empleados', 'I authorize to deduct from my savings the corresponding amount according to the loan conditions.') }}
-									</strong>
-								</NcCheckboxRadioSwitch>
-							</div>
-
-							<div class="center-box">
-								<NcButton
-									style="margin-top: 20px;"
-									:text="t('empleados', 'Submit request')"
-									type="primary"
-									@click="EnviarSolicitud()">
-									{{ t('empleados', 'Submit request') }}
-								</NcButton>
-							</div>
+						<div class="form-actions">
+							<NcButton
+								:text="t('empleados', 'Submit request')"
+								type="primary"
+								:disabled="!isFormValid"
+								@click="EnviarSolicitud()">
+								{{ t('empleados', 'Submit request') }}
+							</NcButton>
 						</div>
 					</div>
 				</div>
@@ -214,18 +199,60 @@ export default {
 			partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 			return partes.join('.')
 		},
+
+		ahorroFormateado() {
+			return this.formatMoney(this.toNumber(this.employee?.[0]?.Fondo_ahorro))
+		},
+
+		estadoSolicitud() {
+			if (Number(this.userdata.state) === 1) {
+				return {
+					label: t('empleados', 'Available'),
+					description: t('empleados', 'You can submit a new savings loan request.'),
+				}
+			}
+
+			if (Number(this.userdata.state) === 2) {
+				return {
+					label: t('empleados', 'Pending review'),
+					description: t('empleados', 'Your request was sent and is waiting for approval.'),
+				}
+			}
+
+			return {
+				label: t('empleados', 'Read-only'),
+				description: t('empleados', 'Requests are currently disabled for your profile.'),
+			}
+		},
+
+		isFormValid() {
+			return this.acept_terms[0] === 'true'
+				&& this.cantidad !== ''
+				&& Number(this.cantidad) > 0
+				&& Number(this.cantidad) <= this.aproxValor
+		},
 	},
 
 	mounted() {
 		this.employee[0].Fondo_ahorro = this.employee[0].Fondo_ahorro === null ? '0' : this.employee[0].Fondo_ahorro
-		this.aproxValor = Number(this.employee[0].Fondo_ahorro.replace(',', '')) * 0.9
-		this.aproxFormateado = Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(this.aproxValor)
+		this.aproxValor = this.toNumber(this.employee[0].Fondo_ahorro) * 0.9
+		this.aproxFormateado = this.formatMoney(this.aproxValor)
 		this.getAll()
 	},
 
 	methods: {
 		// expone t en template si lo quieres usar como método
 		t,
+
+		toNumber(value) {
+			const normalized = String(value ?? '0').replace(/,/g, '')
+			const number = Number(normalized)
+			return Number.isFinite(number) ? number : 0
+		},
+
+		formatMoney(value) {
+			return Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value) || 0)
+		},
 
 		async getAll() {
 			this.loading = true
@@ -310,139 +337,165 @@ export default {
 }
 </script>
 
-<style>
-.pack_card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border-radius: 0.5rem;
-  border: 2px solid rgb(223, 223, 223);
-  padding: 1.5rem 1rem 1rem 1rem;
-  margin-top: 1rem;
-  background-color: #fff;
-  max-width: 100%;
+<style scoped>
+.savings-page {
+	display: grid;
+	gap: 18px;
+	padding: 20px;
 }
 
-.banner {
-  position: absolute;
-  left: 0px;
-  right: 0px;
-  top: -2rem;
-  display: flex;
-  justify-content: center;
+.savings-hero,
+.summary-card,
+.request-info,
+.request-form {
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
-.banner_tag {
-  display: flex;
-  height: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background-color: rgb(99 102 241);
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #fff;
+.savings-hero {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 22px;
+	background: linear-gradient(180deg, var(--color-main-background) 0%, var(--color-background-hover) 100%);
 }
 
-.pack_name {
-  margin-bottom: 0.5rem;
-  text-align: center;
-  font-size: 1.5rem;
-  line-height: 2rem;
-  font-weight: 700;
-  color: rgb(31 41 55 );
+.section-label {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
 }
 
-.description {
-  margin: 0 auto 2rem auto;
-  text-align: center;
-  color: rgb(107 114 128 );
+.savings-hero h2,
+.request-info h3 {
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 24px;
+	line-height: 1.2;
 }
 
-.bottom {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+.savings-hero p {
+	max-width: 720px;
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.45;
 }
 
-.price_container {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0.25rem;
+.hero-actions {
+	min-width: 190px;
 }
 
-.devise {
-  align-self: flex-start;
-  color: rgb( 75 85 99 );
+.summary-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
 }
 
-.price {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
-  font-weight: 700;
-  color: rgb(31 41 55 );
+.summary-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+	padding: 16px;
 }
 
-.date {
-  color: rgb(107 114 128 );
+.summary-card-accent {
+	border-color: rgba(37, 99, 235, .22);
+	background: linear-gradient(180deg, rgba(37, 99, 235, .08), rgba(37, 99, 235, .02)), var(--color-main-background);
 }
 
-.main-content {
-	margin-top: 50px;
-	margin-left: 20px;
-	margin-right: 20px;
+.summary-card span,
+.available-card span {
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
 }
 
-.container{
-  padding-left: 50px;
-  padding-right: 24px;
+.summary-card strong,
+.available-card strong {
+	color: var(--color-main-text);
+	font-size: 26px;
+	line-height: 1.1;
 }
-.semi-container{
-  padding-left: 24px;
-  padding-right: 24px;
+
+.summary-card small {
+	color: var(--color-text-maxcontrast);
+	line-height: 1.35;
 }
-.board-title {
-  margin-right: 10px;
-  margin-top: 14px;
-  font-size: 25px;
-  display: flex;
-  align-items: center;
-  font-weight: bold;
-  .icon {
-    margin-right: 8px;
-  }
+
+.modal__content {
+	padding: 22px;
 }
-.content-box{
-  margin-top: 15px;
-  margin-bottom: 10px;
-  -moz-border-radius:50px;
-  -webkit-border-radius:50px;
-  background-color: #f8f9fa;
-  border-radius: 10px;
+
+.request-layout {
+	display: grid;
+	grid-template-columns: minmax(260px, .9fr) minmax(320px, 1.1fr);
+	gap: 18px;
 }
-.list-style {
-  list-style-type: square;
+
+.request-info,
+.request-form {
+	padding: 18px;
 }
-.mymoney {
-  padding: 10px;
-  margin: 10px 10px 10px 10px;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 700;
+
+.info-list {
+	display: grid;
+	gap: 10px;
+	margin: 16px 0 0;
+	padding-left: 18px;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.45;
 }
-.center-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+
+.request-form {
+	display: grid;
+	gap: 14px;
 }
-.form-box {
-  margin: 10px 10px 10px 10px;
-  padding: 10px;
+
+.available-card {
+	display: grid;
+	gap: 4px;
+	padding: 14px;
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-background-hover);
+}
+
+.terms-text {
+	margin-left: 8px;
+	font-size: 13px;
+	line-height: 1.35;
+}
+
+.form-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
+@media (max-width: 800px) {
+	.savings-page {
+		padding: 12px;
+	}
+
+	.savings-hero,
+	.request-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.savings-hero {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.summary-grid {
+		grid-template-columns: 1fr;
+	}
 }
 </style>

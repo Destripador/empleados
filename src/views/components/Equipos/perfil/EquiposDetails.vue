@@ -46,7 +46,9 @@
 							{{ t('empleados', 'Team details') }}
 						</span>
 						<div class="team-hero__title-row">
-							<h2 class="team-hero__title">{{ data.Nombre }}</h2>
+							<h2 class="team-hero__title">
+								{{ data.Nombre }}
+							</h2>
 							<span class="team-hero__count">
 								{{ memberCount }} {{ t('empleados', 'members') }}
 							</span>
@@ -111,7 +113,9 @@
 				<div class="members-panel">
 					<div class="members-panel__header">
 						<div>
-							<h3 class="members-panel__title">{{ t('empleados', 'Team members') }}</h3>
+							<h3 class="members-panel__title">
+								{{ t('empleados', 'Team members') }}
+							</h3>
 							<p class="members-panel__subtitle">
 								{{ memberCount }} {{ t('empleados', 'people assigned to this team') }}
 							</p>

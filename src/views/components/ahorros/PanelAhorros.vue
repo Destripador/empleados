@@ -5,21 +5,33 @@
 				<NcLoadingIcon :size="64" appearance="dark" name="Loading on light background" />
 			</div>
 		</div>
-		<div v-else>
+		<div v-else class="panel-page">
 			<div v-if="historial.length >= 0">
-				<div class="container">
-					<div style="display: flex; gap: 12px; flex: 1">
-						<div>
-							<h2 class="board-title">
-								<Archive :size="20"
-									decorative
-									class="icon"
-									style="margin-top: 4px;" />
-								<span>{{ t('empleados', 'Pending requests') }}</span>
-							</h2>
-						</div>
+				<section class="panel-header">
+					<div>
+						<p class="section-label">
+							{{ t('empleados', 'Savings loans') }}
+						</p>
+						<h2>
+							<Archive :size="22"
+								decorative
+								class="icon" />
+							<span>{{ t('empleados', 'Pending requests') }}</span>
+						</h2>
+						<p>{{ t('empleados', 'Review employee loan requests, filter by status and export the period.') }}</p>
+					</div>
 
-						<div style="margin-left: auto; margin-right: 0; margin-top: 10px;">
+					<NcButton alignment="end" type="primary" @click="showModal">
+						<template #icon>
+							<DatabaseExport :size="20" />
+						</template>
+						{{ t('empleados', 'export') }}
+					</NcButton>
+				</section>
+
+				<section class="filters-card">
+					<div class="filters-grid">
+						<div>
 							<NcSelect v-model="options_estado_values"
 								class="container__select"
 								:input-label="t('empleados', 'status')"
@@ -31,63 +43,63 @@
 						<div>
 							<NcSelect v-model="options_fechas_value"
 								class="container__select"
-								style="margin-top: 10px;"
-								:input-label="t('empleados', 'status')"
+								:input-label="t('empleados', 'Year')"
 								:options="options_fechas"
 								required
 								@option:selected="gethistorial()" />
 						</div>
-
-						<div style="margin-top: 10px;">
-							<NcButton alignment="end" type="primary" @click="showModal">
-								<template #icon>
-									<DatabaseExport :size="20" />
-								</template>
-								{{ t('empleados', 'export') }}
-							</NcButton>
-						</div>
 					</div>
-				</div>
-				<ul style="padding: 10px;">
-					<li v-for="(item, itemIndex) in historial" :key="item.id_historial">
-						<NcListItem
-							:name="item.displayname"
-							:bold="false"
-							@click.prevent="showModaldetails(itemIndex)">
-							<template #icon>
+
+					<div class="request-summary">
+						<span>{{ t('empleados', 'Requests') }}</span>
+						<strong>{{ historial.length }}</strong>
+						<small>{{ options_estado_values }} · {{ options_fechas_value }}</small>
+					</div>
+				</section>
+
+				<section v-if="historial.length > 0" class="requests-list">
+					<article
+						v-for="(item, itemIndex) in historial"
+						:key="item.id_historial"
+						class="request-card">
+						<div class="request-person" @click.prevent="showModaldetails(itemIndex)">
+							<div>
 								<NcAvatar disable-menu
 									:size="44"
 									:user="item.uid"
 									:display-name="item.uid" />
-							</template>
-							<template #name>
-								<span style="display: flex; gap: 0.5rem; color: var(--color-primary);">
-									{{ item.displayname }}
-								</span>
-							</template>
-							<template v-if="item.nota" #subname>
-								{{ item.nota }}
-							</template>
-							<template #details>
-								${{ item.cantidad_solicitada }}
-							</template>
-							<template #actions>
-								<NcActionButton @click="showModaldetails(itemIndex)">
-									<template #icon>
-										<Eye :size="20" />
-									</template>
-									{{ t('empleados', 'View request') }}
-								</NcActionButton>
-								<NcActionButton v-if="item.estado == 0" @click="accion('aceptar', item.id_historial, item.id_user)">
-									{{ t('empleados', 'Approve') }}
-								</NcActionButton>
-								<NcActionButton v-if="item.estado == 0" @click="accion('denegar', item.id_historial, item.id_user)">
-									{{ t('empleados', 'Delete') }}
-								</NcActionButton>
-							</template>
-						</NcListItem>
-					</li>
-				</ul>
+							</div>
+							<div>
+								<strong>{{ item.displayname }}</strong>
+								<span>{{ item.nota || t('empleados', 'No note provided.') }}</span>
+							</div>
+						</div>
+
+						<div class="request-amount">
+							<span>{{ t('empleados', 'Requested') }}</span>
+							<strong>{{ formatMoney(item.cantidad_solicitada) }}</strong>
+						</div>
+
+						<div class="request-actions">
+							<NcButton @click="showModaldetails(itemIndex)">
+								<template #icon>
+									<Eye :size="20" />
+								</template>
+								{{ t('empleados', 'View request') }}
+							</NcButton>
+							<NcButton v-if="item.estado == 0" type="primary" @click="accion('aceptar', item.id_historial, item.id_user)">
+								{{ t('empleados', 'Approve') }}
+							</NcButton>
+							<NcButton v-if="item.estado == 0" type="error" @click="accion('denegar', item.id_historial, item.id_user)">
+								{{ t('empleados', 'Delete') }}
+							</NcButton>
+						</div>
+					</article>
+				</section>
+
+				<section v-else class="empty-state">
+					<h2>{{ t('empleados', 'No movements have been recorded yet.') }}</h2>
+				</section>
 			</div>
 			<div v-else id="emptycontent">
 				<h2>
@@ -214,7 +226,6 @@
 <script>
 import {
 	NcAppContent,
-	NcActionButton,
 	NcLoadingIcon,
 	NcButton,
 	NcListItem,
@@ -239,7 +250,6 @@ export default {
 	name: 'PanelAhorros',
 	components: {
 		NcAppContent,
-		NcActionButton,
 		NcLoadingIcon,
 		NcButton,
 		NcListItem,
@@ -290,6 +300,10 @@ export default {
 	methods: {
 		// expone t al template si lo prefieres como método (además del import)
 		t,
+
+		formatMoney(value) {
+			return Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value) || 0)
+		},
 
 		async gethistorial() {
 			let state
@@ -396,40 +410,198 @@ export default {
 </script>
 
 <style scoped>
-	#emptycontent, .emptycontent {
-		margin-top: 20vh;
-	}
-	.center-screen {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		text-align: center;
-		min-height: 100vh;
-	}
-	.center {
-		margin: auto;
-		padding: 10px;
-	}
-	.container{
-		padding-left: 50px;
-        padding-right: 10px;
-	}
-	.board-title {
-		margin-right: 10px;
-		margin-top: 14px;
-		font-size: 25px;
-		display: flex;
-		align-items: center;
-		font-weight: bold;
-		.icon {
-			margin-right: 8px;
-		}
-	}
-    .modal__content {
-        margin: 50px;
-    }
+.center-screen {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	text-align: center;
+}
 
-    .modal__content h2 {
-        text-align: center;
-    }
+.center {
+	margin: auto;
+	padding: 10px;
+}
+
+.panel-page {
+	display: grid;
+	gap: 14px;
+	padding: 20px;
+}
+
+.panel-header,
+.filters-card,
+.request-card,
+.empty-state {
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 18px;
+}
+
+.section-label {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.panel-header h2 {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	color: var(--color-main-text);
+	font-size: 22px;
+}
+
+.panel-header p {
+	margin: 6px 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.filters-card {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 16px;
+}
+
+.filters-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(180px, 240px));
+	gap: 12px;
+}
+
+.request-summary {
+	display: grid;
+	justify-items: end;
+	gap: 4px;
+	min-width: 130px;
+}
+
+.request-summary span,
+.request-amount span {
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.request-summary strong {
+	color: var(--color-main-text);
+	font-size: 28px;
+	line-height: 1;
+}
+
+.request-summary small {
+	color: var(--color-text-maxcontrast);
+}
+
+.requests-list {
+	display: grid;
+	gap: 10px;
+}
+
+.request-card {
+	display: grid;
+	grid-template-columns: minmax(240px, 1fr) minmax(140px, auto) auto;
+	align-items: center;
+	gap: 16px;
+	padding: 14px;
+}
+
+.request-person {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.request-person strong,
+.request-person span {
+	display: block;
+}
+
+.request-person strong {
+	color: var(--color-main-text);
+}
+
+.request-person span {
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.request-amount {
+	display: grid;
+	gap: 4px;
+}
+
+.request-amount strong {
+	color: var(--color-main-text);
+	font-size: 20px;
+}
+
+.request-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.empty-state {
+	padding: 28px;
+	text-align: center;
+}
+
+.modal__content {
+	margin: 50px;
+}
+
+.modal__content h2 {
+	text-align: center;
+}
+
+@media (max-width: 900px) {
+	.panel-page {
+		padding: 12px;
+	}
+
+	.panel-header,
+	.filters-card {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.filters-grid {
+		grid-template-columns: 1fr;
+		width: 100%;
+	}
+
+	.request-summary {
+		justify-items: start;
+	}
+
+	.request-card {
+		grid-template-columns: 1fr;
+	}
+
+	.request-actions {
+		justify-content: flex-start;
+	}
+}
 </style>

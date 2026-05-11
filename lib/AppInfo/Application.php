@@ -36,7 +36,6 @@ class Application extends App implements IBootstrap {
 		});
 
 		$context->registerDashboardWidget(ReportesWidget::class);
-
 		$context->registerNotifierService(ReportesNotifier::class);
 		$context->registerNotifierService(ComprasNotifier::class);
 	}

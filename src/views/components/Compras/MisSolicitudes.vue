@@ -383,9 +383,26 @@
 											<td>{{ formatMoney(item.monto_estimado) }}</td>
 
 											<td>
-												<span :class="['badge', `estado-${item.estado}`]">
-													{{ formatEstado(item.estado) }}
-												</span>
+												<div class="status-stack">
+													<span :class="['badge', `estado-${item.estado}`]">
+														{{ formatEstado(item.estado) }}
+													</span>
+
+													<span v-if="getEstadoDocumental(item) === 'completo'"
+														class="badge badge-document-ok">
+														{{ t('empleados', 'Complete') }}
+													</span>
+
+													<span v-else-if="getEstadoDocumental(item) === 'pendiente_firmado'"
+														class="badge badge-document-pending">
+														{{ t('empleados', 'Pending signed document') }}
+													</span>
+
+													<span v-else-if="getEstadoDocumental(item) === 'pendiente_pdf'"
+														class="badge badge-document-missing">
+														{{ t('empleados', 'Pending PDF') }}
+													</span>
+												</div>
 											</td>
 
 											<td>{{ formatDateTime(item.created_at) }}</td>
@@ -517,22 +534,25 @@
 						<div class="details-icon">
 							<CartOutline :size="30" />
 						</div>
-
-						<div class="details-title">
-							<p class="eyebrow">
-								{{ detalle.solicitud.folio }}
-							</p>
-							<h2>{{ detalle.solicitud.titulo }}</h2>
-							<p>{{ detalle.solicitud.descripcion || t('empleados', 'No description available.') }}</p>
-						</div>
-
 						<div class="details-actions">
 							<NcButton @click="abrirDocumento(detalle.solicitud.id_solicitud)">
-								{{ t('empleados', 'Document') }}
+								{{ t('empleados', 'View PDF') }}
 							</NcButton>
 
-							<NcButton @click="detalle = null">
-								{{ t('empleados', 'Close') }}
+							<NcButton :disabled="loading || !canSaveOfficialPdf(detalle.solicitud)"
+								@click="guardarDocumento(detalle.solicitud.id_solicitud)">
+								{{ detalle.solicitud.pdf_file_id ? t('empleados', 'Update saved PDF') : t('empleados', 'Save PDF') }}
+							</NcButton>
+
+							<NcButton :disabled="loading || !canUploadSignedDocument(detalle.solicitud)"
+								@click="seleccionarFirmado(detalle.solicitud.id_solicitud)">
+								{{ detalle.solicitud.firmado_file_id ? t('empleados', 'Replace signed document') :
+									t('empleados', 'Upload signed document') }}
+							</NcButton>
+
+							<NcButton v-if="canViewSignedDocument(detalle.solicitud)"
+								@click="abrirDocumentoFirmado(detalle.solicitud.id_solicitud)">
+								{{ t('empleados', 'View signed document') }}
 							</NcButton>
 						</div>
 					</div>
@@ -580,6 +600,54 @@
 						<div class="detail-card">
 							<span>{{ t('empleados', 'Purchase use') }}</span>
 							<strong>{{ detalle.solicitud.uso_compra || '-' }}</strong>
+						</div>
+						<div class="detail-card">
+							<span>{{ t('empleados', 'Generated PDF') }}</span>
+							<strong>
+								{{ detalle.solicitud.pdf_file_id ? t('empleados', 'Yes') : t('empleados', 'No') }}
+							</strong>
+						</div>
+
+						<div class="detail-card">
+							<span>{{ t('empleados', 'PDF generated at') }}</span>
+							<strong>
+								{{ detalle.solicitud.pdf_generado_at ? formatDateTime(detalle.solicitud.pdf_generado_at)
+									: '-' }}
+							</strong>
+						</div>
+
+						<div class="detail-card">
+							<span>{{ t('empleados', 'Signed document') }}</span>
+							<strong>
+								{{ detalle.solicitud.firmado_file_id ? t('empleados', 'Uploaded') : t('empleados','Pending') }}
+							</strong>
+						</div>
+
+						<div class="detail-card">
+							<span>{{ t('empleados', 'Signed uploaded at') }}</span>
+							<strong>
+								{{ detalle.solicitud.firmado_subido_at ?
+									formatDateTime(detalle.solicitud.firmado_subido_at) : '-' }}
+							</strong>
+						</div>
+						<div class="detail-card">
+							<span>{{ t('empleados', 'Document status') }}</span>
+							<strong>
+								{{ formatEstadoDocumental(detalle.solicitud) }}
+							</strong>
+						</div>
+						<div class="detail-card">
+							<span>{{ t('empleados', 'Saved PDF') }}</span>
+							<strong>
+								{{ detalle.solicitud.pdf_nombre || t('empleados', 'Not generated') }}
+							</strong>
+						</div>
+
+						<div class="detail-card">
+							<span>{{ t('empleados', 'Signed document') }}</span>
+							<strong>
+								{{ detalle.solicitud.firmado_nombre || t('empleados', 'Not uploaded') }}
+							</strong>
 						</div>
 					</div>
 
@@ -742,6 +810,8 @@ import {
 	obtenerSolicitud,
 	rechazarSolicitud,
 	obtenerContextoCompras,
+	guardarDocumentoSolicitud,
+	subirDocumentoFirmadoSolicitud,
 } from '../../../services/comprasService.js'
 
 const IVA_RATE = 0.16
@@ -841,6 +911,7 @@ export default {
 				can_process_purchase: false,
 				can_select_requester: false,
 			},
+			firmadoSolicitudId: null,
 		}
 	},
 
@@ -1153,6 +1224,95 @@ export default {
 
 	methods: {
 		t,
+
+		getTodayDate() {
+			const date = new Date()
+			const year = date.getFullYear()
+			const month = String(date.getMonth() + 1).padStart(2, '0')
+			const day = String(date.getDate()).padStart(2, '0')
+
+			return `${year}-${month}-${day}`
+		},
+
+		async duplicarDetalleActual() {
+			if (!this.detalle?.solicitud) {
+				showError(t('empleados', 'No request selected to duplicate.'))
+				return
+			}
+
+			if (!this.canCreatePurchaseRequest) {
+				showError(t('empleados', 'You do not have permission to create purchase requests.'))
+				return
+			}
+
+			const solicitud = { ...this.detalle.solicitud }
+			const detalles = Array.isArray(this.detalle.detalles)
+				? this.detalle.detalles.map((detalle) => ({ ...detalle }))
+				: []
+
+			const duplicatedForm = {
+				...this.getEmptyForm(),
+				id_empleado: solicitud.id_empleado || null,
+
+				titulo: solicitud.titulo || '',
+				descripcion: solicitud.descripcion || '',
+				justificacion: solicitud.justificacion || '',
+				moneda: solicitud.moneda || 'MXN',
+				prioridad: solicitud.prioridad || 'normal',
+
+				// Fecha actual para la nueva solicitud duplicada
+				fecha_requerida: this.getTodayDate(),
+
+				solicitante_nombre: solicitud.solicitante_nombre || '',
+				solicitante_depto: solicitud.solicitante_depto || '',
+				solicitante_cargo: solicitud.solicitante_cargo || '',
+				jefe_directo_nombre: solicitud.jefe_directo_nombre || '',
+				jefe_directo_uid: solicitud.jefe_directo_uid || '',
+
+				tipo_compra: solicitud.tipo_compra || 'refaccion',
+				garantia: Boolean(Number(solicitud.garantia || 0)),
+				uso_compra: solicitud.uso_compra || 'empresa',
+				informacion: solicitud.informacion || solicitud.descripcion || '',
+				motivo: solicitud.motivo || solicitud.justificacion || '',
+
+				oficina_pct: solicitud.oficina_pct || '',
+				empleado_pct: solicitud.empleado_pct || '',
+				tipo_pago: solicitud.tipo_pago || '',
+				quincenas: solicitud.quincenas || '',
+				comentarios_admin: solicitud.comentarios_admin || '',
+
+				detalles: detalles.length > 0
+					? detalles.map((detalle) => ({
+						descripcion: detalle.descripcion || '',
+						cantidad: Number(detalle.cantidad || 1),
+						unidad: detalle.unidad || 'pieza',
+						precio_estimado: Number(detalle.precio_estimado || 0),
+						notas: detalle.notas || '',
+						proveedor_nombre: detalle.proveedor_nombre || '',
+						atencion: detalle.atencion || '',
+						entrega: detalle.entrega || '',
+						marca_modelo: detalle.marca_modelo || '',
+						especificaciones: detalle.especificaciones || '',
+					}))
+					: this.getEmptyForm().detalles,
+			}
+
+			// Importante: primero cerrar el modal de detalle.
+			this.detalle = null
+
+			// Esperar a que Vue quite el NcModal anterior del DOM.
+			await this.$nextTick()
+
+			// Esperar un frame extra por las transiciones/portal de NcModal.
+			await new Promise((resolve) => requestAnimationFrame(resolve))
+
+			// Ahora sí abrir el formulario como NUEVA solicitud.
+			this.editingSolicitudId = null
+			this.form = duplicatedForm
+			this.showForm = true
+
+			showSuccess(t('empleados', 'Purchase request duplicated. Review it before saving.'))
+		},
 
 		getEmptyForm() {
 			return {
@@ -2047,6 +2207,104 @@ export default {
 		canRejectRequest(item) {
 			return this.purchasePermissions.can_approve
 				&& String(item?.estado || '') === 'pendiente_autorizacion'
+		},
+
+		async guardarDocumento(id) {
+			this.loading = true
+
+			try {
+				const response = await guardarDocumentoSolicitud(id)
+				const payload = this.getApiPayload(response)
+
+				if (!payload.success) {
+					throw new Error(payload.message || t('empleados', 'Could not save PDF.'))
+				}
+
+				showSuccess(payload.message || t('empleados', 'PDF saved successfully.'))
+
+				await this.cargarSolicitudes()
+				await this.verDetalle(id)
+			} catch (error) {
+				console.error(error)
+				showError(this.getErrorMessage(error, t('empleados', 'Error saving PDF.')))
+			} finally {
+				this.loading = false
+			}
+		},
+		seleccionarFirmado(id) {
+			this.firmadoSolicitudId = id
+			this.$refs.firmadoInput.value = ''
+			this.$refs.firmadoInput.click()
+		},
+
+		async onFirmadoSelected(event) {
+			const file = event.target.files?.[0] || null
+
+			if (!file || !this.firmadoSolicitudId) {
+				return
+			}
+
+			this.loading = true
+
+			try {
+				const response = await subirDocumentoFirmadoSolicitud(this.firmadoSolicitudId, file)
+				const payload = this.getApiPayload(response)
+
+				if (!payload.success) {
+					throw new Error(payload.message || t('empleados', 'Could not upload signed document.'))
+				}
+
+				showSuccess(payload.message || t('empleados', 'Signed document uploaded successfully.'))
+
+				await this.cargarSolicitudes()
+				await this.verDetalle(this.firmadoSolicitudId)
+			} catch (error) {
+				console.error(error)
+				showError(this.getErrorMessage(error, t('empleados', 'Error uploading signed document.')))
+			} finally {
+				this.loading = false
+				this.firmadoSolicitudId = null
+			}
+		},
+
+		abrirDocumentoFirmado(id) {
+			const url = generateUrl('/apps/empleados/compras/solicitudes/{id}/documento/firmado', { id })
+			window.open(url, '_blank', 'noopener,noreferrer')
+		},
+		getEstadoDocumental(solicitud) {
+			if (!solicitud?.pdf_file_id) {
+				return 'pendiente_pdf'
+			}
+
+			if (!solicitud?.firmado_file_id) {
+				return 'pendiente_firmado'
+			}
+
+			return 'completo'
+		},
+
+		formatEstadoDocumental(solicitud) {
+			const estado = this.getEstadoDocumental(solicitud)
+
+			const labels = {
+				pendiente_pdf: t('empleados', 'Pending PDF'),
+				pendiente_firmado: t('empleados', 'Pending signed document'),
+				completo: t('empleados', 'Complete'),
+			}
+
+			return labels[estado] || estado
+		},
+
+		canSaveOfficialPdf(solicitud) {
+			return String(solicitud?.estado || '') === 'autorizada'
+		},
+
+		canUploadSignedDocument(solicitud) {
+			return String(solicitud?.estado || '') === 'autorizada'
+		},
+
+		canViewSignedDocument(solicitud) {
+			return Boolean(solicitud?.firmado_file_id)
 		},
 	},
 }
@@ -3228,5 +3486,23 @@ export default {
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+}
+
+.badge-document-ok {
+	background: rgba(22, 163, 74, 0.12);
+	color: #15803d;
+	border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+.badge-document-pending {
+	background: rgba(234, 179, 8, 0.14);
+	color: #a16207;
+	border: 1px solid rgba(234, 179, 8, 0.28);
+}
+
+.badge-document-missing {
+	background: rgba(100, 116, 139, 0.14);
+	color: #475569;
+	border: 1px solid rgba(100, 116, 139, 0.25);
 }
 </style>

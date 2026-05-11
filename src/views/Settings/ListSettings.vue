@@ -181,6 +181,55 @@
 			<section class="settings-category settings-category-wide">
 				<div class="category-header">
 					<p class="section-label">
+						{{ t('empleados', 'Purchases') }}
+					</p>
+					<h3>{{ t('empleados', 'Purchase document logo') }}</h3>
+					<p>{{ t('empleados', 'Configure the logo used in generated purchase request PDFs.') }}</p>
+				</div>
+
+				<div class="settings-card settings-form-card">
+					<div class="logo-settings-layout">
+						<div class="logo-preview">
+							<img v-if="logoDocumentoUrl"
+								:src="logoDocumentoUrl"
+								alt=""
+								@error="logoDocumentoUrl = ''">
+
+							<span v-else>
+								{{ t('empleados', 'No logo configured') }}
+							</span>
+						</div>
+
+						<div class="logo-settings-content">
+							<strong>{{ t('empleados', 'Document logo') }}</strong>
+							<span>
+								{{ t('empleados', 'Use a PNG or JPG image. This logo will appear in generated purchase request PDFs.') }}
+							</span>
+
+							<input ref="logoDocumentoInput"
+								type="file"
+								accept="image/png,image/jpeg"
+								style="display: none"
+								@change="onLogoDocumentoSelected">
+
+							<div class="actions-row logo-actions">
+								<NcButton :disabled="loadingLogoDocumento" @click="$refs.logoDocumentoInput.click()">
+									{{ t('empleados', 'Upload logo') }}
+								</NcButton>
+
+								<NcButton :disabled="loadingLogoDocumento || !logoDocumentoUrl"
+									@click="eliminarLogoDocumento">
+									{{ t('empleados', 'Remove logo') }}
+								</NcButton>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="settings-category settings-category-wide">
+				<div class="category-header">
+					<p class="section-label">
 						{{ t('empleados', 'Time reports') }}
 					</p>
 					<h3>{{ t('empleados','Report times settings') }}</h3>
@@ -363,11 +412,18 @@ export default {
 			selected_admin_reports_group: null,
 			reportes_admin_reports_group: '',
 			modulo_compras: false,
+			logoDocumentoUrl: '',
+			loadingLogoDocumento: false,
 		}
 	},
 
 	async mounted() {
 		await this.getall()
+		await this.refreshLogoDocumento()
+	},
+
+	beforeDestroy() {
+		this.revokeLogoDocumentoUrl()
 	},
 
 	methods: {
@@ -655,6 +711,119 @@ export default {
 				console.error(err)
 			}
 		},
+
+		revokeLogoDocumentoUrl() {
+			if (this.logoDocumentoUrl && this.logoDocumentoUrl.startsWith('blob:')) {
+				URL.revokeObjectURL(this.logoDocumentoUrl)
+			}
+
+			this.logoDocumentoUrl = ''
+		},
+
+		async refreshLogoDocumento() {
+			this.revokeLogoDocumentoUrl()
+
+			try {
+				const response = await axios.get(
+					generateUrl('/apps/empleados/compras/settings/logo'),
+					{
+						responseType: 'blob',
+						headers: {
+							requesttoken: OC.requestToken,
+						},
+					},
+				)
+
+				if (!response.data || response.data.size === 0) {
+					this.logoDocumentoUrl = ''
+					return
+				}
+
+				this.logoDocumentoUrl = URL.createObjectURL(response.data)
+			} catch (error) {
+				this.logoDocumentoUrl = ''
+
+				if (error?.response?.status !== 404) {
+					console.error(error)
+				}
+			}
+		},
+
+		async onLogoDocumentoSelected(event) {
+			const file = event.target.files?.[0] || null
+
+			if (!file) {
+				return
+			}
+
+			if (!['image/png', 'image/jpeg'].includes(file.type)) {
+				showError(t('empleados', 'Only PNG or JPG logos are allowed.'))
+				event.target.value = ''
+				return
+			}
+
+			if (file.size > 2 * 1024 * 1024) {
+				showError(t('empleados', 'The logo must not exceed 2 MB.'))
+				event.target.value = ''
+				return
+			}
+
+			this.loadingLogoDocumento = true
+
+			try {
+				const formData = new FormData()
+				formData.append('logo', file)
+
+				const response = await axios.post(
+					generateUrl('/apps/empleados/compras/settings/logo'),
+					formData,
+					{
+						headers: {
+							'Content-Type': 'multipart/form-data',
+						},
+					},
+				)
+
+				const payload = response.data
+
+				if (!payload.success) {
+					throw new Error(payload.message || t('empleados', 'Could not upload logo.'))
+				}
+
+				showSuccess(payload.message || t('empleados', 'Logo uploaded successfully.'))
+				await this.refreshLogoDocumento()
+			} catch (error) {
+				console.error(error)
+				showError(t('empleados', 'Error uploading logo: {error}', { error: String(error) }))
+			} finally {
+				this.loadingLogoDocumento = false
+				event.target.value = ''
+			}
+		},
+
+		async eliminarLogoDocumento() {
+			this.loadingLogoDocumento = true
+
+			try {
+				const response = await axios.delete(
+					generateUrl('/apps/empleados/compras/settings/logo'),
+				)
+
+				const payload = response.data
+
+				if (!payload.success) {
+					throw new Error(payload.message || t('empleados', 'Could not remove logo.'))
+				}
+
+				showSuccess(payload.message || t('empleados', 'Logo removed successfully.'))
+				this.revokeLogoDocumentoUrl()
+			} catch (error) {
+				console.error(error)
+				showError(t('empleados', 'Error removing logo: {error}', { error: String(error) }))
+			} finally {
+				this.loadingLogoDocumento = false
+			}
+		},
 	},
 }
 </script>
@@ -843,6 +1012,72 @@ export default {
 
 	.actions-row {
 		justify-content: stretch;
+	}
+}
+
+.logo-settings-layout {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+
+.logo-preview {
+	width: 220px;
+	min-height: 96px;
+	padding: 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.logo-preview img {
+	max-width: 180px;
+	max-height: 70px;
+	object-fit: contain;
+}
+
+.logo-preview span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	text-align: center;
+}
+
+.logo-settings-content {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.logo-settings-content strong {
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+
+.logo-settings-content span {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.logo-actions {
+	justify-content: flex-start;
+	gap: 10px;
+	margin-top: 10px;
+}
+
+@media (max-width: 700px) {
+	.logo-settings-layout {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.logo-preview {
+		width: 100%;
 	}
 }
 </style>

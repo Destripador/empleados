@@ -58,3 +58,27 @@ export async function obtenerContextoCompras() {
 	const response = await axios.get(generateUrl('/apps/empleados/compras/contexto'))
 	return response.data
 }
+
+export const guardarDocumentoSolicitud = async (id) => {
+	const response = await axios.post(
+		generateUrl('/apps/empleados/compras/solicitudes/{id}/documento/guardar', { id })
+	)
+
+	return response.data
+}
+export const subirDocumentoFirmadoSolicitud = async (id, file) => {
+	const formData = new FormData()
+	formData.append('archivo', file)
+
+	const response = await axios.post(
+		generateUrl('/apps/empleados/compras/solicitudes/{id}/documento/firmado', { id }),
+		formData,
+		{
+			headers: {
+				'Content-Type': 'multipart/form-data',
+			},
+		},
+	)
+
+	return response.data
+}
