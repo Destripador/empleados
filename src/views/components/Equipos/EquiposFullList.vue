@@ -9,6 +9,17 @@
 							type="text"
 							:placeholder="t('empleados', 'Search teams...')">
 					</div>
+					<div class="filters-container">
+						<select v-model="sortOrder">
+							<option value="asc">A-Z</option>
+							<option value="desc">Z-A</option>
+						</select>
+
+						<label>
+							<input v-model="hideEmpty" type="checkbox">
+							Ocultar vacíos
+						</label>
+					</div>
 					<div class="button-container">
 						<NcActions
 							:open="button"
@@ -152,12 +163,33 @@ export default {
 			optionsGestor: [], // Usuarios para elegir jefe
 			selected_user: null, // Usuario seleccionado como jefe
 			EquiposListItem,
+			sortOrder: 'asc',
+			hideEmpty: false,
 		}
 	},
 
 	computed: {
 		filteredList() {
-			return this.contacts.filter(item => this.matchSearch(item?.Nombre ?? ''))
+			let equipos = this.contacts.filter(item => this.matchSearch(item?.Nombre ?? ''))
+
+			if (this.hideEmpty) {
+				equipos = equipos.filter(
+					item => Number(item.cantidad_empleados) > 0
+				)
+			}
+
+			equipos.sort((a, b) => {
+				const firstName = a?.Nombre ?? ''
+				const secondName = b?.Nombre ?? ''
+
+				if (this.sortOrder === 'asc') {
+					return firstName.localeCompare(secondName)
+				}
+
+				return secondName.localeCompare(firstName)
+			})
+
+			return equipos
 		},
 	},
 
@@ -276,6 +308,48 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// Filtro y ordenamiento
+.filters-container {
+	display: flex;
+	align-items: center;
+	grid-area: filters;
+	flex-wrap: nowrap;
+	gap: 5px;
+	margin: 0;
+	white-space: nowrap;
+}
+
+.filters-container select {
+	min-width: 64px;
+	height: 26px;
+	padding: 1px 22px 1px 7px;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 12px;
+}
+
+.filters-container label {
+	display: inline-flex;
+	align-items: center;
+	min-height: 26px;
+	padding: 0 7px;
+	gap: 5px;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	background-color: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	line-height: 1;
+}
+
+.filters-container input[type='checkbox'] {
+	width: 13px;
+	height: 13px;
+	margin: 0;
+}
+
 // Make virtual scroller scrollable
 .contacts-list {
 	max-height: calc(100vh - var(--header-height) - 48px);
@@ -303,14 +377,22 @@ export default {
 }
 
 .container-search {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas:
+		"input button"
+		"filters button";
+	align-items: start;
+	gap: 6px 8px;
 }
 .input-container {
-	flex: 1;
-	margin-right: 5px;
+	grid-area: input;
 }
 .input-container input {
 	width: 100%;
+}
+.button-container {
+	grid-area: button;
 }
 .button-container button {
 	width: 100%;

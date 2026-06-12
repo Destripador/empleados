@@ -11276,12 +11276,26 @@ __webpack_require__.r(__webpack_exports__);
       // Usuarios para elegir jefe
       selected_user: null,
       // Usuario seleccionado como jefe
-      EquiposListItem: _EquiposListItem_vue__WEBPACK_IMPORTED_MODULE_9__["default"]
+      EquiposListItem: _EquiposListItem_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
+      sortOrder: 'asc',
+      hideEmpty: false
     };
   },
   computed: {
     filteredList() {
-      return this.contacts.filter(item => this.matchSearch(item?.Nombre ?? ''));
+      let equipos = this.contacts.filter(item => this.matchSearch(item?.Nombre ?? ''));
+      if (this.hideEmpty) {
+        equipos = equipos.filter(item => Number(item.cantidad_empleados) > 0);
+      }
+      equipos.sort((a, b) => {
+        const firstName = a?.Nombre ?? '';
+        const secondName = b?.Nombre ?? '';
+        if (this.sortOrder === 'asc') {
+          return firstName.localeCompare(secondName);
+        }
+        return secondName.localeCompare(firstName);
+      });
+      return equipos;
     }
   },
   watch: {
@@ -16016,12 +16030,24 @@ __webpack_require__.r(__webpack_exports__);
       button: false,
       padre: '',
       options: [],
-      nombre_area: ''
+      nombre_area: '',
+      sortOrder: 'asc',
+      hideEmpty: false
     };
   },
   computed: {
     filteredList() {
-      return this.contacts.filter(item => this.matchSearch(item.Nombre));
+      let areas = this.contacts.filter(item => this.matchSearch(item.Nombre));
+      if (this.hideEmpty) {
+        areas = areas.filter(item => Number(item.cantidad_empleados) > 0);
+      }
+      areas.sort((a, b) => {
+        if (this.sortOrder === 'asc') {
+          return a.Nombre.localeCompare(b.Nombre);
+        }
+        return b.Nombre.localeCompare(a.Nombre);
+      });
+      return areas;
     }
   },
   watch: {
@@ -17493,12 +17519,24 @@ __webpack_require__.r(__webpack_exports__);
       modal: false,
       button: false,
       options: [],
-      nombre_area: ''
+      nombre_area: '',
+      sortOrder: 'asc',
+      hideEmpty: false
     };
   },
   computed: {
     filteredList() {
-      return this.contacts.filter(item => this.matchSearch(item.Nombre));
+      let puestos = this.contacts.filter(item => this.matchSearch(item.Nombre));
+      if (this.hideEmpty) {
+        puestos = puestos.filter(item => Number(item.cantidad_empleados) > 0);
+      }
+      puestos.sort((a, b) => {
+        if (this.sortOrder === 'asc') {
+          return a.Nombre.localeCompare(b.Nombre);
+        }
+        return b.Nombre.localeCompare(a.Nombre);
+      });
+      return puestos;
     }
   },
   watch: {
@@ -22091,6 +22129,65 @@ var render = function render() {
       }
     }
   })]), _vm._v(" "), _c("div", {
+    staticClass: "filters-container"
+  }, [_c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.sortOrder,
+      expression: "sortOrder"
+    }],
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.sortOrder = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: "asc"
+    }
+  }, [_vm._v("A-Z")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "desc"
+    }
+  }, [_vm._v("Z-A")])]), _vm._v(" "), _c("label", [_c("input", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.hideEmpty,
+      expression: "hideEmpty"
+    }],
+    attrs: {
+      type: "checkbox"
+    },
+    domProps: {
+      checked: Array.isArray(_vm.hideEmpty) ? _vm._i(_vm.hideEmpty, null) > -1 : _vm.hideEmpty
+    },
+    on: {
+      change: function ($event) {
+        var $$a = _vm.hideEmpty,
+          $$el = $event.target,
+          $$c = $$el.checked ? true : false;
+        if (Array.isArray($$a)) {
+          var $$v = null,
+            $$i = _vm._i($$a, $$v);
+          if ($$el.checked) {
+            $$i < 0 && (_vm.hideEmpty = $$a.concat([$$v]));
+          } else {
+            $$i > -1 && (_vm.hideEmpty = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+          }
+        } else {
+          _vm.hideEmpty = $$c;
+        }
+      }
+    }
+  }), _vm._v("\n\t\t\t\t\t\tOcultar vacíos\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "button-container"
   }, [_c("NcActions", {
     attrs: {
@@ -27173,6 +27270,65 @@ var render = function render() {
       }
     }
   })]), _vm._v(" "), _c("div", {
+    staticClass: "filters-container"
+  }, [_c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.sortOrder,
+      expression: "sortOrder"
+    }],
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.sortOrder = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: "asc"
+    }
+  }, [_vm._v("A-Z")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "desc"
+    }
+  }, [_vm._v("Z-A")])]), _vm._v(" "), _c("label", [_c("input", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.hideEmpty,
+      expression: "hideEmpty"
+    }],
+    attrs: {
+      type: "checkbox"
+    },
+    domProps: {
+      checked: Array.isArray(_vm.hideEmpty) ? _vm._i(_vm.hideEmpty, null) > -1 : _vm.hideEmpty
+    },
+    on: {
+      change: function ($event) {
+        var $$a = _vm.hideEmpty,
+          $$el = $event.target,
+          $$c = $$el.checked ? true : false;
+        if (Array.isArray($$a)) {
+          var $$v = null,
+            $$i = _vm._i($$a, $$v);
+          if ($$el.checked) {
+            $$i < 0 && (_vm.hideEmpty = $$a.concat([$$v]));
+          } else {
+            $$i > -1 && (_vm.hideEmpty = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+          }
+        } else {
+          _vm.hideEmpty = $$c;
+        }
+      }
+    }
+  }), _vm._v("\n\t\t\t\t\t\tOcultar vacíos\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "button-container"
   }, [_c("NcActions", {
     attrs: {
@@ -28819,6 +28975,65 @@ var render = function render() {
       }
     }
   })]), _vm._v(" "), _c("div", {
+    staticClass: "filters-container"
+  }, [_c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.sortOrder,
+      expression: "sortOrder"
+    }],
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.sortOrder = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: "asc"
+    }
+  }, [_vm._v("A-Z")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "desc"
+    }
+  }, [_vm._v("Z-A")])]), _vm._v(" "), _c("label", [_c("input", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.hideEmpty,
+      expression: "hideEmpty"
+    }],
+    attrs: {
+      type: "checkbox"
+    },
+    domProps: {
+      checked: Array.isArray(_vm.hideEmpty) ? _vm._i(_vm.hideEmpty, null) > -1 : _vm.hideEmpty
+    },
+    on: {
+      change: function ($event) {
+        var $$a = _vm.hideEmpty,
+          $$el = $event.target,
+          $$c = $$el.checked ? true : false;
+        if (Array.isArray($$a)) {
+          var $$v = null,
+            $$i = _vm._i($$a, $$v);
+          if ($$el.checked) {
+            $$i < 0 && (_vm.hideEmpty = $$a.concat([$$v]));
+          } else {
+            $$i > -1 && (_vm.hideEmpty = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+          }
+        } else {
+          _vm.hideEmpty = $$c;
+        }
+      }
+    }
+  }), _vm._v("\n\t\t\t\t\t\tOcultar vacíos\n\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
     staticClass: "button-container"
   }, [_c("NcActions", {
     attrs: {
@@ -50358,7 +50573,44 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-e759c632] {
+___CSS_LOADER_EXPORT___.push([module.id, `.filters-container[data-v-e759c632] {
+  display: flex;
+  align-items: center;
+  grid-area: filters;
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin: 0;
+  white-space: nowrap;
+}
+.filters-container select[data-v-e759c632] {
+  min-width: 64px;
+  height: 26px;
+  padding: 1px 22px 1px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-main-background);
+  color: var(--color-main-text);
+  font-size: 12px;
+}
+.filters-container label[data-v-e759c632] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 7px;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-main-background);
+  color: var(--color-text-maxcontrast);
+  font-size: 12px;
+  line-height: 1;
+}
+.filters-container input[type=checkbox][data-v-e759c632] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+.contacts-list[data-v-e759c632] {
   max-height: calc(100vh - var(--header-height) - 48px);
   overflow: auto;
 }
@@ -50377,14 +50629,20 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-e759c632] {
   padding: 0 4px;
 }
 .container-search[data-v-e759c632] {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "input button" "filters button";
+  align-items: start;
+  gap: 6px 8px;
 }
 .input-container[data-v-e759c632] {
-  flex: 1;
-  margin-right: 5px;
+  grid-area: input;
 }
 .input-container input[data-v-e759c632] {
   width: 100%;
+}
+.button-container[data-v-e759c632] {
+  grid-area: button;
 }
 .button-container button[data-v-e759c632] {
   width: 100%;
@@ -51127,7 +51385,44 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-8ac55baa] {
+___CSS_LOADER_EXPORT___.push([module.id, `.filters-container[data-v-8ac55baa] {
+  display: flex;
+  align-items: center;
+  grid-area: filters;
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin: 0;
+  white-space: nowrap;
+}
+.filters-container select[data-v-8ac55baa] {
+  min-width: 64px;
+  height: 26px;
+  padding: 1px 22px 1px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-main-background);
+  color: var(--color-main-text);
+  font-size: 12px;
+}
+.filters-container label[data-v-8ac55baa] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 7px;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-main-background);
+  color: var(--color-text-maxcontrast);
+  font-size: 12px;
+  line-height: 1;
+}
+.filters-container input[type=checkbox][data-v-8ac55baa] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+.contacts-list[data-v-8ac55baa] {
   max-height: calc(100vh - var(--header-height) - 48px);
   overflow: auto;
 }
@@ -51146,14 +51441,20 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-8ac55baa] {
   padding: 0 4px;
 }
 .container-search[data-v-8ac55baa] {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "input button" "filters button";
+  align-items: start;
+  gap: 6px 8px;
 }
 .input-container[data-v-8ac55baa] {
-  flex: 1;
-  margin-right: 5px;
+  grid-area: input;
 }
 .input-container input[data-v-8ac55baa] {
   width: 100%;
+}
+.button-container[data-v-8ac55baa] {
+  grid-area: button;
 }
 .button-container button[data-v-8ac55baa] {
   width: 100%;
@@ -51989,7 +52290,44 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-074392e9] {
+___CSS_LOADER_EXPORT___.push([module.id, `.filters-container[data-v-074392e9] {
+  display: flex;
+  align-items: center;
+  grid-area: filters;
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin: 0;
+  white-space: nowrap;
+}
+.filters-container select[data-v-074392e9] {
+  min-width: 64px;
+  height: 26px;
+  padding: 1px 22px 1px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-main-background);
+  color: var(--color-main-text);
+  font-size: 12px;
+}
+.filters-container label[data-v-074392e9] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 7px;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-main-background);
+  color: var(--color-text-maxcontrast);
+  font-size: 12px;
+  line-height: 1;
+}
+.filters-container input[type=checkbox][data-v-074392e9] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+.contacts-list[data-v-074392e9] {
   max-height: calc(100vh - var(--header-height) - 48px);
   overflow: auto;
 }
@@ -52008,14 +52346,20 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-074392e9] {
   padding: 0 4px;
 }
 .container-search[data-v-074392e9] {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "input button" "filters button";
+  align-items: start;
+  gap: 6px 8px;
 }
 .input-container[data-v-074392e9] {
-  flex: 1;
-  margin-right: 5px;
+  grid-area: input;
 }
 .input-container input[data-v-074392e9] {
   width: 100%;
+}
+.button-container[data-v-074392e9] {
+  grid-area: button;
 }
 .button-container button[data-v-074392e9] {
   width: 100%;
