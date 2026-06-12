@@ -35,7 +35,7 @@ class empleadosMapper extends QBMapper {
 				$qb->expr()->neq('e.Id_user', $qb->createNamedParameter($id))
 			);
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 
@@ -50,7 +50,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('e.Id_user', $qb->createNamedParameter($id)));
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -65,7 +65,7 @@ class empleadosMapper extends QBMapper {
 			->where($qb->expr()->eq('e.Id_empleados', $qb->createNamedParameter($id)))
 			->setMaxResults(1);
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -84,7 +84,7 @@ class empleadosMapper extends QBMapper {
 
 
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -99,7 +99,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('o', 'accounts', 'c', $qb->expr()->eq('o.uid', 'c.uid'));
 			
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -114,7 +114,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('o', 'users', 'c', $qb->expr()->eq('uid', 'id_user'))
 			->where($qb->expr()->eq('Estado', $qb->createNamedParameter(0)));
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -128,7 +128,7 @@ class empleadosMapper extends QBMapper {
 			->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
 			
 
-		$result = $qb->execute();
+		$result = $qb->executeStatement();
 	}
 
 	public function DesactivarByIdEmpleado(int $id_empleados): void {
@@ -140,7 +140,7 @@ class empleadosMapper extends QBMapper {
 		->set('updated_at', $qb->createNamedParameter($timestamp))
 		->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
 			
-		$result = $qb->execute();
+		$result = $qb->executeStatement();
 	}
 
 	public function ActivarByIdEmpleado(int $id_empleados): void {
@@ -152,7 +152,7 @@ class empleadosMapper extends QBMapper {
 		->set('updated_at', $qb->createNamedParameter($timestamp))
 		->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
 			
-		$result = $qb->execute();
+		$result = $qb->executeStatement();
 	}
 
 	public function updateEmpleado(
@@ -236,7 +236,7 @@ class empleadosMapper extends QBMapper {
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
-			$query->execute();
+			$query->executeStatement();
 		}
 		catch(Exception $e){
 			console.log($e);
@@ -256,7 +256,7 @@ class empleadosMapper extends QBMapper {
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
-			$query->execute();
+			$query->executeStatement();
 		}
 		catch(Exception $e){
 			console.log($e);
@@ -271,7 +271,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_area)));
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -286,7 +286,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('Id_puesto', $qb->createNamedParameter($id_puesto)));
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -303,7 +303,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('e', 'user_ahorro', 'i', $qb->expr()->eq('i.id_user', 'e.Id_empleados'))
 			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($id_equipo)));
 
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -318,7 +318,7 @@ class empleadosMapper extends QBMapper {
 			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($id_equipo)));
 		
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
@@ -373,7 +373,7 @@ class empleadosMapper extends QBMapper {
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
-			$query->execute();
+			$query->executeStatement();
 			
 		}
 		catch(Exception $e){
@@ -414,7 +414,8 @@ class empleadosMapper extends QBMapper {
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
-			$query->execute();
+			$query->executeStatement();
+			
 		}
 		catch(Exception $e){
 			echo $e;

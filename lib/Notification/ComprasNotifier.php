@@ -43,15 +43,23 @@ class ComprasNotifier implements INotifier {
 			return $this->prepareCompraPendiente($notification, $l);
 		}
 
+		if ($notification->getSubject() === 'compra_solicitud_autorizada') {
+			return $this->prepareCompraAutorizada($notification, $l);
+		}
+
 		throw new UnknownNotificationException();
 	}
 
 	private function prepareCompraPendiente(INotification $notification, IL10N $l): INotification {
 		$params = $notification->getSubjectParameters();
 
-		$folio = (string)($params['folio'] ?? '');
+		$folio = (string)($params['folio'] ?? 'Solicitud');
 		$titulo = (string)($params['titulo'] ?? '');
 		$solicitante = (string)($params['solicitante'] ?? '');
+
+		$folio = $folio !== '' ? $folio : 'Solicitud';
+		$titulo = $titulo !== '' ? $titulo : $l->t('No title');
+		$solicitante = $solicitante !== '' ? $solicitante : $l->t('Unknown user');
 
 		$notification->setParsedSubject(
 			$l->t('Purchase request pending approval')
@@ -65,10 +73,53 @@ class ComprasNotifier implements INotifier {
 			])
 		);
 
-		$notification->setIcon(
-			$this->urlGenerator->imagePath('empleados', 'app.svg')
-		);
+		$notification->setIcon($this->getAppIconUrl());
 
 		return $notification;
+	}
+
+	private function prepareCompraAutorizada(INotification $notification, IL10N $l): INotification {
+		$params = $notification->getSubjectParameters();
+
+		$folio = (string)($params['folio'] ?? 'Solicitud');
+		$titulo = (string)($params['titulo'] ?? '');
+		$aprobador = (string)($params['aprobador'] ?? '');
+		$comentario = (string)($params['comentario'] ?? '');
+
+		$folio = $folio !== '' ? $folio : 'Solicitud';
+		$titulo = $titulo !== '' ? $titulo : $l->t('No title');
+		$aprobador = $aprobador !== '' ? $aprobador : $l->t('an approver');
+
+		$notification->setParsedSubject(
+			$l->t('Purchase request approved')
+		);
+
+		if ($comentario !== '') {
+			$notification->setParsedMessage(
+				$l->t('%s - %s was approved by %s. Comment: %s', [
+					$folio,
+					$titulo,
+					$aprobador,
+					$comentario,
+				])
+			);
+		} else {
+			$notification->setParsedMessage(
+				$l->t('%s - %s was approved by %s.', [
+					$folio,
+					$titulo,
+					$aprobador,
+				])
+			);
+		}
+
+		$notification->setIcon($this->getAppIconUrl());
+
+		return $notification;
+	}
+	private function getAppIconUrl(): string {
+		return $this->urlGenerator->getAbsoluteURL(
+			$this->urlGenerator->imagePath('empleados', 'app.svg')
+		);
 	}
 }

@@ -210,6 +210,12 @@ class CompraSolicitudMapper extends QBMapper {
 			'pdf_file_id',
 			'pdf_nombre',
 			'pdf_generado_at',
+
+			'firmado_file_id',
+			'firmado_nombre',
+			'firmado_mime',
+			'firmado_subido_at',
+			'firmado_subido_by',
 		];
 	}
 

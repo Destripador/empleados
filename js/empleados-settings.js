@@ -9901,11 +9901,17 @@ __webpack_require__.r(__webpack_exports__);
       optionsGroups: [],
       selected_admin_reports_group: null,
       reportes_admin_reports_group: '',
-      modulo_compras: false
+      modulo_compras: false,
+      logoDocumentoUrl: '',
+      loadingLogoDocumento: false
     };
   },
   async mounted() {
     await this.getall();
+    await this.refreshLogoDocumento();
+  },
+  beforeDestroy() {
+    this.revokeLogoDocumentoUrl();
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate,
@@ -10189,6 +10195,92 @@ __webpack_require__.r(__webpack_exports__);
           error: String(err)
         }));
         console.error(err);
+      }
+    },
+    revokeLogoDocumentoUrl() {
+      if (this.logoDocumentoUrl && this.logoDocumentoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(this.logoDocumentoUrl);
+      }
+      this.logoDocumentoUrl = '';
+    },
+    async refreshLogoDocumento() {
+      this.revokeLogoDocumentoUrl();
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/compras/settings/logo'), {
+          responseType: 'blob',
+          headers: {
+            requesttoken: OC.requestToken
+          }
+        });
+        if (!response.data || response.data.size === 0) {
+          this.logoDocumentoUrl = '';
+          return;
+        }
+        this.logoDocumentoUrl = URL.createObjectURL(response.data);
+      } catch (error) {
+        this.logoDocumentoUrl = '';
+        if (error?.response?.status !== 404) {
+          console.error(error);
+        }
+      }
+    },
+    async onLogoDocumentoSelected(event) {
+      const file = event.target.files?.[0] || null;
+      if (!file) {
+        return;
+      }
+      if (!['image/png', 'image/jpeg'].includes(file.type)) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Only PNG or JPG logos are allowed.'));
+        event.target.value = '';
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'The logo must not exceed 2 MB.'));
+        event.target.value = '';
+        return;
+      }
+      this.loadingLogoDocumento = true;
+      try {
+        const formData = new FormData();
+        formData.append('logo', file);
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/compras/settings/logo'), formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        const payload = response.data;
+        if (!payload.success) {
+          throw new Error(payload.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Could not upload logo.'));
+        }
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)(payload.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Logo uploaded successfully.'));
+        await this.refreshLogoDocumento();
+      } catch (error) {
+        console.error(error);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Error uploading logo: {error}', {
+          error: String(error)
+        }));
+      } finally {
+        this.loadingLogoDocumento = false;
+        event.target.value = '';
+      }
+    },
+    async eliminarLogoDocumento() {
+      this.loadingLogoDocumento = true;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].delete((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_3__.generateUrl)('/apps/empleados/compras/settings/logo'));
+        const payload = response.data;
+        if (!payload.success) {
+          throw new Error(payload.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Could not remove logo.'));
+        }
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showSuccess)(payload.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Logo removed successfully.'));
+        this.revokeLogoDocumentoUrl();
+      } catch (error) {
+        console.error(error);
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Error removing logo: {error}', {
+          error: String(error)
+        }));
+      } finally {
+        this.loadingLogoDocumento = false;
       }
     }
   }
@@ -11177,6 +11269,60 @@ var render = function render() {
       "update:checked": _vm.onChangemodulo_soporte
     }
   }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Enable IT support module")) + "\n\t\t\t\t\t")])], 1)])]), _vm._v(" "), _c("section", {
+    staticClass: "settings-category settings-category-wide"
+  }, [_c("div", {
+    staticClass: "category-header"
+  }, [_c("p", {
+    staticClass: "section-label"
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Purchases")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Purchase document logo")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Configure the logo used in generated purchase request PDFs.")))])]), _vm._v(" "), _c("div", {
+    staticClass: "settings-card settings-form-card"
+  }, [_c("div", {
+    staticClass: "logo-settings-layout"
+  }, [_c("div", {
+    staticClass: "logo-preview"
+  }, [_vm.logoDocumentoUrl ? _c("img", {
+    attrs: {
+      src: _vm.logoDocumentoUrl,
+      alt: ""
+    },
+    on: {
+      error: function ($event) {
+        _vm.logoDocumentoUrl = "";
+      }
+    }
+  }) : _c("span", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "No logo configured")) + "\n\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    staticClass: "logo-settings-content"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "Document logo")))]), _vm._v(" "), _c("span", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Use a PNG or JPG image. This logo will appear in generated purchase request PDFs.")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("input", {
+    ref: "logoDocumentoInput",
+    staticStyle: {
+      display: "none"
+    },
+    attrs: {
+      type: "file",
+      accept: "image/png,image/jpeg"
+    },
+    on: {
+      change: _vm.onLogoDocumentoSelected
+    }
+  }), _vm._v(" "), _c("div", {
+    staticClass: "actions-row logo-actions"
+  }, [_c("NcButton", {
+    attrs: {
+      disabled: _vm.loadingLogoDocumento
+    },
+    on: {
+      click: function ($event) {
+        return _vm.$refs.logoDocumentoInput.click();
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Upload logo")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      disabled: _vm.loadingLogoDocumento || !_vm.logoDocumentoUrl
+    },
+    on: {
+      click: _vm.eliminarLogoDocumento
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Remove logo")) + "\n\t\t\t\t\t\t\t")])], 1)])])])]), _vm._v(" "), _c("section", {
     staticClass: "settings-category settings-category-wide"
   }, [_c("div", {
     staticClass: "category-header"
@@ -25607,6 +25753,62 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 .actions-row[data-v-3fa77923] {
 		justify-content: stretch;
+}
+}
+.logo-settings-layout[data-v-3fa77923] {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+.logo-preview[data-v-3fa77923] {
+	width: 220px;
+	min-height: 96px;
+	padding: 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.logo-preview img[data-v-3fa77923] {
+	max-width: 180px;
+	max-height: 70px;
+	object-fit: contain;
+}
+.logo-preview span[data-v-3fa77923] {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	text-align: center;
+}
+.logo-settings-content[data-v-3fa77923] {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+.logo-settings-content strong[data-v-3fa77923] {
+	color: var(--color-main-text);
+	font-size: 15px;
+}
+.logo-settings-content span[data-v-3fa77923] {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.logo-actions[data-v-3fa77923] {
+	justify-content: flex-start;
+	gap: 10px;
+	margin-top: 10px;
+}
+@media (max-width: 700px) {
+.logo-settings-layout[data-v-3fa77923] {
+		align-items: stretch;
+		flex-direction: column;
+}
+.logo-preview[data-v-3fa77923] {
+		width: 100%;
 }
 }
 `, ""]);
@@ -143720,4 +143922,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=78b472d08028cfce1270
+//# sourceMappingURL=empleados-settings.js.map?v=1a020f97dee2d579d34b

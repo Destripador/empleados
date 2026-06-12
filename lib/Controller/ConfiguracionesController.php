@@ -44,7 +44,8 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\AdminRequired;
 
 use OCP\IGroupManager;
-
+use OCP\AppFramework\Http\DataDisplayResponse;
+use OCP\Files\IAppData;
 /**
  * @psalm-suppress UnusedClass
  */
@@ -62,28 +63,30 @@ class ConfiguracionesController extends Controller {
     
     private IUserManager $userManager;
     private IGroupManager $groupManager;
+    private IAppData $appData;
 
-	public function __construct(
-            IRequest $request,
-            ISession $session,
-            IUserSession $userSession,
-            IUserManager $userManager,
-            IL10N $l10n,
-            IRootFolder $rootFolder,
-            configuracionesMapper $configuracionesMapper, 
-            IConfig $config,
-            IGroupManager $groupManager,
-        ) {
-		parent::__construct(Application::APP_ID, $request);
+    public function __construct(
+        IRequest $request,
+        ISession $session,
+        IUserSession $userSession,
+        IUserManager $userManager,
+        IL10N $l10n,
+        IRootFolder $rootFolder,
+        configuracionesMapper $configuracionesMapper,
+        IConfig $config,
+        IGroupManager $groupManager,
+        IAppData $appData,
+    ) {
+        parent::__construct(Application::APP_ID, $request);
 
-		$this->userSession = $userSession;
-		$this->userManager = $userManager;
-		$this->configuracionesMapper = $configuracionesMapper;
-		$this->rootFolder = $rootFolder;
+        $this->userSession = $userSession;
+        $this->userManager = $userManager;
+        $this->configuracionesMapper = $configuracionesMapper;
+        $this->rootFolder = $rootFolder;
         $this->config = $config;
         $this->groupManager = $groupManager;
-
-	}
+        $this->appData = $appData;
+    }
     
     /**
      * Obtiene las configuraciones actuales del módulo, incluyendo:
@@ -382,5 +385,193 @@ class ConfiguracionesController extends Controller {
         $userGroupIds = $this->groupManager->getUserGroupIds($user);
 
         return in_array($groupId, $userGroupIds, true);
+    }
+    #[NoCSRFRequired]
+    #[AdminRequired]
+    public function uploadCompraDocumentoLogo(): DataResponse {
+        try {
+            $file = $this->request->getUploadedFile('logo');
+
+            if (!is_array($file) || empty($file['tmp_name'])) {
+                throw new \Exception('No se recibió ningún archivo.');
+            }
+
+            if ((int)($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+                throw new \Exception('Error al subir el archivo.');
+            }
+
+            $tmpName = (string)$file['tmp_name'];
+            $size = (int)($file['size'] ?? 0);
+
+            if ($size <= 0) {
+                throw new \Exception('El archivo está vacío.');
+            }
+
+            if ($size > 2 * 1024 * 1024) {
+                throw new \Exception('El logo no debe pesar más de 2 MB.');
+            }
+
+            $content = file_get_contents($tmpName);
+
+            if ($content === false || $content === '') {
+                throw new \Exception('No se pudo leer el archivo.');
+            }
+
+            $mime = $this->detectCompraLogoMime($content);
+
+            if (!in_array($mime, ['image/png', 'image/jpeg'], true)) {
+                throw new \Exception('Solo se permiten logos PNG o JPG.');
+            }
+
+            $folder = $this->getOrCreateCompraLogoFolder();
+
+            $this->deleteCompraLogoFiles($folder);
+
+            $fileName = $mime === 'image/png'
+                ? 'logo-documento.png'
+                : 'logo-documento.jpg';
+
+            if ($folder->fileExists($fileName)) {
+                $folder->getFile($fileName)->putContent($content);
+            } else {
+                $folder->newFile($fileName, $content);
+            }
+
+            return new DataResponse([
+                'success' => true,
+                'message' => 'Logo guardado correctamente.',
+                'data' => [
+                    'file_name' => $fileName,
+                    'mime' => $mime,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return new DataResponse([
+                'success' => false,
+                'message' => 'No se pudo guardar el logo: ' . $e->getMessage(),
+            ], Http::STATUS_BAD_REQUEST);
+        }
+    }
+
+    #[NoCSRFRequired]
+    #[AdminRequired]
+    public function getCompraDocumentoLogo(): DataDisplayResponse {
+        try {
+            $logo = $this->getCompraLogoContent();
+
+            if ($logo === null) {
+                return new DataDisplayResponse(
+                    'No hay logo configurado.',
+                    Http::STATUS_NOT_FOUND,
+                    ['Content-Type' => 'text/plain; charset=utf-8']
+                );
+            }
+
+            return new DataDisplayResponse(
+                $logo['content'],
+                Http::STATUS_OK,
+                [
+                    'Content-Type' => $logo['mime'],
+                    'Cache-Control' => 'no-store, no-cache, must-revalidate',
+                    'Pragma' => 'no-cache',
+                ]
+            );
+        } catch (\Throwable $e) {
+            return new DataDisplayResponse(
+                'No se pudo abrir el logo: ' . $e->getMessage(),
+                Http::STATUS_BAD_REQUEST,
+                ['Content-Type' => 'text/plain; charset=utf-8']
+            );
+        }
+    }
+
+    #[NoCSRFRequired]
+    #[AdminRequired]
+    public function deleteCompraDocumentoLogo(): DataResponse {
+        try {
+            $folder = $this->getOrCreateCompraLogoFolder();
+            $this->deleteCompraLogoFiles($folder);
+
+            return new DataResponse([
+                'success' => true,
+                'message' => 'Logo eliminado correctamente.',
+            ]);
+        } catch (\Throwable $e) {
+            return new DataResponse([
+                'success' => false,
+                'message' => 'No se pudo eliminar el logo: ' . $e->getMessage(),
+            ], Http::STATUS_BAD_REQUEST);
+        }
+    }
+
+    private function getOrCreateCompraLogoFolder() {
+        try {
+            return $this->appData->getFolder('compras');
+        } catch (NotFoundException $e) {
+            return $this->appData->newFolder('compras');
+        }
+    }
+
+    private function getCompraLogoContent(): ?array {
+        try {
+            $folder = $this->appData->getFolder('compras');
+        } catch (NotFoundException $e) {
+            return null;
+        }
+
+        foreach (['logo-documento.png', 'logo-documento.jpg'] as $fileName) {
+            if (!$folder->fileExists($fileName)) {
+                continue;
+            }
+
+            $file = $folder->getFile($fileName);
+            $content = $file->getContent();
+
+            if ($content === '') {
+                continue;
+            }
+
+            $mime = $this->detectCompraLogoMime($content);
+
+            if ($mime === '') {
+                continue;
+            }
+
+            return [
+                'content' => $content,
+                'mime' => $mime,
+            ];
+        }
+
+        return null;
+    }
+
+    private function deleteCompraLogoFiles($folder): void {
+        foreach (['logo-documento.png', 'logo-documento.jpg'] as $fileName) {
+            if ($folder->fileExists($fileName)) {
+                $folder->getFile($fileName)->delete();
+            }
+        }
+    }
+
+    private function detectCompraLogoMime(string $content): string {
+        if (strncmp($content, "\x89PNG", 4) === 0) {
+            return 'image/png';
+        }
+
+        if (strncmp($content, "\xFF\xD8\xFF", 3) === 0) {
+            return 'image/jpeg';
+        }
+
+        if (function_exists('finfo_buffer')) {
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mime = (string)$finfo->buffer($content);
+
+            if (in_array($mime, ['image/png', 'image/jpeg'], true)) {
+                return $mime;
+            }
+        }
+
+        return '';
     }
 }

@@ -6,100 +6,153 @@
 			</div>
 		</div>
 
-		<div v-else>
-			<div class="container">
-				<div class="main-content-card">
-					<div class="pack_card">
-						<p class="description">
-							{{ t('empleados', 'El empleado debe generar el reporte cada día · registrar cada procedimiento por separado · si requiere más registros, usar un nuevo formulario.') }}
-						</p>
-						<div class="bottom">
-							<NcButton
-								aria-label="center (default)"
-								type="primary"
-								wide
-								@click="openModal()">
-								<template #icon>
-									<Check :size="20" />
-								</template>
-								{{ t('empleados', 'Create report') }}
-							</NcButton>
+		<div v-else class="reports-page">
+			<div class="reports-layout">
+				<section class="reports-main">
+					<div class="filters-card">
+						<div class="filters-header">
+							<div class="filters-title">
+								<p class="section-label">
+									{{ t('empleados', 'Time reports') }}
+								</p>
+								<h2>{{ t('empleados', 'My reports') }}</h2>
+								<p>{{ t('empleados', 'Review my reports') }}</p>
+							</div>
+
+							<div class="filters-stats">
+								<div class="filters-stat">
+									<span>{{ t('empleados', 'Reports') }}</span>
+									<strong>{{ historialFiltrado.length }}</strong>
+								</div>
+
+								<div class="filters-stat">
+									<span>{{ t('empleados', 'Total hours') }}</span>
+									<strong>{{ totalHorasFiltradas }}</strong>
+								</div>
+
+								<div class="filters-stat">
+									<span>{{ t('empleados', 'Fortnight') }}</span>
+									<strong>{{ quincenaHorasTexto }} h</strong>
+								</div>
+							</div>
+						</div>
+
+						<div class="filters-panel">
+							<div class="filters-toolbar">
+								<div>
+									<strong>{{ t('empleados', 'Filters') }}</strong>
+									<span>
+										{{ activeFiltersCount > 0
+											? t('empleados', '{count} active', { count: activeFiltersCount })
+											: t('empleados', 'No active filters') }}
+									</span>
+								</div>
+
+								<NcButton
+									:aria-label="t('empleados', 'Clear filters')"
+									:disabled="activeFiltersCount === 0"
+									@click="clearFilters">
+									{{ t('empleados', 'Clear filters') }}
+								</NcButton>
+							</div>
+
+							<div class="filters-grid">
+								<NcDateTimePicker
+									v-model="filter_fecha_inicio"
+									class="filter-control"
+									type="date"
+									:placeholder="t('empleados', 'From date')" />
+
+								<NcDateTimePicker
+									v-model="filter_fecha_fin"
+									class="filter-control"
+									type="date"
+									:placeholder="t('empleados', 'To date')" />
+
+								<NcSelect
+									v-model="filter_cliente"
+									:input-label="t('empleados', 'Project')"
+									:options="actividades"
+									class="filter-control" />
+
+								<NcSelect
+									v-model="filter_actividad"
+									:input-label="t('empleados', 'Activity')"
+									:options="listas"
+									class="filter-control" />
+
+								<NcTextField
+									class="filter-control filter-search"
+									:value.sync="filter_busqueda"
+									:label="t('empleados', 'Search description, project or activity')" />
+							</div>
 						</div>
 					</div>
-				</div>
-			</div>
 
-			<div class="filters-card">
-				<div class="filters-header">
-					<div>
-						<h3>{{ t('empleados', 'Review my reports') }}</h3>
-						<p>
-							{{ t('empleados', 'Filter your reports by date, project, activity or description.') }}
-						</p>
+					<VirtualList
+						v-if="historialFiltrado.length > 0"
+						class="list"
+						:data-sources="historialFiltrado"
+						:data-key="'id'"
+						:data-component="rowComponent"
+						:keeps="24"
+						:estimate-size="52"
+						:extra-props="{ listas, actividades }" />
+
+					<div v-else class="empty-state">
+						{{ t('empleados', 'No reports found.') }}
 					</div>
+				</section>
 
-					<NcButton
-						:aria-label="t('empleados', 'Clear filters')"
-						@click="clearFilters">
-						{{ t('empleados', 'Clear filters') }}
-					</NcButton>
-				</div>
+				<aside class="reports-side">
+					<section class="quick-card">
+						<div>
+							<h3>{{ t('empleados', 'New report') }}</h3>
+							<p>{{ t('empleados', 'Create report') }}</p>
+						</div>
 
-				<div class="filters-grid">
-					<NcDateTimePicker
-						v-model="filter_fecha_inicio"
-						class="filter-control"
-						type="date"
-						:placeholder="t('empleados', 'From date')" />
+						<NcButton
+							:aria-label="t('empleados', 'Create report')"
+							type="primary"
+							wide
+							@click="openModal()">
+							<template #icon>
+								<Check :size="20" />
+							</template>
+							{{ t('empleados', 'Create report') }}
+						</NcButton>
+					</section>
 
-					<NcDateTimePicker
-						v-model="filter_fecha_fin"
-						class="filter-control"
-						type="date"
-						:placeholder="t('empleados', 'To date')" />
+					<section class="compliance-card" :class="semaforoClass">
+						<div class="semaforo-header">
+							<div>
+								<h3>{{ t('empleados', 'Fortnight compliance') }}</h3>
+								<p>{{ quincenaPeriodoTexto }}</p>
+							</div>
+							<span class="semaforo-light" />
+						</div>
 
-					<NcSelect
-						v-model="filter_cliente"
-						:input-label="t('empleados', 'Project')"
-						:options="actividades"
-						class="filter-control" />
+						<div class="semaforo-value">
+							{{ quincenaHorasTexto }} h
+						</div>
 
-					<NcSelect
-						v-model="filter_actividad"
-						:input-label="t('empleados', 'Activity')"
-						:options="listas"
-						class="filter-control" />
+						<div class="semaforo-meta">
+							<span>{{ t('empleados', 'Goal') }}: {{ quincenaMetaTexto }} h</span>
+							<strong>{{ quincenaPorcentajeTexto }}%</strong>
+						</div>
 
-					<NcTextField
-						class="filter-control filter-search"
-						:value.sync="filter_busqueda"
-						:label="t('empleados', 'Search description, project or activity')" />
-				</div>
+						<div class="progress-track">
+							<div
+								class="progress-value"
+								:style="{ width: quincenaProgressWidth }" />
+						</div>
 
-				<div class="filters-summary">
-					<span>
-						{{ t('empleados', 'Reports') }}:
-						<strong>{{ historialFiltrado.length }}</strong>
-					</span>
-
-					<span>
-						{{ t('empleados', 'Total hours') }}:
-						<strong>{{ totalHorasFiltradas }}</strong>
-					</span>
-				</div>
+						<div class="semaforo-status">
+							{{ semaforoLabel }}
+						</div>
+					</section>
+				</aside>
 			</div>
-
-			<VirtualList
-				v-if="historialFiltrado.length > 0"
-				class="list"
-				:data-sources="historialFiltrado"
-				:data-key="'id'"
-				:data-component="rowComponent"
-				:keeps="24"
-				:estimate-size="52"
-				:extra-props="{ listas, actividades }" />
-
-			<div v-else id="emptycontent" />
 		</div>
 		<NcModal
 			v-if="modal"
@@ -219,6 +272,11 @@ export default {
 		NcSelect,
 		VirtualList,
 	},
+	inject: {
+		configuraciones: {
+			default: () => ({}),
+		},
+	},
 	data() {
 		return {
 			rowComponent: ReportRow,
@@ -306,15 +364,149 @@ export default {
 			})
 		},
 
+		activeFiltersCount() {
+			return [
+				this.filter_fecha_inicio,
+				this.filter_fecha_fin,
+				this.filter_cliente,
+				this.filter_actividad,
+				String(this.filter_busqueda || '').trim(),
+			].filter(Boolean).length
+		},
+
 		totalHorasFiltradas() {
 			const totalMinutos = this.historialFiltrado.reduce((total, reporte) => {
 				return total + Number(reporte.tiempo_registrado || 0)
 			}, 0)
 
-			return new Intl.NumberFormat('es-MX', {
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 2,
-			}).format(totalMinutos / 60)
+			return this.formatHours(totalMinutos / 60)
+		},
+
+		quincenaActual() {
+			const today = new Date()
+			const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() <= 15 ? 1 : 16)
+			const end = today.getDate() <= 15
+				? new Date(today.getFullYear(), today.getMonth(), 15)
+				: new Date(today.getFullYear(), today.getMonth() + 1, 0)
+
+			return {
+				start,
+				end,
+				today,
+				startKey: this.formatLocalDateKey(start),
+				endKey: this.formatLocalDateKey(end),
+				todayKey: this.formatLocalDateKey(today),
+			}
+		},
+
+		quincenaMinutos() {
+			const { startKey, endKey } = this.quincenaActual
+
+			return this.historial.reduce((total, reporte) => {
+				const fechaReporte = this.normalizeDateOnly(reporte.fecha_registro)
+
+				if (!fechaReporte || fechaReporte < startKey || fechaReporte > endKey) {
+					return total
+				}
+
+				return total + Number(reporte.tiempo_registrado || 0)
+			}, 0)
+		},
+
+		quincenaHoras() {
+			return this.quincenaMinutos / 60
+		},
+
+		quincenaHorasTexto() {
+			return this.formatHours(this.quincenaHoras)
+		},
+
+		horasMinimasDiarias() {
+			const configured = Number(
+				this.configuraciones?.Reportes?.horas_minimas
+				?? this.configuraciones?.reportes_horas_minimas
+				?? 0,
+			)
+
+			return Number.isFinite(configured) && configured > 0 ? configured : 8
+		},
+
+		diasHabilesQuincenaTranscurridos() {
+			const { start, today, end } = this.quincenaActual
+			const limit = today < end ? today : end
+			let count = 0
+
+			for (
+				let cursorTime = start.getTime();
+				cursorTime <= limit.getTime();
+				cursorTime += 24 * 60 * 60 * 1000
+			) {
+				const cursor = new Date(cursorTime)
+				const day = cursor.getDay()
+
+				if (day !== 0 && day !== 6) {
+					count++
+				}
+			}
+
+			return Math.max(count, 1)
+		},
+
+		quincenaMetaHoras() {
+			return this.horasMinimasDiarias * this.diasHabilesQuincenaTranscurridos
+		},
+
+		quincenaMetaTexto() {
+			return this.formatHours(this.quincenaMetaHoras)
+		},
+
+		quincenaPorcentaje() {
+			if (this.quincenaMetaHoras <= 0) {
+				return this.quincenaHoras > 0 ? 100 : 0
+			}
+
+			return Math.min((this.quincenaHoras / this.quincenaMetaHoras) * 100, 100)
+		},
+
+		quincenaPorcentajeTexto() {
+			return Math.round(this.quincenaPorcentaje)
+		},
+
+		quincenaProgressWidth() {
+			return `${this.quincenaPorcentaje}%`
+		},
+
+		semaforoClass() {
+			if (this.quincenaPorcentaje >= 100) {
+				return 'status-ok'
+			}
+
+			if (this.quincenaPorcentaje >= 70) {
+				return 'status-warning'
+			}
+
+			return 'status-danger'
+		},
+
+		semaforoLabel() {
+			if (this.quincenaPorcentaje >= 100) {
+				return t('empleados', 'On track')
+			}
+
+			if (this.quincenaPorcentaje >= 70) {
+				return t('empleados', 'Close to goal')
+			}
+
+			return t('empleados', 'Needs attention')
+		},
+
+		quincenaPeriodoTexto() {
+			const formatter = new Intl.DateTimeFormat('es-MX', {
+				day: '2-digit',
+				month: 'short',
+			})
+
+			return `${formatter.format(this.quincenaActual.start)} - ${formatter.format(this.quincenaActual.end)}`
 		},
 	},
 	async mounted() {
@@ -566,7 +758,7 @@ export default {
 			}
 
 			if (value instanceof Date && !isNaN(value.getTime())) {
-				return value.toISOString().slice(0, 10)
+				return this.formatLocalDateKey(value)
 			}
 
 			const text = String(value)
@@ -581,7 +773,7 @@ export default {
 				return null
 			}
 
-			return date.toISOString().slice(0, 10)
+			return this.formatLocalDateKey(date)
 		},
 
 		clearFilters() {
@@ -591,44 +783,66 @@ export default {
 			this.filter_actividad = null
 			this.filter_busqueda = ''
 		},
+
+		formatLocalDateKey(date) {
+			const year = date.getFullYear()
+			const month = String(date.getMonth() + 1).padStart(2, '0')
+			const day = String(date.getDate()).padStart(2, '0')
+
+			return `${year}-${month}-${day}`
+		},
+
+		formatHours(value) {
+			return new Intl.NumberFormat('es-MX', {
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			}).format(Number(value) || 0)
+		},
 	},
 }
 </script>
 
 <style scoped>
-#emptycontent, .emptycontent { margin-top: 1vh; }
-.center-screen {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	min-height: 100vh;
-}
 .center { margin: auto; width: 50%; padding: 10px; }
-.container { padding-left: 20px; }
-.board-title {
-	margin-right: 10px;
-	font-size: 25px;
+
+.reports-page {
+	width: 100%;
+	padding: 20px;
+	box-sizing: border-box;
+}
+
+.reports-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 320px;
+	gap: 18px;
+	align-items: start;
+}
+
+.reports-main,
+.reports-side {
+	min-width: 0;
+}
+
+.reports-side {
+	position: sticky;
+	top: 20px;
 	display: flex;
-	align-items: center;
-	font-weight: bold;
-	margin-left: 20px;
+	flex-direction: column;
+	gap: 14px;
 }
-.board-title .icon { margin-right: 8px; }
-.main-content-card {
-	margin-top: 10px;
-	margin-left: 20px;
-	margin-right: 20px;
-}
+
 .time-selector {
 	display: flex;
-	margin: .5rem 0;          /* margen arriba y abajo */
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: .5rem 0;
 	align-self: center;
 }
 
 .radios {
 	display: flex;
-	margin-left: 7px;
+	flex-wrap: wrap;
+	gap: 6px;
 	height: 35px;
 	margin-top: 4px;
 }
@@ -639,7 +853,7 @@ export default {
 
 .save {
 	display: flex;
-	margin-left: 10px;
+	justify-content: flex-end;
 	align-self: center;
 }
 
@@ -660,43 +874,141 @@ export default {
 .fit {
 	width: 100%;
 }
+
 .list {
-	height: clamp(280px, calc(100vh - 390px), 560px);
-	max-height: 560px;
+	height: clamp(320px, calc(100vh - 315px), 660px);
+	max-height: 660px;
 	min-height: 280px;
 	overflow-y: auto;
 	overflow-x: hidden;
 	border: 1px solid var(--color-border);
-	border-radius: 12px;
-	margin: 20px;
+	border-radius: 8px;
 	background: var(--color-main-background);
 	overscroll-behavior: contain;
 }
-.filters-card {
-	margin: 20px;
+
+.filters-card,
+.quick-card,
+.compliance-card,
+.empty-state {
 	padding: 18px;
 	border: 1px solid var(--color-border);
-	border-radius: 12px;
+	border-radius: 8px;
 	background: var(--color-main-background);
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
-.filters-header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 14px;
-	margin-bottom: 16px;
+.filters-card {
+	margin-bottom: 14px;
+	padding: 0;
+	overflow: hidden;
 }
 
-.filters-header h3 {
+.filters-header {
+	display: flex;
+	align-items: stretch;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 18px;
+	border-bottom: 1px solid var(--color-border);
+	background: linear-gradient(180deg, var(--color-main-background) 0%, var(--color-background-hover) 100%);
+}
+
+.filters-title {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 220px;
+}
+
+.section-label {
+	margin: 0 0 4px;
+	color: var(--color-primary-element);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.filters-header h2,
+.quick-card h3,
+.compliance-card h3 {
 	margin: 0;
 	font-size: 18px;
 	font-weight: 700;
+	line-height: 1.25;
 }
 
-.filters-header p {
+.quick-card h3,
+.compliance-card h3 {
+	font-size: 16px;
+}
+
+.filters-header p,
+.quick-card p,
+.semaforo-header p {
 	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.filters-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(118px, 1fr));
+	gap: 10px;
+	width: min(100%, 520px);
+}
+
+.filters-stat {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	min-height: 76px;
+	padding: 12px;
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-main-background);
+}
+
+.filters-stat span {
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.filters-stat strong {
+	margin-top: 6px;
+	color: var(--color-main-text);
+	font-size: 22px;
+	font-weight: 800;
+	line-height: 1;
+}
+
+.filters-panel {
+	padding: 16px 18px 18px;
+}
+
+.filters-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 14px;
+}
+
+.filters-toolbar strong {
+	display: block;
+	color: var(--color-main-text);
+	font-size: 14px;
+}
+
+.filters-toolbar span {
+	display: block;
+	margin-top: 2px;
 	color: var(--color-text-maxcontrast);
 	font-size: 13px;
 }
@@ -717,22 +1029,126 @@ export default {
 	grid-column: span 2;
 }
 
-.filters-summary {
+.quick-card {
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
 	gap: 16px;
-	margin-top: 14px;
+}
+
+.compliance-card {
+	--semaforo-color: #d94f00;
+	--semaforo-bg: rgba(217, 79, 0, 0.12);
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.compliance-card.status-ok {
+	--semaforo-color: #108548;
+	--semaforo-bg: rgba(16, 133, 72, 0.12);
+}
+
+.compliance-card.status-warning {
+	--semaforo-color: #c78200;
+	--semaforo-bg: rgba(199, 130, 0, 0.14);
+}
+
+.compliance-card.status-danger {
+	--semaforo-color: #d94f00;
+	--semaforo-bg: rgba(217, 79, 0, 0.12);
+}
+
+.semaforo-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.semaforo-light {
+	display: block;
+	flex: 0 0 18px;
+	width: 18px;
+	height: 18px;
+	margin-top: 2px;
+	border-radius: 50%;
+	background: var(--semaforo-color);
+	box-shadow: 0 0 0 6px var(--semaforo-bg);
+}
+
+.semaforo-value {
+	font-size: 34px;
+	font-weight: 800;
+	line-height: 1;
+	color: var(--semaforo-color);
+}
+
+.semaforo-meta,
+.semaforo-status {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
 	color: var(--color-text-maxcontrast);
 	font-size: 13px;
 }
 
-.filters-summary strong {
+.semaforo-meta strong {
 	color: var(--color-main-text);
+	font-size: 20px;
+}
+
+.progress-track {
+	width: 100%;
+	height: 10px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--color-background-darker);
+}
+
+.progress-value {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--semaforo-color);
+	transition: width 180ms ease;
+}
+
+.semaforo-status {
+	justify-content: flex-start;
+	min-height: 30px;
+	padding: 6px 10px;
+	border-radius: 999px;
+	background: var(--semaforo-bg);
+	color: var(--semaforo-color);
+	font-weight: 700;
+}
+
+.empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 220px;
+	color: var(--color-text-maxcontrast);
 }
 
 @media (max-width: 1100px) {
+	.reports-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.reports-side {
+		position: static;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		order: -1;
+	}
+
 	.filters-grid {
 		grid-template-columns: repeat(2, minmax(180px, 1fr));
+	}
+
+	.filters-stats {
+		width: min(100%, 460px);
 	}
 
 	.filter-search {
@@ -741,7 +1157,29 @@ export default {
 }
 
 @media (max-width: 700px) {
+	.reports-page {
+		padding: 12px;
+	}
+
+	.reports-side {
+		grid-template-columns: 1fr;
+	}
+
 	.filters-header {
+		flex-direction: column;
+	}
+
+	.filters-stats {
+		grid-template-columns: 1fr;
+		width: 100%;
+	}
+
+	.filters-stat {
+		min-height: 64px;
+	}
+
+	.filters-toolbar {
+		align-items: flex-start;
 		flex-direction: column;
 	}
 
@@ -765,7 +1203,6 @@ export default {
 	.list {
 		height: 45vh;
 		min-height: 240px;
-		margin: 12px;
 	}
 }
 </style>

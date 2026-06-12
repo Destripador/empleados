@@ -61,6 +61,12 @@ class CompraSolicitud extends Entity implements JsonSerializable {
 	protected $pdfNombre;
 	protected $pdfGeneradoAt;
 
+	protected $firmadoFileId;
+	protected $firmadoNombre;
+	protected $firmadoMime;
+	protected $firmadoSubidoAt;
+	protected $firmadoSubidoBy;
+
 	public function __construct() {
 		$this->addType('idSolicitud', 'integer');
 		$this->addType('idCliente', 'integer');
@@ -68,6 +74,7 @@ class CompraSolicitud extends Entity implements JsonSerializable {
 		$this->addType('garantia', 'integer');
 		$this->addType('quincenas', 'integer');
 		$this->addType('pdfFileId', 'integer');
+		$this->addType('firmadoFileId', 'integer');
 	}
 
 	public function jsonSerialize(): array {
@@ -123,6 +130,12 @@ class CompraSolicitud extends Entity implements JsonSerializable {
 			'pdf_file_id' => $this->pdfFileId,
 			'pdf_nombre' => $this->pdfNombre,
 			'pdf_generado_at' => $this->pdfGeneradoAt,
+
+			'firmado_file_id' => $this->firmadoFileId,
+			'firmado_nombre' => $this->firmadoNombre,
+			'firmado_mime' => $this->firmadoMime,
+			'firmado_subido_at' => $this->firmadoSubidoAt,
+			'firmado_subido_by' => $this->firmadoSubidoBy,
 		];
 	}
 }

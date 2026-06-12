@@ -337,6 +337,12 @@ class CompraSolicitudService {
 			$userId
 		);
 
+		$this->notificacionService->notificarSolicitudAutorizada(
+			$solicitud,
+			$userId,
+			$comentario
+		);
+
 		return $this->obtenerDetalle($idSolicitud, $userId);
 	}
 
