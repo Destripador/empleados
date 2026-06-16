@@ -187,13 +187,13 @@ class actividadesController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired] // si aplica, cámbiala por #[AdminRequired]
-    public function modificarActividad(int $id_actividad, string $nombre, string $detalles, float $tiempoestimado, string $tipo): DataResponse {
+    public function modificarActividad(int $id_actividad, string $nombre, string $detalles, float $tiempoestimado, string $tipo, bool $cargable): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
         $tipo = strtolower(trim($tipo));
         if ($tipo === 'horas') {
             $tiempoestimado *= 60; // <-- usa la MISMA variable
         }
-        $this->actividadMapper->updateActividad($id_actividad, $nombre, $detalles, $tiempoestimado);
+        $this->actividadMapper->updateActividad($id_actividad, $nombre, $detalles, $tiempoestimado, $cargable);
         return new DataResponse('ok', Http::STATUS_OK);
     }
 
@@ -204,11 +204,12 @@ class actividadesController extends BaseController {
      * @param ?string $detalles
      * @param float $tiempoestimado
      * @param string $tipo
+     * @param ?bool $cargable
      * @return DataResponse
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function crearActividad(string $nombre, ?string $detalles, float $tiempoestimado, string $tipo): DataResponse {
+    public function crearActividad(string $nombre, ?string $detalles, float $tiempoestimado, string $tipo, ?bool $cargable): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
 
         $tipo = strtolower(trim($tipo));
@@ -220,6 +221,7 @@ class actividadesController extends BaseController {
         $actividad->setnombre($nombre);
         $actividad->setdetalles($detalles);
         $actividad->settiempo_estimado($tiempoestimado);
+        $actividad->setcargable($cargable);
         $this->actividadMapper->insert($actividad);
 
         return new DataResponse(Http::STATUS_OK);
@@ -233,7 +235,7 @@ class actividadesController extends BaseController {
     public function ExportarActividades(): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
         $actividad = $this->actividadMapper->findAll();
-        $books = [['id_actividad', 'nombre', 'detalles', 'tiempo_estimado', 'tiempo_real']];
+        $books = [['id_actividad', 'nombre', 'detalles', 'tiempo_estimado', 'tiempo_real', 'cargable']];
 
         foreach ($actividad as $actividad) {
             $books[] = [
@@ -241,6 +243,7 @@ class actividadesController extends BaseController {
                 $actividad['nombre'],
                 $actividad['tiempo_estimado'],
                 $actividad['tiempo_real'],
+                $actividad['cargable'],
             ];
         }
 
@@ -258,12 +261,13 @@ class actividadesController extends BaseController {
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
                 if (!empty($row[0])) {
-                    $this->actividadMapper->updateActividad((int) $row[0], (string) $row[1], (string) $row[2], (float) $row[3]);
+                    $this->actividadMapper->updateActividad((int) $row[0], (string) $row[1], (string) $row[2], (float) $row[3], (bool) $row[4]);
                 } else {
                     $actividad = new actividad();
                     $actividad->setnombre($row[1]);
                     $actividad->setdetalles($row[2]);
                     $actividad->settiempo_estimado($row[3]);
+                    $actividad->setcargable($row[4]);
                     $this->actividadMapper->insert($actividad);
                 }
             }
