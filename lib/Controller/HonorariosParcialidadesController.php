@@ -1,0 +1,147 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OCA\Empleados\Controller;
+
+use OCA\Empleados\AppInfo\Application;
+
+use OCA\Empleados\Db\empleadosMapper;
+use OCA\Empleados\Db\configuracionesMapper;
+
+use OCA\Empleados\Db\honorariosMapper;
+use OCA\Empleados\Db\honorariosParcialidadesMapper;
+
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\DataResponse;
+
+use OCP\AppFramework\Http\Attribute\UseSession;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+
+use OCP\IRequest;
+use OCP\IUserSession;
+use OCP\IGroupManager;
+
+class HonorariosParcialidadesController extends BaseController {
+
+	protected honorariosMapper $honorariosMapper;
+
+	protected honorariosParcialidadesMapper
+		$honorariosParcialidadesMapper;
+
+	public function __construct(
+		IRequest $request,
+		IUserSession $userSession,
+		IGroupManager $groupManager,
+		empleadosMapper $empleadosMapper,
+		configuracionesMapper $configuracionesMapper,
+		honorariosMapper $honorariosMapper,
+		honorariosParcialidadesMapper
+			$honorariosParcialidadesMapper
+	) {
+
+		parent::__construct(
+			Application::APP_ID,
+			$request,
+			$userSession,
+			$groupManager,
+			$empleadosMapper,
+			$configuracionesMapper
+		);
+
+		$this->honorariosMapper =
+			$honorariosMapper;
+
+		$this->honorariosParcialidadesMapper =
+			$honorariosParcialidadesMapper;
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function findById(
+		int $id_parcialidad
+	): DataResponse {
+
+		$this->checkAccess([
+			'admin',
+			'recursos_humanos'
+		]);
+
+		return new DataResponse(
+			$this->honorariosParcialidadesMapper
+				->findById($id_parcialidad),
+			Http::STATUS_OK
+		);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function findByHonorario(
+		int $id_honorario
+	): DataResponse {
+
+		$this->checkAccess([
+			'admin',
+			'recursos_humanos'
+		]);
+
+		return new DataResponse(
+			$this->honorariosParcialidadesMapper
+				->findByHonorario($id_honorario),
+			Http::STATUS_OK
+		);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function marcarPagada(
+		int $id_parcialidad,
+		string $fecha_pago
+	): DataResponse {
+
+		$this->checkAccess([
+			'admin',
+			'recursos_humanos'
+		]);
+
+		$idHonorarioFinalizado =
+			$this->honorariosParcialidadesMapper
+				->marcarPagada(
+					$id_parcialidad,
+					$fecha_pago
+				);
+
+		if ($idHonorarioFinalizado !== null) {
+
+			$this->honorariosMapper
+				->desactivarHonorario(
+					$idHonorarioFinalizado
+				);
+		}
+
+		return new DataResponse(
+			['status' => 'ok'],
+			Http::STATUS_OK
+		);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function marcarFacturada(
+		int $id_parcialidad
+	): DataResponse {
+
+		$this->checkAccess([
+			'admin',
+			'recursos_humanos'
+		]);
+
+		$this->honorariosParcialidadesMapper
+			->marcarFacturada($id_parcialidad);
+
+		return new DataResponse(
+			['status' => 'ok'],
+			Http::STATUS_OK
+		);
+	}
+}

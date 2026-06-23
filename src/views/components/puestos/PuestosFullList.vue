@@ -6,6 +6,37 @@
 					<div class="input-container">
 						<input v-model="query" type="text" :placeholder="t('empleados', 'Search positions...')">
 					</div>
+					<div class="filters-container">
+						<NcButton
+							type="tertiary"
+							@click.stop="toggleFilters"
+							:title="t('empleados', 'Filters')">
+							<template #icon>
+								<FilterVariant :size="20" />
+							</template>
+							{{ t('empleados', 'Filters') }}
+							<span v-if="hideEmpty" class="filter-badge">1</span>
+						</NcButton>
+
+						<div v-if="showFilters" class="filter-dropdown" @click.stop>
+							<div class="filter-section">
+								<p class="filter-section-label">{{ t('empleados', 'Sort') }}</p>
+								<select v-model="sortOrder">
+									<option value="asc">A-Z</option>
+									<option value="desc">Z-A</option>
+								</select>
+							</div>
+
+							<hr class="filter-divider">
+
+							<div class="filter-section">
+								<label>
+									<input v-model="hideEmpty" type="checkbox">
+									{{ t('empleados', 'Hide empty') }}
+								</label>
+							</div>
+						</div>
+					</div>
 					<div class="button-container">
 						<NcActions
 							:open="button"
@@ -91,6 +122,7 @@ import AccountMultiplePlusOutline from 'vue-material-design-icons/AccountMultipl
 // import Download from 'vue-material-design-icons/Download.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
+import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 
 import {
 	NcAppContentList as AppContentList,
@@ -113,6 +145,7 @@ export default {
 		NcActions,
 		NcActionButton,
 		Cog,
+		FilterVariant,
 		Upload,
 		DatabaseExport,
 		AccountMultiplePlusOutline,
@@ -149,13 +182,32 @@ export default {
 			button: false,
 			options: [],
 			nombre_area: '',
+			sortOrder: 'asc',
+			hideEmpty: false,
+			showFilters: false,
 		}
 	},
 
 	computed: {
 		filteredList() {
-			return this.contacts
+			let puestos = this.contacts
 				.filter(item => this.matchSearch(item.Nombre))
+
+			if (this.hideEmpty) {
+				puestos = puestos.filter(
+					item => Number(item.cantidad_empleados) > 0
+				)
+			}
+
+			puestos.sort((a, b) => {
+				if (this.sortOrder === 'asc') {
+					return a.Nombre.localeCompare(b.Nombre)
+				}
+
+				return b.Nombre.localeCompare(a.Nombre)
+			})
+
+			return puestos
 		},
 	},
 
@@ -169,6 +221,17 @@ export default {
 
 	mounted() {
 		this.query = this.searchQuery
+		this._onClickOutside = (event) => {
+			const wrap = this.$el.querySelector('.filters-container')
+			if (wrap && !wrap.contains(event.target)) {
+				this.showFilters = false
+			}
+		}
+		document.addEventListener('click', this._onClickOutside)
+	},
+
+	beforeDestroy() {
+		document.removeEventListener('click', this._onClickOutside)
 	},
 
 	methods: {
@@ -258,6 +321,9 @@ export default {
 		toggle() {
 			this.button = !this.button
 		},
+		toggleFilters() {
+			this.showFilters = !this.showFilters
+		},
 		async crearPuesto() {
 			try {
 				await axios.post(generateUrl('/apps/empleados/crearPuesto'),
@@ -284,6 +350,99 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// Filtro y ordenamiento
+.filters-container {
+	position: relative;
+	display: inline-flex;
+	align-items: flex-start;
+	grid-area: filters;
+	justify-self: start;
+	margin: 0;
+	overflow: visible;
+}
+
+.filter-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	margin-left: 4px;
+	border-radius: 999px;
+	background-color: var(--color-primary);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.filter-dropdown {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	z-index: 100000;
+	width: 190px;
+	box-sizing: border-box;
+	padding: 6px 0;
+	overflow: hidden;
+	border: 1px solid rgba(0, 0, 0, 0.28);
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.filter-section {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 6px 10px;
+}
+
+.filter-section-label {
+	margin: 0 0 4px;
+	color: var(--color-text-maxcontrast);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.filter-section select {
+	width: 100%;
+	height: 28px;
+	box-sizing: border-box;
+	padding: 1px 22px 1px 7px;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 12px;
+}
+
+.filter-section label {
+	display: inline-flex;
+	align-items: center;
+	min-height: 26px;
+	gap: 5px;
+	background-color: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	line-height: 1;
+}
+
+.filter-section input[type='checkbox'] {
+	width: 13px;
+	height: 13px;
+	margin: 0;
+}
+
+.filter-divider {
+	margin: 2px 0;
+	border: none;
+	border-top: 1px solid var(--color-border);
+}
+
 // Make virtual scroller scrollable
 .contacts-list {
 	max-height: calc(100vh - var(--header-height) - 48px);
@@ -311,17 +470,25 @@ export default {
 }
 
 .container-search {
-    display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas:
+		"input button"
+		"filters button";
+	align-items: start;
+	gap: 6px 8px;
 }
 .input-container {
-    flex: 1;
-    margin-right: 5px;
+	grid-area: input;
 }
 .input-container input {
-    width: 100%;
+	width: 100%;
+}
+.button-container {
+	grid-area: button;
 }
 .button-container button {
-    width: 100%;
+	width: 100%;
 }
 
 .modal__content {

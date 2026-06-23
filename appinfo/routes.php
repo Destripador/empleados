@@ -139,13 +139,27 @@ return [
 		['name' => 'ahorros#DenegarAhorro', 'url' => '/DenegarAhorro', 'verb' => 'POST'],
 
 		/******************************* CLIENTES *****************************************/
+		['name' => 'clientes#GetCompaniesGroups',  'url' => '/GetCompaniesGroups',  'verb' => 'GET'],
+		['name' => 'clientes#GetCompanieGroup',            'url' => '/GetCompanieGroup',    'verb' => 'POST'],
 		['name' => 'clientes#crearCliente', 'url' => '/crearCliente', 'verb' => 'POST'],
-		['name' => 'clientes#modificarCliente', 'url' => '/modificarCliente', 'verb' => 'POST'],
-		['name' => 'clientes#deleteById', 'url' => '/deleteCliente', 'verb' => 'POST'],
-		['name' => 'clientes#findById', 'url' => '/GetCompanieGroup', 'verb' => 'POST'],
-		['name' => 'clientes#importarClientes', 'url' => '/importarClientes', 'verb' => 'POST'],
-		['name' => 'clientes#GetCompaniesGroups', 'url' => '/GetCompaniesGroups', 'verb' => 'GET'],
-		['name' => 'clientes#Exportarclientes', 'url' => '/Exportarclientes', 'verb' => 'GET'],
+		['name' => 'clientes#modificarCliente',    'url' => '/modificarCliente',    'verb' => 'POST'],
+		['name' => 'clientes#deleteById',          'url' => '/deleteCliente',       'verb' => 'POST'],
+		['name' => 'clientes#importarClientes',    'url' => '/importarClientes',    'verb' => 'POST'],
+		['name' => 'clientes#Exportarclientes',    'url' => '/Exportarclientes',    'verb' => 'GET'],
+
+		/******************************* HONORARIOS ***************************************/
+		['name' => 'honorarios#getHonorarios',     'url' => '/getHonorarios',       'verb' => 'GET'],
+		['name' => 'honorarios#findById',          'url' => '/getHonorario',        'verb' => 'POST'],
+		['name' => 'honorarios#crearHonorario',    'url' => '/crearHonorario',      'verb' => 'POST'],
+		['name' => 'honorarios#modificarHonorario','url' => '/modificarHonorario',  'verb' => 'POST'],
+		['name' => 'honorarios#deleteById',        'url' => '/deleteHonorario',     'verb' => 'POST'],
+		['name' => 'honorarios#findByCliente', 'url' => '/findHonorariosByCliente', 'verb' => 'POST'],
+		['name' => 'honorarios#completarHonorario', 'url' => '/completarHonorario', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#findByHonorario', 'url' => '/findParcialidadesByHonorario', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#marcarPagada', 'url' => '/marcarParcialidadPagada', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#findById', 'url' => '/findParcialidadesById', 'verb' => 'POST'],
+		['name' => 'HonorariosParcialidades#actualizarFechaPago', 'url' => '/actualizarFechaPagoParcialidad', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#marcar_facturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
 
 		/****************************** ACTIVIDADES ***************************************/
 		['name' => 'actividades#crearActividad', 'url' => '/crearActividad', 'verb' => 'POST'],
