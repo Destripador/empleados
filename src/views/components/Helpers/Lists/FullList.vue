@@ -152,25 +152,31 @@ export default {
 // Add empty header to contacts-list that solves overlapping of contacts with app-navigation-toogle
 .contacts-list__header {
 	min-height: 48px;
+	position: relative;
+	z-index: 10;
+	overflow: visible;
 }
 
 // Search field
 .search-contacts-field {
-	padding: 5px 10px 5px 50px;
-	margin-top: 4px;
+    padding: 5px 2px 5px 8px;
+    margin-top: 4px;
 
-	> input {
-		width: 100%;
-	}
+    > input {
+        width: 100%;
+    }
 }
 
 .content-list {
-	overflow-y: auto;
+	position: relative;
+	z-index: 20;
+	overflow: visible !important;
 	padding: 0 4px;
 }
 
 .container-search {
 	display: flex;
+	overflow: visible;
 }
 .input-container {
 	flex: 1;

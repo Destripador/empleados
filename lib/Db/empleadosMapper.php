@@ -421,4 +421,33 @@ class empleadosMapper extends QBMapper {
 			echo $e;
 		}
 	}
+
+	public function GetProjectManagers(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+				'e.Id_empleados',
+				'u.displayname'
+			)
+			->from('empleados', 'e')
+			->innerJoin(
+				'e',
+				'users',
+				'u',
+				$qb->expr()->eq('u.uid', 'e.Id_user')
+			)
+			->where(
+				$qb->expr()->eq(
+					'e.estado',
+					$qb->createNamedParameter(1)
+				)
+			)
+			->orderBy('u.displayname', 'ASC');
+
+		$result = $qb->executeQuery();
+		$data = $result->fetchAll();
+		$result->closeCursor();
+
+		return $data;
+	}
 }

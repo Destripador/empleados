@@ -187,7 +187,7 @@ export default {
 
 <style scoped lang="scss">
 	.container {
-		padding-left: 60px;
+		padding-left: 5px;
 	}
 	.board-title {
 		padding-left: 60px;

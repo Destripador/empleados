@@ -1,5 +1,5 @@
 <template>
-	<div class="contacts-list__item-wrapper">
+	<div class="contacts-list__item-wrapper" :class="{ 'item--especial': Number(source.especial) === 1 }">
 		<ListItem
 			:compact="true"
 			class="list-item-style envelope"
@@ -93,5 +93,11 @@ export default {
 	&[draggable='false'] .avatardiv * {
 		cursor: not-allowed !important;
 	}
+}
+
+.item--especial {
+    background: linear-gradient(135deg, #3b82f622 0%, #ffffffef 30%);
+    border-radius: 8px;
+    border-left: 1px solid #8db5f5;
 }
 </style>

@@ -14,26 +14,30 @@
 				<div class="details-icon">
 					<ClipboardTextClockOutline :size="30" />
 				</div>
-
 				<div class="details-title">
 					<p class="eyebrow">
 						{{ t('empleados', 'Activity') }}
 					</p>
-
 					<h2>{{ activityName }}</h2>
-
 					<p class="subtitle">
 						{{ t('empleados', 'Time report activity catalog item') }}
 					</p>
 				</div>
+
+				<!-- Badge cargable en el header -->
+				<span :class="['badge', activity.cargable ? 'badge--billable' : 'badge--nonbillable']">
+					<CurrencyUsd v-if="activity.cargable" :size="14" />
+					<CurrencyUsdOff v-else :size="14" />
+					{{ activity.cargable ? t('empleados', 'Billable') : t('empleados', 'Non-billable') }}
+				</span>
 			</div>
 
+			<!-- Grid de tiempo -->
 			<div class="summary-grid">
 				<div class="summary-card">
 					<div class="field-icon">
 						<TimerSandFull :size="20" />
 					</div>
-
 					<div>
 						<span>{{ t('empleados', 'Estimated time') }}</span>
 						<strong>{{ estimatedTimeLabel }}</strong>
@@ -44,18 +48,18 @@
 					<div class="field-icon">
 						<ClockCheck :size="20" />
 					</div>
-
 					<div>
 						<span>{{ t('empleados', 'Real time') }}</span>
 						<strong>{{ realTimeLabel }}</strong>
 					</div>
 				</div>
 
-				<div class="summary-card">
+				<div class="summary-card" :class="differenceClass">
 					<div class="field-icon">
-						<TimerSandFull :size="20" />
+						<TrendingUp v-if="difference > 0" :size="20" />
+						<TrendingDown v-else-if="difference < 0" :size="20" />
+						<Minus v-else :size="20" />
 					</div>
-
 					<div>
 						<span>{{ t('empleados', 'Difference') }}</span>
 						<strong>{{ differenceLabel }}</strong>
@@ -63,12 +67,12 @@
 				</div>
 			</div>
 
+			<!-- Detalle descripción + metadatos -->
 			<div class="details-grid">
 				<div class="detail-card detail-card-wide">
 					<div class="field-icon">
 						<TextBoxOutline :size="20" />
 					</div>
-
 					<div class="detail-content">
 						<span>{{ t('empleados', 'Description') }}</span>
 						<p>{{ activityDescription }}</p>
@@ -79,10 +83,9 @@
 					<div class="field-icon">
 						<TimerSandFull :size="20" />
 					</div>
-
 					<div class="detail-content">
 						<span>{{ t('empleados', 'Time unit') }}</span>
-						<strong>{{ unitLabel }}</strong>
+						<strong>{{ t('empleados', 'Minutes (stored)') }}</strong>
 					</div>
 				</div>
 
@@ -90,7 +93,6 @@
 					<div class="field-icon">
 						<ClockCheck :size="20" />
 					</div>
-
 					<div class="detail-content">
 						<span>{{ t('empleados', 'Status') }}</span>
 						<strong>{{ statusLabel }}</strong>
@@ -109,6 +111,11 @@ import ClipboardTextClockOutline from 'vue-material-design-icons/ClipboardTextCl
 import ClockCheck from 'vue-material-design-icons/ClockCheck.vue'
 import TextBoxOutline from 'vue-material-design-icons/TextBoxOutline.vue'
 import TimerSandFull from 'vue-material-design-icons/TimerSandFull.vue'
+import TrendingUp from 'vue-material-design-icons/TrendingUp.vue'
+import TrendingDown from 'vue-material-design-icons/TrendingDown.vue'
+import Minus from 'vue-material-design-icons/Minus.vue'
+import CurrencyUsd from 'vue-material-design-icons/CurrencyUsd.vue'
+import CurrencyUsdOff from 'vue-material-design-icons/CurrencyUsdOff.vue'
 
 export default {
 	name: 'ActividadesDetalles',
@@ -119,6 +126,11 @@ export default {
 		ClockCheck,
 		TextBoxOutline,
 		TimerSandFull,
+		TrendingUp,
+		TrendingDown,
+		Minus,
+		CurrencyUsd,
+		CurrencyUsdOff,
 	},
 
 	props: {
@@ -151,16 +163,6 @@ export default {
 				|| t('empleados', 'No description available.')
 		},
 
-		timeType() {
-			return this.activity?.tipo || 'minutos'
-		},
-
-		unitLabel() {
-			return this.timeType === 'horas'
-				? t('empleados', 'Hours')
-				: t('empleados', 'Minutes')
-		},
-
 		estimatedTime() {
 			return this.toNumber(this.activity?.tiempo_estimado)
 		},
@@ -173,51 +175,35 @@ export default {
 		},
 
 		estimatedTimeLabel() {
-			return this.formatTime(this.estimatedTime)
+			return this.formatMinutes(this.estimatedTime)
 		},
 
 		realTimeLabel() {
-			return this.formatTime(this.realTime)
+			return this.formatMinutes(this.realTime)
 		},
 
 		difference() {
-			if (this.estimatedTime === null || this.realTime === null) {
-				return null
-			}
-
+			if (this.estimatedTime === null || this.realTime === null) return null
 			return this.realTime - this.estimatedTime
 		},
 
 		differenceLabel() {
-			if (this.difference === null) {
-				return '-'
-			}
-
-			if (this.difference === 0) {
-				return this.formatTime(0)
-			}
-
+			if (this.difference === null) return '-'
+			if (this.difference === 0) return this.formatMinutes(0)
 			const prefix = this.difference > 0 ? '+' : ''
-			return `${prefix}${this.formatTime(this.difference)}`
+			return `${prefix}${this.formatMinutes(this.difference)}`
+		},
+
+		differenceClass() {
+			if (this.difference === null || this.difference === 0) return ''
+			return this.difference > 0 ? 'summary-card--over' : 'summary-card--under'
 		},
 
 		statusLabel() {
-			if (this.realTime === null || this.realTime === 0) {
-				return t('empleados', 'Not used yet')
-			}
-
-			if (this.estimatedTime === null || this.estimatedTime === 0) {
-				return t('empleados', 'In use')
-			}
-
-			if (this.realTime > this.estimatedTime) {
-				return t('empleados', 'Above estimate')
-			}
-
-			if (this.realTime < this.estimatedTime) {
-				return t('empleados', 'Below estimate')
-			}
-
+			if (this.realTime === null || this.realTime === 0) return t('empleados', 'Not used yet')
+			if (this.estimatedTime === null || this.estimatedTime === 0) return t('empleados', 'In use')
+			if (this.realTime > this.estimatedTime) return t('empleados', 'Above estimate')
+			if (this.realTime < this.estimatedTime) return t('empleados', 'Below estimate')
 			return t('empleados', 'On estimate')
 		},
 	},
@@ -226,25 +212,24 @@ export default {
 		t,
 
 		toNumber(value) {
-			if (value === null || value === undefined || value === '') {
-				return null
-			}
-
+			if (value === null || value === undefined || value === '') return null
 			const parsed = Number(value)
-
 			return Number.isFinite(parsed) ? parsed : null
 		},
 
-		formatTime(value) {
-			if (value === null || value === undefined) {
-				return '-'
+		/**
+		 * La BD siempre guarda minutos. Mostramos en h:mm si >= 60, si no en min.
+		 */
+		formatMinutes(value) {
+			if (value === null || value === undefined) return '-'
+			const v = Math.abs(value)
+			if (v >= 60) {
+				const h = Math.floor(v / 60)
+				const m = v % 60
+				const label = m > 0 ? `${h}h ${m}min` : `${h}h`
+				return value < 0 ? `-${label}` : label
 			}
-
-			const unit = this.timeType === 'horas'
-				? t('empleados', 'h')
-				: t('empleados', 'min')
-
-			return `${value} ${unit}`
+			return `${value} min`
 		},
 	},
 }
@@ -261,6 +246,7 @@ export default {
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* ── Header ── */
 .details-header {
 	display: flex;
 	align-items: center;
@@ -269,6 +255,7 @@ export default {
 }
 
 .details-title {
+	flex: 1;
 	min-width: 0;
 }
 
@@ -293,6 +280,30 @@ export default {
 	height: 38px;
 }
 
+/* ── Badge cargable ── */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+	padding: 4px 10px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .03em;
+}
+
+.badge--billable {
+	background: color-mix(in srgb, var(--color-success) 60%);
+	color: #50ec07;
+}
+
+.badge--nonbillable {
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+}
+
+/* ── Tipografía header ── */
 .eyebrow {
 	margin: 0 0 4px;
 	color: var(--color-primary-element);
@@ -319,6 +330,7 @@ export default {
 	font-size: 13px;
 }
 
+/* ── Summary grid (3 columnas) ── */
 .summary-grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -336,6 +348,18 @@ export default {
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
+	transition: border-color 0.15s;
+}
+
+/* Colores semánticos diferencia */
+.summary-card--over {
+	border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+	background: color-mix(in srgb, var(--color-error) 6%, var(--color-background-hover));
+}
+
+.summary-card--under {
+	border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+	background: color-mix(in srgb, var(--color-success) 6%, var(--color-background-hover));
 }
 
 .summary-card span,
@@ -358,6 +382,7 @@ export default {
 	line-height: 1.3;
 }
 
+/* ── Details grid (2 columnas) ── */
 .details-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -380,6 +405,7 @@ export default {
 	overflow-wrap: anywhere;
 }
 
+/* ── Responsive ── */
 @media (max-width: 900px) {
 	.summary-grid {
 		grid-template-columns: 1fr;
@@ -401,12 +427,18 @@ export default {
 	}
 
 	.details-header {
+		flex-wrap: wrap;
 		align-items: flex-start;
 	}
 
 	.details-header h2 {
 		font-size: 20px;
 		white-space: normal;
+	}
+
+	.badge {
+		order: -1;
+		margin-inline-start: auto;
 	}
 }
 </style>
