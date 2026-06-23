@@ -31,6 +31,7 @@ class Version2011Date20260619174314 extends SimpleMigrationStep {
 		$table->addColumn('pagado', Types::INTEGER, [
 			'notnull' => true,
 			'default' => 0,
+			'length' => 1,
 		]);
 
 		return $schema;

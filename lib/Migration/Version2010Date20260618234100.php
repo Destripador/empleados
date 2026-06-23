@@ -98,9 +98,10 @@ class Version2010Date20260618234100 extends SimpleMigrationStep {
 				'default' => 0,
 			]);
 
-			$table->addColumn('pagado', Types::BOOLEAN, [
+			$table->addColumn('pagado', Types::INTEGER, [
 				'notnull' => true,
-				'default' => false,
+				'default' => 0,
+				'length' => 1,
 			]);
 			$table->addColumn('fecha_pago', Types::STRING, [
 				'notnull' => false,
