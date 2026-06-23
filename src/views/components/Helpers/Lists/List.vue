@@ -39,6 +39,18 @@
 									<template #icon>
 										<AccountCog :size="20" />
 									</template>
+
+									<NcActionButton
+										v-if="showToggleEstado"
+										:close-after-click="true"
+										@click="$root.$emit('toggleEstado')">
+										<template #icon>
+											<EyeOffOutline :size="20" />
+										</template>
+										{{ toggleEstadoLabel }}
+									</NcActionButton>
+									<NcActionSeparator v-if="showToggleEstado" />
+
 									<slot name="buttons" />
 									<NcActionButton
 										:close-after-click="true"
@@ -79,6 +91,7 @@ import DatabaseSearchOutline from 'vue-material-design-icons/DatabaseSearchOutli
 import DeleteAlert from 'vue-material-design-icons/DeleteAlert.vue'
 import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
 import AccountCog from 'vue-material-design-icons/AccountCog.vue'
+import EyeOffOutline from 'vue-material-design-icons/EyeOffOutline.vue'
 
 // agregados
 import FullList from './FullList.vue'
@@ -126,6 +139,7 @@ export default {
 		// NcModal,
 		// AreasDetails,
 		DatabaseSearchOutline,
+		EyeOffOutline,
 	},
 
 	props: {
@@ -135,6 +149,8 @@ export default {
 		custom: { type: Boolean, default: false, required: false },
 		defaultbuttons: { type: Boolean, default: true, required: false },
 		showOptions: { type: Boolean, default: false, required: false },
+		showToggleEstado: { type: Boolean, default: false, required: false },
+		toggleEstadoLabel: { type: String, default: 'Toggle status' },
 		// reloadBus: { type: Object, required: true },
 	},
 

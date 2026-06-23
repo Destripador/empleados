@@ -13,7 +13,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
 		parent::__construct(
 			$db,
-			'empleados_honorarios_parcialidades',
+			'empleados_honorarios_p',
 			honorariosParcialidades::class
 		);
 

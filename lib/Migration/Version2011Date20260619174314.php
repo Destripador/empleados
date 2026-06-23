@@ -18,11 +18,11 @@ class Version2011Date20260619174314 extends SimpleMigrationStep {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
 
-		if (!$schema->hasTable('empleados_honorarios_parcialidades')) {
+		if (!$schema->hasTable('empleados_honorarios_p')) {
 			return null;
 		}
 
-		$table = $schema->getTable('empleados_honorarios_parcialidades');
+		$table = $schema->getTable('empleados_honorarios_p');
 
 		if ($table->hasColumn('pagado')) {
 			$table->dropColumn('pagado');

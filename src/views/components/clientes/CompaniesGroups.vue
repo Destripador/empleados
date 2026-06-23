@@ -63,7 +63,21 @@
 				:loading="loading"
 				:listas="filteredListas"
 				:select="select"
-				:show-options="true">
+				:show-options="true"
+				:show-toggle-estado="true"
+				:toggle-estado-label="selectedIsActive ? t('empleados', 'Disable') : t('empleados', 'Enable')">
+
+				<template #actions>
+					<NcActionButton
+						:close-after-click="true"
+						@click="toggleEstado()">
+						<template #icon>
+							<EyeOffOutline :size="20" />
+						</template>
+						{{ selectedIsActive ? t('empleados', 'Disable') : t('empleados', 'Enable') }}
+					</NcActionButton>
+					<NcActionSeparator />
+				</template>
 
 				<template #custombuttons>
 					<div class="filter-wrap">
@@ -77,9 +91,9 @@
 							</template>
 							{{ t('empleados', '') }}
 							<span
-								v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) > 0"
+								v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) > 0"
 								class="filter-badge">
-								{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) }}
+								{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) }}
 							</span>
 						</NcButton>
 
@@ -104,6 +118,10 @@
 								<label>
 									<input v-model="onlySpecial" type="checkbox">
 									{{ t('empleados', 'Only Special Clients') }}
+								</label>
+								<label>
+									<input v-model="showDisabled" type="checkbox">
+									{{ t('empleados', 'Show disabled') }}
 								</label>
 							</div>
 						</div>
@@ -815,6 +833,7 @@ export default {
 			sortOrder: 'az',
 			onlyParents: false,
 			onlySpecial: false,
+			showDisabled: false,
 			showFilters: false,
 			/* honorarios */
 			honorarios: [],
@@ -868,7 +887,6 @@ export default {
 			showFacturaDialog: false,
 			fechaFactura: '',
 			detalleAbierto: {},
-			filterDropdownStyle: {},
 			honorarioBorradorId: null,
 		}
 	},
@@ -887,6 +905,10 @@ export default {
 			return Number(this.selectedClient?.cliente_padre || 0) === 0
 				? t('empleados', 'Main group')
 				: t('empleados', 'Sub-company')
+		},
+
+		selectedIsActive() {
+			return Boolean(Number(this.selectedClient?.estado ?? 1))
 		},
 
 		parentName() {
@@ -944,6 +966,10 @@ export default {
 
 		filteredListas() {
 			let data = [...this.listas]
+
+			if (!this.showDisabled) {
+				data = data.filter(item => Number(item.estado ?? 1) === 1)
+			}
 
 			if (this.onlyParents) {
 				data = data.filter(item =>
@@ -1107,6 +1133,9 @@ export default {
 			}
 		}
 		document.addEventListener('click', this._onClickOutside)
+
+		this._onToggleEstado = () => this.toggleEstado()
+		this.$root.$on('toggleEstado', this._onToggleEstado)
 	},
 
 	beforeDestroy() {
@@ -1118,6 +1147,7 @@ export default {
 		this.$root.$off('edit', this._onEdit)
 		this.$root.$off('exportlist', this._onExport)
 		this.$root.$off('importlist', this._onImport)
+		this.$root.$off('toggleEstado', this._onToggleEstado)
 		document.removeEventListener('click', this._onClickOutside)
 	},
 
@@ -1187,19 +1217,6 @@ export default {
 
 		toggleFilters() {
 			this.showFilters = !this.showFilters
-
-			if (this.showFilters) {
-				this.$nextTick(() => {
-					const btn = this.$el.querySelector('.filter-wrap')
-					if (btn) {
-						const rect = btn.getBoundingClientRect()
-						this.filterDropdownStyle = {
-							top: (rect.bottom + 6) + 'px',
-							left: rect.left + 'px',
-						}
-					}
-				})
-			}
 		},
 
 		async GetEmpleadosList() {
@@ -1754,6 +1771,46 @@ export default {
 				showError(String(err))
 			}
 		},
+
+		async toggleEstado() {
+			if (!this.selectedClient?.id) {
+				showError(t('empleados', 'Select a company or group first.'))
+				return
+			}
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/modificarCliente'), {
+					id: this.selectedClient.id,
+					nombre: this.selectedClient.nombre,
+					razon_social: this.selectedClient.razon_social || '',
+					lider_proyecto: this.selectedClient.lider_proyecto || null,
+					colaboradores: JSON.stringify(
+						Array.isArray(this.selectedClient.colaboradores)
+							? this.selectedClient.colaboradores
+							: [],
+					),
+					nombre_contacto: this.selectedClient.nombre_contacto || '',
+					telefono: this.selectedClient.telefono || '',
+					correo: this.selectedClient.correo || '',
+					ubicacion: this.selectedClient.ubicacion || '',
+					detalles: this.selectedClient.detalles || '',
+					especial: Number(this.selectedClient.especial) || 0,
+					cliente_padre: this.selectedClient.cliente_padre || null,
+					estado: this.selectedIsActive ? 0 : 1,
+				})
+
+				showSuccess(
+					this.selectedIsActive
+						? t('empleados', 'Company disabled successfully')
+						: t('empleados', 'Company enabled successfully'),
+				)
+
+				await this.GetCompanieGroup(this.selectedClient.id)
+				await this.GetCompaniesGroups()
+			} catch (err) {
+				showError(t('empleados', 'Error updating status: {error}', { error: String(err) }))
+			}
+		},
 	},
 }
 </script>
@@ -1882,8 +1939,10 @@ export default {
 }
 
 .filter-dropdown {
-    position: fixed !important;
-    z-index: 999999;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 9999;
     width: 190px;
     box-sizing: border-box;
     padding: 6px 0;

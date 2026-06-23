@@ -528,10 +528,10 @@ export default {
 }
 
 .filter-dropdown {
-  position: fixed !important;
-  top: 100px;
-  left: 500px;
-  z-index: 999999;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 9999;
   width: 190px;
   box-sizing: border-box;
   padding: 6px 0;

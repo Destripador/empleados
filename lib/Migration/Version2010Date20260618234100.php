@@ -57,9 +57,10 @@ class Version2010Date20260618234100 extends SimpleMigrationStep {
 				'length' => 255,
 			]);
 
-			$table->addColumn('activo', Types::BOOLEAN, [
+			$table->addColumn('activo', Types::INTEGER, [
 				'notnull' => true,
-				'default' => true,
+				'default' => 1,
+				'length' => 1,
 			]);
 
 			$table->setPrimaryKey(['id_honorario']);
@@ -67,8 +68,8 @@ class Version2010Date20260618234100 extends SimpleMigrationStep {
 		}
 
 		// ── empleados_honorarios_parcialidades ───────────────────────────
-		if (!$schema->hasTable('empleados_honorarios_parcialidades')) {
-			$table = $schema->createTable('empleados_honorarios_parcialidades');
+		if (!$schema->hasTable('empleados_honorarios_p')) {
+			$table = $schema->createTable('empleados_honorarios_p');
 
 			$table->addColumn('id_parcialidad', Types::INTEGER, [
 				'autoincrement' => true,

@@ -10,7 +10,7 @@
 		</NcEmptyContent>
 
 		<template v-else>
-			<div class="details-header">
+			<div class="details-header" :class="{ 'details-header--billable': activity.cargable }">
 				<div class="details-icon">
 					<ClipboardTextClockOutline :size="30" />
 				</div>
@@ -440,5 +440,27 @@ export default {
 		order: -1;
 		margin-inline-start: auto;
 	}
+}
+
+.details-header--billable {
+    background: linear-gradient(135deg, #54bd70 20%, #0b4b1f 100%);
+    border-radius: 8px;
+    padding: 16px 16px 10px 16px;
+}
+
+.details-header--billable .eyebrow,
+.details-header--billable h2,
+.details-header--billable .subtitle {
+    color: #ffffff;
+}
+
+.details-header--billable .details-icon {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.details-header--billable .badge--billable {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
 }
 </style>
