@@ -11,13 +11,14 @@
 					</div>
 					<div class="filters-container">
 						<NcButton
+							class="filter-icon-button"
 							type="tertiary"
 							@click.stop="toggleFilters"
 							:title="t('empleados', 'Filters')">
 							<template #icon>
 								<FilterVariant :size="20" />
 							</template>
-							{{ t('empleados', 'Filters') }}
+							{{ t('empleados') }}
 							<span v-if="hideEmpty" class="filter-badge">1</span>
 						</NcButton>
 
@@ -346,15 +347,20 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// Filtro y ordenamiento
+.container-search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "input filters button";
+    align-items: center;
+    gap: 6px 4px;
+}
 .filters-container {
-	position: relative;
-	display: inline-flex;
-	align-items: flex-start;
-	grid-area: filters;
-	justify-self: start;
-	margin: 0;
-	overflow: visible;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    grid-area: filters;
+    margin: 0;
+    overflow: visible;
 }
 
 .filter-badge {
@@ -375,7 +381,7 @@ export default {
 .filter-dropdown {
 	position: absolute;
 	top: calc(100% + 6px);
-	left: 0;
+	right: 0;
 	z-index: 100000;
 	width: 190px;
 	box-sizing: border-box;
@@ -465,15 +471,6 @@ export default {
 	padding: 0 4px;
 }
 
-.container-search {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	grid-template-areas:
-		"input button"
-		"filters button";
-	align-items: start;
-	gap: 6px 8px;
-}
 .input-container {
 	grid-area: input;
 }
@@ -498,5 +495,11 @@ export default {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
+}
+
+.filter-icon-button {
+	min-width: unset !important;
+	padding-left: 4px !important;
+	padding-right: 4px !important;
 }
 </style>

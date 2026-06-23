@@ -22,8 +22,9 @@ class Version2008Date20260616110000 extends SimpleMigrationStep {
 		$table = $schema->getTable('empleados_actividades');
 
 		if (!$table->hasColumn('cargable')) {
-			$table->addColumn('cargable', 'boolean', [
-				'default' => false,
+			$table->addColumn('cargable', 'integer', [
+				'default' => 0,
+				'length' => 1,
 			]);
 		}
 

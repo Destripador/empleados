@@ -1,5 +1,5 @@
 <template>
-	<div class="contacts-list__item-wrapper" :class="{ 'item--especial': Number(source.especial) === 1 }">
+	<div class="contacts-list__item-wrapper" :class="{ 'item--especial': Number(source.especial) === 1, 'item--billable': Number(source.cargable) === 1, 'item--disabled': Number(source.estado ?? 1) === 0}">
 		<ListItem
 			:compact="true"
 			class="list-item-style envelope"
@@ -99,5 +99,19 @@ export default {
     background: linear-gradient(135deg, #3b82f622 0%, #ffffffef 30%);
     border-radius: 8px;
     border-left: 1px solid #8db5f5;
+}
+
+.item--billable {
+    background: linear-gradient(135deg, #22c55e22 0%, #ffffffef 30%);
+    border-radius: 8px;
+    border-left: 1px solid #6ee09a;
+}
+
+.item--disabled {
+	background: linear-gradient(135deg, #00020122 0%, #ffffffef 30%);
+    opacity: 0.5;
+    border-radius: 8px;
+    border-left: 1.5px solid var(--color-border-dark);
+    filter: grayscale(40%);
 }
 </style>

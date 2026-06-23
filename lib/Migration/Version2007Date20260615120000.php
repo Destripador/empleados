@@ -99,9 +99,10 @@ class Version2007Date20260615120000 extends SimpleMigrationStep {
 		}
 
 		if (!$table->hasColumn('especial')) {
-			$table->addColumn('especial', 'boolean', [
+			$table->addColumn('especial', 'integer', [
 				'notnull' => true,
-				'default' => false,
+				'default' => 0,
+				'length' => 1,
 			]);
 		}
 
