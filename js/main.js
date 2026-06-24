@@ -17014,6 +17014,7 @@ __webpack_require__.r(__webpack_exports__);
       onlySpecial: false,
       showDisabled: false,
       showFilters: false,
+      onlyDisabled: false,
       /* honorarios */
       honorarios: [],
       loadingHonorarios: false,
@@ -17135,10 +17136,13 @@ __webpack_require__.r(__webpack_exports__);
       });
     },
     mainGroups() {
-      return this.rawClients.filter(client => Number(client.cliente_padre || 0) === 0);
+      return this.rawClients.filter(client => Number(client.cliente_padre || 0) === 0 && Number(client.estado ?? 1) === 1);
     },
     subCompanies() {
-      return this.rawClients.filter(client => Number(client.cliente_padre || 0) !== 0);
+      return this.rawClients.filter(client => Number(client.cliente_padre || 0) !== 0 && Number(client.estado ?? 1) === 1);
+    },
+    activeClients() {
+      return this.rawClients.filter(client => Number(client.estado ?? 1) === 1);
     },
     parentOptions() {
       const currentId = this.selectedClient?.id;
@@ -17159,6 +17163,9 @@ __webpack_require__.r(__webpack_exports__);
       let data = [...this.listas];
       if (!this.showDisabled) {
         data = data.filter(item => Number(item.estado ?? 1) === 1);
+      }
+      if (this.onlyDisabled) {
+        data = data.filter(item => Number(item.estado ?? 1) === 0);
       }
       if (this.onlyParents) {
         data = data.filter(item => Number(item.cliente_padre || 0) === 0);
@@ -17811,8 +17818,8 @@ __webpack_require__.r(__webpack_exports__);
           estado: this.selectedIsActive ? 0 : 1
         });
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showSuccess)(this.selectedIsActive ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Company disabled successfully') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Company enabled successfully'));
-        await this.GetCompanieGroup(this.selectedClient.id);
         await this.GetCompaniesGroups();
+        await this.GetCompanieGroup(this.selectedClient.id);
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error updating status: {error}', {
           error: String(err)
@@ -29109,7 +29116,7 @@ var render = function render() {
     }
   })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Total records")))]), _vm._v(" "), _c("span", {
     staticClass: "value-text"
-  }, [_vm._v(_vm._s(_vm.rawClients.length))])])]), _vm._v(" "), _c("div", {
+  }, [_vm._v(_vm._s(_vm.activeClients.length))])])]), _vm._v(" "), _c("div", {
     staticClass: "stat-card"
   }, [_c("div", {
     staticClass: "stat-icon"
@@ -29192,9 +29199,9 @@ var render = function render() {
             },
             proxy: true
           }])
-        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "")) + "\n\t\t\t\t\t\t"), (_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) > 0 ? _c("span", {
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "")) + "\n\t\t\t\t\t\t"), (_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) + (_vm.onlyDisabled ? 1 : 0) > 0 ? _c("span", {
           staticClass: "filter-badge"
-        }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s((_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0)) + "\n\t\t\t\t\t\t")]) : _vm._e()]), _vm._v(" "), _vm.showFilters ? _c("div", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s((_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) + (_vm.onlyDisabled ? 1 : 0)) + "\n\t\t\t\t\t\t")]) : _vm._e()]), _vm._v(" "), _vm.showFilters ? _c("div", {
           staticClass: "filter-dropdown",
           on: {
             click: function ($event) {
@@ -29328,7 +29335,38 @@ var render = function render() {
               }
             }
           }
-        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show disabled")) + "\n\t\t\t\t\t\t\t")])])]) : _vm._e()], 1)];
+        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show disabled")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("label", [_c("input", {
+          directives: [{
+            name: "model",
+            rawName: "v-model",
+            value: _vm.onlyDisabled,
+            expression: "onlyDisabled"
+          }],
+          attrs: {
+            type: "checkbox"
+          },
+          domProps: {
+            checked: Array.isArray(_vm.onlyDisabled) ? _vm._i(_vm.onlyDisabled, null) > -1 : _vm.onlyDisabled
+          },
+          on: {
+            change: function ($event) {
+              var $$a = _vm.onlyDisabled,
+                $$el = $event.target,
+                $$c = $$el.checked ? true : false;
+              if (Array.isArray($$a)) {
+                var $$v = null,
+                  $$i = _vm._i($$a, $$v);
+                if ($$el.checked) {
+                  $$i < 0 && (_vm.onlyDisabled = $$a.concat([$$v]));
+                } else {
+                  $$i > -1 && (_vm.onlyDisabled = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+                }
+              } else {
+                _vm.onlyDisabled = $$c;
+              }
+            }
+          }
+        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Disabled")) + "\n\t\t\t\t\t\t\t")])])]) : _vm._e()], 1)];
       },
       proxy: true
     }, {
