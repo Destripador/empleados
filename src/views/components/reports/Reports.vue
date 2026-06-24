@@ -629,7 +629,7 @@ export default {
 								return
 							}
 							const keyMap = {
-								id_cliente: 'id',
+								id: 'id',
 								nombre: 'name',
 								cliente_padre: 'count',
 							}
@@ -645,14 +645,14 @@ export default {
 
 							// Lista para tu <List>
 							this.temp_listas = data.map(o => ({
-								id: o.id_cliente,
+								id: o.id,
 								name: o.nombre,
 								count: o.child_count,
 							}))
 
 							// Opciones para <NcSelect>
 							this.actividades = data.map(o => ({
-								id: o.id_cliente,
+								id: o.id,
 								label: o.nombre,
 							}))
 

@@ -255,7 +255,7 @@ export default {
 					: []
 
 				this.actividades = arr.map((item) => ({
-					id: item.id_cliente,
+					id: item.id,
 					label: item.nombre,
 				}))
 			} catch (err) {
