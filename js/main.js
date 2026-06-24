@@ -18797,7 +18797,7 @@ __webpack_require__.r(__webpack_exports__);
         }
         const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : [];
         this.actividades = arr.map(item => ({
-          id: item.id_cliente,
+          id: item.id,
           label: item.nombre
         }));
       } catch (err) {
@@ -19169,7 +19169,7 @@ __webpack_require__.r(__webpack_exports__);
             return;
           }
           const keyMap = {
-            id_cliente: 'id',
+            id: 'id',
             nombre: 'name',
             cliente_padre: 'count'
           };
@@ -19180,14 +19180,14 @@ __webpack_require__.r(__webpack_exports__);
 
           // Lista para tu <List>
           this.temp_listas = data.map(o => ({
-            id: o.id_cliente,
+            id: o.id,
             name: o.nombre,
             count: o.child_count
           }));
 
           // Opciones para <NcSelect>
           this.actividades = data.map(o => ({
-            id: o.id_cliente,
+            id: o.id,
             label: o.nombre
           }));
           this.loading = false;
