@@ -34,7 +34,7 @@
 					</div>
 					<div>
 						<span>{{ t('empleados', 'Total records') }}</span>
-						<span class="value-text">{{ rawClients.length }}</span>
+						<span class="value-text">{{ activeClients.length }}</span>
 					</div>
 				</div>
 
@@ -91,9 +91,9 @@
 							</template>
 							{{ t('empleados', '') }}
 							<span
-								v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) > 0"
+								v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) > 0"
 								class="filter-badge">
-								{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) }}
+								{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) }}
 							</span>
 						</NcButton>
 
@@ -122,6 +122,10 @@
 								<label>
 									<input v-model="showDisabled" type="checkbox">
 									{{ t('empleados', 'Show disabled') }}
+								</label>
+								<label>
+									<input v-model="onlyDisabled" type="checkbox">
+									{{ t('empleados', 'Only Disabled') }}
 								</label>
 							</div>
 						</div>
@@ -835,6 +839,7 @@ export default {
 			onlySpecial: false,
 			showDisabled: false,
 			showFilters: false,
+			onlyDisabled: false,
 			/* honorarios */
 			honorarios: [],
 			loadingHonorarios: false,
@@ -933,11 +938,15 @@ export default {
 		},
 
 		mainGroups() {
-			return this.rawClients.filter((client) => Number(client.cliente_padre || 0) === 0)
+			return this.rawClients.filter((client) => Number(client.cliente_padre || 0) === 0 && Number(client.estado ?? 1) === 1)
 		},
 
 		subCompanies() {
-			return this.rawClients.filter((client) => Number(client.cliente_padre || 0) !== 0)
+			return this.rawClients.filter((client) => Number(client.cliente_padre || 0) !== 0 && Number(client.estado ?? 1) === 1)
+		},
+
+		activeClients() {
+			return this.rawClients.filter((client) => Number(client.estado ?? 1) === 1)
 		},
 
 		parentOptions() {
@@ -969,6 +978,10 @@ export default {
 
 			if (!this.showDisabled) {
 				data = data.filter(item => Number(item.estado ?? 1) === 1)
+			}
+
+			if (this.onlyDisabled) {
+				data = data.filter(item => Number(item.estado ?? 1) === 0)
 			}
 
 			if (this.onlyParents) {
@@ -1805,8 +1818,8 @@ export default {
 						: t('empleados', 'Company enabled successfully'),
 				)
 
-				await this.GetCompanieGroup(this.selectedClient.id)
 				await this.GetCompaniesGroups()
+				await this.GetCompanieGroup(this.selectedClient.id)
 			} catch (err) {
 				showError(t('empleados', 'Error updating status: {error}', { error: String(err) }))
 			}
