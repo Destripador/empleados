@@ -21,6 +21,10 @@ class Version2010Date20260618234100 extends SimpleMigrationStep {
 			$schema->dropTable('empleados_honorarios_p');
 		}
 
+		if ($schema->hasTable('empleados_honorarios_parcialidades')) {
+			$schema->dropTable('empleados_honorarios_parcialidades');
+		}
+
 		if ($schema->hasTable('empleados_honorarios')) {
 			$schema->dropTable('empleados_honorarios');
 		}
