@@ -166,6 +166,9 @@ export default {
 			const descripcion = String(this.description_activity || '').trim()
 			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
 
+			// eslint-disable-next-line no-console
+			console.log(clienteId, actividadId, tiempo, descripcion, fecha)
+
 			return Boolean(
 				clienteId !== null
 			&& clienteId !== undefined
@@ -281,9 +284,11 @@ export default {
 					: []
 
 				this.actividades = arr.map((item) => ({
-					id: item.id_cliente,
+					id: item.id,
 					label: item.nombre,
 				}))
+				// eslint-disable-next-line no-console
+				console.log(this.actividades)
 			} catch (err) {
 				showError(t('empleados', 'Error cargando clientes: {error}', { error: String(err) }))
 			}
