@@ -327,17 +327,17 @@ class ClientesController extends BaseController {
         );
 
         $aliases = [
-            'nombre'          => ['nombre', 'empresa', 'company', 'nombre_empresa', 'cliente'],
-            'detalles'        => ['detalles'],
-            'razon_social'    => ['razon_social'],
+            'nombre' => ['nombre', 'empresa', 'company', 'nombre_empresa', 'cliente'],
+            'detalles' => ['detalles', 'descripcion', 'informacion', 'info'],
+            'razon_social' => ['razon_social', 'subnombre', 'razon'],
             'nombre_contacto' => ['nombre_contacto'],
-            'telefono'        => ['telefono'],
-            'correo'          => ['correo'],
-            'ubicacion'       => ['ubicacion'],
-            'especial'        => ['especial'],
-            'estado'          => ['estado'],
-            'grupo'           => ['grupo', 'group', 'cliente_padre', 'parent', 'grupo_empresarial'],
-            'importe_total'   => ['importe_total', 'importe', 'honorario', 'honorarios', 'total', 'monto'],
+            'telefono' => ['telefono'],
+            'correo' => ['correo'],
+            'ubicacion' => ['ubicacion'],
+            'especial' => ['especial'],
+            'estado' => ['estado'],
+            'grupo' => ['grupo', 'group', 'cliente_padre', 'parent', 'grupo_empresarial'],
+            'importe_total' => ['importe_total', 'importe', 'honorario', 'honorarios', 'total', 'monto'],
         ];
 
         $colIndex = [];
@@ -426,17 +426,22 @@ class ClientesController extends BaseController {
 
             $cliente = new clientes();
             $cliente->setNombre($nombre);
-            $cliente->setDetalles(null);
+            $cliente->setDetalles($get($row, 'detalles'));
             $cliente->setLider_proyecto(null);
             $cliente->setColaboradores('[]');
-            $cliente->setRazon_social(null);
-            $cliente->setNombre_contacto(null);
-            $cliente->setTelefono(null);
-            $cliente->setCorreo(null);
-            $cliente->setUbicacion(null);
-            $cliente->setEspecial(false);
+            $cliente->setRazon_social($get($row, 'razon_social'));
+            $cliente->setNombre_contacto($get($row, 'nombre_contacto'));
+            $cliente->setTelefono($get($row, 'telefono'));
+            $cliente->setCorreo($get($row, 'correo'));
+            $cliente->setUbicacion($get($row, 'ubicacion'));
+
+            $especialRaw = $get($row, 'especial');
+            $cliente->setEspecial($especialRaw !== null && in_array(mb_strtolower($especialRaw), ['1', 'si', 'sí', 'yes', 'true'], true));
+
+            $estadoRaw = $get($row, 'estado');
+            $cliente->setEstado($estadoRaw === null || !in_array(mb_strtolower($estadoRaw), ['0', 'no', 'false', 'inactivo', 'disabled'], true));
+
             $cliente->setCliente_padre($clientePadreId);
-            $cliente->setEstado(true);
 
             $inserted = $this->clientesMapper->insert($cliente);
             $idCliente = (int)$inserted->getId();
