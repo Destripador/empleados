@@ -9466,6 +9466,9 @@ __webpack_require__.r(__webpack_exports__);
       const tiempo = Number(this.time_activity);
       const descripcion = String(this.description_activity || '').trim();
       const fecha = this.time instanceof Date ? this.time : new Date(this.time);
+
+      // eslint-disable-next-line no-console
+      console.log(clienteId, actividadId, tiempo, descripcion, fecha);
       return Boolean(clienteId !== null && clienteId !== undefined && actividadId !== null && actividadId !== undefined && Number.isFinite(tiempo) && tiempo > 0 && descripcion.length > 0 && !isNaN(fecha.getTime()));
     },
     estadoLabel() {
@@ -9543,9 +9546,11 @@ __webpack_require__.r(__webpack_exports__);
         }
         const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : [];
         this.actividades = arr.map(item => ({
-          id: item.id_cliente,
+          id: item.id,
           label: item.nombre
         }));
+        // eslint-disable-next-line no-console
+        console.log(this.actividades);
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_2__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error cargando clientes: {error}', {
           error: String(err)
@@ -138662,4 +138667,4 @@ if (document.readyState === 'loading') {
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-dashboard-reportes.js.map?v=fe6dc78f4cb097f70d1d
+//# sourceMappingURL=empleados-dashboard-reportes.js.map?v=00c3edf0566bcc90883e

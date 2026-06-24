@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Controller;
 
 use OCA\Empleados\AppInfo\Application;
-use OCA\Empleados\Db\actividadMapper;
+use OCA\Empleados\Db\actividadesMapper;
 use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\empleadosMapper;
@@ -41,7 +41,7 @@ class reportetiempoController extends BaseController {
 	protected $userManager;
     protected $reportetiempoMapper;
     protected $clientesMapper;
-    protected $actividadMapper;
+    protected $actividaesdMapper;
     protected $l10n;
     private $config;
     private $clientService;
@@ -58,7 +58,7 @@ class reportetiempoController extends BaseController {
 		reportetiempoMapper $reportetiempoMapper,
 		configuracionesMapper $configuracionesMapper,
 		clientesMapper $clientesMapper,
-		actividadMapper $actividadMapper,
+		actividadesMapper $actividadesMapper,
 		IL10N $l10n,
 		IConfig $config,
 		IGroupManager $groupManager,
@@ -83,7 +83,7 @@ class reportetiempoController extends BaseController {
 		$this->reportetiempoMapper = $reportetiempoMapper;
 		$this->configuracionesMapper = $configuracionesMapper;
 		$this->clientesMapper = $clientesMapper;
-		$this->actividadMapper = $actividadMapper;
+		$this->actividadesMapper = $actividadesMapper;
 		$this->l10n = $l10n;
 		$this->groupManager = $groupManager;
 		$this->config = $config;
@@ -1464,7 +1464,7 @@ class reportetiempoController extends BaseController {
 		$map = [];
 
 		try {
-			$actividades = $this->actividadMapper->findAll();
+			$actividades = $this->actividadesMapper->findAll();
 		} catch (\Throwable $e) {
 			return $map;
 		}
