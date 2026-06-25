@@ -15395,8 +15395,8 @@ __webpack_require__.r(__webpack_exports__);
       _nextcloud_axios__WEBPACK_IMPORTED_MODULE_6__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)('/apps/empleados/GetEquipoJefe')), {
         id: this.employee[0].Id_equipo
       }).then(r => {
-        const response = r?.data?.ocs?.data;
-        this.Equipo = response[0];
+        const response = r?.data?.ocs?.data || [];
+        this.Equipo = response[0] || {};
       }).catch(error => {
         console.error('Error getting team lead:', error);
       });
@@ -26973,7 +26973,7 @@ var render = function render() {
         _vm.$refs.fullCalendar.getApi().refetchEvents();
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show my absences")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show my absences")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), Object.keys(_vm.Equipo).length ? _c("div", {
     staticClass: "acordeon-item btn-top"
   }, [_c("button", {
     staticClass: "acordeon-titulo",
@@ -27047,7 +27047,7 @@ var render = function render() {
         proxy: true
       }], null, true)
     });
-  }), 1)])])])])]), _vm._v(" "), _vm.isAdmin() ? _c("div", {
+  }), 1)])])])])]) : _vm._e(), _vm._v(" "), _vm.isAdmin() ? _c("div", {
     staticClass: "acordeon-item btn-top"
   }, [_c("button", {
     staticClass: "acordeon-titulo",

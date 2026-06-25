@@ -92,7 +92,7 @@
 								</NcButton>
 
 								<!-- Team view accordion -->
-								<div class="acordeon-item btn-top">
+								<div v-if="Object.keys(Equipo).length" class="acordeon-item btn-top">
 									<button class="acordeon-titulo" @click="toggle(1)">
 										{{ t('empleados', 'Filter by team') }}
 										<span>{{ accordeon[1].abierto ? '-' : '+' }}</span>
@@ -817,8 +817,8 @@ export default {
 				id: this.employee[0].Id_equipo,
 			})
 				.then(r => {
-					const response = r?.data?.ocs?.data
-					this.Equipo = response[0]
+					const response = r?.data?.ocs?.data || []
+					this.Equipo = response[0] || {}
 				})
 				.catch(error => {
 					console.error('Error getting team lead:', error)
