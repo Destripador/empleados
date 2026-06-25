@@ -58,4 +58,13 @@ class tipoausenciaMapper extends QBMapper {
 
 		$qb->executeStatement();
 	}
+
+	public function deleteById(int $id): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('id_tipo_ausencia', $qb->createNamedParameter($id)));
+
+		$qb->executeStatement();
+	}
 }

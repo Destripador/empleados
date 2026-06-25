@@ -108,7 +108,8 @@ return [
 		['name' => 'aniversarios#ExportListAniversarios', 'url' => '/ExportListAniversarios', 'verb' => 'GET'],
 		['name' => 'aniversarios#GetAniversarioByDate', 'url' => '/GetAniversarioByDate', 'verb' => 'POST'],
 		['name' => 'aniversarios#ImportListAniversarios', 'url' => '/ImportListAniversarios', 'verb' => 'POST'],
-
+		['name' => 'Aniversarios#modificarAniversario', 'url' => '/modificarAniversario', 'verb' => 'POST'],
+		['name' => 'Aniversarios#deleteAniversario', 'url' => '/deleteAniversario', 'verb' => 'POST'],
 		
 		/******************************* AUSENCIAS *****************************************/
 		['name' => 'ausencias#GetNotificationsSubordinates', 'url' => '/GetNotificationsSubordinates', 'verb' => 'GET'],
@@ -127,7 +128,8 @@ return [
 		['name' => 'tipoausencias#AgregarNuevoTipo', 'url' => '/AgregarNuevoTipo', 'verb' => 'POST'],
 		['name' => 'tipoausencias#ExportarTipo', 'url' => '/ExportarTipo', 'verb' => 'GET'],
 		['name' => 'tipoausencias#importarTipo', 'url' => '/importarTipo', 'verb' => 'POST'],
-
+		['name' => 'Tipoausencias#modificarTipo', 'url' => '/modificarTipo', 'verb' => 'POST'],
+		['name' => 'Tipoausencias#deleteTipo',    'url' => '/deleteTipo',    'verb' => 'POST'],
 
 		/******************************** AHORRO ******************************************/
 		['name' => 'ahorros#GetInfoAhorro', 'url' => '/GetInfoAhorro', 'verb' => 'POST'],
@@ -169,6 +171,18 @@ return [
 		['name' => 'actividades#ImportarActividades', 'url' => '/ImportarActividades', 'verb' => 'POST'],
 		['name' => 'actividades#GetActividades', 'url' => '/GetActividades', 'verb' => 'GET'],
 		['name' => 'actividades#ExportarActividades', 'url' => '/ExportarActividades', 'verb' => 'GET'],
+
+		/****************************** FESTIVOS ***************************************/
+		['name' => 'festivos#getFestivos',       'url' => '/getFestivos',       'verb' => 'GET'],
+		['name' => 'festivos#findById',          'url' => '/getFestivo',        'verb' => 'POST'],
+		['name' => 'festivos#findByFecha',       'url' => '/getFestivoByFecha', 'verb' => 'POST'],
+		['name' => 'festivos#findByYear',        'url' => '/getFestivosByYear', 'verb' => 'POST'],
+		['name' => 'festivos#crearFestivo',      'url' => '/crearFestivo',      'verb' => 'POST'],
+		['name' => 'festivos#modificarFestivo',  'url' => '/modificarFestivo',  'verb' => 'POST'],
+		['name' => 'festivos#deleteById',        'url' => '/deleteFestivo',     'verb' => 'POST'],
+		['name' => 'festivos#importarFestivos',  'url' => '/importarFestivos',  'verb' => 'POST'],
+		['name' => 'festivos#exportarFestivos',  'url' => '/exportarFestivos',  'verb' => 'GET'],
+		['name' => 'festivos#vaciarFestivos',    'url' => '/vaciarFestivos',    'verb' => 'GET'],
 
 		/************************** REPORTE DE TIEMPOS ************************************/
 		['name' => 'reportetiempo#crearReporte', 'url' => '/crearReporte', 'verb' => 'POST'],

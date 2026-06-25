@@ -1,161 +1,283 @@
 <!-- eslint-disable vue/require-v-for-key -->
 <template>
-	<div>
-		<div class="container">
-			<div class="flex">
-				<!-- Anniversaries table -->
-				<div class="mitad">
-					<div>
-						<div class="table_component"
-							role="region"
-							tabindex="0"
-							style="max-height:  calc(90vh - 4rem); overflow-y: auto;">
-							<table>
-								<caption>
-									<span class="caption-title">{{ t('empleados', 'Anniversaries table') }}</span>
-									<span class="caption-buttons">
-										<NcActions>
-											<NcActionButton :close-after-click="true" @click="showAddAniversario">
-												<template #icon><Plus :size="20" /></template>
-												{{ t('empleados', 'Create new anniversary') }}
-											</NcActionButton>
-											<NcActionButton :close-after-click="true" @click="$refs.file.click()">
-												<template #icon><Import :size="20" /></template>
-												{{ t('empleados', 'Import list') }}
-											</NcActionButton>
-											<NcActionButton :close-after-click="true" @click="Exportar()">
-												<template #icon><Export :size="20" /></template>
-												{{ t('empleados', 'Export list / template') }}
-											</NcActionButton>
-											<NcActionButton :close-after-click="true" @click="vaciar()">
-												<template #icon><Delete :size="20" /></template>
-												{{ t('empleados', 'Empty anniversaries table') }}
-											</NcActionButton>
-										</NcActions>
-									</span>
-								</caption>
-								<thead>
-									<tr>
-										<th>{{ t('empleados', 'Anniversary number') }}</th>
-										<th>{{ t('empleados', 'Days off') }}</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr v-for="(item) in Aniversarios" v-bind="$attrs">
-										<td>{{ item.numero_aniversario }}</td>
-										<td>{{ item.dias }}</td>
-									</tr>
-								</tbody>
-							</table>
+	<div class="settings-page">
+		<div class="settings-header">
+			<p class="page-eyebrow">
+				{{ t('empleados', 'Working time') }}
+			</p>
+			<h2>{{ t('empleados', 'Time & Absence Configuration') }}</h2>
+			<p class="page-description">
+				{{ t('empleados', 'Manage anniversaries, absence types and holidays used across the system.') }}
+			</p>
+		</div>
+
+		<div class="settings-grid">
+			<!-- ── Anniversaries ── -->
+			<div class="settings-card">
+				<div class="card-header">
+					<div class="card-title-wrap">
+						<div class="card-icon">
+							<CalendarStar :size="20" />
+						</div>
+						<div>
+							<p class="card-eyebrow">
+								{{ t('empleados', 'Seniority') }}
+							</p>
+							<h3>{{ t('empleados', 'Anniversaries') }}</h3>
 						</div>
 					</div>
+					<NcActions>
+						<NcActionButton :close-after-click="true" @click="showAddAniversario">
+							<template #icon>
+								<Plus :size="20" />
+							</template>
+							{{ t('empleados', 'Add anniversary') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="$refs.file.click()">
+							<template #icon>
+								<Import :size="20" />
+							</template>
+							{{ t('empleados', 'Import list') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="Exportar()">
+							<template #icon>
+								<Export :size="20" />
+							</template>
+							{{ t('empleados', 'Export / template') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="vaciar()">
+							<template #icon>
+								<Delete :size="20" />
+							</template>
+							{{ t('empleados', 'Clear table') }}
+						</NcActionButton>
+					</NcActions>
 				</div>
 
-				<!-- Absence types table -->
-				<div class="mitad">
-					<div>
-						<div
-							class="table_component"
-							style="max-height:  calc(80vh - 4rem); overflow-y: auto;"
-							role="region"
-							tabindex="0">
-							<table>
-								<caption>
-									<span class="caption-title">{{ t('empleados', 'Absence types') }}</span>
-									<span class="caption-buttons">
-										<NcActions>
-											<NcActionButton :close-after-click="true" @click="showAddTipo">
-												<template #icon><Plus :size="20" /></template>
-												{{ t('empleados', 'Create new absence type') }}
-											</NcActionButton>
-											<NcActionButton :close-after-click="true" @click="$refs.fileTipo.click()">
-												<template #icon><Import :size="20" /></template>
-												{{ t('empleados', 'Import list') }}
-											</NcActionButton>
-											<NcActionButton :close-after-click="true" @click="ExportarTipo()">
-												<template #icon><Export :size="20" /></template>
-												{{ t('empleados', 'Export list / template') }}
-											</NcActionButton>
-											<NcActionButton :close-after-click="true" @click="vaciarTipo()">
-												<template #icon><Delete :size="20" /></template>
-												{{ t('empleados', 'Empty absence types table') }}
-											</NcActionButton>
-										</NcActions>
-									</span>
-								</caption>
-								<thead>
-									<tr>
-										<th>{{ t('empleados', 'Name') }}</th>
-										<th>{{ t('empleados', 'Description') }}</th>
-										<th>{{ t('empleados', 'Request file') }}</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr v-for="(item) in TipoAusencias" v-bind="$attrs">
-										<td>{{ item.nombre }}</td>
-										<td>{{ item.descripcion }}</td>
-										<td>{{ item.solicitar_archivo == 1 ? t('empleados', 'yes') : t('empleados', 'no') }}</td>
-									</tr>
-								</tbody>
-							</table>
+				<div class="card-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>{{ t('empleados', 'Anniversary') }}</th>
+								<th>{{ t('empleados', 'Days off') }}</th>
+								<th class="col-actions" />
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="Aniversarios.length === 0">
+								<td colspan="3" class="empty-row">
+									{{ t('empleados', 'No anniversaries defined yet.') }}
+								</td>
+							</tr>
+							<tr v-for="item in Aniversarios" :key="item.numero_aniversario">
+								<td>
+									<span class="badge">{{ item.numero_aniversario }}</span>
+								</td>
+								<td>{{ item.dias }} {{ t('empleados', 'days') }}</td>
+								<td class="col-actions">
+									<NcActions>
+										<NcActionButton :close-after-click="true" @click="editAniversario(item)">
+											<template #icon>
+												<Pencil :size="20" />
+											</template>
+											{{ t('empleados', 'Edit') }}
+										</NcActionButton>
+										<NcActionButton :close-after-click="true" @click="deleteAniversario(item.numero_aniversario)">
+											<template #icon>
+												<Delete :size="20" />
+											</template>
+											{{ t('empleados', 'Delete') }}
+										</NcActionButton>
+									</NcActions>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- ── Absence types ── -->
+			<div class="settings-card">
+				<div class="card-header">
+					<div class="card-title-wrap">
+						<div class="card-icon">
+							<FileDocumentOutline :size="20" />
+						</div>
+						<div>
+							<p class="card-eyebrow">
+								{{ t('empleados', 'Absences') }}
+							</p>
+							<h3>{{ t('empleados', 'Absence types') }}</h3>
 						</div>
 					</div>
+					<NcActions>
+						<NcActionButton :close-after-click="true" @click="showAddTipo">
+							<template #icon>
+								<Plus :size="20" />
+							</template>
+							{{ t('empleados', 'Add type') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="$refs.fileTipo.click()">
+							<template #icon>
+								<Import :size="20" />
+							</template>
+							{{ t('empleados', 'Import list') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="ExportarTipo()">
+							<template #icon>
+								<Export :size="20" />
+							</template>
+							{{ t('empleados', 'Export / template') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="vaciarTipo()">
+							<template #icon>
+								<Delete :size="20" />
+							</template>
+							{{ t('empleados', 'Clear table') }}
+						</NcActionButton>
+					</NcActions>
+				</div>
+
+				<div class="card-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>{{ t('empleados', 'Name') }}</th>
+								<th>{{ t('empleados', 'Description') }}</th>
+								<th class="col-center">
+									{{ t('empleados', 'File') }}
+								</th>
+								<th class="col-actions" />
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="TipoAusencias.length === 0">
+								<td colspan="4" class="empty-row">
+									{{ t('empleados', 'No absence types defined yet.') }}
+								</td>
+							</tr>
+							<tr v-for="item in TipoAusencias" :key="item.id">
+								<td class="col-name">
+									{{ item.nombre }}
+								</td>
+								<td class="col-desc">
+									{{ item.descripcion }}
+								</td>
+								<td class="col-center">
+									<span :class="item.solicitar_archivo == 1 ? 'pill pill--yes' : 'pill pill--no'">
+										{{ item.solicitar_archivo == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+									</span>
+								</td>
+								<td class="col-actions">
+									<NcActions>
+										<NcActionButton :close-after-click="true" @click="editTipo(item)">
+											<template #icon>
+												<Pencil :size="20" />
+											</template>
+											{{ t('empleados', 'Edit') }}
+										</NcActionButton>
+										<NcActionButton :close-after-click="true" @click="deleteTipo(item.id)">
+											<template #icon>
+												<Delete :size="20" />
+											</template>
+											{{ t('empleados', 'Delete') }}
+										</NcActionButton>
+									</NcActions>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- ── Holidays ── -->
+			<div class="settings-card">
+				<div class="card-header">
+					<div class="card-title-wrap">
+						<div class="card-icon">
+							<CalendarMultiple :size="20" />
+						</div>
+						<div>
+							<p class="card-eyebrow">
+								{{ t('empleados', 'Calendar') }}
+							</p>
+							<h3>{{ t('empleados', 'Holidays') }}</h3>
+						</div>
+					</div>
+					<NcActions>
+						<NcActionButton :close-after-click="true" @click="showAddFestivo">
+							<template #icon>
+								<Plus :size="20" />
+							</template>
+							{{ t('empleados', 'Add holiday') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="$refs.fileFestivo.click()">
+							<template #icon>
+								<Import :size="20" />
+							</template>
+							{{ t('empleados', 'Import list') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="exportarFestivos()">
+							<template #icon>
+								<Export :size="20" />
+							</template>
+							{{ t('empleados', 'Export / template') }}
+						</NcActionButton>
+						<NcActionButton :close-after-click="true" @click="vaciarFestivos()">
+							<template #icon>
+								<Delete :size="20" />
+							</template>
+							{{ t('empleados', 'Clear table') }}
+						</NcActionButton>
+					</NcActions>
+				</div>
+
+				<div class="card-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>{{ t('empleados', 'Name') }}</th>
+								<th>{{ t('empleados', 'Date') }}</th>
+								<th class="col-actions" />
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="Festivos.length === 0">
+								<td colspan="3" class="empty-row">
+									{{ t('empleados', 'No holidays defined yet.') }}
+								</td>
+							</tr>
+							<tr v-for="item in Festivos" :key="item.id_festivo">
+								<td class="col-name">
+									{{ item.nombre }}
+								</td>
+								<td>
+									<span class="date-chip">{{ item.fecha }}</span>
+								</td>
+								<td class="col-actions">
+									<NcActions>
+										<NcActionButton :close-after-click="true" @click="editFestivo(item)">
+											<template #icon>
+												<Pencil :size="20" />
+											</template>
+											{{ t('empleados', 'Edit') }}
+										</NcActionButton>
+										<NcActionButton :close-after-click="true" @click="deleteFestivo(item.id_festivo)">
+											<template #icon>
+												<Delete :size="20" />
+											</template>
+											{{ t('empleados', 'Delete') }}
+										</NcActionButton>
+									</NcActions>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</div>
 		</div>
 
-		<!-- Modal: Add anniversary -->
-		<NcModal
-			v-if="modalAddAniversario"
-			ref="modalRef"
-			:name="t('empleados', 'Add')"
-			@close="closeModalAniversario">
-			<div class="modal__content">
-				<h2>{{ t('empleados', 'Add new anniversary information') }}</h2>
-				<div class="form-group">
-					<NcTextField :label="t('empleados', 'Anniversary number')" :value.sync="NumeroAniversario" />
-				</div>
-				<div class="form-group">
-					<NcTextField :label="t('empleados', 'Days')" :value.sync="DiasAniversario" />
-				</div>
-
-				<NcButton :disabled="!NumeroAniversario || !DiasAniversario" @click="AgregarNuevoAniversario">
-					{{ t('empleados', 'Submit') }}
-				</NcButton>
-			</div>
-		</NcModal>
-
-		<!-- Modal: Add absence type -->
-		<NcModal
-			v-if="modalAddTipo"
-			ref="modalRef"
-			:name="t('empleados', 'Add')"
-			@close="closeModalTipo">
-			<div class="modal__content">
-				<h2>{{ t('empleados', 'Add new absence type information') }}</h2>
-				<div class="form-group">
-					<NcTextField :label="t('empleados', 'Name')" :value.sync="NombreTipo" />
-				</div>
-				<div class="form-group">
-					<NcTextField :label="t('empleados', 'Description')" :value.sync="DescripcionTipo" />
-				</div>
-				<div class="form-group">
-					<NcCheckboxRadioSwitch v-model="SolicitarArchivoTipo">
-						{{ t('empleados', 'Request file') }}
-					</NcCheckboxRadioSwitch>
-				</div>
-				<div class="form-group">
-					<NcCheckboxRadioSwitch v-model="solicitar_prima_vacacional">
-						{{ t('empleados', 'Vacation Bonus') }}
-					</NcCheckboxRadioSwitch>
-				</div>
-
-				<NcButton :disabled="!NombreTipo || !DescripcionTipo" @click="AgregarNuevoTipo">
-					{{ t('empleados', 'Submit') }}
-				</NcButton>
-			</div>
-		</NcModal>
-
+		<!-- hidden file inputs -->
 		<input ref="file"
 			type="file"
 			style="display:none"
@@ -166,17 +288,141 @@
 			style="display:none"
 			accept=".xlsx"
 			@change="importarTipo()">
+		<input ref="fileFestivo"
+			type="file"
+			style="display:none"
+			accept=".xlsx"
+			@change="importarFestivos()">
+
+		<!-- ── Modal: Add/Edit anniversary ── -->
+		<NcModal
+			v-if="modalAddAniversario"
+			ref="modalRef"
+			:name="editingAniversario ? t('empleados', 'Edit anniversary') : t('empleados', 'Add anniversary')"
+			@close="closeModalAniversario">
+			<div class="modal-body">
+				<div class="modal-header-section">
+					<p class="card-eyebrow">
+						{{ t('empleados', 'Seniority') }}
+					</p>
+					<h2>{{ editingAniversario ? t('empleados', 'Edit anniversary') : t('empleados', 'New anniversary rule') }}</h2>
+					<p>{{ t('empleados', 'Define how many days off are granted at each anniversary year.') }}</p>
+				</div>
+				<div class="form-grid">
+					<NcTextField :label="t('empleados', 'Anniversary number')" :value.sync="NumeroAniversario" />
+					<NcTextField :label="t('empleados', 'Days off')" :value.sync="DiasAniversario" />
+				</div>
+				<div class="modal-actions">
+					<NcButton @click="closeModalAniversario">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="!NumeroAniversario || !DiasAniversario" @click="guardarAniversario">
+						{{ t('empleados', 'Save') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
+		<!-- ── Modal: Add/Edit absence type ── -->
+		<NcModal
+			v-if="modalAddTipo"
+			ref="modalRef"
+			:name="editingTipo ? t('empleados', 'Edit absence type') : t('empleados', 'Add absence type')"
+			@close="closeModalTipo">
+			<div class="modal-body">
+				<div class="modal-header-section">
+					<p class="card-eyebrow">
+						{{ t('empleados', 'Absences') }}
+					</p>
+					<h2>{{ editingTipo ? t('empleados', 'Edit absence type') : t('empleados', 'New absence type') }}</h2>
+					<p>{{ t('empleados', 'Define a new category of absence employees can request.') }}</p>
+				</div>
+				<div class="form-grid span-2">
+					<NcTextField class="span-2" :label="t('empleados', 'Name')" :value.sync="NombreTipo" />
+					<NcTextField class="span-2" :label="t('empleados', 'Description')" :value.sync="DescripcionTipo" />
+					<div class="switch-card span-2">
+						<NcCheckboxRadioSwitch v-model="SolicitarArchivoTipo" type="switch" />
+						<div>
+							<p class="switch-label">
+								{{ t('empleados', 'Request file') }}
+							</p>
+							<p class="switch-desc">
+								{{ t('empleados', 'Employee must attach a document when requesting this absence.') }}
+							</p>
+						</div>
+					</div>
+					<div class="switch-card span-2">
+						<NcCheckboxRadioSwitch v-model="solicitar_prima_vacacional" type="switch" />
+						<div>
+							<p class="switch-label">
+								{{ t('empleados', 'Vacation bonus') }}
+							</p>
+							<p class="switch-desc">
+								{{ t('empleados', 'This absence type triggers vacation bonus calculation.') }}
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="modal-actions">
+					<NcButton @click="closeModalTipo">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="!NombreTipo || !DescripcionTipo" @click="guardarTipo">
+						{{ t('empleados', 'Save') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
+		<!-- ── Modal: Add/Edit holiday ── -->
+		<NcModal
+			v-if="modalFestivo"
+			:name="editingFestivo ? t('empleados', 'Edit holiday') : t('empleados', 'Add holiday')"
+			@close="closeModalFestivo">
+			<div class="modal-body">
+				<div class="modal-header-section">
+					<p class="card-eyebrow">
+						{{ t('empleados', 'Calendar') }}
+					</p>
+					<h2>{{ editingFestivo ? t('empleados', 'Edit holiday') : t('empleados', 'New holiday') }}</h2>
+					<p>{{ t('empleados', 'Public holidays are excluded from working day calculations.') }}</p>
+				</div>
+				<div class="form-grid">
+					<NcTextField class="span-2" :label="t('empleados', 'Holiday name')" :value.sync="festivoNombre" />
+					<div class="span-2">
+						<NcTextField
+							class="span-2"
+							type="date"
+							:label="t('empleados', 'Date (day and month only)')"
+							:value.sync="festivoFecha" />
+						<p class="field-hint">
+							{{ t('empleados', 'The year is ignored — the holiday repeats every year.') }}
+						</p>
+					</div>
+				</div>
+				<div class="modal-actions">
+					<NcButton @click="closeModalFestivo">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="!festivoNombre || !festivoFecha" @click="guardarFestivo">
+						{{ t('empleados', 'Save') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
 	</div>
 </template>
 
 <script>
-// icons
 import Delete from 'vue-material-design-icons/Delete.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Import from 'vue-material-design-icons/Import.vue'
 import Export from 'vue-material-design-icons/Export.vue'
+import Pencil from 'vue-material-design-icons/Pencil.vue'
+import CalendarStar from 'vue-material-design-icons/CalendarStar.vue'
+import CalendarMultiple from 'vue-material-design-icons/CalendarMultiple.vue'
+import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 
-// nextcloud/vue
 import {
 	NcActions,
 	NcActionButton,
@@ -204,45 +450,74 @@ export default {
 		Import,
 		Export,
 		Delete,
+		Pencil,
+		CalendarStar,
+		CalendarMultiple,
+		FileDocumentOutline,
 	},
 
 	data() {
 		return {
+			// ── Anniversaries ──
 			modalAddAniversario: false,
-			modalAddTipo: false,
+			editingAniversario: null,
 			modalRef: ref(null),
-
 			Aniversarios: [],
-			TipoAusencias: [],
-
 			NumeroAniversario: null,
 			DiasAniversario: null,
 
+			// ── Absence types ──
+			modalAddTipo: false,
+			editingTipo: null,
+			TipoAusencias: [],
 			NombreTipo: null,
 			DescripcionTipo: null,
 			SolicitarArchivoTipo: false,
 			solicitar_prima_vacacional: false,
+
+			// ── Holidays ──
+			Festivos: [],
+			modalFestivo: false,
+			editingFestivo: null,
+			festivoNombre: '',
+			festivoFecha: '',
 		}
 	},
 
 	mounted() {
 		this.getAniversarios()
 		this.getTipo()
+		this.getFestivos()
 	},
 
 	methods: {
-		// expose t into template
 		t,
 
-		showAddAniversario() { this.modalAddAniversario = true },
-		showAddTipo() { this.modalAddTipo = true },
-		closeModalAniversario() { this.modalAddAniversario = false },
-		closeModalTipo() { this.modalAddTipo = false },
+		// ────────────────────────────────────────────
+		// Anniversaries
+		// ────────────────────────────────────────────
+		showAddAniversario() {
+			this.editingAniversario = null
+			this.NumeroAniversario = null
+			this.DiasAniversario = null
+			this.modalAddAniversario = true
+		},
+
+		editAniversario(item) {
+			this.editingAniversario = item
+			this.NumeroAniversario = item.numero_aniversario
+			this.DiasAniversario = item.dias
+			this.modalAddAniversario = true
+		},
+
+		closeModalAniversario() {
+			this.modalAddAniversario = false
+			this.editingAniversario = null
+			this.NumeroAniversario = null
+			this.DiasAniversario = null
+		},
 
 		async getAniversarios() {
-			this.closeModalAniversario()
-			this.DiasAniversario = null
-			this.NumeroAniversario = null
 			try {
 				await axios.get(generateUrl('/apps/empleados/Getaniversarios'))
 					.then(
@@ -254,74 +529,47 @@ export default {
 			}
 		},
 
-		async getTipo() {
-			this.closeModalTipo()
-			this.NombreTipo = null
-			this.DescripcionTipo = null
-			this.SolicitarArchivoTipo = false
+		async guardarAniversario() {
 			try {
-				await axios.get(generateUrl('/apps/empleados/getTipo'))
-					.then(
-						(response) => { this.TipoAusencias = response.data },
-						(err) => { showError(err) },
-					)
-			} catch (err) {
-				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
-			}
-		},
-
-		async AgregarNuevoAniversario() {
-			try {
-				await axios.post(generateUrl('/apps/empleados/AgregarNuevoAniversario'), {
-					numero_aniversario: this.NumeroAniversario,
-					dias: this.DiasAniversario,
-				})
-				showSuccess(t('empleados', 'Note has been updated'))
+				if (this.editingAniversario) {
+					await axios.post(generateUrl('/apps/empleados/modificarAniversario'), {
+						numero_aniversario: this.editingAniversario.numero_aniversario,
+						nuevo_numero_aniversario: this.NumeroAniversario,
+						dias: parseFloat(this.DiasAniversario),
+					})
+				} else {
+					await axios.post(generateUrl('/apps/empleados/AgregarNuevoAniversario'), {
+						numero_aniversario: this.NumeroAniversario,
+						dias: this.DiasAniversario,
+					})
+				}
+				showSuccess(t('empleados', 'Anniversary saved'))
+				this.closeModalAniversario()
 				this.getAniversarios()
 			} catch (err) {
 				showError(t('empleados', 'An exception occurred [03] [{error}]', { error: String(err) }))
 			}
 		},
 
-		async AgregarNuevoTipo() {
+		async deleteAniversario(numeroAniversario) {
 			try {
-				await axios.post(generateUrl('/apps/empleados/AgregarNuevoTipo'), {
-					nombre: this.NombreTipo,
-					descripcion: this.DescripcionTipo,
-					solicitar_archivo: this.SolicitarArchivoTipo,
-					solicitar_prima_vacacional: this.solicitar_prima_vacacional,
+				await axios.post(generateUrl('/apps/empleados/deleteAniversario'), {
+					numero_aniversario: numeroAniversario,
 				})
-				showSuccess(t('empleados', 'Note has been updated'))
-				this.getTipo()
+				showSuccess(t('empleados', 'Anniversary deleted'))
+				this.getAniversarios()
 			} catch (err) {
-				showError(t('empleados', 'An exception occurred [03] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
 			}
 		},
 
 		async vaciar() {
-			this.closeModalAniversario()
 			try {
 				await axios.get(generateUrl('/apps/empleados/VaciarAniversarios'))
 					.then(
 						() => {
 							this.getAniversarios()
-							showSuccess(t('empleados', 'Anniversaries table emptied'))
-						},
-						(err) => { showError(err) },
-					)
-			} catch (err) {
-				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
-			}
-		},
-
-		async vaciarTipo() {
-			this.closeModalTipo()
-			try {
-				await axios.get(generateUrl('/apps/empleados/VaciarTipo'))
-					.then(
-						() => {
-							this.getTipo()
-							showSuccess(t('empleados', 'Absence types table emptied'))
+							showSuccess(t('empleados', 'Anniversaries table cleared'))
 						},
 						(err) => { showError(err) },
 					)
@@ -341,23 +589,7 @@ export default {
 					link.click()
 				},
 				(err) => {
-					showError(t('empleados', 'An error occurred {error}, report to the administrator', { error: String(err) }))
-				},
-			)
-		},
-
-		ExportarTipo() {
-			axios.get(generateUrl('/apps/empleados/ExportarTipo'), { responseType: 'blob' }).then(
-				(response) => {
-					const url = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.ms-excel' }))
-					const link = document.createElement('a')
-					link.href = url
-					link.setAttribute('download', 'tipos_ausencias.xlsx')
-					document.body.appendChild(link)
-					link.click()
-				},
-				(err) => {
-					showError(t('empleados', 'An error occurred {error}, report to the administrator', { error: String(err) }))
+					showError(t('empleados', 'An error occurred {error}', { error: String(err) }))
 				},
 			)
 		},
@@ -376,6 +608,115 @@ export default {
 			}
 		},
 
+		// ────────────────────────────────────────────
+		// Absence types
+		// ────────────────────────────────────────────
+		showAddTipo() {
+			this.editingTipo = null
+			this.NombreTipo = null
+			this.DescripcionTipo = null
+			this.SolicitarArchivoTipo = false
+			this.solicitar_prima_vacacional = false
+			this.modalAddTipo = true
+		},
+
+		editTipo(item) {
+			this.editingTipo = item
+			this.NombreTipo = item.nombre
+			this.DescripcionTipo = item.descripcion
+			this.SolicitarArchivoTipo = item.solicitar_archivo === 1
+			this.solicitar_prima_vacacional = item.solicitar_prima_vacacional === 1
+			this.modalAddTipo = true
+		},
+
+		closeModalTipo() {
+			this.modalAddTipo = false
+			this.editingTipo = null
+			this.NombreTipo = null
+			this.DescripcionTipo = null
+			this.SolicitarArchivoTipo = false
+			this.solicitar_prima_vacacional = false
+		},
+
+		async getTipo() {
+			try {
+				await axios.get(generateUrl('/apps/empleados/getTipo'))
+					.then(
+						(response) => { this.TipoAusencias = response.data },
+						(err) => { showError(err) },
+					)
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
+			}
+		},
+
+		async guardarTipo() {
+			try {
+				if (this.editingTipo) {
+					await axios.post(generateUrl('/apps/empleados/modificarTipo'), {
+						id: this.editingTipo.id,
+						nombre: this.NombreTipo,
+						descripcion: this.DescripcionTipo,
+						solicitar_archivo: this.SolicitarArchivoTipo,
+						solicitar_prima_vacacional: this.solicitar_prima_vacacional,
+					})
+				} else {
+					await axios.post(generateUrl('/apps/empleados/AgregarNuevoTipo'), {
+						nombre: this.NombreTipo,
+						descripcion: this.DescripcionTipo,
+						solicitar_archivo: this.SolicitarArchivoTipo,
+						solicitar_prima_vacacional: this.solicitar_prima_vacacional,
+					})
+				}
+				showSuccess(t('empleados', 'Absence type saved'))
+				this.closeModalTipo()
+				this.getTipo()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [03] [{error}]', { error: String(err) }))
+			}
+		},
+
+		async deleteTipo(id) {
+			try {
+				await axios.post(generateUrl('/apps/empleados/deleteTipo'), { id })
+				showSuccess(t('empleados', 'Absence type deleted'))
+				this.getTipo()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		async vaciarTipo() {
+			try {
+				await axios.get(generateUrl('/apps/empleados/VaciarTipo'))
+					.then(
+						() => {
+							this.getTipo()
+							showSuccess(t('empleados', 'Absence types table cleared'))
+						},
+						(err) => { showError(err) },
+					)
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
+			}
+		},
+
+		ExportarTipo() {
+			axios.get(generateUrl('/apps/empleados/ExportarTipo'), { responseType: 'blob' }).then(
+				(response) => {
+					const url = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.ms-excel' }))
+					const link = document.createElement('a')
+					link.href = url
+					link.setAttribute('download', 'tipos_ausencias.xlsx')
+					document.body.appendChild(link)
+					link.click()
+				},
+				(err) => {
+					showError(t('empleados', 'An error occurred {error}', { error: String(err) }))
+				},
+			)
+		},
+
 		async importarTipo() {
 			const formData = new FormData()
 			formData.append('fileXLSX', this.$refs.fileTipo.files[0])
@@ -389,50 +730,405 @@ export default {
 				showError(t('empleados', 'An exception occurred [03] [{error}]', { error: String(err) }))
 			}
 		},
+
+		// ────────────────────────────────────────────
+		// Holidays (sin cambios)
+		// ────────────────────────────────────────────
+		async getFestivos() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/getFestivos'))
+				this.Festivos = response?.data?.ocs?.data ?? response?.data ?? []
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		showAddFestivo() {
+			this.editingFestivo = null
+			this.festivoNombre = ''
+			this.festivoFecha = ''
+			this.modalFestivo = true
+		},
+
+		editFestivo(item) {
+			this.editingFestivo = item
+			this.festivoNombre = item.nombre
+			this.festivoFecha = '2000-' + item.fecha
+			this.modalFestivo = true
+		},
+
+		closeModalFestivo() {
+			this.modalFestivo = false
+			this.editingFestivo = null
+		},
+
+		async guardarFestivo() {
+			try {
+				if (this.editingFestivo) {
+					await axios.post(generateUrl('/apps/empleados/modificarFestivo'), {
+						id_festivo: this.editingFestivo.id_festivo,
+						nombre: this.festivoNombre,
+						fecha: this.festivoFecha,
+					})
+				} else {
+					await axios.post(generateUrl('/apps/empleados/crearFestivo'), {
+						nombre: this.festivoNombre,
+						fecha: this.festivoFecha,
+					})
+				}
+				showSuccess(t('empleados', 'Holiday saved'))
+				this.closeModalFestivo()
+				this.getFestivos()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		async deleteFestivo(id) {
+			try {
+				await axios.post(generateUrl('/apps/empleados/deleteFestivo'), { id_festivo: id })
+				showSuccess(t('empleados', 'Holiday deleted'))
+				this.getFestivos()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		async importarFestivos() {
+			const formData = new FormData()
+			formData.append('festivosfileXLSX', this.$refs.fileFestivo.files[0])
+			try {
+				await axios.post(generateUrl('/apps/empleados/importarFestivos'), formData, {
+					headers: { 'Content-Type': 'multipart/form-data' },
+				})
+				showSuccess(t('empleados', 'Database updated successfully'))
+				this.getFestivos()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		exportarFestivos() {
+			axios.get(generateUrl('/apps/empleados/exportarFestivos'), { responseType: 'blob' }).then(
+				(response) => {
+					const url = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.ms-excel' }))
+					const link = document.createElement('a')
+					link.href = url
+					link.setAttribute('download', 'festivos.xlsx')
+					document.body.appendChild(link)
+					link.click()
+				},
+				(err) => { showError(String(err)) },
+			)
+		},
+
+		async vaciarFestivos() {
+			try {
+				await axios.get(generateUrl('/apps/empleados/vaciarFestivos'))
+				showSuccess(t('empleados', 'Holidays table cleared'))
+				this.getFestivos()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
 	},
 }
 </script>
 
-<style>
-.flex { display: flex; justify-content: space-between; }
-.mitad { flex: 1; padding: 20px; border: 1px solid #000; }
+<style scoped lang="scss">
+/* ── Page layout ── */
+.settings-page {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	padding: 24px;
+	max-width: 1200px;
+}
 
-.table_component { overflow: auto; width: 100%; }
-.table_component table {
-	border: 1px solid #dededf;
-	height: 100%;
+.settings-header {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+
+	h2 {
+		margin: 4px 0 6px;
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--color-main-text);
+	}
+}
+
+.page-eyebrow {
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-primary-element);
+	margin: 0;
+}
+
+.page-description {
+	font-size: 0.875rem;
+	color: var(--color-text-maxcontrast);
+	margin: 0;
+}
+
+/* ── Cards grid ── */
+.settings-grid {
+	display: grid;
+	grid-template-columns: 0.8fr 1fr 1fr;
+	gap: 16px;
+	align-items: start;
+
+	@media (max-width: 1024px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ── Card ── */
+.settings-card {
+	display: flex;
+	flex-direction: column;
+	border-radius: var(--border-radius-large);
+	border: 1px solid var(--color-border);
+	background: var(--color-main-background);
+	overflow: hidden;
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 16px 12px 16px 16px;
+	border-bottom: 1px solid var(--color-border);
+	background: var(--color-background-soft);
+}
+
+.card-title-wrap {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+
+	h3 {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--color-main-text);
+	}
+}
+
+.card-eyebrow {
+	font-size: 0.65rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-primary-element);
+	margin: 0 0 1px;
+}
+
+.card-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+	flex-shrink: 0;
+}
+
+/* ── Table ── */
+.card-table-wrap {
+	overflow-x: auto;
+	max-height: calc(60vh - 4rem);
+	overflow-y: auto;
+}
+
+.data-table {
 	width: 100%;
-	table-layout: fixed;
 	border-collapse: collapse;
-	border-spacing: 1px;
-	text-align: left;
+	font-size: 0.85rem;
+
+	thead tr {
+		background: var(--color-background-soft);
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	th {
+		padding: 10px 14px;
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-text-maxcontrast);
+		text-align: left;
+		white-space: nowrap;
+	}
+
+	tbody tr {
+		border-bottom: 1px solid var(--color-border);
+		transition: background 0.1s ease;
+
+		&:last-child {
+			border-bottom: none;
+		}
+
+		&:hover {
+			background: var(--color-background-hover);
+		}
+	}
+
+	td {
+		padding: 10px 14px;
+		color: var(--color-main-text);
+		vertical-align: middle;
+	}
 }
-.table_component th {
-	border: 1px solid #dededf;
-	background-color: #eceff1;
-	color: #000000;
-	padding: 5px;
+
+.col-center {
+	text-align: center !important;
 }
-.table_component td {
-	border: 1px solid #dededf;
-	background-color: #ffffff;
-	color: #000000;
-	padding: 5px;
+
+.col-name {
+	font-weight: 600;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	max-width: 140px;
 }
 
-.caption-title { font-weight: bold; }
-.caption-buttons { float: right; padding-bottom: 6px; }
+.col-desc {
+	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 140px;
+}
 
-.modal__content { margin: 50px; }
-.modal__content h2 { text-align: center; }
+.col-actions {
+	width: 44px;
+	text-align: center;
+}
 
-.form-group {
-	margin: calc(var(--default-grid-baseline) * 4) 0;
+.empty-row {
+	text-align: center;
+	color: var(--color-text-maxcontrast);
+	font-style: italic;
+	padding: 24px 14px !important;
+}
+
+/* ── Badges / chips ── */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 28px;
+	height: 24px;
+	padding: 0 8px;
+	border-radius: 999px;
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+.pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 10px;
+	border-radius: 999px;
+	font-size: 0.7rem;
+	font-weight: 600;
+
+	&--yes {
+		background: #dcfce7;
+		color: #166534;
+	}
+
+	&--no {
+		background: var(--color-background-soft);
+		color: var(--color-text-maxcontrast);
+		border: 1px solid var(--color-border);
+	}
+}
+
+.date-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: var(--color-background-soft);
+	border: 1px solid var(--color-border);
+	font-size: 0.8rem;
+	font-family: monospace;
+	color: var(--color-main-text);
+}
+
+/* ── Modals ── */
+.modal-body {
 	display: flex;
 	flex-direction: column;
+	gap: 20px;
+	padding: 24px;
+}
+
+.modal-header-section {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+
+	h2 {
+		margin: 4px 0 2px;
+		font-size: 1.15rem;
+		font-weight: 700;
+		color: var(--color-main-text);
+	}
+
+	p {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--color-text-maxcontrast);
+	}
+}
+
+.form-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+
+	.span-2 {
+		grid-column: span 2;
+	}
+}
+
+.switch-card {
+	display: flex;
 	align-items: flex-start;
+	gap: 12px;
+	padding: 12px 14px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-soft);
+	border: 1px solid var(--color-border);
+}
+
+.switch-label {
+	margin: 0 0 2px;
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.switch-desc {
+	margin: 0;
+	font-size: 0.75rem;
+	color: var(--color-text-maxcontrast);
+}
+
+.modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
 }
 </style>

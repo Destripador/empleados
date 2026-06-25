@@ -327,7 +327,7 @@ export default {
 				initialView: 'dayGridMonth',
 				locale: 'en',
 				plugins: [dayGridPlugin, interactionPlugin, multiMonthPlugin],
-				events: this.fetchEvents,
+				events: this.fetchAllEvents,
 				dateClick: this.onDateClick,
 				eventClick: this.OnClickEvent,
 				select: this.onDateRangeSelect,
@@ -343,7 +343,20 @@ export default {
 				dayMaxEventRows: 2,
 				moreLinkClick: 'popover',
 
+				dayCellClassNames: (arg) => {
+					const mes = String(arg.date.getMonth() + 1).padStart(2, '0')
+					const dia = String(arg.date.getDate()).padStart(2, '0')
+					const key = `${mes}-${dia}`
+					const esFestivo = this.Festivos.some(f => f.fecha === key)
+					return esFestivo ? ['dia-festivo'] : []
+				},
+
 				eventContent(arg) {
+					if (arg.event.extendedProps.esFestivo) {
+						return {
+							html: `<div class="festivo-label">🚫 ${arg.event.title.replace('🚫 ', '')}</div>`,
+						}
+					}
 					const nombreEmpleado = arg.event.extendedProps.nombre_empleado || 'Unknown employee'
 					const imgUrl = `/avatar/${nombreEmpleado}/64`
 					return {
@@ -381,6 +394,7 @@ export default {
 			loading: false,
 			notifications_result: [],
 			isShaking: false,
+			Festivos: [],
 		}
 	},
 
@@ -438,6 +452,7 @@ export default {
 		this.getEquipos()
 		this.GetAllEquipo()
 		this.checkNotifications()
+		this.getFestivos()
 	},
 	methods: {
 		t,
@@ -553,6 +568,50 @@ export default {
 				this.employees = []
 				this.getMyAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'My absences')
+			}
+		},
+
+		fetchAllEvents(fetchInfo, success, failure) {
+			const yearStart = new Date(fetchInfo.start).getFullYear()
+			const yearEnd = new Date(fetchInfo.end).getFullYear()
+			const years = yearStart === yearEnd ? [yearStart] : [yearStart, yearEnd]
+
+			const eventosFestivos = this.Festivos.flatMap(f =>
+				years.map(year => ({
+					id: `festivo-${f.id_festivo}-${year}`,
+					title: '🚫 ' + f.nombre,
+					start: `${year}-${f.fecha}`,
+					allDay: true,
+					backgroundColor: '#e5e7eb',
+					borderColor: '#9ca3af',
+					textColor: '#374151',
+					classNames: ['evento-festivo'],
+					extendedProps: { esFestivo: true },
+				}))
+			)
+
+			const successConFestivos = (eventosNormales) => {
+				success([...eventosFestivos, ...eventosNormales])
+			}
+
+			switch (this.typePetition) {
+			case 'all':
+				this.vista_actual = t('empleados', 'All my team')
+				this.getAllAusencias(fetchInfo, successConFestivos, failure)
+				break
+			case 'employee':
+				this.vista_actual = t('empleados', 'Selected employee')
+				this.getEmployeeAusencias(fetchInfo, successConFestivos, failure)
+				break
+			case 'all-employees':
+				this.vista_actual = t('empleados', 'All my subordinates')
+				this.GetAusenciasMyWorkers(fetchInfo, successConFestivos, failure)
+				break
+			default:
+				this.accordeon = this.accordeon.map(item => ({ ...item, abierto: false }))
+				this.employees = []
+				this.vista_actual = t('empleados', 'My absences')
+				this.getMyAusencias(fetchInfo, successConFestivos, failure)
 			}
 		},
 
@@ -795,6 +854,16 @@ export default {
 					console.error('Error getting team lead:', error)
 				})
 		},
+
+		async getFestivos() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/getFestivos'))
+				this.Festivos = response?.data?.ocs?.data ?? []
+				this.$refs.fullCalendar?.getApi().refetchEvents()
+			} catch (err) {
+				console.error(err)
+			}
+		},
 	},
 }
 </script>
@@ -1000,5 +1069,30 @@ export default {
 		flex-direction: column;
 		align-items: stretch;
 	}
+}
+
+.dia-festivo {
+    background-color: var(--color-background-dark) !important;
+    opacity: 0.6;
+}
+
+:deep(.evento-festivo) {
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+:deep(.festivo-label) {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #374151;
+    padding: 1px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+:deep(.evento-festivo .fc-event-main) {
+    background-color: #e5e7eb;
+    border-radius: 4px;
 }
 </style>

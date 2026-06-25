@@ -67,7 +67,7 @@ class festivosMapper extends QBMapper {
 	}
 
 	/**
-	 * Obtener festivo por fecha
+	 * Obtener festivo por fecha (MM-DD)
 	 */
 	public function findByFecha(string $fecha): array {
 
@@ -90,31 +90,7 @@ class festivosMapper extends QBMapper {
 	}
 
 	/**
-	 * Obtener festivos de un año
-	 */
-	public function findByYear(int $year): array {
-
-		$qb = $this->db->getQueryBuilder();
-
-		$qb->select('*')
-			->from($this->getTableName())
-			->where(
-				$qb->expr()->like(
-					'fecha',
-					$qb->createNamedParameter($year . '-%')
-				)
-			)
-			->orderBy('fecha', 'ASC');
-
-		$result = $qb->executeQuery();
-		$data = $result->fetchAll();
-		$result->closeCursor();
-
-		return $data;
-	}
-
-	/**
-	 * Verificar si existe un festivo en la fecha indicada
+	 * Verificar si existe un festivo en la fecha indicada (MM-DD)
 	 */
 	public function existeFecha(string $fecha): bool {
 
@@ -202,6 +178,18 @@ class festivosMapper extends QBMapper {
 					)
 				)
 			);
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Eliminar todos los festivos
+	 */
+	public function deleteAll(): void {
+
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->delete($this->getTableName());
 
 		$qb->executeStatement();
 	}
