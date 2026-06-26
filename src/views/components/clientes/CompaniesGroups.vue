@@ -8,145 +8,144 @@
 					</p>
 					<h2>{{ t('empleados', 'Companies and groups') }}</h2>
 					<p class="section-description">
-						{{ t('empleados', 'Manage customer groups, companies and sub-companies used by the time reports module.') }}
+						{{ t('empleados', 'Manage customer groups, companies and sub-companies used by the time reportsmodule.') }}
 					</p>
 				</div>
-
-				<div class="header-actions">
-					<NcButton @click="Exportar">
-						{{ t('empleados', 'Export') }}
-					</NcButton>
-
-					<NcButton @click="triggerImport">
-						{{ t('empleados', 'Import') }}
-					</NcButton>
-
-					<NcButton type="primary" @click="openModal">
-						{{ t('empleados', 'New company') }}
-					</NcButton>
-				</div>
 			</div>
-
-			<div class="stats-grid">
-				<div class="stat-card">
-					<div class="stat-icon">
-						<OfficeBuilding :size="22" />
-					</div>
-					<div>
-						<span>{{ t('empleados', 'Total records') }}</span>
-						<span class="value-text">{{ activeClients.length }}</span>
-					</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-icon">
-						<HexagonMultipleOutline :size="22" />
-					</div>
-					<div>
-						<span>{{ t('empleados', 'Main groups') }}</span>
-						<span class="value-text">{{ mainGroups.length }}</span>
-					</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-icon">
-						<AccountGroup :size="22" />
-					</div>
-					<div>
-						<span>{{ t('empleados', 'Sub-companies') }}</span>
-						<span class="value-text">{{ subCompanies.length }}</span>
-					</div>
-				</div>
-			</div>
-
-			<List
-				:loading="loading"
+			<List :loading="loading"
 				:listas="filteredListas"
 				:select="select"
 				:show-options="true"
 				:show-toggle-estado="true"
-				:toggle-estado-label="selectedIsActive ? t('empleados', 'Disable') : t('empleados', 'Enable')">
+				:toggle-estado-label="selectedIsActive ? t('empleados', 'Disable') : t('empleados', 'Enable')"
+				:defaultbuttons="false"
+				:custom="true">
+				<template #custom>
+					<div class="empty">
+						<div class="areas-empty-state">
+							<div class="areas-empty-card">
+								<img class="areas-empty-image"
+									src="../../../../img/crowesito-think.png"
+									alt="Empty area state">
 
-				<template #actions>
-					<NcActionButton
-						:close-after-click="true"
-						@click="toggleEstado()">
-						<template #icon>
-							<EyeOffOutline :size="20" />
-						</template>
-						{{ selectedIsActive ? t('empleados', 'Disable') : t('empleados', 'Enable') }}
-					</NcActionButton>
-					<NcActionSeparator />
-				</template>
+								<h2>{{ t('empleados', 'Select a client for more details') }}</h2>
 
-				<template #custombuttons>
-					<div class="filter-wrap">
-						<NcButton
-							class="filter-icon-button"
-							type="tertiary"
-							:title="t('empleados', 'Filters')"
-							@click.stop="toggleFilters">
-							<template #icon>
-								<FilterVariant :size="20" />
-							</template>
-							{{ t('empleados', '') }}
-							<span
-								v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) > 0"
-								class="filter-badge">
-								{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) }}
-							</span>
-						</NcButton>
-
-						<div v-if="showFilters"
-							class="filter-dropdown"
-							@click.stop>
-							<div class="filter-section">
-								<p class="filter-section-label">
-									{{ t('empleados', 'Sort') }}
+								<p class="areas-empty-description">
+									{{ t('empleados', 'Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.') }}
 								</p>
-								<select v-model="sortOrder">
-									<option value="az">A to Z</option>
-									<option value="za">Z to A</option>
-								</select>
-							</div>
-							<hr class="filter-divider">
-							<div class="filter-section">
-								<label>
-									<input v-model="onlyParents" type="checkbox">
-									{{ t('empleados', 'Only Main Groups') }}
-								</label>
-								<label>
-									<input v-model="onlySpecial" type="checkbox">
-									{{ t('empleados', 'Only Special Clients') }}
-								</label>
-								<label>
-									<input v-model="showDisabled" type="checkbox">
-									{{ t('empleados', 'Show disabled') }}
-								</label>
-								<label>
-									<input v-model="onlyDisabled" type="checkbox">
-									{{ t('empleados', 'Only Disabled') }}
-								</label>
+
+								<div class="stats-grid">
+									<div class="stat-card">
+										<div class="stat-icon">
+											<OfficeBuilding :size="22" />
+										</div>
+										<div>
+											<span>{{ t('empleados', 'Total records') }}</span>
+											<span class="value-text">{{ activeClients.length }}</span>
+										</div>
+									</div>
+
+									<div class="stat-card">
+										<div class="stat-icon">
+											<HexagonMultipleOutline :size="22" />
+										</div>
+										<div>
+											<span>{{ t('empleados', 'Main groups') }}</span>
+											<span class="value-text">{{ mainGroups.length }}</span>
+										</div>
+									</div>
+
+									<div class="stat-card">
+										<div class="stat-icon">
+											<AccountGroup :size="22" />
+										</div>
+										<div>
+											<span>{{ t('empleados', 'Sub-companies') }}</span>
+											<span class="value-text">{{ subCompanies.length }}</span>
+										</div>
+									</div>
+								</div>
+
+								<div class="areas-empty-actions">
+									<NcButton type="primary" @click="GetCompaniesGroups()">
+										{{ t('empleados', 'Refresh') }}
+									</NcButton>
+								</div>
 							</div>
 						</div>
 					</div>
 				</template>
+				<template #custombuttons>
+					<NcActions :open="button" @click="toggle">
+						<template #icon>
+							<FilterVariant :size="20" />
+						</template>
 
-				<template #buttons />
+						<NcActionButton :is-menu="true">
+							{{ t('empleados', 'Filters') }}
+						</NcActionButton>
 
+						<NcActionInput v-model="sortOrder"
+							type="multiselect"
+							:label-outside="false"
+							:manual-open="true"
+							:options="[{ label: 'A to Z', value: 'az' }, { label: 'Z to A', value: 'za' }]">
+							{{ t('empleados', 'Sort') }}
+						</NcActionInput>
+
+						<NcActionCheckbox v-model="onlyParents">
+							{{ t('empleados', 'Only Main Groups') }}
+						</NcActionCheckbox>
+						<NcActionCheckbox v-model="onlySpecial">
+							{{ t('empleados', 'Only Special Clients') }}
+						</NcActionCheckbox>
+						<NcActionCheckbox v-model="showDisabled">
+							{{ t('empleados', 'Show disabled') }}
+						</NcActionCheckbox>
+						<NcActionCheckbox v-model="onlyDisabled">
+							{{ t('empleados', 'Only Disabled') }}
+						</NcActionCheckbox>
+
+						<NcActionSeparator />
+
+						<NcActionButton :is-menu="true">
+							{{ t('empleados', 'Settings') }}
+						</NcActionButton>
+
+						<NcActionButton @click="AgregarNuevo()">
+							<template #icon>
+								<AccountMultiplePlusOutline :size="20" />
+							</template>
+							{{ t('empleados', 'Add new') }}
+						</NcActionButton>
+
+						<NcActionButton @click="Exportar()">
+							<template #icon>
+								<DatabaseExport :size="20" />
+							</template>
+							{{ t('empleados', 'Export list') }}
+						</NcActionButton>
+
+						<NcActionButton @click="triggerImport()">
+							<template #icon>
+								<Upload :size="20" />
+							</template>
+							{{ t('empleados', 'Import data from template') }}
+						</NcActionButton>
+					</NcActions>
+
+					<span
+						v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) > 0"
+						class="filter-badge">
+						{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) +
+							(onlyDisabled ? 1 : 0) }}
+					</span>
+				</template>
 				<template #details>
 					<div class="client-details">
-						<NcEmptyContent
-							v-if="!hasSelectedClient"
-							:name="t('empleados', 'No company selected')"
-							:description="t('empleados', 'Select a company or group from the list to view its details.')">
-							<template #icon>
-								<HexagonMultipleOutline />
-							</template>
-						</NcEmptyContent>
-
-						<template v-else>
-							<div class="details-header" :class="{ 'details-header--especial': selectedClient.especial }">
+						<div>
+							<div class="details-header"
+								:class="{ 'details-header--especial': selectedClient.especial }">
 								<div class="details-icon">
 									<HexagonMultipleOutline :size="30" />
 								</div>
@@ -160,97 +159,164 @@
 								</div>
 							</div>
 
-							<div class="details-grid">
-								<div class="detail-card">
-									<span>{{ t('empleados', 'Parent group') }}</span>
-									<span class="value-text">{{ parentName }}</span>
-								</div>
+							<div class="acordeon-item btn-top">
+								<button class="acordeon-titulo" @click="toggleAccordeon(0)">
+									{{ t('empleados', 'General Information') }}
+									<span>{{ accordeon[0].abierto ? '-' : '+' }}</span>
+								</button>
+								<div :class="['acordeon-contenido', { abierto: accordeon[0].abierto }]">
+									<div class="btn-top">
+										<div class="info-section">
+											<div class="section-head">
+												<div>
+													<p class="section-label">
+														{{ t('empleados', 'Company Information') }}
+													</p>
+												</div>
+											</div>
 
-								<div class="detail-card">
-									<span>{{ t('empleados', 'Sub-companies') }}</span>
-									<span class="value-text">{{ childCompanies.length }}</span>
-								</div>
+											<div class="info-grid">
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Legal Business Name') }}</span>
+													<span class="value-text">{{ selectedClient.razon_social || '-'
+													}}</span>
+												</div>
 
-								<div class="detail-card detail-card-wide">
-									<span>{{ t('empleados', 'Hierarchy') }}</span>
-									<div class="breadcrumb">
-										<span>{{ parentName }}</span>
-										<span class="separator">/</span>
-										<span class="value-text">{{ selectedClient.nombre }}</span>
-									</div>
-								</div>
-							</div>
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Project Manager') }}</span>
 
-							<div class="info-section">
-								<div class="section-head">
-									<div>
-										<p class="section-label">
-											{{ t('empleados', 'Company Information') }}
-										</p>
-										<h3>{{ t('empleados', 'General Information') }}</h3>
-									</div>
-								</div>
+													<div v-if="projectManager" class="pm-info">
+														<img :src="projectManager.avatar"
+															:alt="projectManager.label"
+															class="pm-avatar">
 
-								<div class="info-grid">
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Legal Business Name') }}</span>
-										<span class="value-text">{{ selectedClient.razon_social || '-' }}</span>
-									</div>
+														<span class="value-text">
+															{{ projectManager.label }}
+														</span>
+													</div>
 
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Project Manager') }}</span>
+													<span v-else class="value-text">
+														-
+													</span>
+												</div>
 
-										<div v-if="projectManager" class="pm-info">
-											<img
-												:src="projectManager.avatar"
-												:alt="projectManager.label"
-												class="pm-avatar">
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Primary Contact') }}</span>
+													<span class="value-text">{{ selectedClient.nombre_contacto || '-'
+													}}</span>
+												</div>
 
-											<span class="value-text">
-												{{ projectManager.label }}
-											</span>
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Phone Number') }}</span>
+													<span class="value-text">{{ selectedClient.telefono || '-' }}</span>
+												</div>
+
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Email Address') }}</span>
+													<span class="value-text">{{ selectedClient.correo || '-' }}</span>
+												</div>
+
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Location') }}</span>
+													<span class="value-text">{{ selectedClient.ubicacion || '-'
+													}}</span>
+												</div>
+
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Special Client') }}</span>
+													<span class="value-text">{{ Number(selectedClient.especial) ?
+														t('empleados',
+															'Yes') : t('empleados', 'No') }}</span>
+												</div>
+
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Status') }}</span>
+													<span class="value-text">{{ Number(selectedClient.estado) ?
+														t('empleados',
+															'Active') : t('empleados', 'Inactive') }}</span>
+												</div>
+											</div>
 										</div>
-
-										<span
-											v-else
-											class="value-text">
-											-
-										</span>
-									</div>
-
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Primary Contact') }}</span>
-										<span class="value-text">{{ selectedClient.nombre_contacto || '-' }}</span>
-									</div>
-
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Phone Number') }}</span>
-										<span class="value-text">{{ selectedClient.telefono || '-' }}</span>
-									</div>
-
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Email Address') }}</span>
-										<span class="value-text">{{ selectedClient.correo || '-' }}</span>
-									</div>
-
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Location') }}</span>
-										<span class="value-text">{{ selectedClient.ubicacion || '-' }}</span>
-									</div>
-
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Special Client') }}</span>
-										<span class="value-text">{{ Number(selectedClient.especial) ? t('empleados', 'Yes') : t('empleados', 'No') }}</span>
-									</div>
-
-									<div class="detail-card">
-										<span>{{ t('empleados', 'Status') }}</span>
-										<span class="value-text">{{ Number(selectedClient.estado) ? t('empleados', 'Active') : t('empleados', 'Inactive') }}</span>
 									</div>
 								</div>
 							</div>
 
-							<!-- Collaborators -->
+							<div class="acordeon-item btn-top">
+								<button class="acordeon-titulo" @click="toggleAccordeon(1)">
+									{{ t('empleados', 'Group Information') }}
+									<span>{{ accordeon[1].abierto ? '-' : '+' }}</span>
+								</button>
+								<div :class="['acordeon-contenido', { abierto: accordeon[1].abierto }]">
+									<div class="btn-top">
+										<div class="info-section">
+											<div class="">
+												<div class="details-grid">
+													<div class="detail-card">
+														<span>{{ t('empleados', 'Parent group') }}</span>
+														<span class="value-text">{{ parentName }}</span>
+													</div>
+
+													<div class="detail-card">
+														<span>{{ t('empleados', 'Sub-companies') }}</span>
+														<span class="value-text">{{ childCompanies.length }}</span>
+													</div>
+
+													<div class="detail-card detail-card-wide">
+														<span>{{ t('empleados', 'Hierarchy') }}</span>
+														<div class="breadcrumb">
+															<span>{{ parentName }}</span>
+															<span class="separator">/</span>
+															<span class="value-text">{{ selectedClient.nombre }}</span>
+														</div>
+													</div>
+												</div>
+											</div>
+											<!-- Sub-companies -->
+											<div class="children-section">
+												<div class="section-head">
+													<div>
+														<p class="section-label">
+															{{ t('empleados', 'Sub-companies') }}
+														</p>
+														<h3>{{ t('empleados', 'Companies inside this group') }}</h3>
+													</div>
+												</div>
+
+												<div v-if="childCompanies.length > 0" class="children-grid">
+													<button v-for="child in childCompanies"
+														:key="child.id"
+														type="button"
+														class="child-card"
+														@click="GetCompanieGroup(child.id)">
+														<div class="child-icon">
+															<OfficeBuilding :size="20" />
+														</div>
+
+														<div class="child-info">
+															<span class="value-text">{{ child.nombre }}</span>
+															<span>{{ child.detalles || t('empleados', 'No description available.')
+															}}</span>
+														</div>
+
+														<div class="child-count">
+															{{ child.child_count || 0 }}
+														</div>
+													</button>
+												</div>
+
+												<NcEmptyContent v-else
+													:name="t('empleados', 'No sub-companies')"
+													:description="t('empleados', 'This company or group does not have registered sub-companies.')">
+													<template #icon>
+														<OfficeBuilding />
+													</template>
+												</NcEmptyContent>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
 							<div class="info-section">
 								<div class="section-head">
 									<div>
@@ -266,8 +332,7 @@
 									<div class="collaborator-row">
 										<span class="collaborator-role">{{ t('empleados', 'Project Leader') }}</span>
 										<div v-if="projectManager" class="collaborator-item">
-											<img
-												:src="projectManager.avatar"
+											<img :src="projectManager.avatar"
 												:alt="projectManager.label"
 												class="collaborator-avatar">
 											<span class="value-text">{{ projectManager.label }}</span>
@@ -279,14 +344,10 @@
 									<div class="collaborator-row">
 										<span class="collaborator-role">{{ t('empleados', 'Collaborators') }}</span>
 										<div v-if="selectedClientCollaborators.length > 0" class="collaborator-list">
-											<div
-												v-for="emp in selectedClientCollaborators"
+											<div v-for="emp in selectedClientCollaborators"
 												:key="emp.value"
 												class="collaborator-item">
-												<img
-													:src="emp.avatar"
-													:alt="emp.label"
-													class="collaborator-avatar">
+												<img :src="emp.avatar" :alt="emp.label" class="collaborator-avatar">
 												<span class="value-text">{{ emp.label }}</span>
 											</div>
 										</div>
@@ -309,8 +370,7 @@
 									</NcButton>
 								</div>
 
-								<NcEmptyContent
-									v-if="!honorarios.length"
+								<NcEmptyContent v-if="!honorarios.length"
 									:name="t('empleados', 'No fees registered')"
 									:description="t('empleados', 'Register a service fee for this company.')">
 									<template #icon>
@@ -319,56 +379,51 @@
 								</NcEmptyContent>
 
 								<div v-else class="honorarios-list">
-									<div
-										v-for="honorario in honorarios"
+									<div v-for="honorario in honorarios"
 										:key="honorario.id_honorario"
 										class="honorario-card">
 										<div class="honorario-header">
 											<div class="honorario-info">
-												<span class="value-text">{{ honorario.tipo_servicio || t('empleados', 'Service') }}</span>
+												<span class="value-text">{{ honorario.tipo_servicio || t('empleados',
+													'Service') }}</span>
 												<span>{{ honorario.fecha_inicio }} — {{ honorario.fecha_fin }}</span>
 											</div>
 											<div class="honorario-meta">
 												<span class="honorario-amount">
-													{{ formatImporte(honorario.importe_total) }} {{ honorario.tipo_moneda }}
+													{{ formatImporte(honorario.importe_total) }} {{
+														honorario.tipo_moneda }}
 												</span>
-												<span
-													class="honorario-badge"
+												<span class="honorario-badge"
 													:class="Number(honorario.activo) ? 'badge-active' : 'badge-done'">
-													{{ Number(honorario.activo) ? t('empleados', 'Active') : t('empleados', 'Completed') }}
+													{{ Number(honorario.activo) ? t('empleados', 'Active') :
+														t('empleados', 'Completed') }}
 												</span>
-												<NcButton
-													v-if="Number(honorario.numero_parcialidades) === 0"
+												<NcButton v-if="Number(honorario.numero_parcialidades) === 0"
 													type="secondary"
 													@click="completarHonorarioBorrador(honorario)">
 													{{ t('empleados', 'Complete fee') }}
 												</NcButton>
 
-												<NcButton
-													v-if="Number(honorario.numero_parcialidades) > 0"
+												<NcButton v-if="Number(honorario.numero_parcialidades) > 0"
 													type="tertiary"
 													@click="toggleParcialidades(honorario.id_honorario)">
 													{{ t('empleados', 'Installments') }}
 												</NcButton>
-												<NcButton
-													type="tertiary-no-background"
+												<NcButton type="tertiary-no-background"
 													@click="askDeleteHonorario(honorario.id_honorario)">
 													{{ t('empleados', 'Delete') }}
 												</NcButton>
 											</div>
 										</div>
 
-										<div
-											v-if="parcialidadesAbiertas[honorario.id_honorario]"
+										<div v-if="parcialidadesAbiertas[honorario.id_honorario]"
 											class="parcialidades-list">
-											<div
-												v-if="loadingParcialidades[honorario.id_honorario]"
+											<div v-if="loadingParcialidades[honorario.id_honorario]"
 												class="parcialidades-loading">
 												{{ t('empleados', 'Loading...') }}
 											</div>
 											<template v-else>
-												<div
-													v-for="p in (parcialidades[honorario.id_honorario] || [])"
+												<div v-for="p in (parcialidades[honorario.id_honorario] || [])"
 													:key="p.id_parcialidad"
 													class="parcialidad-row"
 													:class="{
@@ -377,7 +432,8 @@
 													}">
 													<div class="parcialidad-main">
 														<div class="parcialidad-num-wrapper">
-															<span class="parcialidad-num">#{{ p.numero_parcialidad }}</span>
+															<span class="parcialidad-num">#{{ p.numero_parcialidad
+															}}</span>
 
 															<span
 																v-if="Number(p.pagado) === 1 || Number(p.pagado) === 2"
@@ -387,12 +443,14 @@
 																▾
 															</span>
 														</div>
-														<span class="parcialidad-fechas">{{ p.pfecha_inicio }} — {{ p.pfecha_fin }}</span>
-														<span class="parcialidad-importe">{{ formatImporte(p.importe_parcialidad) }} {{ honorario.tipo_moneda }}</span>
+														<span class="parcialidad-fechas">{{ p.pfecha_inicio }} — {{
+															p.pfecha_fin }}</span>
+														<span class="parcialidad-importe">{{
+															formatImporte(p.importe_parcialidad) }} {{
+															honorario.tipo_moneda }}</span>
 
 														<div class="parcialidad-actions">
-															<NcButton
-																v-if="Number(p.pagado) === 0"
+															<NcButton v-if="Number(p.pagado) === 0"
 																class="btn-pagar"
 																type="primary"
 																@click="abrirDialogPago(p.id_parcialidad, honorario.id_honorario)">
@@ -400,8 +458,7 @@
 															</NcButton>
 
 															<template v-else-if="Number(p.pagado) === 1">
-																<NcButton
-																	class="btn-factura"
+																<NcButton class="btn-factura"
 																	type="secondary"
 																	@click="confirmarFactura(p.id_parcialidad, honorario.id_honorario)">
 																	{{ t('empleados', 'Mark as invoiced') }}
@@ -415,8 +472,7 @@
 															</template>
 														</div>
 													</div>
-													<div
-														v-if="detalleAbierto[p.id_parcialidad]"
+													<div v-if="detalleAbierto[p.id_parcialidad]"
 														class="parcialidad-detalle">
 														<span v-if="p.fecha_pago" class="parcialidad-detail-text">
 															💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
@@ -428,101 +484,45 @@
 									</div>
 								</div>
 							</div>
+						</div>
 
-							<!-- Sub-companies -->
-							<div class="children-section">
-								<div class="section-head">
-									<div>
-										<p class="section-label">
-											{{ t('empleados', 'Sub-companies') }}
-										</p>
-										<h3>{{ t('empleados', 'Companies inside this group') }}</h3>
-									</div>
-								</div>
-
-								<div v-if="childCompanies.length > 0" class="children-grid">
-									<button
-										v-for="child in childCompanies"
-										:key="child.id"
-										type="button"
-										class="child-card"
-										@click="GetCompanieGroup(child.id)">
-										<div class="child-icon">
-											<OfficeBuilding :size="20" />
-										</div>
-
-										<div class="child-info">
-											<span class="value-text">{{ child.nombre }}</span>
-											<span>{{ child.detalles || t('empleados', 'No description available.') }}</span>
-										</div>
-
-										<div class="child-count">
-											{{ child.child_count || 0 }}
-										</div>
-									</button>
-								</div>
-
-								<NcEmptyContent
-									v-else
-									:name="t('empleados', 'No sub-companies')"
-									:description="t('empleados', 'This company or group does not have registered sub-companies.')">
-									<template #icon>
-										<OfficeBuilding />
-									</template>
-								</NcEmptyContent>
-							</div>
-						</template>
-
-						<NcDialog
-							v-if="showPagoDialog"
+						<NcDialog v-if="showPagoDialog"
 							:name="t('empleados', 'Payment date')"
 							:open.sync="showPagoDialog"
 							@close="showPagoDialog = false">
-							<input
-								v-model="fechaPago"
-								class="fecha-pago-input"
-								type="date">
+							<input v-model="fechaPago" class="fecha-pago-input" type="date">
 
 							<template #actions>
 								<NcButton @click="showPagoDialog = false">
 									{{ t('empleados', 'Cancel') }}
 								</NcButton>
-								<NcButton
-									type="primary"
-									@click="confirmarPago">
+								<NcButton type="primary" @click="confirmarPago">
 									{{ t('empleados', 'Save') }}
 								</NcButton>
 							</template>
 						</NcDialog>
 
-						<NcDialog
-							v-if="showFacturaDialog"
+						<NcDialog v-if="showFacturaDialog"
 							:name="t('empleados', 'Invoice date')"
 							@close="showFacturaDialog = false">
-							<input
-								v-model="fechaFactura"
-								type="date">
+							<input v-model="fechaFactura" type="date">
 
 							<template #actions>
 								<NcButton @click="showFacturaDialog = false">
 									{{ t('empleados', 'Cancel') }}
 								</NcButton>
-								<NcButton
-									type="primary"
-									@click="confirmarFactura">
+								<NcButton type="primary" @click="confirmarFactura">
 									{{ t('empleados', 'Save') }}
 								</NcButton>
 							</template>
 						</NcDialog>
 
-						<NcDialog
-							:open.sync="showDeleteHonorarioDialog"
+						<NcDialog :open.sync="showDeleteHonorarioDialog"
 							:name="t('empleados', 'Confirm')"
-							:message="
-								t(
-									'empleados',
-									'Do you want to delete this service fee and all its installments?'
-								)
+							:message="t(
+								'empleados',
+								'Do you want to delete this service fee and all its installments?'
+							)
 							"
 							:buttons="deleteHonorarioButtons" />
 					</div>
@@ -531,8 +531,7 @@
 		</div>
 
 		<!-- Modal: Cliente -->
-		<NcModal
-			v-if="modal"
+		<NcModal v-if="modal"
 			ref="modalRef"
 			:name="modalTitle"
 			@close="closeModal">
@@ -549,53 +548,38 @@
 
 				<div class="form-grid">
 					<!-- nombre -->
-					<NcTextField
-						required
+					<NcTextField required
 						class="span-2"
 						:value.sync="nombre"
 						:label="t('empleados', 'Company or group name')" />
 
 					<!-- detalles -->
-					<NcTextArea
-						class="span-2"
+					<NcTextArea class="span-2"
 						:value.sync="detalles"
 						:label="t('empleados', 'Details')"
 						:rows="3" />
 
 					<!-- razon_social -->
-					<NcTextField
-						:value.sync="razon_social"
-						:label="t('empleados', 'Business name')" />
+					<NcTextField :value.sync="razon_social" :label="t('empleados', 'Business name')" />
 
 					<!-- correo -->
-					<NcTextField
-						:value.sync="correo"
-						:label="t('empleados', 'Email')" />
+					<NcTextField :value.sync="correo" :label="t('empleados', 'Email')" />
 
 					<!-- nombre_contacto -->
-					<NcTextField
-						:value.sync="nombre_contacto"
-						:label="t('empleados', 'Primary contact')" />
+					<NcTextField :value.sync="nombre_contacto" :label="t('empleados', 'Primary contact')" />
 
 					<!-- telefono -->
-					<NcTextField
-						:value.sync="telefono"
-						:label="t('empleados', 'Phone number')" />
+					<NcTextField :value.sync="telefono" :label="t('empleados', 'Phone number')" />
 
 					<!-- ubicacion -->
-					<NcTextField
-						class="span-2"
-						:value.sync="ubicacion"
-						:label="t('empleados', 'Location')" />
-					<NcSelect
-						v-model="lider_proyecto"
+					<NcTextField class="span-2" :value.sync="ubicacion" :label="t('empleados', 'Location')" />
+					<NcSelect v-model="lider_proyecto"
 						:input-label="t('empleados', 'Project leader')"
 						:options="projectManagers"
 						:clearable="true"
 						label="label"
 						track-by="value" />
-					<NcSelect
-						v-model="colaboradores"
+					<NcSelect v-model="colaboradores"
 						:options="collaboratorOptions"
 						:multiple="true"
 						label="label"
@@ -605,9 +589,7 @@
 
 					<!-- especial -->
 					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch
-							v-model="especial"
-							type="switch" />
+						<NcCheckboxRadioSwitch v-model="especial" type="switch" />
 						<div class="special-client-info">
 							<h3>{{ t('empleados', 'Special Client') }}</h3>
 							<p>
@@ -618,9 +600,7 @@
 
 					<!-- estado -->
 					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch
-							v-model="estado"
-							type="switch" />
+						<NcCheckboxRadioSwitch v-model="estado" type="switch" />
 						<div class="special-client-info">
 							<h3>{{ t('empleados', 'Active') }}</h3>
 							<p>
@@ -630,8 +610,7 @@
 					</div>
 
 					<!-- cliente_padre -->
-					<NcSelect
-						:key="options.length"
+					<NcSelect :key="options.length"
 						v-model="cliente_padre"
 						class="span-2"
 						:input-label="t('empleados', 'Parent group')"
@@ -640,10 +619,8 @@
 						label="label"
 						track-by="id" />
 
-					<NcNoteCard
-						type="info"
-						class="span-2">
-						{{ t('empleados', 'Leave parent group empty to create a main group. Select a parent to create a sub-company.') }}
+					<NcNoteCard type="info" class="span-2">
+						{{ t('empleados', 'Leave parent group empty to create a main group. Select a parent to create asub - company.') }}
 					</NcNoteCard>
 				</div>
 
@@ -652,10 +629,7 @@
 						{{ t('empleados', 'Cancel') }}
 					</NcButton>
 
-					<NcButton
-						type="primary"
-						:disabled="!isFormValid || saving"
-						@click="save">
+					<NcButton type="primary" :disabled="!isFormValid || saving" @click="save">
 						{{ saving ? t('empleados', 'Saving...') : saveLabel }}
 					</NcButton>
 				</div>
@@ -663,10 +637,7 @@
 		</NcModal>
 
 		<!-- Modal: Honorario -->
-		<NcModal
-			v-if="honorarioModal"
-			:name="t('empleados', 'New service fee')"
-			@close="closeHonorarioModal">
+		<NcModal v-if="honorarioModal" :name="t('empleados', 'New service fee')" @close="closeHonorarioModal">
 			<div class="modal-content">
 				<div class="modal-header">
 					<p class="section-label">
@@ -677,34 +648,28 @@
 				</div>
 
 				<div class="form-grid">
-					<NcTextField
-						:value.sync="h_tipo_servicio"
-						:label="t('empleados', 'Service type')" />
+					<NcTextField :value.sync="h_tipo_servicio" :label="t('empleados', 'Service type')" />
 
-					<NcSelect
-						v-model="h_tipo_moneda"
+					<NcSelect v-model="h_tipo_moneda"
 						:options="currencyOptions"
 						label="label"
 						track-by="value"
 						:searchable="false" />
 
-					<NcTextField
-						type="number"
+					<NcTextField type="number"
 						class="span-2"
 						:value.sync="h_importe_total"
 						:label="t('empleados', 'Total amount')" />
 					<div class="span-2">
 						<span class="date-label">{{ t('empleados', 'Start date') }}</span>
 					</div>
-					<NcSelect
-						v-model="h_mes_inicio"
+					<NcSelect v-model="h_mes_inicio"
 						:options="meses"
 						:placeholder="t('empleados', 'Month')"
 						label="label"
 						track-by="value"
 						:searchable="false" />
-					<NcSelect
-						v-model="h_anio_inicio"
+					<NcSelect v-model="h_anio_inicio"
 						:options="anios"
 						:placeholder="t('empleados', 'Year')"
 						label="label"
@@ -714,25 +679,20 @@
 					<div class="span-2">
 						<span class="date-label">{{ t('empleados', 'End date') }}</span>
 					</div>
-					<NcSelect
-						v-model="h_mes_fin"
+					<NcSelect v-model="h_mes_fin"
 						:options="meses"
 						:placeholder="t('empleados', 'Month')"
 						label="label"
 						track-by="value"
 						:searchable="false" />
-					<NcSelect
-						v-model="h_anio_fin"
+					<NcSelect v-model="h_anio_fin"
 						:options="anios"
 						:placeholder="t('empleados', 'Year')"
 						label="label"
 						track-by="value"
 						:searchable="false" />
 
-					<NcNoteCard
-						v-if="h_numero_parcialidades > 0"
-						type="info"
-						class="span-2">
+					<NcNoteCard v-if="h_numero_parcialidades > 0" type="info" class="span-2">
 						{{ t('empleados', '{n} installment(s) of {amount} {currency}', {
 							n: h_numero_parcialidades,
 							amount: formatImporte(h_importe_parcialidad),
@@ -745,17 +705,13 @@
 					<NcButton @click="closeHonorarioModal">
 						{{ t('empleados', 'Cancel') }}
 					</NcButton>
-					<NcButton
-						type="primary"
-						:disabled="!isHonorarioValid || savingHonorario"
-						@click="crearHonorario">
+					<NcButton type="primary" :disabled="!isHonorarioValid || savingHonorario" @click="crearHonorario">
 						{{ savingHonorario ? t('empleados', 'Saving...') : t('empleados', 'Create fee') }}
 					</NcButton>
 				</div>
 			</div>
 		</NcModal>
-		<input
-			ref="file"
+		<input ref="file"
 			type="file"
 			class="file-input"
 			accept=".xlsx"
@@ -775,7 +731,15 @@ import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOut
 import OfficeBuilding from 'vue-material-design-icons/OfficeBuilding.vue'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
+// import Cog from 'vue-material-design-icons/Cog.vue'
+import AccountMultiplePlusOutline from 'vue-material-design-icons/AccountMultiplePlusOutline.vue'
+import DatabaseExport from 'vue-material-design-icons/DatabaseExport.vue'
+import Upload from 'vue-material-design-icons/Upload.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
+// import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
+// import IconTrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
+// import IconOpenInNew from 'vue-material-design-icons/OpenInNew.vue'
+// import IconPencilOutline from 'vue-material-design-icons/PencilOutline.vue'
 
 import {
 	NcAppContent,
@@ -787,6 +751,11 @@ import {
 	NcSelect,
 	NcEmptyContent,
 	NcNoteCard,
+	NcActions,
+	NcActionButton,
+	NcActionSeparator,
+	NcActionInput,
+	NcActionCheckbox,
 } from '@nextcloud/vue'
 
 export default {
@@ -799,12 +768,25 @@ export default {
 		NcCheckboxRadioSwitch,
 		HexagonMultipleOutline,
 		OfficeBuilding,
+		// Cog,
+		AccountMultiplePlusOutline,
+		DatabaseExport,
+		Upload,
+		// IconTrashCanOutline,
+		// IconOpenInNew,
+		// IconPencilOutline,
+		// DatabaseCog,
 		AccountGroup,
 		NcModal,
 		NcTextField,
 		NcButton,
 		NcTextArea,
 		NcSelect,
+		NcActions,
+		NcActionButton,
+		NcActionSeparator,
+		NcActionInput,
+		NcActionCheckbox,
 		FilterVariant,
 		NcEmptyContent,
 		NcNoteCard,
@@ -834,7 +816,7 @@ export default {
 			especial: false,
 			estado: true,
 			cliente_padre: null,
-			sortOrder: 'az',
+			sortOrder: [],
 			onlyParents: false,
 			onlySpecial: false,
 			showDisabled: false,
@@ -893,6 +875,13 @@ export default {
 			fechaFactura: '',
 			detalleAbierto: {},
 			honorarioBorradorId: null,
+			button: false,
+			accordeon: [
+				{ abierto: false },
+				{ abierto: false },
+				{ abierto: false },
+				{ abierto: false },
+			],
 		}
 	},
 
@@ -1000,7 +989,7 @@ export default {
 				const nameA = (a.nombre || a.name || '').toLowerCase()
 				const nameB = (b.nombre || b.name || '').toLowerCase()
 
-				return this.sortOrder === 'za'
+				return this.sortOrder.value === 'za'
 					? nameB.localeCompare(nameA)
 					: nameA.localeCompare(nameB)
 			})
@@ -1165,8 +1154,29 @@ export default {
 	},
 
 	methods: {
-		t,
+		t, // Exponer i18n a la plantilla
 
+		matchSearch(name) {
+			if (this.query.trim() !== '') {
+				return name.toString().toLowerCase().includes(this.query.trim().toLowerCase())
+			}
+			return true
+		},
+
+		AgregarNuevo() {
+			this.toggle()
+			this.$root.$emit('new', true)
+		},
+
+		toggle() {
+			this.button = !this.button
+		},
+		toggleAccordeon(index) {
+			this.accordeon = this.accordeon.map((item, i) => ({
+				...item,
+				abierto: i === index ? !item.abierto : false,
+			}))
+		},
 		onKeyDown(e) {
 			if (e.key === 'Escape') {
 				this.onEsc()
@@ -1449,6 +1459,7 @@ export default {
 		},
 
 		async importar() {
+			this.toggle()
 			const file = this.$refs.file?.files?.[0]
 
 			if (!file) {
@@ -1479,6 +1490,7 @@ export default {
 		},
 
 		async Exportar() {
+			this.toggle()
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/Exportarclientes'), {
 					responseType: 'blob',
@@ -1830,7 +1842,6 @@ export default {
 
 <style scoped lang="scss">
 .companies-page {
-	display: flex;
 	flex-direction: column;
 	gap: 24px;
 	padding: 24px;
@@ -1843,6 +1854,7 @@ export default {
 	justify-content: space-between;
 	gap: 16px;
 	flex-wrap: wrap;
+	margin-left: 37px;
 
 	h2 {
 		margin: 4px 0 6px;
@@ -1891,7 +1903,7 @@ export default {
 }
 
 .stat-card {
-	display: flex;
+	display: inline;
 	align-items: center;
 	gap: 12px;
 	padding: 16px;
@@ -1930,92 +1942,93 @@ export default {
 }
 
 .filter-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .filter-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--color-primary-element);
-    color: var(--color-primary-element-text);
-    font-size: 0.7rem;
-    font-weight: 700;
-    margin-left: 4px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-size: 0.7rem;
+	font-weight: 700;
+	margin-left: 4px;
 }
 
 .filter-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    z-index: 9999;
-    width: 190px;
-    box-sizing: border-box;
-    padding: 6px 0;
-    overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.28);
-    border-radius: var(--border-radius);
-    background: var(--color-main-background);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	z-index: 9999;
+	width: 190px;
+	box-sizing: border-box;
+	padding: 6px 0;
+	overflow: hidden;
+	border: 1px solid rgba(0, 0, 0, 0.28);
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .filter-section {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    box-sizing: border-box;
-    width: 100%;
-    padding: 3px 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 3px 10px;
 }
 
 .filter-section-label {
-    margin: 0 0 4px;
-    color: var(--color-text-maxcontrast);
-    font-size: 10px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+	margin: 0 0 4px;
+	color: var(--color-text-maxcontrast);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
 
 .filter-section label {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    min-height: 26px;
-    color: var(--color-text-maxcontrast);
-    font-size: 12px;
-    line-height: 1;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	min-height: 26px;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	line-height: 1;
 }
 
 .filter-section input[type='checkbox'] {
-    width: 13px;
-    height: 13px;
-    margin: 0;
+	width: 13px;
+	height: 13px;
+	margin: 0;
 }
 
 .filter-divider {
-    margin: 1px 0;
-    border: none;
-    border-top: 1px solid var(--color-border);
+	margin: 1px 0;
+	border: none;
+	border-top: 1px solid var(--color-border);
 }
 
 .filter-section select {
-    width: 100%;
-    height: 28px;
-    box-sizing: border-box;
-    padding: 1px 22px 1px 7px;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    background-color: var(--color-main-background);
-    color: var(--color-main-text);
-    font-size: 12px;
+	width: 100%;
+	height: 28px;
+	box-sizing: border-box;
+	padding: 1px 22px 1px 7px;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 12px;
 }
+
 /* ── Detail panel ── */
 .client-details {
 	display: flex;
@@ -2479,7 +2492,8 @@ export default {
 
 .pm-info {
 	display: flex;
-	align-items: center; /* centra verticalmente */
+	align-items: center;
+	/* centra verticalmente */
 	gap: 10px;
 }
 
@@ -2492,65 +2506,65 @@ export default {
 }
 
 .collaborators-block {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
 }
 
 .collaborator-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
 }
 
 .collaborator-role {
-    min-width: 130px;
-    font-size: 13px;
-    color: var(--color-text-maxcontrast);
-    padding-top: 6px;
+	min-width: 130px;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	padding-top: 6px;
 }
 
 .collaborator-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
 }
 
 .collaborator-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--color-background-hover);
-    border-radius: 20px;
-    padding: 4px 12px 4px 4px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: var(--color-background-hover);
+	border-radius: 20px;
+	padding: 4px 12px 4px 4px;
 }
 
 .collaborator-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	object-fit: cover;
 }
 
 .date-label {
-    font-size: 0.8rem;
-    color: var(--color-text-maxcontrast);
-    padding-left: 2px;
+	font-size: 0.8rem;
+	color: var(--color-text-maxcontrast);
+	padding-left: 2px;
 }
 
 .btn-factura,
 .btn-pagar {
-    min-width: 120px !important;
-    width: 120px !important;
-    height: 28px !important;
-    font-size: 0.75rem !important;
-    justify-content: center !important;
+	min-width: 120px !important;
+	width: 120px !important;
+	height: 28px !important;
+	font-size: 0.75rem !important;
+	justify-content: center !important;
 }
 
 .btn-factura {
-    background-color: #21ba44 !important;
-    color: #fff !important;
-    border: none !important;
+	background-color: #21ba44 !important;
+	color: #fff !important;
+	border: none !important;
 }
 
 .btn-factura:hover {
@@ -2568,56 +2582,80 @@ export default {
 }
 
 .parcialidad-completada {
-    color: #21ba44;
-    font-weight: bold;
+	color: #21ba44;
+	font-weight: bold;
 	font-size: 0.7rem;
 }
 
 .fecha-pago-input {
-    display: block;
-    width: fit-content;
-    margin: 16px auto;
-    padding: 7px 30px 30px;
-    border: 3px solid var(--color-border-maxcontrast);
-    border-radius: var(--border-radius-large);
-    background-color: var(--color-main-background);
-    color: var(--color-main-text);
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    text-align: center;
-    letter-spacing: 0.04em;
+	display: block;
+	width: fit-content;
+	margin: 16px auto;
+	padding: 7px 30px 30px;
+	border: 3px solid var(--color-border-maxcontrast);
+	border-radius: var(--border-radius-large);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 1rem;
+	font-weight: 700;
+	cursor: pointer;
+	text-align: center;
+	letter-spacing: 0.04em;
 }
 
 .fecha-pago-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px var(--color-primary-light);
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .fecha-pago-input:hover {
-    border-color: var(--color-primary);
+	border-color: var(--color-primary);
 }
 
 .details-header--especial {
-    background: linear-gradient(135deg, #6c9cda 20%, #0c254b 100%);
-    border-radius: 8px;
-    padding: 16px 16px 10px 16px;
+	background: linear-gradient(135deg, #6c9cda 20%, #0c254b 100%);
+	border-radius: 8px;
+	padding: 16px 16px 10px 16px;
 }
 
 .details-header--especial .eyebrow,
 .details-header--especial h2,
 .details-header--especial p {
-    color: #ffffff;
+	color: #ffffff;
 }
 
 .details-header--especial .details-icon {
-    color: #ffffff;
+	color: #ffffff;
 }
 
 .filter-icon-button {
 	min-width: unset !important;
 	padding-left: 4px !important;
 	padding-right: 4px !important;
+}
+.acordeon-item {
+	margin-bottom: 10px;
+	border-radius: 5px;
+	overflow: hidden;
+}
+.acordeon-titulo {
+	width: 100%;
+	text-align: center;
+	border: none;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.acordeon-contenido {
+	max-height: 0;
+	opacity: 0;
+	overflow: hidden;
+	transition: all 0.3s ease-in-out;
+}
+
+.acordeon-contenido.abierto {
+	max-height: 500px;
+	opacity: 1;
 }
 </style>

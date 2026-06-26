@@ -33,8 +33,8 @@
 				</div>
 				<div v-else>
 					<div>
-						<div class="container">
-							<div v-if="showOptions" class="button-container-profile">
+						<div class="position-hero__actions">
+							<div v-if="showOptions" class="button-container">
 								<NcActions>
 									<template #icon>
 										<AccountCog :size="20" />
