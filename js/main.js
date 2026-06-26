@@ -17322,8 +17322,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_OfficeBuilding_vue__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! vue-material-design-icons/OfficeBuilding.vue */ "./node_modules/vue-material-design-icons/OfficeBuilding.vue");
 /* harmony import */ var _nextcloud_vue_dist_Components_NcCheckboxRadioSwitch_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! @nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js */ "./node_modules/@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.mjs");
 /* harmony import */ var vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! vue-material-design-icons/AccountGroup.vue */ "./node_modules/vue-material-design-icons/AccountGroup.vue");
-/* harmony import */ var vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/FilterVariant.vue */ "./node_modules/vue-material-design-icons/FilterVariant.vue");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_AccountMultiplePlusOutline_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/AccountMultiplePlusOutline.vue */ "./node_modules/vue-material-design-icons/AccountMultiplePlusOutline.vue");
+/* harmony import */ var vue_material_design_icons_DatabaseExport_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/DatabaseExport.vue */ "./node_modules/vue-material-design-icons/DatabaseExport.vue");
+/* harmony import */ var vue_material_design_icons_Upload_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/Upload.vue */ "./node_modules/vue-material-design-icons/Upload.vue");
+/* harmony import */ var vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/FilterVariant.vue */ "./node_modules/vue-material-design-icons/FilterVariant.vue");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
 
 
 
@@ -17333,26 +17336,48 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+// import Cog from 'vue-material-design-icons/Cog.vue'
+
+
+
+
+// import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
+// import IconTrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
+// import IconOpenInNew from 'vue-material-design-icons/OpenInNew.vue'
+// import IconPencilOutline from 'vue-material-design-icons/PencilOutline.vue'
 
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'CompaniesGroups',
   components: {
-    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcAppContent,
-    NcDialog: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcDialog,
+    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcAppContent,
+    NcDialog: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcDialog,
     List: _Helpers_Lists_List_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
     NcCheckboxRadioSwitch: _nextcloud_vue_dist_Components_NcCheckboxRadioSwitch_js__WEBPACK_IMPORTED_MODULE_7__["default"],
     HexagonMultipleOutline: vue_material_design_icons_HexagonMultipleOutline_vue__WEBPACK_IMPORTED_MODULE_5__["default"],
     OfficeBuilding: vue_material_design_icons_OfficeBuilding_vue__WEBPACK_IMPORTED_MODULE_6__["default"],
+    // Cog,
+    AccountMultiplePlusOutline: vue_material_design_icons_AccountMultiplePlusOutline_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
+    DatabaseExport: vue_material_design_icons_DatabaseExport_vue__WEBPACK_IMPORTED_MODULE_10__["default"],
+    Upload: vue_material_design_icons_Upload_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
+    // IconTrashCanOutline,
+    // IconOpenInNew,
+    // IconPencilOutline,
+    // DatabaseCog,
     AccountGroup: vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
-    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcModal,
-    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcTextField,
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcButton,
-    NcTextArea: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcTextArea,
-    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcSelect,
-    FilterVariant: vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
-    NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcEmptyContent,
-    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_10__.NcNoteCard
+    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcModal,
+    NcTextField: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcTextField,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcButton,
+    NcTextArea: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcTextArea,
+    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcSelect,
+    NcActions: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActions,
+    NcActionButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActionButton,
+    NcActionSeparator: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActionSeparator,
+    NcActionInput: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActionInput,
+    NcActionCheckbox: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActionCheckbox,
+    FilterVariant: vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
+    NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcEmptyContent,
+    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcNoteCard
   },
   data() {
     return {
@@ -17378,7 +17403,7 @@ __webpack_require__.r(__webpack_exports__);
       especial: false,
       estado: true,
       cliente_padre: null,
-      sortOrder: 'az',
+      sortOrder: [],
       onlyParents: false,
       onlySpecial: false,
       showDisabled: false,
@@ -17472,7 +17497,17 @@ __webpack_require__.r(__webpack_exports__);
       showFacturaDialog: false,
       fechaFactura: '',
       detalleAbierto: {},
-      honorarioBorradorId: null
+      honorarioBorradorId: null,
+      button: false,
+      accordeon: [{
+        abierto: false
+      }, {
+        abierto: false
+      }, {
+        abierto: false
+      }, {
+        abierto: false
+      }]
     };
   },
   computed: {
@@ -17545,7 +17580,7 @@ __webpack_require__.r(__webpack_exports__);
       data.sort((a, b) => {
         const nameA = (a.nombre || a.name || '').toLowerCase();
         const nameB = (b.nombre || b.name || '').toLowerCase();
-        return this.sortOrder === 'za' ? nameB.localeCompare(nameA) : nameA.localeCompare(nameB);
+        return this.sortOrder.value === 'za' ? nameB.localeCompare(nameA) : nameA.localeCompare(nameB);
       });
       return data;
     },
@@ -17662,6 +17697,27 @@ __webpack_require__.r(__webpack_exports__);
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate,
+    // Exponer i18n a la plantilla
+
+    matchSearch(name) {
+      if (this.query.trim() !== '') {
+        return name.toString().toLowerCase().includes(this.query.trim().toLowerCase());
+      }
+      return true;
+    },
+    AgregarNuevo() {
+      this.toggle();
+      this.$root.$emit('new', true);
+    },
+    toggle() {
+      this.button = !this.button;
+    },
+    toggleAccordeon(index) {
+      this.accordeon = this.accordeon.map((item, i) => ({
+        ...item,
+        abierto: i === index ? !item.abierto : false
+      }));
+    },
     onKeyDown(e) {
       if (e.key === 'Escape') {
         this.onEsc();
@@ -17889,6 +17945,7 @@ __webpack_require__.r(__webpack_exports__);
       this.modal = true;
     },
     async importar() {
+      this.toggle();
       const file = this.$refs.file?.files?.[0];
       if (!file) {
         return;
@@ -17916,6 +17973,7 @@ __webpack_require__.r(__webpack_exports__);
       }
     },
     async Exportar() {
+      this.toggle();
       try {
         const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/Exportarclientes'), {
           responseType: 'blob'
@@ -24014,9 +24072,9 @@ var render = function render() {
       size: 60
     }
   }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select something")))])], 1)]) : _c("div", [_c("div", [_c("div", {
-    staticClass: "container"
+    staticClass: "position-hero__actions"
   }, [_vm.showOptions ? _c("div", {
-    staticClass: "button-container-profile"
+    staticClass: "button-container"
   }, [_c("NcActions", {
     scopedSlots: _vm._u([{
       key: "icon",
@@ -29837,106 +29895,89 @@ var render = function render() {
     staticClass: "section-label"
   }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Customers module")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Companies and groups")))]), _vm._v(" "), _c("p", {
     staticClass: "section-description"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Manage customer groups, companies and sub-companies used by the time reports module.")) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
-    staticClass: "header-actions"
-  }, [_c("NcButton", {
-    on: {
-      click: _vm.Exportar
-    }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Export")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
-    on: {
-      click: _vm.triggerImport
-    }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Import")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
-    attrs: {
-      type: "primary"
-    },
-    on: {
-      click: _vm.openModal
-    }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "New company")) + "\n\t\t\t\t")])], 1)]), _vm._v(" "), _c("div", {
-    staticClass: "stats-grid"
-  }, [_c("div", {
-    staticClass: "stat-card"
-  }, [_c("div", {
-    staticClass: "stat-icon"
-  }, [_c("OfficeBuilding", {
-    attrs: {
-      size: 22
-    }
-  })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Total records")))]), _vm._v(" "), _c("span", {
-    staticClass: "value-text"
-  }, [_vm._v(_vm._s(_vm.activeClients.length))])])]), _vm._v(" "), _c("div", {
-    staticClass: "stat-card"
-  }, [_c("div", {
-    staticClass: "stat-icon"
-  }, [_c("HexagonMultipleOutline", {
-    attrs: {
-      size: 22
-    }
-  })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Main groups")))]), _vm._v(" "), _c("span", {
-    staticClass: "value-text"
-  }, [_vm._v(_vm._s(_vm.mainGroups.length))])])]), _vm._v(" "), _c("div", {
-    staticClass: "stat-card"
-  }, [_c("div", {
-    staticClass: "stat-icon"
-  }, [_c("AccountGroup", {
-    attrs: {
-      size: 22
-    }
-  })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Sub-companies")))]), _vm._v(" "), _c("span", {
-    staticClass: "value-text"
-  }, [_vm._v(_vm._s(_vm.subCompanies.length))])])])]), _vm._v(" "), _c("List", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Manage customer groups, companies and sub-companies used by the time reportsmodule.")) + "\n\t\t\t\t")])])]), _vm._v(" "), _c("List", {
     attrs: {
       loading: _vm.loading,
       listas: _vm.filteredListas,
       select: _vm.select,
       "show-options": true,
       "show-toggle-estado": true,
-      "toggle-estado-label": _vm.selectedIsActive ? _vm.t("empleados", "Disable") : _vm.t("empleados", "Enable")
+      "toggle-estado-label": _vm.selectedIsActive ? _vm.t("empleados", "Disable") : _vm.t("empleados", "Enable"),
+      defaultbuttons: false,
+      custom: true
     },
     scopedSlots: _vm._u([{
-      key: "actions",
+      key: "custom",
       fn: function () {
-        return [_c("NcActionButton", {
+        return [_c("div", {
+          staticClass: "empty"
+        }, [_c("div", {
+          staticClass: "areas-empty-state"
+        }, [_c("div", {
+          staticClass: "areas-empty-card"
+        }, [_c("img", {
+          staticClass: "areas-empty-image",
           attrs: {
-            "close-after-click": true
+            src: __webpack_require__(/*! ../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
+            alt: "Empty area state"
+          }
+        }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select a client for more details")))]), _vm._v(" "), _c("p", {
+          staticClass: "areas-empty-description"
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
+          staticClass: "stats-grid"
+        }, [_c("div", {
+          staticClass: "stat-card"
+        }, [_c("div", {
+          staticClass: "stat-icon"
+        }, [_c("OfficeBuilding", {
+          attrs: {
+            size: 22
+          }
+        })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Total records")))]), _vm._v(" "), _c("span", {
+          staticClass: "value-text"
+        }, [_vm._v(_vm._s(_vm.activeClients.length))])])]), _vm._v(" "), _c("div", {
+          staticClass: "stat-card"
+        }, [_c("div", {
+          staticClass: "stat-icon"
+        }, [_c("HexagonMultipleOutline", {
+          attrs: {
+            size: 22
+          }
+        })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Main groups")))]), _vm._v(" "), _c("span", {
+          staticClass: "value-text"
+        }, [_vm._v(_vm._s(_vm.mainGroups.length))])])]), _vm._v(" "), _c("div", {
+          staticClass: "stat-card"
+        }, [_c("div", {
+          staticClass: "stat-icon"
+        }, [_c("AccountGroup", {
+          attrs: {
+            size: 22
+          }
+        })], 1), _vm._v(" "), _c("div", [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Sub-companies")))]), _vm._v(" "), _c("span", {
+          staticClass: "value-text"
+        }, [_vm._v(_vm._s(_vm.subCompanies.length))])])])]), _vm._v(" "), _c("div", {
+          staticClass: "areas-empty-actions"
+        }, [_c("NcButton", {
+          attrs: {
+            type: "primary"
           },
           on: {
             click: function ($event) {
-              return _vm.toggleEstado();
+              return _vm.GetCompaniesGroups();
             }
-          },
-          scopedSlots: _vm._u([{
-            key: "icon",
-            fn: function () {
-              return [_c("EyeOffOutline", {
-                attrs: {
-                  size: 20
-                }
-              })];
-            },
-            proxy: true
-          }])
-        }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.selectedIsActive ? _vm.t("empleados", "Disable") : _vm.t("empleados", "Enable")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcActionSeparator")];
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Refresh")) + "\n\t\t\t\t\t\t\t\t")])], 1)])])])];
       },
       proxy: true
     }, {
       key: "custombuttons",
       fn: function () {
-        return [_c("div", {
-          staticClass: "filter-wrap"
-        }, [_c("NcButton", {
-          staticClass: "filter-icon-button",
+        return [_c("NcActions", {
           attrs: {
-            type: "tertiary",
-            title: _vm.t("empleados", "Filters")
+            open: _vm.button
           },
           on: {
-            click: function ($event) {
-              $event.stopPropagation();
-              return _vm.toggleFilters.apply(null, arguments);
-            }
+            click: _vm.toggle
           },
           scopedSlots: _vm._u([{
             key: "icon",
@@ -29949,180 +29990,120 @@ var render = function render() {
             },
             proxy: true
           }])
-        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "")) + "\n\t\t\t\t\t\t"), (_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) + (_vm.onlyDisabled ? 1 : 0) > 0 ? _c("span", {
-          staticClass: "filter-badge"
-        }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s((_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) + (_vm.onlyDisabled ? 1 : 0)) + "\n\t\t\t\t\t\t")]) : _vm._e()]), _vm._v(" "), _vm.showFilters ? _c("div", {
-          staticClass: "filter-dropdown",
+        }, [_vm._v(" "), _c("NcActionButton", {
+          attrs: {
+            "is-menu": true
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Filters")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionInput", {
+          attrs: {
+            type: "multiselect",
+            "label-outside": false,
+            "manual-open": true,
+            options: [{
+              label: "A to Z",
+              value: "az"
+            }, {
+              label: "Z to A",
+              value: "za"
+            }]
+          },
+          model: {
+            value: _vm.sortOrder,
+            callback: function ($$v) {
+              _vm.sortOrder = $$v;
+            },
+            expression: "sortOrder"
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Sort")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionCheckbox", {
+          model: {
+            value: _vm.onlyParents,
+            callback: function ($$v) {
+              _vm.onlyParents = $$v;
+            },
+            expression: "onlyParents"
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Main Groups")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionCheckbox", {
+          model: {
+            value: _vm.onlySpecial,
+            callback: function ($$v) {
+              _vm.onlySpecial = $$v;
+            },
+            expression: "onlySpecial"
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Special Clients")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionCheckbox", {
+          model: {
+            value: _vm.showDisabled,
+            callback: function ($$v) {
+              _vm.showDisabled = $$v;
+            },
+            expression: "showDisabled"
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show disabled")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionCheckbox", {
+          model: {
+            value: _vm.onlyDisabled,
+            callback: function ($$v) {
+              _vm.onlyDisabled = $$v;
+            },
+            expression: "onlyDisabled"
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Disabled")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionSeparator"), _vm._v(" "), _c("NcActionButton", {
+          attrs: {
+            "is-menu": true
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Settings")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
           on: {
             click: function ($event) {
-              $event.stopPropagation();
+              return _vm.AgregarNuevo();
             }
-          }
-        }, [_c("div", {
-          staticClass: "filter-section"
-        }, [_c("p", {
-          staticClass: "filter-section-label"
-        }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Sort")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("select", {
-          directives: [{
-            name: "model",
-            rawName: "v-model",
-            value: _vm.sortOrder,
-            expression: "sortOrder"
-          }],
-          on: {
-            change: function ($event) {
-              var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
-                return o.selected;
-              }).map(function (o) {
-                var val = "_value" in o ? o._value : o.value;
-                return val;
-              });
-              _vm.sortOrder = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
-            }
-          }
-        }, [_c("option", {
-          attrs: {
-            value: "az"
-          }
-        }, [_vm._v("A to Z")]), _vm._v(" "), _c("option", {
-          attrs: {
-            value: "za"
-          }
-        }, [_vm._v("Z to A")])])]), _vm._v(" "), _c("hr", {
-          staticClass: "filter-divider"
-        }), _vm._v(" "), _c("div", {
-          staticClass: "filter-section"
-        }, [_c("label", [_c("input", {
-          directives: [{
-            name: "model",
-            rawName: "v-model",
-            value: _vm.onlyParents,
-            expression: "onlyParents"
-          }],
-          attrs: {
-            type: "checkbox"
           },
-          domProps: {
-            checked: Array.isArray(_vm.onlyParents) ? _vm._i(_vm.onlyParents, null) > -1 : _vm.onlyParents
-          },
-          on: {
-            change: function ($event) {
-              var $$a = _vm.onlyParents,
-                $$el = $event.target,
-                $$c = $$el.checked ? true : false;
-              if (Array.isArray($$a)) {
-                var $$v = null,
-                  $$i = _vm._i($$a, $$v);
-                if ($$el.checked) {
-                  $$i < 0 && (_vm.onlyParents = $$a.concat([$$v]));
-                } else {
-                  $$i > -1 && (_vm.onlyParents = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+          scopedSlots: _vm._u([{
+            key: "icon",
+            fn: function () {
+              return [_c("AccountMultiplePlusOutline", {
+                attrs: {
+                  size: 20
                 }
-              } else {
-                _vm.onlyParents = $$c;
-              }
-            }
-          }
-        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Main Groups")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("label", [_c("input", {
-          directives: [{
-            name: "model",
-            rawName: "v-model",
-            value: _vm.onlySpecial,
-            expression: "onlySpecial"
-          }],
-          attrs: {
-            type: "checkbox"
-          },
-          domProps: {
-            checked: Array.isArray(_vm.onlySpecial) ? _vm._i(_vm.onlySpecial, null) > -1 : _vm.onlySpecial
-          },
+              })];
+            },
+            proxy: true
+          }])
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Add new")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
           on: {
-            change: function ($event) {
-              var $$a = _vm.onlySpecial,
-                $$el = $event.target,
-                $$c = $$el.checked ? true : false;
-              if (Array.isArray($$a)) {
-                var $$v = null,
-                  $$i = _vm._i($$a, $$v);
-                if ($$el.checked) {
-                  $$i < 0 && (_vm.onlySpecial = $$a.concat([$$v]));
-                } else {
-                  $$i > -1 && (_vm.onlySpecial = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
-                }
-              } else {
-                _vm.onlySpecial = $$c;
-              }
+            click: function ($event) {
+              return _vm.Exportar();
             }
-          }
-        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Special Clients")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("label", [_c("input", {
-          directives: [{
-            name: "model",
-            rawName: "v-model",
-            value: _vm.showDisabled,
-            expression: "showDisabled"
-          }],
-          attrs: {
-            type: "checkbox"
           },
-          domProps: {
-            checked: Array.isArray(_vm.showDisabled) ? _vm._i(_vm.showDisabled, null) > -1 : _vm.showDisabled
-          },
+          scopedSlots: _vm._u([{
+            key: "icon",
+            fn: function () {
+              return [_c("DatabaseExport", {
+                attrs: {
+                  size: 20
+                }
+              })];
+            },
+            proxy: true
+          }])
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Export list")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("NcActionButton", {
           on: {
-            change: function ($event) {
-              var $$a = _vm.showDisabled,
-                $$el = $event.target,
-                $$c = $$el.checked ? true : false;
-              if (Array.isArray($$a)) {
-                var $$v = null,
-                  $$i = _vm._i($$a, $$v);
-                if ($$el.checked) {
-                  $$i < 0 && (_vm.showDisabled = $$a.concat([$$v]));
-                } else {
-                  $$i > -1 && (_vm.showDisabled = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
-                }
-              } else {
-                _vm.showDisabled = $$c;
-              }
+            click: function ($event) {
+              return _vm.triggerImport();
             }
-          }
-        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show disabled")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("label", [_c("input", {
-          directives: [{
-            name: "model",
-            rawName: "v-model",
-            value: _vm.onlyDisabled,
-            expression: "onlyDisabled"
-          }],
-          attrs: {
-            type: "checkbox"
           },
-          domProps: {
-            checked: Array.isArray(_vm.onlyDisabled) ? _vm._i(_vm.onlyDisabled, null) > -1 : _vm.onlyDisabled
-          },
-          on: {
-            change: function ($event) {
-              var $$a = _vm.onlyDisabled,
-                $$el = $event.target,
-                $$c = $$el.checked ? true : false;
-              if (Array.isArray($$a)) {
-                var $$v = null,
-                  $$i = _vm._i($$a, $$v);
-                if ($$el.checked) {
-                  $$i < 0 && (_vm.onlyDisabled = $$a.concat([$$v]));
-                } else {
-                  $$i > -1 && (_vm.onlyDisabled = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+          scopedSlots: _vm._u([{
+            key: "icon",
+            fn: function () {
+              return [_c("Upload", {
+                attrs: {
+                  size: 20
                 }
-              } else {
-                _vm.onlyDisabled = $$c;
-              }
-            }
-          }
-        }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Only Disabled")) + "\n\t\t\t\t\t\t\t")])])]) : _vm._e()], 1)];
-      },
-      proxy: true
-    }, {
-      key: "buttons",
-      fn: function () {
-        return undefined;
+              })];
+            },
+            proxy: true
+          }])
+        }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Import data from template")) + "\n\t\t\t\t\t")])], 1), _vm._v(" "), (_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) + (_vm.onlyDisabled ? 1 : 0) > 0 ? _c("span", {
+          staticClass: "filter-badge"
+        }, [_vm._v("\n\t\t\t\t\t" + _vm._s((_vm.onlyParents ? 1 : 0) + (_vm.onlySpecial ? 1 : 0) + (_vm.showDisabled ? 1 : 0) + (_vm.onlyDisabled ? 1 : 0)) + "\n\t\t\t\t")]) : _vm._e()];
       },
       proxy: true
     }, {
@@ -30130,19 +30111,7 @@ var render = function render() {
       fn: function () {
         return [_c("div", {
           staticClass: "client-details"
-        }, [!_vm.hasSelectedClient ? _c("NcEmptyContent", {
-          attrs: {
-            name: _vm.t("empleados", "No company selected"),
-            description: _vm.t("empleados", "Select a company or group from the list to view its details.")
-          },
-          scopedSlots: _vm._u([{
-            key: "icon",
-            fn: function () {
-              return [_c("HexagonMultipleOutline")];
-            },
-            proxy: true
-          }], null, false, 4292513665)
-        }) : [_c("div", {
+        }, [_c("div", [_c("div", {
           staticClass: "details-header",
           class: {
             "details-header--especial": _vm.selectedClient.especial
@@ -30158,30 +30127,27 @@ var render = function render() {
         }, [_c("p", {
           staticClass: "eyebrow"
         }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.selectedClientType) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.selectedClient.nombre || _vm.t("empleados", "Without name")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.selectedClient.detalles || _vm.t("empleados", "No description available.")))])])]), _vm._v(" "), _c("div", {
-          staticClass: "details-grid"
+          staticClass: "acordeon-item btn-top"
+        }, [_c("button", {
+          staticClass: "acordeon-titulo",
+          on: {
+            click: function ($event) {
+              return _vm.toggleAccordeon(0);
+            }
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "General Information")) + "\n\t\t\t\t\t\t\t\t"), _c("span", [_vm._v(_vm._s(_vm.accordeon[0].abierto ? "-" : "+"))])]), _vm._v(" "), _c("div", {
+          class: ["acordeon-contenido", {
+            abierto: _vm.accordeon[0].abierto
+          }]
         }, [_c("div", {
-          staticClass: "detail-card"
-        }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Parent group")))]), _vm._v(" "), _c("span", {
-          staticClass: "value-text"
-        }, [_vm._v(_vm._s(_vm.parentName))])]), _vm._v(" "), _c("div", {
-          staticClass: "detail-card"
-        }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Sub-companies")))]), _vm._v(" "), _c("span", {
-          staticClass: "value-text"
-        }, [_vm._v(_vm._s(_vm.childCompanies.length))])]), _vm._v(" "), _c("div", {
-          staticClass: "detail-card detail-card-wide"
-        }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Hierarchy")))]), _vm._v(" "), _c("div", {
-          staticClass: "breadcrumb"
-        }, [_c("span", [_vm._v(_vm._s(_vm.parentName))]), _vm._v(" "), _c("span", {
-          staticClass: "separator"
-        }, [_vm._v("/")]), _vm._v(" "), _c("span", {
-          staticClass: "value-text"
-        }, [_vm._v(_vm._s(_vm.selectedClient.nombre))])])])]), _vm._v(" "), _c("div", {
+          staticClass: "btn-top"
+        }, [_c("div", {
           staticClass: "info-section"
         }, [_c("div", {
           staticClass: "section-head"
         }, [_c("div", [_c("p", {
           staticClass: "section-label"
-        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Company Information")) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "General Information")))])])]), _vm._v(" "), _c("div", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Company Information")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
           staticClass: "info-grid"
         }, [_c("div", {
           staticClass: "detail-card"
@@ -30199,9 +30165,9 @@ var render = function render() {
           }
         }), _vm._v(" "), _c("span", {
           staticClass: "value-text"
-        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.projectManager.label) + "\n\t\t\t\t\t\t\t\t\t\t")])]) : _c("span", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.projectManager.label) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")])]) : _c("span", {
           staticClass: "value-text"
-        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t-\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t-\n\t\t\t\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
           staticClass: "detail-card"
         }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Primary Contact")))]), _vm._v(" "), _c("span", {
           staticClass: "value-text"
@@ -30225,7 +30191,87 @@ var render = function render() {
           staticClass: "detail-card"
         }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("span", {
           staticClass: "value-text"
-        }, [_vm._v(_vm._s(Number(_vm.selectedClient.estado) ? _vm.t("empleados", "Active") : _vm.t("empleados", "Inactive")))])])])]), _vm._v(" "), _c("div", {
+        }, [_vm._v(_vm._s(Number(_vm.selectedClient.estado) ? _vm.t("empleados", "Active") : _vm.t("empleados", "Inactive")))])])])])])])]), _vm._v(" "), _c("div", {
+          staticClass: "acordeon-item btn-top"
+        }, [_c("button", {
+          staticClass: "acordeon-titulo",
+          on: {
+            click: function ($event) {
+              return _vm.toggleAccordeon(1);
+            }
+          }
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Group Information")) + "\n\t\t\t\t\t\t\t\t"), _c("span", [_vm._v(_vm._s(_vm.accordeon[1].abierto ? "-" : "+"))])]), _vm._v(" "), _c("div", {
+          class: ["acordeon-contenido", {
+            abierto: _vm.accordeon[1].abierto
+          }]
+        }, [_c("div", {
+          staticClass: "btn-top"
+        }, [_c("div", {
+          staticClass: "info-section"
+        }, [_c("div", {}, [_c("div", {
+          staticClass: "details-grid"
+        }, [_c("div", {
+          staticClass: "detail-card"
+        }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Parent group")))]), _vm._v(" "), _c("span", {
+          staticClass: "value-text"
+        }, [_vm._v(_vm._s(_vm.parentName))])]), _vm._v(" "), _c("div", {
+          staticClass: "detail-card"
+        }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Sub-companies")))]), _vm._v(" "), _c("span", {
+          staticClass: "value-text"
+        }, [_vm._v(_vm._s(_vm.childCompanies.length))])]), _vm._v(" "), _c("div", {
+          staticClass: "detail-card detail-card-wide"
+        }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Hierarchy")))]), _vm._v(" "), _c("div", {
+          staticClass: "breadcrumb"
+        }, [_c("span", [_vm._v(_vm._s(_vm.parentName))]), _vm._v(" "), _c("span", {
+          staticClass: "separator"
+        }, [_vm._v("/")]), _vm._v(" "), _c("span", {
+          staticClass: "value-text"
+        }, [_vm._v(_vm._s(_vm.selectedClient.nombre))])])])])]), _vm._v(" "), _c("div", {
+          staticClass: "children-section"
+        }, [_c("div", {
+          staticClass: "section-head"
+        }, [_c("div", [_c("p", {
+          staticClass: "section-label"
+        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Sub-companies")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Companies inside this group")))])])]), _vm._v(" "), _vm.childCompanies.length > 0 ? _c("div", {
+          staticClass: "children-grid"
+        }, _vm._l(_vm.childCompanies, function (child) {
+          return _c("button", {
+            key: child.id,
+            staticClass: "child-card",
+            attrs: {
+              type: "button"
+            },
+            on: {
+              click: function ($event) {
+                return _vm.GetCompanieGroup(child.id);
+              }
+            }
+          }, [_c("div", {
+            staticClass: "child-icon"
+          }, [_c("OfficeBuilding", {
+            attrs: {
+              size: 20
+            }
+          })], 1), _vm._v(" "), _c("div", {
+            staticClass: "child-info"
+          }, [_c("span", {
+            staticClass: "value-text"
+          }, [_vm._v(_vm._s(child.nombre))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(child.detalles || _vm.t("empleados", "No description available.")))])]), _vm._v(" "), _c("div", {
+            staticClass: "child-count"
+          }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(child.child_count || 0) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")])]);
+        }), 0) : _c("NcEmptyContent", {
+          attrs: {
+            name: _vm.t("empleados", "No sub-companies"),
+            description: _vm.t("empleados", "This company or group does not have registered sub-companies.")
+          },
+          scopedSlots: _vm._u([{
+            key: "icon",
+            fn: function () {
+              return [_c("OfficeBuilding")];
+            },
+            proxy: true
+          }])
+        })], 1)])])])]), _vm._v(" "), _c("div", {
           staticClass: "info-section"
         }, [_c("div", {
           staticClass: "section-head"
@@ -30403,52 +30449,7 @@ var render = function render() {
               staticClass: "parcialidad-detail-text"
             }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t💳 " + _vm._s(_vm.t("empleados", "Paid")) + ": " + _vm._s(p.fecha_pago) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t")]) : _vm._e()]) : _vm._e()]);
           })], 2) : _vm._e()]);
-        }), 0)], 1), _vm._v(" "), _c("div", {
-          staticClass: "children-section"
-        }, [_c("div", {
-          staticClass: "section-head"
-        }, [_c("div", [_c("p", {
-          staticClass: "section-label"
-        }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Sub-companies")) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Companies inside this group")))])])]), _vm._v(" "), _vm.childCompanies.length > 0 ? _c("div", {
-          staticClass: "children-grid"
-        }, _vm._l(_vm.childCompanies, function (child) {
-          return _c("button", {
-            key: child.id,
-            staticClass: "child-card",
-            attrs: {
-              type: "button"
-            },
-            on: {
-              click: function ($event) {
-                return _vm.GetCompanieGroup(child.id);
-              }
-            }
-          }, [_c("div", {
-            staticClass: "child-icon"
-          }, [_c("OfficeBuilding", {
-            attrs: {
-              size: 20
-            }
-          })], 1), _vm._v(" "), _c("div", {
-            staticClass: "child-info"
-          }, [_c("span", {
-            staticClass: "value-text"
-          }, [_vm._v(_vm._s(child.nombre))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(child.detalles || _vm.t("empleados", "No description available.")))])]), _vm._v(" "), _c("div", {
-            staticClass: "child-count"
-          }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(child.child_count || 0) + "\n\t\t\t\t\t\t\t\t\t")])]);
-        }), 0) : _c("NcEmptyContent", {
-          attrs: {
-            name: _vm.t("empleados", "No sub-companies"),
-            description: _vm.t("empleados", "This company or group does not have registered sub-companies.")
-          },
-          scopedSlots: _vm._u([{
-            key: "icon",
-            fn: function () {
-              return [_c("OfficeBuilding")];
-            },
-            proxy: true
-          }])
-        })], 1)], _vm._v(" "), _vm.showPagoDialog ? _c("NcDialog", {
+        }), 0)], 1)]), _vm._v(" "), _vm.showPagoDialog ? _c("NcDialog", {
           attrs: {
             name: _vm.t("empleados", "Payment date"),
             open: _vm.showPagoDialog
@@ -30561,7 +30562,7 @@ var render = function render() {
               _vm.showDeleteHonorarioDialog = $event;
             }
           }
-        })], 2)];
+        })], 1)];
       },
       proxy: true
     }])
@@ -30739,7 +30740,7 @@ var render = function render() {
     attrs: {
       type: "info"
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Leave parent group empty to create a main group. Select a parent to create a sub-company.")) + "\n\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Leave parent group empty to create a main group. Select a parent to create asub - company.")) + "\n\t\t\t\t")])], 1), _vm._v(" "), _c("div", {
     staticClass: "modal-actions"
   }, [_c("NcButton", {
     on: {
@@ -54424,7 +54425,6 @@ var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBP
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 .companies-page[data-v-c590d670] {
-  display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 24px;
@@ -54437,6 +54437,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  margin-left: 37px;
 }
 .companies-header h2[data-v-c590d670] {
   margin: 4px 0 6px;
@@ -54480,7 +54481,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 }
 }
 .stat-card[data-v-c590d670] {
-  display: flex;
+  display: inline;
   align-items: center;
   gap: 12px;
   padding: 16px;
@@ -55003,7 +55004,8 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 }
 .pm-info[data-v-c590d670] {
   display: flex;
-  align-items: center; /* centra verticalmente */
+  align-items: center;
+  /* centra verticalmente */
   gap: 10px;
 }
 .pm-avatar[data-v-c590d670] {
@@ -55122,6 +55124,28 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   min-width: unset !important;
   padding-left: 4px !important;
   padding-right: 4px !important;
+}
+.acordeon-item[data-v-c590d670] {
+  margin-bottom: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.acordeon-titulo[data-v-c590d670] {
+  width: 100%;
+  text-align: center;
+  border: none;
+  justify-content: space-between;
+  align-items: center;
+}
+.acordeon-contenido[data-v-c590d670] {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+.acordeon-contenido.abierto[data-v-c590d670] {
+  max-height: 500px;
+  opacity: 1;
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
