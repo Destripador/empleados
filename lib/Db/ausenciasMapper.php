@@ -107,4 +107,21 @@ class ausenciasMapper extends QBMapper {
 
 		$qb->executeStatement();
 	}
+
+	/**
+	 * Obtiene el registro de ausencias por su id_ausencias.
+	 */
+	public function GetAusenciasById(int $id_ausencias): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('id_ausencias', $qb->createNamedParameter($id_ausencias)));
+
+		$result = $qb->executeQuery();
+		$rows   = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
 }

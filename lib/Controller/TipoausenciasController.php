@@ -172,7 +172,7 @@ class TipoausenciasController extends Controller {
     #[NoAdminRequired]
     public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional): DataResponse {
         try {
-            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, (bool) $solicitar_archivo, (bool) $solicitar_prima_vacacional);
+            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional);
             return new DataResponse('ok', Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);

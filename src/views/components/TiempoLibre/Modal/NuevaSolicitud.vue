@@ -112,7 +112,7 @@
 </template>
 
 <script>
-import { showError /* showSuccess */ } from '@nextcloud/dialogs'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
@@ -274,7 +274,9 @@ export default {
 			this.loading = true
 			try {
 				const formData = new FormData()
-				formData.append('id_usuario', this.employees_list.user)
+				if (this.admin && this.employees_list?.user) {
+					formData.append('id_usuario', this.employees_list.user)
+				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('dias_solicitados', this.diasSolicitados)
 				formData.append('fecha_de', this.date.start.toLocaleDateString())
@@ -292,10 +294,13 @@ export default {
 					{ headers: { 'Content-Type': 'multipart/form-data' } },
 				)
 
-				// eslint-disable-next-line no-console
-				console.log(response.data)
+				if (response.data?.ocs?.data?.success) {
+					showSuccess(t('empleados', 'Absence request submitted successfully'))
+					this.$bus.emit('close-solicitud')
+				} else {
+					showError(t('empleados', 'Error sending absence request'))
+				}
 
-				this.$bus.emit('close-solicitud')
 				this.loading = false
 			} catch (err) {
 				this.loading = false

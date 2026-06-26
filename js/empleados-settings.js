@@ -10623,18 +10623,19 @@ __webpack_require__.r(__webpack_exports__);
       try {
         if (this.editingTipo) {
           await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_11__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_10__.generateUrl)('/apps/empleados/modificarTipo'), {
-            id: this.editingTipo.id,
+            id: this.editingTipo.id_tipo_ausencia,
+            // ← corregido también
             nombre: this.NombreTipo,
             descripcion: this.DescripcionTipo,
-            solicitar_archivo: this.SolicitarArchivoTipo,
-            solicitar_prima_vacacional: this.solicitar_prima_vacacional
+            solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
+            solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0
           });
         } else {
           await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_11__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_10__.generateUrl)('/apps/empleados/AgregarNuevoTipo'), {
             nombre: this.NombreTipo,
             descripcion: this.DescripcionTipo,
-            solicitar_archivo: this.SolicitarArchivoTipo,
-            solicitar_prima_vacacional: this.solicitar_prima_vacacional
+            solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
+            solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0
           });
         }
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_9__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_12__.translate)('empleados', 'Absence type saved'));
@@ -12079,7 +12080,7 @@ var render = function render() {
       },
       on: {
         click: function ($event) {
-          return _vm.deleteTipo(item.id);
+          return _vm.deleteTipo(item.id_tipo_ausencia);
         }
       },
       scopedSlots: _vm._u([{
@@ -145417,4 +145418,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=a08e59b628125c658aa4
+//# sourceMappingURL=empleados-settings.js.map?v=8451d048bd6bcaf5e5b0

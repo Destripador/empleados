@@ -176,7 +176,7 @@
 											</template>
 											{{ t('empleados', 'Edit') }}
 										</NcActionButton>
-										<NcActionButton :close-after-click="true" @click="deleteTipo(item.id)">
+										<NcActionButton :close-after-click="true" @click="deleteTipo(item.id_tipo_ausencia)">
 											<template #icon>
 												<Delete :size="20" />
 											</template>
@@ -654,18 +654,18 @@ export default {
 			try {
 				if (this.editingTipo) {
 					await axios.post(generateUrl('/apps/empleados/modificarTipo'), {
-						id: this.editingTipo.id,
+						id: this.editingTipo.id_tipo_ausencia, // ← corregido también
 						nombre: this.NombreTipo,
 						descripcion: this.DescripcionTipo,
-						solicitar_archivo: this.SolicitarArchivoTipo,
-						solicitar_prima_vacacional: this.solicitar_prima_vacacional,
+						solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
+						solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0,
 					})
 				} else {
 					await axios.post(generateUrl('/apps/empleados/AgregarNuevoTipo'), {
 						nombre: this.NombreTipo,
 						descripcion: this.DescripcionTipo,
-						solicitar_archivo: this.SolicitarArchivoTipo,
-						solicitar_prima_vacacional: this.solicitar_prima_vacacional,
+						solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
+						solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0,
 					})
 				}
 				showSuccess(t('empleados', 'Absence type saved'))

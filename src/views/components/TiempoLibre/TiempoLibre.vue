@@ -1,4 +1,4 @@
-<template id="content">
+<template>
 	<NcAppContent name="Loading">
 		<div class="">
 			<div class="text-center section">
@@ -199,17 +199,20 @@
 				</section>
 			</div>
 		</div>
+
 		<!-- EVENT DETAILS MODAL -->
-		<NcModal v-if="modalEvento"
-			ref="modalRef"
-			size="large"
+		<NcModal
+			v-if="modalEvento"
+			ref="modalEventoRef"
+			size="normal"
 			:name="t('empleados', 'Absence details')"
 			@close="closeModalEvento">
-			<div class="modal__content">
-				<div class="form-group">
-					{{ infoSelected }}
-				</div>
-			</div>
+			<DetalleAusencia
+				v-if="selectedEventId"
+				:id-historial="selectedEventId"
+				:is-admin="isAdmin()"
+				@cancelled="onAbsenceCancelled"
+				@edit="onAbsenceEdit" />
 		</NcModal>
 		<!-- END EVENT DETAILS MODAL -->
 
@@ -229,6 +232,24 @@
 				@close="closeModal" />
 		</NcModal>
 		<!-- END ABSENCE REQUEST MODAL -->
+
+		<!-- EDIT ABSENCE MODAL -->
+		<NcModal
+			v-if="modalEditar"
+			size="large"
+			:name="t('empleados', 'Edit absence')"
+			@close="closeModalEditar">
+			<EditarAusencia
+				v-if="modalEditar && ausenciaEditar"
+				:ausencia="ausenciaEditar"
+				:dias-disponibles="Ausencias.dias_disponibles"
+				:prima="Ausencias.prima_vacacional"
+				:employees="propsEmployees.options"
+				:admin="isAdmin()"
+				@saved="onAbsenceEditSaved"
+				@close="closeModalEditar" />
+		</NcModal>
+		<!-- END EDIT ABSENCE MODAL -->
 
 		<!-- ANNIVERSARIES INFO MODAL -->
 		<NcModal v-if="ModalAniversario"
@@ -281,10 +302,11 @@
 </template>
 
 <script>
-// Importing necessary components
 import MensajeAniversarios from './MensajeAniversarios.vue'
 import TrofeosAniversarios from './TrofeosAniversarios.vue'
 import NuevaSolicitud from './Modal/NuevaSolicitud.vue'
+import DetalleAusencia from './Modal/DetalleAusencia.vue'
+import EditarAusencia from './Modal/EditarAusencia.vue'
 
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -294,12 +316,11 @@ import multiMonthPlugin from '@fullcalendar/multimonth'
 import { ref } from 'vue'
 
 import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
-import { showError, /* showSuccess */ showInfo } from '@nextcloud/dialogs'
+import { showError, showInfo } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
-// icons
 import BellOutline from 'vue-material-design-icons/BellOutline.vue'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import CalendarQuestionOutline from 'vue-material-design-icons/CalendarQuestionOutline.vue'
@@ -317,6 +338,7 @@ import {
 	NcLoadingIcon,
 	NcNoteCard,
 } from '@nextcloud/vue'
+
 export default {
 	name: 'TiempoLibre',
 
@@ -324,6 +346,8 @@ export default {
 		MensajeAniversarios,
 		TrofeosAniversarios,
 		NuevaSolicitud,
+		DetalleAusencia,
+		EditarAusencia,
 		NcAppContent,
 		NcModal,
 		NcActions,
@@ -351,6 +375,7 @@ export default {
 			FechaMaxima: null,
 			modal: false,
 			modalEvento: false,
+			modalEditar: false,
 			ModalAniversario: false,
 			Ausencias: [],
 			Aniversarios: [],
@@ -374,17 +399,14 @@ export default {
 				eventClick: this.OnClickEvent,
 				select: this.onDateRangeSelect,
 				selectable: true,
-
 				fixedWeekCount: false,
 				height: 'auto',
 				contentHeight: 'auto',
 				expandRows: false,
 				aspectRatio: 1.2,
-
 				dayMaxEvents: true,
 				dayMaxEventRows: 2,
 				moreLinkClick: 'popover',
-
 				eventContent(arg) {
 					const nombreEmpleado = arg.event.extendedProps.nombre_empleado || 'Unknown employee'
 					const imgUrl = `/avatar/${nombreEmpleado}/64`
@@ -401,7 +423,7 @@ export default {
 			peopleEquipo: {},
 			Equipo: {},
 			typePetition: null,
-			selected_user: null, // selected user
+			selected_user: null,
 			propsEmployees: {
 				inputLabel: t('empleados', 'All employees'),
 				userSelect: true,
@@ -423,6 +445,8 @@ export default {
 			loading: false,
 			notifications_result: [],
 			isShaking: false,
+			selectedEventId: null,
+			ausenciaEditar: null,
 		}
 	},
 
@@ -447,7 +471,6 @@ export default {
 					fin = item.numero_aniversario
 					diasActual = diasNumero
 				}
-
 				if (index === this.Aniversarios.length - 1) {
 					agrupados.push({ desde: inicio, hasta: fin, dias: diasActual })
 				}
@@ -481,8 +504,10 @@ export default {
 		this.GetAllEquipo()
 		this.checkNotifications()
 	},
+
 	methods: {
 		t,
+
 		async checkNotifications() {
 			if (this.subordinates.length > 0) {
 				try {
@@ -506,9 +531,7 @@ export default {
 		startShaking() {
 			setInterval(() => {
 				this.isShaking = true
-				setTimeout(() => {
-					this.isShaking = false
-				}, 900)
+				setTimeout(() => { this.isShaking = false }, 900)
 			}, 2000)
 		},
 
@@ -518,18 +541,21 @@ export default {
 				abierto: i === index ? !item.abierto : false,
 			}))
 		},
-		showAniversarioModal() {
-			this.getAniversarios()
-		},
-		closeModal() {
-			this.modal = false
-		},
-		closeModalAniversario() {
-			this.ModalAniversario = false
-		},
+
+		showAniversarioModal() { this.getAniversarios() },
+		closeModal() { this.modal = false },
+		closeModalAniversario() { this.ModalAniversario = false },
+
 		closeModalEvento() {
 			this.modalEvento = false
+			this.selectedEventId = null
 		},
+
+		closeModalEditar() {
+			this.modalEditar = false
+			this.ausenciaEditar = null
+		},
+
 		async GetAusencias() {
 			try {
 				const response = await axios.post(generateUrl('/apps/empleados/GetAusenciasByUser'), {
@@ -540,6 +566,7 @@ export default {
 				showError(t('empleados', 'An exception has occurred [03] [{err}]', { err }))
 			}
 		},
+
 		async getAniversarios() {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/Getaniversarios'))
@@ -549,6 +576,7 @@ export default {
 				showError(t('empleados', 'An exception has occurred [01] [{err}]', { err }))
 			}
 		},
+
 		formatearDias(dias) {
 			const entero = Math.floor(dias)
 			const decimal = dias % 1
@@ -560,9 +588,11 @@ export default {
 				return `${dias} ${t('empleados', 'days')}`
 			}
 		},
+
 		onDatesSet() {
 			this.$refs.fullCalendar.getApi().refetchEvents()
 		},
+
 		fetchEvents(fetchInfo, success, failure) {
 			switch (this.typePetition) {
 			case 'all':
@@ -585,34 +615,38 @@ export default {
 			}
 		},
 
+		// Convierte a_gerente/a_socio en color: gris si cancelado, color normal si no
+		eventColor(item, fallbackUsername) {
+			const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
+			return isCancelled ? '#9e9e9e' : this.color(fallbackUsername)
+		},
+
 		getMyAusencias(fetchInfo, success, failure) {
 			axios.post(generateUrl('/apps/empleados/GetAusenciasHistorial'), {
 				desde: fetchInfo.startStr,
 				hasta: fetchInfo.endStr,
 			})
 				.then(r => {
-					const data = r?.data?.ocs?.data
+					const data = r?.data?.ocs?.data ?? []
 					const events = data.map(item => {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-
+						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
 						return {
 							id: item.id_historial_ausencias,
 							title: item.tipo_nombre,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: this.color(this.employee[0].Id_user),
+							color: isCancelled ? '#9e9e9e' : this.color(this.employee[0].Id_user),
+							classNames: isCancelled ? ['event-cancelled'] : [],
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
 					success(events)
 				})
-				.catch(error => {
-					console.error(error)
-					failure(error)
-				})
+				.catch(error => { console.error(error); failure(error) })
 		},
 
 		GetAusenciasMyWorkers(fetchInfo, success, failure) {
@@ -626,23 +660,21 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-
+						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: this.color(item.nombre_empleado),
+							color: isCancelled ? '#9e9e9e' : this.color(item.nombre_empleado),
+							classNames: isCancelled ? ['event-cancelled'] : [],
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
 					success(events)
 				})
-				.catch(error => {
-					console.error(error)
-					failure(error)
-				})
+				.catch(error => { console.error(error); failure(error) })
 		},
 
 		getAllAusencias(fetchInfo, success, failure) {
@@ -656,23 +688,21 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-
+						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: this.color(item.nombre_empleado),
+							color: isCancelled ? '#9e9e9e' : this.color(item.nombre_empleado),
+							classNames: isCancelled ? ['event-cancelled'] : [],
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
 					success(events)
 				})
-				.catch(error => {
-					console.error(error)
-					failure(error)
-				})
+				.catch(error => { console.error(error); failure(error) })
 		},
 
 		getEmployeeAusencias(fetchInfo, success, failure) {
@@ -687,14 +717,15 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-
+						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
 						return {
 							id: item.id_historial_ausencias,
 							title: `${item.nombre_empleado} - ${item.tipo_nombre}`,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: this.color?.(item.nombre_empleado) || '#3a87ad',
+							color: isCancelled ? '#9e9e9e' : (this.color?.(item.nombre_empleado) || '#3a87ad'),
+							classNames: isCancelled ? ['event-cancelled'] : [],
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
@@ -714,8 +745,28 @@ export default {
 		},
 
 		OnClickEvent(info) {
-			this.infoSelected = info.event
+			this.selectedEventId = info.event.id
 			this.modalEvento = true
+		},
+
+		onAbsenceCancelled() {
+			this.closeModalEvento()
+			this.GetAusencias()
+			this.$refs.fullCalendar.getApi().refetchEvents()
+		},
+
+		onAbsenceEdit(ausencia) {
+			this.ausenciaEditar = ausencia
+			this.closeModalEvento()
+			this.$nextTick(() => {
+				this.modalEditar = true
+			})
+		},
+
+		onAbsenceEditSaved() {
+			this.closeModalEditar()
+			this.GetAusencias()
+			this.$refs.fullCalendar.getApi().refetchEvents()
 		},
 
 		color(username) {
@@ -731,7 +782,6 @@ export default {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/GetEmpleadosList'))
 				const empleados = response?.data?.ocs?.data.Empleados || []
-
 				this.propsEmployees.options = empleados.map(user => ({
 					Id_empleados: user.Id_empleados,
 					displayName: user.Nombre || user.Id_user,
@@ -752,9 +802,7 @@ export default {
 
 		onDateRangeSelect(selection) {
 			if (!this.isAdmin()) {
-				if (this.configuraciones.modulo_ausencias_readonly === 'true') {
-					return
-				}
+				if (this.configuraciones.modulo_ausencias_readonly === 'true') return
 			}
 			const nDate = new Date()
 			this.range = selection
@@ -764,7 +812,6 @@ export default {
 			const endDate = new Date(this.range.end)
 			endDate.setDate(endDate.getDate() - 1)
 
-			// No past dates if not admin
 			if (!this.isAdmin()) {
 				if (
 					new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
@@ -775,7 +822,6 @@ export default {
 				}
 			}
 
-			// No weekend start/end
 			const dia = endDate.getDay()
 			const diaInicio = startDate.getDay()
 			if (dia === 0 || dia === 6 || diaInicio === 0 || diaInicio === 6) {
@@ -783,24 +829,19 @@ export default {
 				return
 			}
 
-			// Business day count
 			let fecha = new Date(startDate)
 			let diasHabiles = 0
 			while (fecha <= endDate) {
 				const diaSemana = fecha.getDay()
-				if (diaSemana !== 0 && diaSemana !== 6) {
-					diasHabiles++
-				}
+				if (diaSemana !== 0 && diaSemana !== 6) diasHabiles++
 				fecha = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1)
 			}
 
 			this.diasSolicitados = diasHabiles
-			this.date = {
-				start: startDate,
-				end: endDate,
-			}
+			this.date = { start: startDate, end: endDate }
 			this.modal = true
 		},
+
 		async GetAllEquipo() {
 			try {
 				await axios.get(generateUrl('/apps/empleados/GetMyEquipo'))
@@ -812,6 +853,7 @@ export default {
 				console.log(err)
 			}
 		},
+
 		async getEquipos() {
 			axios.post(generateUrl(generateUrl('/apps/empleados/GetEquipoJefe')), {
 				id: this.employee[0].Id_equipo,
@@ -827,30 +869,25 @@ export default {
 	},
 }
 </script>
+
+<style>
+/* Global: tachado para eventos cancelados en el calendario */
+.event-cancelled .fc-event-title {
+	text-decoration: line-through;
+	opacity: 0.8;
+}
+</style>
+
 <style scoped>
-/* (styles unchanged) */
 .layout {
 	width: 100%;
 	display: flex;
 	gap: 16px;
 }
-
-.grow1 {
-	flex: 3;
-}
-
-.grow2 {
-	flex: 7;
-}
-
-.grow3 {
-	flex: 3;
-}
-
-.grow4 {
-	flex: 3;
-}
-
+.grow1 { flex: 3; }
+.grow2 { flex: 7; }
+.grow3 { flex: 3; }
+.grow4 { flex: 3; }
 .cards {
 	display: flex;
 	flex-direction: column;
@@ -859,7 +896,6 @@ export default {
 	background-color: white;
 	border: 1px solid #cbd5e0;
 }
-
 .headers {
 	position: relative;
 	background-clip: border-box;
@@ -872,20 +908,17 @@ export default {
 	height: 8rem;
 	text-align: center;
 }
-
 .infos {
 	border: none;
 	padding: 1.5rem;
 	text-align: center;
 }
-
 .titles {
 	color: rgb(38 50 56);
 	font-weight: 600;
 	font-size: 1.25rem;
 	margin-bottom: 0.5rem;
 }
-
 .footers {
 	padding: 0.75rem;
 	border: 1px solid rgb(236 239 241);
@@ -894,11 +927,7 @@ export default {
 	justify-content: space-between;
 	background-color: rgba(0, 140, 255, 0.082);
 }
-
-.h2-white {
-	color: white;
-}
-
+.h2-white { color: white; }
 .btn-top-right {
 	position: absolute;
 	top: 0.5rem;
@@ -912,20 +941,9 @@ export default {
 	font-size: 1rem;
 	transition: transform 0.2s ease;
 }
-
-.btn-top {
-	margin-top: 10px
-}
-
-.btn-top-right:hover {
-	transform: scale(1.1);
-}
-
-.table_component {
-	overflow: auto;
-	width: 100%;
-}
-
+.btn-top { margin-top: 10px; }
+.btn-top-right:hover { transform: scale(1.1); }
+.table_component { overflow: auto; width: 100%; }
 .table_component table {
 	border: 1px solid #dededf;
 	width: 100%;
@@ -933,46 +951,18 @@ export default {
 	border-collapse: collapse;
 	text-align: left;
 }
-
 .table_component th,
-.table_component td {
-	border: 1px solid #dededf;
-	padding: 5px;
-}
-
-.table_component th {
-	background-color: #eceff1;
-	color: black;
-}
-
-.table_component td {
-	background-color: white;
-	color: black;
-}
-
-.caption-title {
-	font-weight: bold;
-}
-
-.modal__content {
-	margin: 50px;
-}
-
-.sectionPicker {
-	height: clamp(520px, 70vh, 780px);
-}
-
+.table_component td { border: 1px solid #dededf; padding: 5px; }
+.table_component th { background-color: #eceff1; color: black; }
+.table_component td { background-color: white; color: black; }
+.caption-title { font-weight: bold; }
+.modal__content { margin: 50px; }
+.sectionPicker { height: clamp(520px, 70vh, 780px); }
 .my-calendar {
 	height: 100%;
 	--color-background-dark: transparent !important;
 }
-
-.acordeon-item {
-	margin-bottom: 10px;
-	border-radius: 5px;
-	overflow: hidden;
-}
-
+.acordeon-item { margin-bottom: 10px; border-radius: 5px; overflow: hidden; }
 .acordeon-titulo {
 	width: 100%;
 	text-align: center;
@@ -980,37 +970,12 @@ export default {
 	justify-content: space-between;
 	align-items: center;
 }
-
-.acordeon-contenido {
-	max-height: 0;
-	opacity: 0;
-	overflow: hidden;
-	transition: all 0.3s ease-in-out;
-}
-
-.acordeon-contenido.abierto {
-	max-height: 500px;
-	opacity: 1;
-}
-
-.flex-to-right {
-	margin-left: auto;
-	margin-right: 5%;
-	cursor: pointer;
-}
-
-.subtitle_flex {
-	margin-left: 4%;
-}
-
-.btn-top-subtitle {
-	margin-top: 3px;
-}
-
-.pointer {
-	cursor: pointer;
-}
-
+.acordeon-contenido { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease-in-out; }
+.acordeon-contenido.abierto { max-height: 500px; opacity: 1; }
+.flex-to-right { margin-left: auto; margin-right: 5%; cursor: pointer; }
+.subtitle_flex { margin-left: 4%; }
+.btn-top-subtitle { margin-top: 3px; }
+.pointer { cursor: pointer; }
 .acordeon-notification {
 	width: 100%;
 	border: none;
@@ -1019,7 +984,6 @@ export default {
 	justify-content: space-between;
 	position: relative;
 }
-
 .noti-wrapper {
 	position: initial;
 	width: 24px;
@@ -1028,57 +992,18 @@ export default {
 	align-items: center;
 	justify-content: center;
 }
-
-.noti-badge {
-	position: absolute;
-	top: -5px;
-	right: -5px;
-}
-
-.noti-text {
-	text-align: left;
-}
-
-.arrow {
-	font-weight: bold;
-	color: #666;
-}
-
+.noti-badge { position: absolute; top: -5px; right: -5px; }
+.noti-text { text-align: left; }
+.arrow { font-weight: bold; color: #666; }
 @keyframes shake {
-	0% {
-		transform: rotate(0deg);
-	}
-
-	15% {
-		transform: rotate(-15deg);
-	}
-
-	30% {
-		transform: rotate(15deg);
-	}
-
-	45% {
-		transform: rotate(-10deg);
-	}
-
-	60% {
-		transform: rotate(10deg);
-	}
-
-	75% {
-		transform: rotate(-5deg);
-	}
-
-	90% {
-		transform: rotate(5deg);
-	}
-
-	100% {
-		transform: rotate(0deg);
-	}
+	0%   { transform: rotate(0deg); }
+	15%  { transform: rotate(-15deg); }
+	30%  { transform: rotate(15deg); }
+	45%  { transform: rotate(-10deg); }
+	60%  { transform: rotate(10deg); }
+	75%  { transform: rotate(-5deg); }
+	90%  { transform: rotate(5deg); }
+	100% { transform: rotate(0deg); }
 }
-
-.bell-shake {
-	animation: shake 0.8s ease;
-}
+.bell-shake { animation: shake 0.8s ease; }
 </style>
