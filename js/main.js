@@ -15291,7 +15291,7 @@ __webpack_require__.r(__webpack_exports__);
         desde: fetchInfo.startStr,
         hasta: fetchInfo.endStr
       }).then(r => {
-        const data = r.data.message || [];
+        const data = r?.data?.ocs?.data;
         const events = data.map(item => {
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);

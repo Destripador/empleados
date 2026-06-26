@@ -20,6 +20,9 @@ use OCA\Empleados\Db\historialahorroMapper;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
+require_once 'SimpleXLSXGen.php';
+require_once 'SimpleXLSX.php';
+
 class ahorrosController extends BaseController {
 
     protected $empleadosMapper;
