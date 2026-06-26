@@ -14879,11 +14879,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _MensajeAniversarios_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./MensajeAniversarios.vue */ "./src/views/components/TiempoLibre/MensajeAniversarios.vue");
 /* harmony import */ var _TrofeosAniversarios_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./TrofeosAniversarios.vue */ "./src/views/components/TiempoLibre/TrofeosAniversarios.vue");
 /* harmony import */ var _Modal_NuevaSolicitud_vue__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Modal/NuevaSolicitud.vue */ "./src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue");
-/* harmony import */ var _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! @fullcalendar/vue */ "./node_modules/@fullcalendar/vue/dist/index.js");
-/* harmony import */ var _fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @fullcalendar/daygrid */ "./node_modules/@fullcalendar/daygrid/index.js");
-/* harmony import */ var _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! @fullcalendar/interaction */ "./node_modules/@fullcalendar/interaction/index.js");
-/* harmony import */ var _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! @fullcalendar/multimonth */ "./node_modules/@fullcalendar/multimonth/index.js");
-/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.runtime.esm.js");
+/* harmony import */ var _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @fullcalendar/vue */ "./node_modules/@fullcalendar/vue/dist/index.js");
+/* harmony import */ var _fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! @fullcalendar/daygrid */ "./node_modules/@fullcalendar/daygrid/index.js");
+/* harmony import */ var _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! @fullcalendar/interaction */ "./node_modules/@fullcalendar/interaction/index.js");
+/* harmony import */ var _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! @fullcalendar/multimonth */ "./node_modules/@fullcalendar/multimonth/index.js");
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.runtime.esm.js");
 /* harmony import */ var _nextcloud_vue_functions_usernameToColor__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/vue/functions/usernameToColor */ "./node_modules/@nextcloud/vue/dist/Functions/usernameToColor.mjs");
 /* harmony import */ var _nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @nextcloud/dialogs */ "./node_modules/@nextcloud/dialogs/dist/index.es.js");
 /* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
@@ -14892,7 +14892,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_BellOutline_vue__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! vue-material-design-icons/BellOutline.vue */ "./node_modules/vue-material-design-icons/BellOutline.vue");
 /* harmony import */ var vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/AccountGroup.vue */ "./node_modules/vue-material-design-icons/AccountGroup.vue");
 /* harmony import */ var vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/CalendarQuestionOutline.vue */ "./node_modules/vue-material-design-icons/CalendarQuestionOutline.vue");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_ChevronDown_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/ChevronDown.vue */ "./node_modules/vue-material-design-icons/ChevronDown.vue");
+/* harmony import */ var vue_material_design_icons_ChevronUp_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/ChevronUp.vue */ "./node_modules/vue-material-design-icons/ChevronUp.vue");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
 // Importing necessary components
 
 
@@ -14913,32 +14915,34 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+
+
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'TiempoLibre',
   components: {
     MensajeAniversarios: _MensajeAniversarios_vue__WEBPACK_IMPORTED_MODULE_0__["default"],
     TrofeosAniversarios: _TrofeosAniversarios_vue__WEBPACK_IMPORTED_MODULE_1__["default"],
     NuevaSolicitud: _Modal_NuevaSolicitud_vue__WEBPACK_IMPORTED_MODULE_2__["default"],
-    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcAppContent,
-    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcModal,
-    NcActions: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcActions,
-    NcActionButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcActionButton,
+    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcAppContent,
+    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcModal,
     AccountGroup: vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
     CalendarQuestionOutline: vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_10__["default"],
-    FullCalendar: _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
-    NcListItem: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcListItem,
-    NcAvatar: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcAvatar,
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcButton,
-    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcSelect,
-    NcCounterBubble: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcCounterBubble,
+    ChevronDown: vue_material_design_icons_ChevronDown_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
+    ChevronUp: vue_material_design_icons_ChevronUp_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
+    FullCalendar: _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_14__["default"],
+    NcListItem: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcListItem,
+    NcAvatar: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcAvatar,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcButton,
+    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcSelect,
+    NcCounterBubble: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcCounterBubble,
     BellOutline: vue_material_design_icons_BellOutline_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
-    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcLoadingIcon,
-    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_11__.NcNoteCard
+    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcLoadingIcon,
+    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcNoteCard
   },
   inject: ['employee', 'configuraciones', 'groupuser', 'subordinates'],
   data() {
     return {
-      modalRef: (0,vue__WEBPACK_IMPORTED_MODULE_13__.ref)(null),
+      modalRef: (0,vue__WEBPACK_IMPORTED_MODULE_15__.ref)(null),
       attributes: [],
       FechaInitial: null,
       FechaMaxima: null,
@@ -14948,7 +14952,7 @@ __webpack_require__.r(__webpack_exports__);
       Ausencias: [],
       Aniversarios: [],
       diasSolicitados: 0,
-      date: (0,vue__WEBPACK_IMPORTED_MODULE_13__.ref)({
+      date: (0,vue__WEBPACK_IMPORTED_MODULE_15__.ref)({
         start: new Date(),
         end: null
       }),
@@ -14961,8 +14965,8 @@ __webpack_require__.r(__webpack_exports__);
         },
         initialView: 'dayGridMonth',
         locale: 'en',
-        plugins: [_fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_14__["default"], _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_15__["default"], _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_16__["default"]],
-        events: this.fetchEvents,
+        plugins: [_fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_16__["default"], _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_17__["default"], _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_18__["default"]],
+        events: this.fetchAllEvents,
         dateClick: this.onDateClick,
         eventClick: this.OnClickEvent,
         select: this.onDateRangeSelect,
@@ -14975,7 +14979,19 @@ __webpack_require__.r(__webpack_exports__);
         dayMaxEvents: true,
         dayMaxEventRows: 2,
         moreLinkClick: 'popover',
+        dayCellClassNames: arg => {
+          const mes = String(arg.date.getMonth() + 1).padStart(2, '0');
+          const dia = String(arg.date.getDate()).padStart(2, '0');
+          const key = `${mes}-${dia}`;
+          const esFestivo = this.Festivos.some(f => f.fecha === key);
+          return esFestivo ? ['dia-festivo'] : [];
+        },
         eventContent(arg) {
+          if (arg.event.extendedProps.esFestivo) {
+            return {
+              html: `<div class="festivo-label">🚫 ${arg.event.title.replace('🚫 ', '')}</div>`
+            };
+          }
           const nombreEmpleado = arg.event.extendedProps.nombre_empleado || 'Unknown employee';
           const imgUrl = `/avatar/${nombreEmpleado}/64`;
           return {
@@ -15016,7 +15032,8 @@ __webpack_require__.r(__webpack_exports__);
       notifications_counter: 0,
       loading: false,
       notifications_result: [],
-      isShaking: false
+      isShaking: false,
+      Festivos: []
     };
   },
   computed: {
@@ -15076,6 +15093,7 @@ __webpack_require__.r(__webpack_exports__);
     this.getEquipos();
     this.GetAllEquipo();
     this.checkNotifications();
+    this.getFestivos();
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate,
@@ -15112,6 +15130,19 @@ __webpack_require__.r(__webpack_exports__);
         ...item,
         abierto: i === index ? !item.abierto : false
       }));
+    },
+    selectNotification(item) {
+      this.employees = [];
+      this.typePetition = 'employee';
+      this.selected_user = item;
+      this.$refs.fullCalendar.getApi().gotoDate(item.fecha_de);
+      this.$refs.fullCalendar.getApi().refetchEvents();
+    },
+    selectEmployee(item) {
+      this.employees = [];
+      this.typePetition = 'employee';
+      this.selected_user = item;
+      this.$refs.fullCalendar.getApi().refetchEvents();
     },
     showAniversarioModal() {
       this.getAniversarios();
@@ -15184,6 +15215,49 @@ __webpack_require__.r(__webpack_exports__);
           this.employees = [];
           this.getMyAusencias(fetchInfo, success, failure);
           this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'My absences');
+      }
+    },
+    fetchAllEvents(fetchInfo, success, failure) {
+      const yearStart = new Date(fetchInfo.start).getFullYear();
+      const yearEnd = new Date(fetchInfo.end).getFullYear();
+      const years = yearStart === yearEnd ? [yearStart] : [yearStart, yearEnd];
+      const eventosFestivos = this.Festivos.flatMap(f => years.map(year => ({
+        id: `festivo-${f.id_festivo}-${year}`,
+        title: '🚫 ' + f.nombre,
+        start: `${year}-${f.fecha}`,
+        allDay: true,
+        backgroundColor: '#e5e7eb',
+        borderColor: '#9ca3af',
+        textColor: '#374151',
+        classNames: ['evento-festivo'],
+        extendedProps: {
+          esFestivo: true
+        }
+      })));
+      const successConFestivos = eventosNormales => {
+        success([...eventosFestivos, ...eventosNormales]);
+      };
+      switch (this.typePetition) {
+        case 'all':
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'All my team');
+          this.getAllAusencias(fetchInfo, successConFestivos, failure);
+          break;
+        case 'employee':
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'Selected employee');
+          this.getEmployeeAusencias(fetchInfo, successConFestivos, failure);
+          break;
+        case 'all-employees':
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'All my subordinates');
+          this.GetAusenciasMyWorkers(fetchInfo, successConFestivos, failure);
+          break;
+        default:
+          this.accordeon = this.accordeon.map(item => ({
+            ...item,
+            abierto: false
+          }));
+          this.employees = [];
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_7__.translate)('empleados', 'My absences');
+          this.getMyAusencias(fetchInfo, successConFestivos, failure);
       }
     },
     getMyAusencias(fetchInfo, success, failure) {
@@ -15400,6 +15474,15 @@ __webpack_require__.r(__webpack_exports__);
       }).catch(error => {
         console.error('Error getting team lead:', error);
       });
+    },
+    async getFestivos() {
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_6__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)('/apps/empleados/getFestivos'));
+        this.Festivos = response?.data?.ocs?.data ?? [];
+        this.$refs.fullCalendar?.getApi().refetchEvents();
+      } catch (err) {
+        console.error(err);
+      }
     }
   }
 });
@@ -26888,37 +26971,19 @@ var render = function render() {
     _c = _vm._self._c;
   return _c("NcAppContent", {
     attrs: {
-      name: "Loading"
+      name: _vm.t("empleados", "Working time")
     }
-  }, [_c("div", {}, [_c("div", {
-    staticClass: "text-center section"
-  }, [_vm.configuraciones.modulo_ausencias_readonly === "true" ? _c("div", [_c("br"), _vm._v(" "), _c("NcNoteCard", {
+  }, [_c("div", {
+    staticClass: "time-off-page"
+  }, [_vm.configuraciones.modulo_ausencias_readonly === "true" ? _c("NcNoteCard", {
     attrs: {
       type: "error",
-      heading: _vm.t("empleados", "Attention!!!"),
+      heading: _vm.t("empleados", "Attention"),
       text: _vm.t("empleados", "The module is in read-only mode")
     }
-  }), _vm._v(" "), _c("br")], 1) : _vm._e(), _vm._v(" "), _c("section", {
-    staticClass: "layout"
-  }, [_c("div", {
-    staticClass: "grow2"
-  }, [_c("div", {
-    staticClass: "text-center sectionPicker"
-  }, [_c("FullCalendar", {
-    ref: "fullCalendar",
-    staticClass: "my-calendar",
-    attrs: {
-      options: _vm.calendarOptions
-    }
-  })], 1)]), _vm._v(" "), _c("div", {
-    staticClass: "grow1"
-  }, [_c("div", {
-    staticClass: "cards"
-  }, [_c("div", {
-    staticClass: "headers"
-  }, [_c("div", {
-    staticClass: "btn-top-right"
-  }, [_c("NcActions", [_c("NcActionButton", {
+  }) : _vm._e(), _vm._v(" "), _c("header", {
+    staticClass: "page-header"
+  }, [_c("div", [_c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Vacation")))]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.vista_actual))])]), _vm._v(" "), _c("NcButton", {
     on: {
       click: _vm.showAniversarioModal
     },
@@ -26933,51 +26998,69 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "My information")) + "\n\t\t\t\t\t\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", [_c("h2", {
-    staticClass: "h2-white"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Vacation")) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
-    staticClass: "vacations"
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "My information")) + "\n\t\t\t")])], 1), _vm._v(" "), _c("section", {
+    staticClass: "layout"
   }, [_c("div", {
-    staticClass: "gl"
-  }, [_vm.Ausencias.dias_disponibles ? _c("div", [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatearDias(_vm.Ausencias.dias_disponibles)) + "\n\t\t\t\t\t\t\t\t\t")]) : _c("div", [_c("NcLoadingIcon")], 1)])])]), _vm._v(" "), _c("div", {
-    staticClass: "infos"
-  }, [_vm.notificaciones ? _c("div", {
-    staticClass: "acordeon-item"
+    staticClass: "calendar-panel"
+  }, [_c("FullCalendar", {
+    ref: "fullCalendar",
+    staticClass: "my-calendar",
+    attrs: {
+      options: _vm.calendarOptions
+    }
+  })], 1), _vm._v(" "), _c("aside", {
+    staticClass: "side-panel"
+  }, [_c("section", {
+    staticClass: "vacation-balance"
+  }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Available days")))]), _vm._v(" "), _vm.Ausencias.dias_disponibles ? _c("strong", [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.formatearDias(_vm.Ausencias.dias_disponibles)) + "\n\t\t\t\t\t")]) : _c("NcLoadingIcon")], 1), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      variant: "secondary",
+      wide: ""
+    },
+    on: {
+      click: function ($event) {
+        _vm.typePetition = null;
+        _vm.$refs.fullCalendar.getApi().refetchEvents();
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show my absences")) + "\n\t\t\t\t")]), _vm._v(" "), _vm.notificaciones ? _c("section", {
+    staticClass: "filter-section"
   }, [_c("button", {
-    staticClass: "acordeon-notification",
+    staticClass: "section-toggle",
+    attrs: {
+      type: "button"
+    },
     on: {
       click: function ($event) {
         return _vm.toggle(0);
       }
     }
-  }, [_c("div", {
-    staticClass: "noti-wrapper"
+  }, [_c("span", {
+    staticClass: "section-title"
   }, [_c("BellOutline", {
-    staticClass: "bell-icon",
     class: {
       "bell-shake": _vm.isShaking
+    },
+    attrs: {
+      size: 20
     }
-  }), _vm._v(" "), _c("NcCounterBubble", {
-    staticClass: "noti-badge",
+  }), _vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Pending")) + "\n\t\t\t\t\t\t\t"), _c("NcCounterBubble", {
     attrs: {
       count: _vm.notifications_counter
     }
-  })], 1), _vm._v(" "), _c("span", {
-    staticClass: "noti-text"
-  }, [_vm._v(_vm._s(_vm.t("empleados", "Pending")))]), _vm._v(" "), _c("span", {
-    staticClass: "arrow"
-  }, [_vm._v(_vm._s(_vm.accordeon[0].abierto ? "-" : "+"))])]), _vm._v(" "), _c("div", {
-    class: ["acordeon-contenido", {
+  })], 1), _vm._v(" "), _vm.accordeon[0].abierto ? _c("ChevronUp", {
+    attrs: {
+      size: 20
+    }
+  }) : _c("ChevronDown", {
+    attrs: {
+      size: 20
+    }
+  })], 1), _vm._v(" "), _c("div", {
+    class: ["section-content", {
       abierto: _vm.accordeon[0].abierto
     }]
-  }, [_c("div", [_c("div", {
-    staticClass: "rst"
-  }, [_c("div", {
-    staticStyle: {
-      "max-height": "300px",
-      "overflow-y": "auto"
-    }
-  }, [_c("ul", _vm._l(_vm.notifications_result, function (item) {
+  }, _vm._l(_vm.notifications_result, function (item) {
     return _c("NcListItem", {
       key: item.id_historial_ausencias,
       attrs: {
@@ -26986,11 +27069,7 @@ var render = function render() {
       on: {
         click: function ($event) {
           $event.preventDefault();
-          _vm.employees = [];
-          _vm.typePetition = "employee";
-          _vm.selected_user = item;
-          _vm.$refs.fullCalendar.getApi().gotoDate(item.fecha_de);
-          _vm.$refs.fullCalendar.getApi().refetchEvents();
+          return _vm.selectNotification(item);
         }
       },
       scopedSlots: _vm._u([{
@@ -27009,73 +27088,72 @@ var render = function render() {
       }, {
         key: "subname",
         fn: function () {
-          return [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(new Date(item.fecha_de).toLocaleDateString("en-US", {
+          return [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(new Date(item.fecha_de).toLocaleDateString("en-US", {
             day: "numeric",
             month: "short",
             year: "numeric"
-          })) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t")];
+          })) + "\n\t\t\t\t\t\t\t")];
         },
         proxy: true
       }], null, true)
     });
-  }), 1)])])])])]) : _vm._e(), _vm._v(" "), _c("NcButton", {
-    staticClass: "btn-top",
-    attrs: {
-      text: "center (default)",
-      variant: "secondary",
-      wide: ""
-    },
-    on: {
-      click: function ($event) {
-        _vm.typePetition = null;
-        _vm.$refs.fullCalendar.getApi().refetchEvents();
-      }
-    }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show my absences")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), Object.keys(_vm.Equipo).length ? _c("div", {
-    staticClass: "acordeon-item btn-top"
+  }), 1)]) : _vm._e(), _vm._v(" "), Object.keys(_vm.Equipo).length ? _c("section", {
+    staticClass: "filter-section"
   }, [_c("button", {
-    staticClass: "acordeon-titulo",
+    staticClass: "section-toggle",
+    attrs: {
+      type: "button"
+    },
     on: {
       click: function ($event) {
         return _vm.toggle(1);
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Filter by team")) + "\n\t\t\t\t\t\t\t\t\t"), _c("span", [_vm._v(_vm._s(_vm.accordeon[1].abierto ? "-" : "+"))])]), _vm._v(" "), _c("div", {
-    class: ["acordeon-contenido", {
+  }, [_c("span", {
+    staticClass: "section-title"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Filter by team")))]), _vm._v(" "), _vm.accordeon[1].abierto ? _c("ChevronUp", {
+    attrs: {
+      size: 20
+    }
+  }) : _c("ChevronDown", {
+    attrs: {
+      size: 20
+    }
+  })], 1), _vm._v(" "), _c("div", {
+    class: ["section-content", {
       abierto: _vm.accordeon[1].abierto
     }]
-  }, [_c("div", [_c("div", {
-    staticClass: "rst-title"
   }, [_c("div", {
-    staticClass: "title_flex"
-  }, [_c("div", {
-    staticClass: "subtitle_flex"
+    staticClass: "team-heading"
   }, [_c("NcAvatar", {
     attrs: {
       user: _vm.Equipo.Id_jefe_equipo,
       "display-name": _vm.Equipo.Id_jefe_equipo,
-      size: 20
+      size: 24
     }
-  })], 1), _vm._v(" "), _c("div", {
-    staticClass: "btn-top-subtitle"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.Equipo.Nombre) + "\n\t\t\t\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
-    staticClass: "flex-to-right"
-  }, [_c("AccountGroup", {
-    staticClass: "pointer",
+  }), _vm._v(" "), _c("strong", [_vm._v(_vm._s(_vm.Equipo.Nombre))]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "tertiary",
+      "aria-label": _vm.t("empleados", "Show all team")
+    },
     on: {
       click: function ($event) {
         _vm.typePetition = "all";
         _vm.$refs.fullCalendar.getApi().refetchEvents();
       }
-    }
-  })], 1)])]), _vm._v(" "), _c("div", {
-    staticClass: "rst"
-  }, [_c("div", {
-    staticStyle: {
-      "max-height": "300px",
-      "overflow-y": "auto"
-    }
-  }, [_c("ul", _vm._l(_vm.peopleEquipo.equipo, function (item) {
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("AccountGroup", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 4176711638)
+  })], 1), _vm._v(" "), _vm._l(_vm.peopleEquipo.equipo, function (item) {
     return _c("NcListItem", {
       key: item.Id_empleados,
       attrs: {
@@ -27084,10 +27162,7 @@ var render = function render() {
       on: {
         click: function ($event) {
           $event.preventDefault();
-          _vm.employees = [];
-          _vm.typePetition = "employee";
-          _vm.selected_user = item;
-          _vm.$refs.fullCalendar.getApi().refetchEvents();
+          return _vm.selectEmployee(item);
         }
       },
       scopedSlots: _vm._u([{
@@ -27105,21 +27180,32 @@ var render = function render() {
         proxy: true
       }], null, true)
     });
-  }), 1)])])])])]) : _vm._e(), _vm._v(" "), _vm.isAdmin() ? _c("div", {
-    staticClass: "acordeon-item btn-top"
+  })], 2)]) : _vm._e(), _vm._v(" "), _vm.isAdmin() ? _c("section", {
+    staticClass: "filter-section"
   }, [_c("button", {
-    staticClass: "acordeon-titulo",
+    staticClass: "section-toggle",
+    attrs: {
+      type: "button"
+    },
     on: {
       click: function ($event) {
         return _vm.toggle(2);
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Administrative")) + "\n\t\t\t\t\t\t\t\t\t"), _c("span", [_vm._v(_vm._s(_vm.accordeon[2].abierto ? "-" : "+"))])]), _vm._v(" "), _c("div", {
-    class: ["acordeon-contenido", {
+  }, [_c("span", {
+    staticClass: "section-title"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Administrative")))]), _vm._v(" "), _vm.accordeon[2].abierto ? _c("ChevronUp", {
+    attrs: {
+      size: 20
+    }
+  }) : _c("ChevronDown", {
+    attrs: {
+      size: 20
+    }
+  })], 1), _vm._v(" "), _c("div", {
+    class: ["section-content", {
       abierto: _vm.accordeon[2].abierto
     }]
-  }, [_c("div", {
-    staticClass: "btn-top"
   }, [_c("NcSelect", _vm._b({
     model: {
       value: _vm.employees,
@@ -27128,43 +27214,57 @@ var render = function render() {
       },
       expression: "employees"
     }
-  }, "NcSelect", _vm.propsEmployees, false))], 1)])]) : _vm._e(), _vm._v(" "), _vm.subordinates.length > 0 ? _c("div", {
-    staticClass: "acordeon-item"
+  }, "NcSelect", _vm.propsEmployees, false))], 1)]) : _vm._e(), _vm._v(" "), _vm.subordinates.length > 0 ? _c("section", {
+    staticClass: "filter-section"
   }, [_c("button", {
-    staticClass: "acordeon-titulo",
+    staticClass: "section-toggle",
+    attrs: {
+      type: "button"
+    },
     on: {
       click: function ($event) {
         return _vm.toggle(3);
       }
     }
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "My subordinates")) + " "), _c("span", [_vm._v(_vm._s(_vm.accordeon[3].abierto ? "-" : "+"))])]), _vm._v(" "), _c("div", {
-    class: ["acordeon-contenido", {
+  }, [_c("span", {
+    staticClass: "section-title"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "My subordinates")))]), _vm._v(" "), _vm.accordeon[3].abierto ? _c("ChevronUp", {
+    attrs: {
+      size: 20
+    }
+  }) : _c("ChevronDown", {
+    attrs: {
+      size: 20
+    }
+  })], 1), _vm._v(" "), _c("div", {
+    class: ["section-content", {
       abierto: _vm.accordeon[3].abierto
     }]
-  }, [_c("div", [_c("div", {
-    staticClass: "rst-title"
   }, [_c("div", {
-    staticClass: "title_flex"
-  }, [_c("div", {
-    staticClass: "subtitle_flex"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "My subordinates")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
-    staticClass: "flex-to-right"
-  }, [_c("AccountGroup", {
-    staticClass: "pointer",
+    staticClass: "team-heading"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.t("empleados", "My subordinates")))]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "tertiary",
+      "aria-label": _vm.t("empleados", "Show all subordinates")
+    },
     on: {
       click: function ($event) {
         _vm.typePetition = "all-employees";
         _vm.$refs.fullCalendar.getApi().refetchEvents();
       }
-    }
-  })], 1)])]), _vm._v(" "), _c("div", {
-    staticClass: "rst"
-  }, [_c("div", {
-    staticStyle: {
-      "max-height": "300px",
-      "overflow-y": "auto"
-    }
-  }, [_c("ul", _vm._l(_vm.subordinates, function (item) {
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("AccountGroup", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 4176711638)
+  })], 1), _vm._v(" "), _vm._l(_vm.subordinates, function (item) {
     return _c("NcListItem", {
       key: item.Id_empleados,
       attrs: {
@@ -27173,10 +27273,7 @@ var render = function render() {
       on: {
         click: function ($event) {
           $event.preventDefault();
-          _vm.employees = [];
-          _vm.typePetition = "employee";
-          _vm.selected_user = item;
-          _vm.$refs.fullCalendar.getApi().refetchEvents();
+          return _vm.selectEmployee(item);
         }
       },
       scopedSlots: _vm._u([{
@@ -27194,9 +27291,7 @@ var render = function render() {
         proxy: true
       }], null, true)
     });
-  }), 1)])])])])]) : _vm._e()], 1), _vm._v(" "), _c("div", {
-    staticClass: "footers"
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t\t\t\t🔎 " + _vm._s(_vm.vista_actual) + "\n\t\t\t\t\t\t\t")])])])])])])]), _vm._v(" "), _vm.modalEvento ? _c("NcModal", {
+  })], 2)]) : _vm._e()], 1)])], 1), _vm._v(" "), _vm.modalEvento ? _c("NcModal", {
     ref: "modalRef",
     attrs: {
       size: "large",
@@ -27240,23 +27335,19 @@ var render = function render() {
       close: _vm.closeModalAniversario
     }
   }, [_c("div", {
-    staticClass: "table_component",
-    attrs: {
-      role: "region",
-      tabindex: "0"
-    }
+    staticClass: "modal__content anniversary-modal-content"
   }, [_c("div", {
-    staticClass: "modal__content"
-  }, [_c("div", {
-    staticClass: "layout"
-  }, [_c("div", {
-    staticClass: "grow3"
-  }, [_c("TrofeosAniversarios", {
+    staticClass: "anniversary-layout"
+  }, [_c("div", [_c("TrofeosAniversarios", {
     attrs: {
       info: _vm.Ausencias,
       acumular: _vm.configuraciones.acumular_vacaciones
     }
-  }), _vm._v(" "), _c("br"), _vm._v(" "), _c("table", [_c("caption", [_c("span", {
+  }), _vm._v(" "), _c("div", {
+    staticClass: "anniversary-table-wrap"
+  }, [_c("table", {
+    staticClass: "anniversary-table"
+  }, [_c("caption", [_c("span", {
     staticClass: "caption-title"
   }, [_vm._v(_vm._s(_vm.t("empleados", "Anniversary table")))])]), _vm._v(" "), _c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Anniversary(ies)")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Days off")))])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.AniversariosAgrupados, function (grupo, index) {
     return _c("tr", {
@@ -27265,14 +27356,12 @@ var render = function render() {
       from: grupo.desde,
       to: grupo.hasta
     })) + "\n\t\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_vm._v(_vm._s(grupo.dias))])]);
-  }), 0)])], 1), _vm._v(" "), _c("div", {
-    staticClass: "grow4"
-  }, [_c("MensajeAniversarios", {
+  }), 0)])])], 1), _vm._v(" "), _c("div", [_c("MensajeAniversarios", {
     attrs: {
       info: _vm.Ausencias,
       acumular: _vm.configuraciones.acumular_vacaciones
     }
-  })], 1)])])])]) : _vm._e()], 1);
+  })], 1)])])]) : _vm._e()], 1);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -57534,214 +57623,205 @@ __webpack_require__.r(__webpack_exports__);
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, `
-/* (styles unchanged) */
-.layout[data-v-83d6d36c] {
-	width: 100%;
-	display: flex;
-	gap: 16px;
-}
-.grow1[data-v-83d6d36c] {
-	flex: 3;
-}
-.grow2[data-v-83d6d36c] {
-	flex: 7;
-}
-.grow3[data-v-83d6d36c] {
-	flex: 3;
-}
-.grow4[data-v-83d6d36c] {
-	flex: 3;
-}
-.cards[data-v-83d6d36c] {
+.time-off-page[data-v-83d6d36c] {
 	display: flex;
 	flex-direction: column;
+	gap: 16px;
+	padding: 24px;
+}
+.page-header[data-v-83d6d36c] {
+	display: flex;
+	gap: 16px;
 	justify-content: space-between;
-	border-radius: 0.75rem;
-	background-color: white;
-	border: 1px solid #cbd5e0;
+	align-items: flex-start;
 }
-.headers[data-v-83d6d36c] {
-	position: relative;
-	background-clip: border-box;
-	margin-top: 1.5rem;
-	margin-left: 1rem;
-	margin-right: 1rem;
-	border-radius: 0.75rem;
-	background-color: rgb(33 150 243);
-	box-shadow: 0 10px 15px -3px rgba(33, 150, 243, .4), 0 4px 6px -4px rgba(33, 150, 243, .4);
-	height: 8rem;
-	text-align: center;
+.page-header h2[data-v-83d6d36c],
+.page-header p[data-v-83d6d36c] {
+	margin: 0;
 }
-.infos[data-v-83d6d36c] {
-	border: none;
-	padding: 1.5rem;
-	text-align: center;
+.page-header p[data-v-83d6d36c] {
+	color: var(--color-text-maxcontrast);
 }
-.titles[data-v-83d6d36c] {
-	color: rgb(38 50 56);
-	font-weight: 600;
-	font-size: 1.25rem;
-	margin-bottom: 0.5rem;
+.layout[data-v-83d6d36c] {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+	gap: 16px;
+	align-items: start;
 }
-.footers[data-v-83d6d36c] {
-	padding: 0.75rem;
-	border: 1px solid rgb(236 239 241);
+.calendar-panel[data-v-83d6d36c],
+.side-panel[data-v-83d6d36c] {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-main-background);
+}
+.calendar-panel[data-v-83d6d36c] {
+	min-width: 0;
+	padding: 12px;
+	overflow: auto;
+}
+.side-panel[data-v-83d6d36c] {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 12px;
+}
+.vacation-balance[data-v-83d6d36c] {
+	display: grid;
+	gap: 4px;
+	padding: 14px;
+	border-radius: var(--border-radius-large, 8px);
+	background-color: var(--color-primary-element-light);
+}
+.vacation-balance span[data-v-83d6d36c] {
+	color: var(--color-text-maxcontrast);
+}
+.vacation-balance strong[data-v-83d6d36c] {
+	font-size: 24px;
+	line-height: 1.2;
+}
+.filter-section[data-v-83d6d36c] {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	overflow: hidden;
+}
+.section-toggle[data-v-83d6d36c] {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	background-color: rgba(0, 140, 255, 0.082);
-}
-.h2-white[data-v-83d6d36c] {
-	color: white;
-}
-.btn-top-right[data-v-83d6d36c] {
-	position: absolute;
-	top: 0.5rem;
-	right: 0.5rem;
-	background-color: white;
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
 	border: none;
-	border-radius: 50%;
-	padding: 0.5rem;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	background: transparent;
+	color: var(--color-main-text);
 	cursor: pointer;
-	font-size: 1rem;
-	transition: transform 0.2s ease;
+	font-weight: 700;
 }
-.btn-top[data-v-83d6d36c] {
-	margin-top: 10px
+.section-toggle[data-v-83d6d36c]:hover,
+.section-toggle[data-v-83d6d36c]:focus-visible {
+	background-color: var(--color-background-hover);
 }
-.btn-top-right[data-v-83d6d36c]:hover {
-	transform: scale(1.1);
+.section-title[data-v-83d6d36c] {
+	display: inline-flex;
+	gap: 8px;
+	align-items: center;
+	min-width: 0;
 }
-.table_component[data-v-83d6d36c] {
-	overflow: auto;
-	width: 100%;
+.section-content[data-v-83d6d36c] {
+	display: none;
+	max-height: 320px;
+	padding: 8px;
+	overflow-y: auto;
+	border-top: 1px solid var(--color-border);
 }
-.table_component table[data-v-83d6d36c] {
-	border: 1px solid #dededf;
-	width: 100%;
-	table-layout: fixed;
-	border-collapse: collapse;
-	text-align: left;
+.section-content.abierto[data-v-83d6d36c] {
+	display: block;
 }
-.table_component th[data-v-83d6d36c],
-.table_component td[data-v-83d6d36c] {
-	border: 1px solid #dededf;
-	padding: 5px;
-}
-.table_component th[data-v-83d6d36c] {
-	background-color: #eceff1;
-	color: black;
-}
-.table_component td[data-v-83d6d36c] {
-	background-color: white;
-	color: black;
-}
-.caption-title[data-v-83d6d36c] {
-	font-weight: bold;
+.team-heading[data-v-83d6d36c] {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 8px;
+	align-items: center;
+	padding: 4px 4px 8px;
 }
 .modal__content[data-v-83d6d36c] {
-	margin: 50px;
+	padding: 24px;
 }
-.sectionPicker[data-v-83d6d36c] {
-	height: clamp(520px, 70vh, 780px);
+.anniversary-modal-content[data-v-83d6d36c] {
+	width: min(980px, calc(100vw - 48px));
+}
+.anniversary-layout[data-v-83d6d36c] {
+	display: grid;
+	grid-template-columns: minmax(260px, 0.85fr) minmax(320px, 1fr);
+	gap: 20px;
+	align-items: start;
+}
+.anniversary-table-wrap[data-v-83d6d36c] {
+	margin-top: 12px;
+	overflow-x: auto;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+}
+.anniversary-table[data-v-83d6d36c] {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+.anniversary-table caption[data-v-83d6d36c] {
+	padding: 10px 12px;
+	text-align: left;
+	font-weight: 700;
+}
+.anniversary-table th[data-v-83d6d36c],
+.anniversary-table td[data-v-83d6d36c] {
+	padding: 10px 12px;
+	border-top: 1px solid var(--color-border);
+	text-align: left;
+}
+.anniversary-table th[data-v-83d6d36c] {
+	color: var(--color-text-maxcontrast);
+	background-color: var(--color-background-hover);
 }
 .my-calendar[data-v-83d6d36c] {
 	height: 100%;
 	--color-background-dark: transparent !important;
 }
-.acordeon-item[data-v-83d6d36c] {
-	margin-bottom: 10px;
-	border-radius: 5px;
-	overflow: hidden;
-}
-.acordeon-titulo[data-v-83d6d36c] {
-	width: 100%;
-	text-align: center;
-	border: none;
-	justify-content: space-between;
-	align-items: center;
-}
-.acordeon-contenido[data-v-83d6d36c] {
-	max-height: 0;
-	opacity: 0;
-	overflow: hidden;
-	transition: all 0.3s ease-in-out;
-}
-.acordeon-contenido.abierto[data-v-83d6d36c] {
-	max-height: 500px;
-	opacity: 1;
-}
-.flex-to-right[data-v-83d6d36c] {
-	margin-left: auto;
-	margin-right: 5%;
-	cursor: pointer;
-}
-.subtitle_flex[data-v-83d6d36c] {
-	margin-left: 4%;
-}
-.btn-top-subtitle[data-v-83d6d36c] {
-	margin-top: 3px;
-}
-.pointer[data-v-83d6d36c] {
-	cursor: pointer;
-}
-.acordeon-notification[data-v-83d6d36c] {
-	width: 100%;
-	border: none;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	position: relative;
-}
-.noti-wrapper[data-v-83d6d36c] {
-	position: initial;
-	width: 24px;
-	height: 24px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.noti-badge[data-v-83d6d36c] {
-	position: absolute;
-	top: -5px;
-	right: -5px;
-}
-.noti-text[data-v-83d6d36c] {
-	text-align: left;
-}
-.arrow[data-v-83d6d36c] {
-	font-weight: bold;
-	color: #666;
-}
 @keyframes shake-83d6d36c {
-0% {
-		transform: rotate(0deg);
+0% { transform: rotate(0deg);
 }
-15% {
-		transform: rotate(-15deg);
+15% { transform: rotate(-15deg);
 }
-30% {
-		transform: rotate(15deg);
+30% { transform: rotate(15deg);
 }
-45% {
-		transform: rotate(-10deg);
+45% { transform: rotate(-10deg);
 }
-60% {
-		transform: rotate(10deg);
+60% { transform: rotate(10deg);
 }
-75% {
-		transform: rotate(-5deg);
+75% { transform: rotate(-5deg);
 }
-90% {
-		transform: rotate(5deg);
+90% { transform: rotate(5deg);
 }
-100% {
-		transform: rotate(0deg);
+100% { transform: rotate(0deg);
 }
 }
 .bell-shake[data-v-83d6d36c] {
 	animation: shake-83d6d36c 0.8s ease;
+}
+@media (max-width: 1050px) {
+.layout[data-v-83d6d36c],
+	.anniversary-layout[data-v-83d6d36c] {
+		grid-template-columns: 1fr;
+}
+}
+@media (max-width: 700px) {
+.time-off-page[data-v-83d6d36c] {
+		padding: 12px;
+}
+.page-header[data-v-83d6d36c] {
+		flex-direction: column;
+		align-items: stretch;
+}
+}
+.dia-festivo[data-v-83d6d36c] {
+    background-color: var(--color-background-dark) !important;
+    opacity: 0.6;
+}
+[data-v-83d6d36c] .evento-festivo {
+    font-size: 0.75rem;
+    font-style: italic;
+}
+[data-v-83d6d36c] .festivo-label {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #374151;
+    padding: 1px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+[data-v-83d6d36c] .evento-festivo .fc-event-main {
+    background-color: #e5e7eb;
+    border-radius: 4px;
 }
 `, ""]);
 // Exports

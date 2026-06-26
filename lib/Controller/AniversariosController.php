@@ -146,7 +146,7 @@ class AniversariosController extends BaseController {
     public function AgregarNuevoAniversario(int $numero_aniversario, float $dias): DataResponse {
         $area = new aniversario();
         $area->setnumero_aniversario($numero_aniversario);
-        $area->setdias($dias);
+        $area->setdias((float) $dias); // cast explícito
         $this->aniversarioMapper->insert($area);
         
         return new DataResponse('ok', Http::STATUS_OK);
@@ -178,5 +178,33 @@ class AniversariosController extends BaseController {
     
         return $this->aniversarioMapper->GetAniversarioByDate($diferencia->y);
 
+    }
+
+    /**
+     * Modifica un aniversario existente.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function ModificarAniversario(int $numero_aniversario, int $nuevo_numero_aniversario, float $dias): DataResponse {
+        try {
+            $this->aniversarioMapper->updateAniversarioByNumero($numero_aniversario, $nuevo_numero_aniversario, $dias);
+            return new DataResponse('ok', Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Elimina un aniversario existente.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function DeleteAniversario(int $numero_aniversario): DataResponse {
+        try {
+            $this->aniversarioMapper->deleteByNumeroAniversario($numero_aniversario);
+            return new DataResponse('ok', Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -10,6 +10,8 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\IRequest;
 use OCP\IL10N;
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\DataResponse;
 use OCA\Empleados\UploadException;
 
 use DateTime;
@@ -21,7 +23,7 @@ require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
 
 /**
- * Controlador para la gestión de áreas en Nextcloud.
+ * Controlador para la gestión de tipo de ausencias en Nextcloud.
  */
 class TipoausenciasController extends Controller {
 
@@ -49,7 +51,7 @@ class TipoausenciasController extends Controller {
     }
 
     /**
-     * Exporta la lista de áreas a un archivo XLSX.
+     * Exporta la lista de tipo de ausencias a un archivo XLSX.
      */
     public function ExportarTipo(): array {
         $tipoausencias = $this->tipoausenciaMapper->getTipo();
@@ -69,7 +71,7 @@ class TipoausenciasController extends Controller {
     }
 
     /**
-     * Importa la lista de áreas desde un archivo XLSX.
+     * Importa la lista de tipo de ausencias desde un archivo XLSX.
      */
     public function importarTipo(): void {
         $file = $this->getUploadedFile('fileXLSX');
@@ -86,7 +88,7 @@ class TipoausenciasController extends Controller {
     }
         
     /**
-     * Elimina un área por ID.
+     * Vacia tipo de ausencia.
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -100,7 +102,7 @@ class TipoausenciasController extends Controller {
     }
 
     /**
-     * Elimina un área por ID.
+     * Elimina un tipo de ausencia por ID.
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -114,7 +116,7 @@ class TipoausenciasController extends Controller {
     }
 
     /**
-     * Guarda cambios en las áreas.
+     * Guarda cambios en los tipo de ausencia.
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -123,7 +125,7 @@ class TipoausenciasController extends Controller {
     }
 
     /**
-     * Crea una nueva área.
+     * Crea un nuevo tipo de ausencia.
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -150,7 +152,7 @@ class TipoausenciasController extends Controller {
     }
 
     /**
-     * Obtiene la lista de tipoausencias.
+     * Obtiene la lista de tipo ausencias.
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -161,6 +163,33 @@ class TipoausenciasController extends Controller {
         $diferencia = $hoy->diff($fechaInicio);
     
         return $this->tipoausenciaMapper->GetAniversarioByDate($diferencia->y);
+    }
 
+    /**
+     * Modifica la lista de tipo ausencias.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional): DataResponse {
+        try {
+            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, (bool) $solicitar_archivo, (bool) $solicitar_prima_vacacional);
+            return new DataResponse('ok', Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Elimina un tipo de ausencia.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function DeleteTipo(int $id): DataResponse {
+        try {
+            $this->tipoausenciaMapper->deleteById($id);
+            return new DataResponse('ok', Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
     }
 }

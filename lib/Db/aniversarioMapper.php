@@ -88,4 +88,23 @@ class aniversarioMapper extends QBMapper {
 
 		return $aniversarios;
 	}
+
+	public function updateAniversarioByNumero(int $numero_aniversario, int $nuevo_numero_aniversario, float $dias): void {
+		$query = $this->db->getQueryBuilder();
+		$query->update($this->getTableName())
+			->set('numero_aniversario', $query->createNamedParameter($nuevo_numero_aniversario))
+			->set('dias', $query->createNamedParameter($dias))
+			->where($query->expr()->eq('numero_aniversario', $query->createNamedParameter($numero_aniversario)));
+
+		$query->executeStatement();
+	}
+
+	public function deleteByNumeroAniversario(int $numero_aniversario): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($numero_aniversario)));
+
+		$qb->executeStatement();
+	}
 }
