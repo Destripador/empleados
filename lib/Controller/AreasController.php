@@ -23,6 +23,8 @@ use OCA\Empleados\UploadException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
+use OCA\Empleados\Service\PermisosService;
+
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
 
@@ -37,6 +39,7 @@ class AreasController extends BaseController {
     protected $departamentosMapper;
     protected $configuracionesMapper;
     protected $l10n;
+    protected PermisosService $permisosService;
 
     public function __construct(
         IRequest $request,
@@ -46,7 +49,8 @@ class AreasController extends BaseController {
         departamentosMapper $departamentosMapper,
         configuracionesMapper $configuracionesMapper,
         IL10N $l10n,
-        IGroupManager $groupManager
+        IGroupManager $groupManager,
+        PermisosService $permisosService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -56,6 +60,7 @@ class AreasController extends BaseController {
         $this->departamentosMapper = $departamentosMapper;
         $this->configuracionesMapper = $configuracionesMapper;
         $this->l10n = $l10n;
+        $this->permisosService = $permisosService;
     }
 
     /**
@@ -64,7 +69,7 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetAreasFix(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $areas = array_map(fn($area) => [
             'value' => $area['Id_departamento'],
             'label' => $area['Nombre'],
@@ -79,7 +84,7 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetAreasList(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse($this->departamentosMapper->GetAreasList(), Http::STATUS_OK);
     }
 
@@ -87,7 +92,7 @@ class AreasController extends BaseController {
      * Exporta la lista de áreas a un archivo XLSX.
      */
     public function ExportListAreas(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $areas = $this->departamentosMapper->GetAreasList();
         $books = [['Id_departamento', 'Id_padre', 'Nombre', 'created_at', 'updated_at']];
 
@@ -109,7 +114,7 @@ class AreasController extends BaseController {
      * Importa la lista de áreas desde un archivo XLSX.
      */
     public function ImportListAreas(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $file = $this->getUploadedFile('AreafileXLSX');
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
@@ -136,7 +141,7 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function EliminarArea(int $id_departamento): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         try {
             $this->departamentosMapper->EliminarArea((string) $id_departamento);
             return new DataResponse(Http::STATUS_OK);
@@ -151,7 +156,7 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GuardarCambioArea(int $id_departamento, string $padre, string $nombre): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $this->departamentosMapper->updateAreas((string) $id_departamento, $padre, $nombre);
         return new DataResponse(Http::STATUS_OK);
     }
@@ -162,7 +167,7 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function crearArea(string $nombre, string $padre): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $timestamp = date('Y-m-d');
         $area = new departamentos();
         $area->setid_padre($padre);
@@ -179,11 +184,19 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     private function getUploadedFile(string $key): array {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
+
         $file = $this->request->getUploadedFile($key);
         if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
             throw new UploadException($this->l10n->t('Error en la subida del archivo.'));
         }
         return $file;
+    }
+
+    private function requireHumanResourcesAccess(): void {
+        $this->permisosService->requireCanSeeAny([
+            'empleados.hr',
+            'empleados.admin',
+        ]);
     }
 }

@@ -5,40 +5,40 @@ declare(strict_types=1);
 
 return [
 'routes' => [
-		/********************************** INDEX **********************************************/ 
+		/********************************** INDEX **********************************************/
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
-		
 
-		/******************************** EMPLEADOS ********************************************/ 
+
+		/******************************** EMPLEADOS ********************************************/
 		# OBTENER DATOS DE USUARIO NEXTCLOUD
 		['name' => 'empleados#GetUser', 'url' => '/GetUser', 'verb' => 'GET'],
-		
+
 		# OBTIENE LA LISTA DE EMPĹEADOS, USUARIOS Y USUARIOS DESACTIVADOS
 		['name' => 'empleados#GetUserLists', 'url' => '/GetUserLists', 'verb' => 'GET'],
-		
+
 		# LISTADO COMPLETO DE EMPLEADOS CON SUS DATOS
 		['name' => 'empleados#GetEmpleadosList', 'url' => '/GetEmpleadosList', 'verb' => 'GET'],
-		
+
 		# LISTADO DE EMPLEADOS POR AREA
 		['name' => 'empleados#GetEmpleadosArea', 'url' => '/GetEmpleadosArea/{id_area}', 'verb' => 'GET'],
-		
+
 		# LISTADO DE EMPLEADOS POR PUESTO
 		['name' => 'empleados#GetEmpleadosPuesto', 'url' => '/GetEmpleadosPuesto/{id_puesto}', 'verb' => 'GET'],
-		
+
 		# LISTADO DE EMPLEADOS POR EQUIPO
 		['name' => 'empleados#GetEmpleadosEquipo', 'url' => '/GetEmpleadosEquipo/{id_equipo}', 'verb' => 'GET'],
-		
+
 		# EN DESUSO
 		['name' => 'empleados#GetEmpleadosListFix', 'url' => '/GetEmpleadosListFix', 'verb' => 'GET'],
-		
+
 		# EXPORTA LISTA DE EMPLEADOS A EXCEL
 		['name' => 'empleados#ExportListEmpleados', 'url' => '/ExportListEmpleados', 'verb' => 'GET'],
-		
+
 		# LISTADO DE EMPLEADOS EN EQUIPO DEL USUARIO ACTUAL
 		['name' => 'empleados#GetMyEquipo', 'url' => '/GetMyEquipo', 'verb' => 'GET'],
 
 		['name' => 'empleados#uploadAvatar', 'url' => '/uploadAvatar', 'verb' => 'POST'],
-		
+
 		['name' => 'empleados#GuardarNota', 'url' => '/GuardarNota', 'verb' => 'POST'],
 		['name' => 'empleados#CambiosEmpleado', 'url' => '/CambiosEmpleado', 'verb' => 'POST'],
 		['name' => 'empleados#CambiosPersonal', 'url' => '/CambiosPersonal', 'verb' => 'POST'],
@@ -50,7 +50,7 @@ return [
 		['name' => 'empleados#ActualizarEstadoAhorro', 'url' => '/ActualizarEstadoAhorro', 'verb' => 'POST'],
 
 
-		/******************************** AREAS ********************************************/ 
+		/******************************** AREAS ********************************************/
 		['name' => 'areas#GetAreasFix', 'url' => '/GetAreasFix', 'verb' => 'GET'],
 		['name' => 'areas#GetAreasList', 'url' => '/GetAreasList', 'verb' => 'GET'],
 		['name' => 'areas#ExportListAreas', 'url' => '/ExportListAreas', 'verb' => 'GET'],
@@ -65,24 +65,24 @@ return [
 		['name' => 'puestos#GetPuestosFix', 'url' => '/GetPuestosFix', 'verb' => 'GET'],
 		['name' => 'puestos#GetPuestosList', 'url' => '/GetPuestosList', 'verb' => 'GET'],
 		['name' => 'puestos#ExportListPuestos', 'url' => '/ExportListPuestos', 'verb' => 'GET'],
-		
+
 		['name' => 'puestos#GuardarCambioPuestos', 'url' => '/GuardarCambioPuestos', 'verb' => 'POST'],
 		['name' => 'puestos#ImportListPuestos', 'url' => '/ImportListPuestos', 'verb' => 'POST'],
 		['name' => 'puestos#EliminarPuesto', 'url' => '/EliminarPuesto', 'verb' => 'POST'],
 		['name' => 'puestos#crearPuesto', 'url' => '/crearPuesto', 'verb' => 'POST'],
 
-		
+
 		/****************************** EQUIPOS *********************************************/
 		['name' => 'equipos#GetEquiposFix', 'url' => '/GetEquiposFix', 'verb' => 'GET'],
 		['name' => 'equipos#GetEquiposList', 'url' => '/GetEquiposList', 'verb' => 'GET'],
 		['name' => 'equipos#ExportListEquipos', 'url' => '/ExportListEquipos', 'verb' => 'GET'],
-				
+
 		['name' => 'equipos#GuardarCambioEquipo', 'url' => '/GuardarCambioEquipo', 'verb' => 'POST'],
 		['name' => 'equipos#ImportListEquipos', 'url' => '/ImportListEquipos', 'verb' => 'POST'],
 		['name' => 'equipos#EliminarEquipo', 'url' => '/EliminarEquipo', 'verb' => 'POST'],
 		['name' => 'equipos#GetEquipoJefe', 'url' => '/GetEquipoJefe', 'verb' => 'POST'],
 		['name' => 'equipos#crearEquipo', 'url' => '/crearEquipo', 'verb' => 'POST'],
-		
+
 
 		/***************************** CONFIGURACIONES ***************************************/
 		['name' => 'configuraciones#GetConfigurations', 'url' => '/GetConfigurations', 'verb' => 'GET'],
@@ -95,6 +95,18 @@ return [
 		['name' => 'permisos#grupos', 'url' => '/permisos/grupos',	'verb' => 'GET',],
 		['name' => 'permisos#usuario', 'url' => '/permisos/usuario/{uid}',	'verb' => 'GET',],
 		['name' => 'permisos#actualizarUsuario', 'url' => '/permisos/usuario/{uid}',	'verb' => 'POST',],
+
+		['name' => 'permiso_grupos#index', 'url' => '/permisos/catalogo', 'verb' => 'GET'],
+		['name' => 'permiso_grupos#create', 'url' => '/permisos/catalogo', 'verb' => 'POST'],
+		['name' => 'permiso_grupos#update', 'url' => '/permisos/catalogo/{id}', 'verb' => 'POST'],
+		['name' => 'permiso_grupos#enable', 'url' => '/permisos/catalogo/{id}/enable', 'verb' => 'POST'],
+		['name' => 'permiso_grupos#disable', 'url' => '/permisos/catalogo/{id}/disable', 'verb' => 'POST'],
+
+		['name' => 'permiso_grupos#estructura', 'url' => '/permisos/catalogo/estructura', 'verb' => 'GET'],
+		['name' => 'permiso_grupos#repararEstructura', 'url' => '/permisos/catalogo/estructura/reparar', 'verb' => 'POST'],
+
+		['name' => 'permiso_grupos#gruposNextcloud', 'url' => '/permisos/catalogo/grupos-nextcloud', 'verb' => 'GET'],
+		['name' => 'permisos#contexto', 'url' => '/permisos/contexto', 'verb' => 'GET'],
 
 		/***************************** CAPITAL HUMANO ***************************************/
 		['name' => 'capitalhumano#GetCapitalHumano', 'url' => '/GetCapitalHumano', 'verb' => 'GET'],
@@ -110,7 +122,7 @@ return [
 		['name' => 'aniversarios#ImportListAniversarios', 'url' => '/ImportListAniversarios', 'verb' => 'POST'],
 		['name' => 'Aniversarios#modificarAniversario', 'url' => '/modificarAniversario', 'verb' => 'POST'],
 		['name' => 'Aniversarios#deleteAniversario', 'url' => '/deleteAniversario', 'verb' => 'POST'],
-		
+
 		/******************************* AUSENCIAS *****************************************/
 		['name' => 'ausencias#GetNotificationsSubordinates', 'url' => '/GetNotificationsSubordinates', 'verb' => 'GET'],
 
@@ -120,12 +132,7 @@ return [
 		['name' => 'ausencias#GetAusenciasMyWorkers', 'url' => '/GetAusenciasMyWorkers', 'verb' => 'POST'],
 		['name' => 'ausencias#GetAusenciasByUser', 'url' => '/GetAusenciasByUser', 'verb' => 'POST'],
 		['name' => 'ausencias#EnviarAusencia', 'url' => '/EnviarAusencia', 'verb' => 'POST'],
-		['name' => 'ausencias#GetDetalleAusencia', 'url' => '/GetDetalleAusencia', 'verb' => 'GET'],
-		['name' => 'ausencias#CancelarAusencia',   'url' => '/CancelarAusencia',   'verb' => 'POST'],
-		['name' => 'ausencias#EditarAusencia', 'url' => '/EditarAusencia', 'verb' => 'POST'],
-		['name' => 'ausencias#EditarAusencia', 'url' => '/EditarAusencia', 'verb' => 'POST'],
-		['name' => 'ausencias#CheckPrimaVacacional', 'url' => '/check-prima-vacacional', 'verb' => 'GET'],
-		['name' => 'ausencias#GetHistorialReporte', 'url' => '/historial-reporte', 'verb' => 'GET'],
+
 
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],

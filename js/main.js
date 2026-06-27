@@ -9423,12 +9423,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _navigator_Sidenavigation_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./navigator/Sidenavigation.vue */ "./src/views/navigator/Sidenavigation.vue");
 /* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
-/* harmony import */ var vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! vue-material-design-icons/AlertCircleOutline.vue */ "./node_modules/vue-material-design-icons/AlertCircleOutline.vue");
-// Importing necessary components
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vue-material-design-icons/AlertCircleOutline.vue */ "./node_modules/vue-material-design-icons/AlertCircleOutline.vue");
 
 
 
-// icons
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'App',
@@ -9436,18 +9435,18 @@ __webpack_require__.r(__webpack_exports__);
     navigator: _navigator_Sidenavigation_vue__WEBPACK_IMPORTED_MODULE_0__["default"],
     NcContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__.NcContent,
     NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__.NcEmptyContent,
-    AlertCircleOutline: vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_2__["default"]
+    AlertCircleOutline: vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_3__["default"]
   },
   provide() {
     return {
       configuraciones: this.configuraciones,
       groupuser: this.groupsuser,
-      employee: this.employee,
-      subordinates: this.subordinates
+      employee: this.employeeUser,
+      subordinates: this.subordinates,
+      permissions: this.permissions
     };
   },
   props: {
-    // Configuration parameters
     parameters: {
       type: Object,
       required: true
@@ -9463,6 +9462,15 @@ __webpack_require__.r(__webpack_exports__);
     subordinatesGroup: {
       type: Array,
       required: true
+    },
+    permissionsContext: {
+      type: Object,
+      default: () => ({
+        uid: null,
+        is_admin: false,
+        groups: [],
+        modules: {}
+      })
     }
   },
   data() {
@@ -9470,8 +9478,17 @@ __webpack_require__.r(__webpack_exports__);
       configuraciones: this.parameters,
       groupsuser: this.groupsUser,
       employeeUser: this.employee,
-      subordinates: this.subordinatesGroup
+      subordinates: this.subordinatesGroup,
+      permissions: this.permissionsContext
     };
+  },
+  computed: {
+    hasDataManager() {
+      return this.configuraciones.usuario_almacenamiento !== null && this.configuraciones.usuario_almacenamiento !== undefined && String(this.configuraciones.usuario_almacenamiento).trim() !== '';
+    }
+  },
+  methods: {
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate
   }
 });
 
@@ -15608,8 +15625,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/AccountGroup.vue */ "./node_modules/vue-material-design-icons/AccountGroup.vue");
 /* harmony import */ var vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/CalendarQuestionOutline.vue */ "./node_modules/vue-material-design-icons/CalendarQuestionOutline.vue");
 /* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
-
-
 
 
 
@@ -22552,6 +22567,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_CartOutline_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/CartOutline.vue */ "./node_modules/vue-material-design-icons/CartOutline.vue");
 /* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
 /* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var _mixins_permissions_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ../../mixins/permissions.js */ "./src/mixins/permissions.js");
+
 
 
 
@@ -22591,6 +22608,7 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
     Laptop: vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
     CartOutline: vue_material_design_icons_CartOutline_vue__WEBPACK_IMPORTED_MODULE_13__["default"]
   },
+  mixins: [_mixins_permissions_js__WEBPACK_IMPORTED_MODULE_16__["default"]],
   inject: ['groupuser', 'configuraciones', 'subordinates'],
   data() {
     return {
@@ -22608,16 +22626,16 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
       return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_15__.translate)('empleados', 'Show navigation');
     },
     canSeeHumanResources() {
-      return this.hasGroup('admin') || this.hasGroup('recursos_humanos');
+      return this.canSeeAny(['empleados.hr', 'empleados.admin']);
     },
     canSeeAdminReports() {
-      return this.isTruthy(this.configuraciones?.CanAdminReports);
+      return this.canSee('reporte_tiempos.admin') || this.isTruthy(this.configuraciones?.CanAdminReports);
     },
     canSeeCustomers() {
-      return this.canSeeHumanResources && this.isModuleEnabled('modulo_clientes');
+      return this.canSee('clientes');
     },
     canSeeInventory() {
-      return this.canSeeHumanResources && (this.isModuleEnabled('modulo_inventario') || this.isModuleEnabled('modulo_soporte'));
+      return this.canSee('inventario') || this.canSee('soporte');
     },
     reportTimesEnabled() {
       return this.isModuleEnabled('modulo_reporte_tiempos');
@@ -22625,11 +22643,14 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
     savingsEnabled() {
       return this.isModuleEnabled('modulo_ahorro');
     },
+    canSeeSavingsAdmin() {
+      return this.canSee('ahorro.admin') || this.canSeeAny(['empleados.hr', 'empleados.admin']);
+    },
     absencesEnabled() {
       return this.isModuleEnabled('modulo_ausencias');
     },
     canSeePurchases() {
-      return this.isModuleEnabled('modulo_compras') && (this.hasGroup('admin') || this.hasGroup('compras_admin') || this.hasGroup('compras_autorizadores') || this.hasGroup('compras_contabilidad') || this.hasGroup('compras_solicitantes'));
+      return this.canSee('compras');
     }
   },
   watch: {
@@ -22671,23 +22692,6 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
       };
       this.navigationMode = nextMode[this.navigationMode] || 'normal';
     },
-    hasGroup(groupName) {
-      if (!groupName || !this.groupuser) {
-        return false;
-      }
-      if (Array.isArray(this.groupuser)) {
-        return this.groupuser.includes(groupName) || this.groupuser.some(group => {
-          return group?.id === groupName || group?.gid === groupName || group?.name === groupName;
-        });
-      }
-      if (typeof this.groupuser === 'object') {
-        return Object.prototype.hasOwnProperty.call(this.groupuser, groupName) || this.groupuser[groupName] === true || Object.values(this.groupuser).includes(groupName);
-      }
-      return false;
-    },
-    isTruthy(value) {
-      return value === true || value === 'true' || value === 1 || value === '1';
-    },
     isModuleEnabled(moduleName) {
       return this.isTruthy(this.configuraciones?.[moduleName]);
     }
@@ -22715,7 +22719,7 @@ var render = function render() {
     attrs: {
       "app-name": "empleados"
     }
-  }, [_vm.configuraciones.usuario_almacenamiento != null && String(_vm.configuraciones.usuario_almacenamiento).trim() !== "" ? _c("navigator") : _vm._e(), _vm._v(" "), _vm.configuraciones.usuario_almacenamiento != null && String(_vm.configuraciones.usuario_almacenamiento).trim() !== "" ? _c("router-view") : _c("NcEmptyContent", {
+  }, [_vm.hasDataManager ? _c("navigator") : _vm._e(), _vm._v(" "), _vm.hasDataManager ? _c("router-view") : _c("NcEmptyContent", {
     staticStyle: {
       "background-color": "white"
     },
@@ -36149,7 +36153,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 1641664189)
-  }), _vm._v(" "), _vm.canSeeHumanResources ? _c("NcAppNavigationItem", {
+  }), _vm._v(" "), _vm.canSeeSavingsAdmin ? _c("NcAppNavigationItem", {
     attrs: {
       name: _vm.t("empleados", "Admin panel"),
       to: {
@@ -36246,6 +36250,66 @@ var render = function render() {
 var staticRenderFns = [];
 render._withStripped = true;
 
+
+/***/ }),
+
+/***/ "./src/mixins/permissions.js":
+/*!***********************************!*\
+  !*** ./src/mixins/permissions.js ***!
+  \***********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  inject: {
+    permissions: {
+      default: () => ({
+        uid: null,
+        is_admin: false,
+        groups: [],
+        modules: {}
+      })
+    }
+  },
+  methods: {
+    canSee(permissionKey) {
+      if (!permissionKey) {
+        return false;
+      }
+      const key = String(permissionKey).trim();
+      if (key === '') {
+        return false;
+      }
+      if (key.includes('.')) {
+        const [moduleName, permissionName] = key.split('.', 2);
+        return this.canUseModulePermission(moduleName, permissionName);
+      }
+      return this.canViewModule(key);
+    },
+    canSeeAny(permissionKeys) {
+      if (!Array.isArray(permissionKeys)) {
+        return false;
+      }
+      return permissionKeys.some(permissionKey => this.canSee(permissionKey));
+    },
+    canViewModule(moduleName) {
+      return this.isTruthy(this.permissions?.modules?.[moduleName]?.view);
+    },
+    canUseModulePermission(moduleName, permissionName) {
+      return this.isTruthy(this.permissions?.modules?.[moduleName]?.[permissionName]) || this.isTruthy(this.permissions?.modules?.[moduleName]?.permissions?.[permissionName]);
+    },
+    isAdminUser() {
+      return this.isTruthy(this.permissions?.is_admin);
+    },
+    isTruthy(value) {
+      return value === true || value === 'true' || value === 1 || value === '1';
+    }
+  }
+});
 
 /***/ }),
 
@@ -61512,7 +61576,8 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 90%  { transform: rotate(5deg);
 }
-100% { transform: rotate(0deg);
+100% {
+		transform: rotate(0deg);
 }
 }
 .bell-shake[data-v-83d6d36c] { animation: shake-83d6d36c 0.8s ease;
@@ -243035,16 +243100,30 @@ vue__WEBPACK_IMPORTED_MODULE_6__["default"].mixin({
 });
 vue__WEBPACK_IMPORTED_MODULE_6__["default"].prototype.OC = window.OC;
 vue__WEBPACK_IMPORTED_MODULE_6__["default"].prototype.OCA = window.OCA;
+const parseDomJson = (id, defaultValue = {}) => {
+  const element = document.getElementById(id);
+  if (!element) {
+    return defaultValue;
+  }
+  try {
+    return JSON.parse(element.getAttribute('data-parameters') || JSON.stringify(defaultValue));
+  } catch (error) {
+    console.error(`No se pudo leer ${id}:`, error);
+    return defaultValue;
+  }
+};
 
 // Obtener configuraciones iniciales desde el DOM
-const dataElement = document.getElementById('data');
-const configuraciones = dataElement ? JSON.parse(dataElement.getAttribute('data-parameters') || '{}') : {};
-const groupElement = document.getElementById('group-user');
-const groups = groupElement ? JSON.parse(groupElement.getAttribute('data-parameters') || '{}') : {};
-const employeeElement = document.getElementById('employee');
-const employee = employeeElement ? JSON.parse(employeeElement.getAttribute('data-parameters') || '{}') : {};
-const subordinatesElement = document.getElementById('subordinates');
-const subordinates = subordinatesElement ? JSON.parse(subordinatesElement.getAttribute('data-parameters') || '{}') : {};
+const configuraciones = parseDomJson('data', {});
+const groups = parseDomJson('group-user', {});
+const employee = parseDomJson('employee', []);
+const subordinates = parseDomJson('subordinates', []);
+const permissionsContext = {
+  uid: null,
+  is_admin: false,
+  groups: [],
+  modules: {}
+};
 const emitter = (0,mitt__WEBPACK_IMPORTED_MODULE_2__["default"])();
 vue__WEBPACK_IMPORTED_MODULE_6__["default"].prototype.$bus = emitter;
 const isTruthy = value => {
@@ -243064,6 +243143,10 @@ const userHasGroup = groupName => {
   }
   return false;
 };
+const getResponsePayload = response => {
+  const payload = response?.data?.ocs?.data ?? response?.data ?? {};
+  return payload?.data ?? payload;
+};
 const loadRuntimeConfigurations = async () => {
   try {
     const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)('/apps/empleados/GetConfigurations'), {
@@ -243072,7 +243155,7 @@ const loadRuntimeConfigurations = async () => {
         'OCS-APIRequest': true
       }
     });
-    const data = response?.data?.ocs?.data ?? response?.data ?? {};
+    const data = getResponsePayload(response);
     Object.assign(configuraciones, data);
   } catch (err) {
     console.error('No se pudo cargar GetConfigurations desde main.js:', err);
@@ -243080,8 +243163,23 @@ const loadRuntimeConfigurations = async () => {
   const adminReportsGroup = configuraciones?.Reportes?.admin_reports_group || configuraciones?.reportes_admin_reports_group || 'recursos_humanos';
   configuraciones.CanAdminReports = isTruthy(configuraciones?.CanAdminReports) || userHasGroup('admin') || userHasGroup(adminReportsGroup);
 };
+const loadPermissionsContext = async () => {
+  try {
+    const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)('/apps/empleados/permisos/contexto'), {
+      headers: {
+        Accept: 'application/json',
+        'OCS-APIRequest': true
+      }
+    });
+    const data = getResponsePayload(response);
+    Object.assign(permissionsContext, data);
+  } catch (err) {
+    console.error('No se pudo cargar permisos/contexto desde main.js:', err);
+  }
+};
 (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.loadTranslations)('empleados').then(async () => {
   await loadRuntimeConfigurations();
+  await loadPermissionsContext();
   const View = vue__WEBPACK_IMPORTED_MODULE_6__["default"].extend(_views_App_vue__WEBPACK_IMPORTED_MODULE_0__["default"]);
   new View({
     router: _router_index_js__WEBPACK_IMPORTED_MODULE_1__["default"],
@@ -243089,7 +243187,8 @@ const loadRuntimeConfigurations = async () => {
       parameters: configuraciones,
       groupsUser: groups,
       employee,
-      subordinatesGroup: subordinates
+      subordinatesGroup: subordinates,
+      permissionsContext
     }
   }).$mount('#content');
 });

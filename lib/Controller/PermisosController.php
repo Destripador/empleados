@@ -17,6 +17,8 @@ use OCP\IRequest;
 use OCP\IUserManager;
 use OCP\IUserSession;
 
+use OCA\Empleados\Service\PermisosService;
+
 class PermisosController extends BaseController {
 
 	private IUserManager $userManager;
@@ -35,7 +37,8 @@ class PermisosController extends BaseController {
 		IUserManager $userManager,
 		IGroupManager $groupManager,
 		empleadosMapper $empleadosMapper,
-		configuracionesMapper $configuracionesMapper
+		configuracionesMapper $configuracionesMapper,
+		PermisosService $permisosService
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -43,9 +46,10 @@ class PermisosController extends BaseController {
 			$userSession,
 			$groupManager,
 			$empleadosMapper,
-			$configuracionesMapper
+			$configuracionesMapper,
 		);
 
+		$this->permisosService = $permisosService;
 		$this->userManager = $userManager;
 	}
 
@@ -148,5 +152,17 @@ class PermisosController extends BaseController {
 		}
 
 		return $this->usuario($uid);
+	}
+
+	#[UseSession]
+	#[NoCSRFRequired]
+	#[NoAdminRequired]
+	public function contexto(): DataResponse {
+		$context = $this->permisosService->getUserPermissionsContext();
+
+		return new DataResponse([
+			'status' => 'ok',
+			'data' => $context,
+		], Http::STATUS_OK);
 	}
 }

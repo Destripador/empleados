@@ -37,6 +37,8 @@ use OCP\AppFramework\Http\Attribute\UseSession;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 
+use OCA\Empleados\Service\PermisosService;
+
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
 
@@ -56,6 +58,7 @@ class EmpleadosController extends BaseController {
     protected $session;
     protected $l10n;
     protected $equiposMapper;
+    protected PermisosService $permisosService;
 
     protected IRootFolder $rootFolder;
 
@@ -73,7 +76,8 @@ class EmpleadosController extends BaseController {
         IGroupManager $groupManager,
         IRootFolder $rootFolder,
         IAvatarManager $avatarManager,
-        equiposMapper $equiposMapper
+        equiposMapper $equiposMapper,
+        PermisosService $permisosService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -92,6 +96,8 @@ class EmpleadosController extends BaseController {
         $this->rootFolder = $rootFolder;
 
         $this->equiposMapper = $equiposMapper;
+
+        $this->permisosService = $permisosService;  
     }
 
     /**
@@ -100,7 +106,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function uploadAvatar(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 
         $uid = $this->request->getParam('uid');
         $file = $this->request->getUploadedFile('avatar');
@@ -125,7 +131,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetUserLists(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse([
             'Empleados' => $this->empleadosMapper->GetUserLists(),
             'Users' => $this->empleadosMapper->getAllUsers(),
@@ -139,7 +145,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEmpleadosList(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse([
             'Empleados'    => $this->empleadosMapper->GetUserLists()
         ], Http::STATUS_OK);
@@ -151,7 +157,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEmpleadosArea(string $id_area): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse([
             'area' => $this->empleadosMapper->GetEmpleadosArea($id_area)
         ], Http::STATUS_OK);
@@ -163,7 +169,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEmpleadosPuesto(string $id_puesto): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse([
             'puesto' => $this->empleadosMapper->GetEmpleadosPuesto($id_puesto)
         ], Http::STATUS_OK);
@@ -175,7 +181,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEmpleadosEquipo(string $id_equipo): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse([
             'equipo' => $this->empleadosMapper->GetEmpleadosEquipo($id_equipo)
         ], Http::STATUS_OK);
@@ -187,7 +193,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetMyEquipo(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $empleado = $this->empleadosMapper->GetMyEmployeeInfo($this->userSession->getUser()->getUID());
 
         if (empty($empleado) || empty($empleado[0]['Id_equipo'])) {
@@ -207,7 +213,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function ActivarEmpleado(string $id_user): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         try {
             // Verificar si el grupo "empleados" existe
             $group = $this->groupManager->get("empleados");
@@ -280,7 +286,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
 	public function DesactivarEmpleado(int $id_empleados): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 		try{
 			$this->empleadosMapper->DesactivarByIdEmpleado($id_empleados);
 			return new DataResponse(Http::STATUS_OK);
@@ -296,7 +302,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
 	public function ActivarUsuario(int $id_empleados): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 		try{
 			$this->empleadosMapper->ActivarByIdEmpleado($id_empleados);
             
@@ -310,7 +316,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
 	public function EliminarEmpleado(int $id_empleados, string $id_user): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 		try{
             // verificar que el usuario exista en nextcloud
             $user = $this->userManager->get($id_user);
@@ -338,6 +344,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function ImportListEmpleados(): DataResponse {
+        $this->requireHumanResourcesAccess();
         $file = $this->getUploadedFile('fileXLSX');
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             $rows_info = $xlsx->rows();
@@ -373,7 +380,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GuardarNota(int $id_empleados, string $nota): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 		$this->empleadosMapper->GuardarNota(strval($id_empleados), $nota);
         return new DataResponse(Http::STATUS_OK);
 	}
@@ -397,7 +404,7 @@ class EmpleadosController extends BaseController {
         $id_aniversario,
         $dias_disponibles
     ): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $empBefore = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string)$id_empleados);
         if (!$empBefore) {
             throw new \RuntimeException("Empleado $id_empleados no existe");
@@ -482,9 +489,16 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
 	public function CambiosPersonal($Id_empleados, $Direccion, $Estado_civil, $Telefono_contacto, $Rfc, $Imss, $Contacto_emergencia, $Numero_emergencia, $Curp, $Fecha_nacimiento, $Correo_contacto, $Genero): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 		$this->empleadosMapper->CambiosPersonal($Id_empleados, $Direccion, $Estado_civil, $Telefono_contacto, $Rfc, $Imss, $Contacto_emergencia, $Numero_emergencia, $Curp, $Fecha_nacimiento, $Correo_contacto, $Genero);
         return new DataResponse(Http::STATUS_OK);
+    }
+
+    private function requireHumanResourcesAccess(): void {
+        $this->permisosService->requireCanSeeAny([
+            'empleados.hr',
+            'empleados.admin',
+        ]);
     }
 
     /**
@@ -501,7 +515,7 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function ExportListEmpleados(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
 		$empleados = $this->empleadosMapper->GetUserLists();
 		
 		$books = [[
@@ -601,7 +615,7 @@ class EmpleadosController extends BaseController {
 	#[NoCSRFRequired]
 	#[NoAdminRequired]    
 	public function GetUsers(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $users = $this->userManager->search('');
 
         $userList = [];
@@ -626,7 +640,7 @@ class EmpleadosController extends BaseController {
     #[NoCSRFRequired]
 	#[NoAdminRequired]    
 	public function GetMyEmployeeInfo(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $user = $this->userSession->getUser();
 
         return new DataResponse([
@@ -637,12 +651,11 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function ActualizarEstadoAhorro($id_ahorro, $state): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $this->userahorroMapper->updatePermisionUserId(
             $id_ahorro, 
             $state,
         );
         return new DataResponse("ok", Http::STATUS_OK);
     }
-
 }

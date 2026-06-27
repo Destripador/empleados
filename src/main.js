@@ -16,26 +16,33 @@ Vue.mixin({ methods: { t, n } })
 Vue.prototype.OC = window.OC
 Vue.prototype.OCA = window.OCA
 
+const parseDomJson = (id, defaultValue = {}) => {
+	const element = document.getElementById(id)
+
+	if (!element) {
+		return defaultValue
+	}
+
+	try {
+		return JSON.parse(element.getAttribute('data-parameters') || JSON.stringify(defaultValue))
+	} catch (error) {
+		console.error(`No se pudo leer ${id}:`, error)
+		return defaultValue
+	}
+}
+
 // Obtener configuraciones iniciales desde el DOM
-const dataElement = document.getElementById('data')
-const configuraciones = dataElement
-	? JSON.parse(dataElement.getAttribute('data-parameters') || '{}')
-	: {}
+const configuraciones = parseDomJson('data', {})
+const groups = parseDomJson('group-user', {})
+const employee = parseDomJson('employee', [])
+const subordinates = parseDomJson('subordinates', [])
 
-const groupElement = document.getElementById('group-user')
-const groups = groupElement
-	? JSON.parse(groupElement.getAttribute('data-parameters') || '{}')
-	: {}
-
-const employeeElement = document.getElementById('employee')
-const employee = employeeElement
-	? JSON.parse(employeeElement.getAttribute('data-parameters') || '{}')
-	: {}
-
-const subordinatesElement = document.getElementById('subordinates')
-const subordinates = subordinatesElement
-	? JSON.parse(subordinatesElement.getAttribute('data-parameters') || '{}')
-	: {}
+const permissionsContext = {
+	uid: null,
+	is_admin: false,
+	groups: [],
+	modules: {},
+}
 
 const emitter = mitt()
 Vue.prototype.$bus = emitter
@@ -70,6 +77,12 @@ const userHasGroup = (groupName) => {
 	return false
 }
 
+const getResponsePayload = (response) => {
+	const payload = response?.data?.ocs?.data ?? response?.data ?? {}
+
+	return payload?.data ?? payload
+}
+
 const loadRuntimeConfigurations = async () => {
 	try {
 		const response = await axios.get(generateUrl('/apps/empleados/GetConfigurations'), {
@@ -79,7 +92,7 @@ const loadRuntimeConfigurations = async () => {
 			},
 		})
 
-		const data = response?.data?.ocs?.data ?? response?.data ?? {}
+		const data = getResponsePayload(response)
 
 		Object.assign(configuraciones, data)
 	} catch (err) {
@@ -95,8 +108,26 @@ const loadRuntimeConfigurations = async () => {
 		|| userHasGroup(adminReportsGroup)
 }
 
+const loadPermissionsContext = async () => {
+	try {
+		const response = await axios.get(generateUrl('/apps/empleados/permisos/contexto'), {
+			headers: {
+				Accept: 'application/json',
+				'OCS-APIRequest': true,
+			},
+		})
+
+		const data = getResponsePayload(response)
+
+		Object.assign(permissionsContext, data)
+	} catch (err) {
+		console.error('No se pudo cargar permisos/contexto desde main.js:', err)
+	}
+}
+
 loadTranslations('empleados').then(async () => {
 	await loadRuntimeConfigurations()
+	await loadPermissionsContext()
 
 	const View = Vue.extend(App)
 
@@ -107,6 +138,7 @@ loadTranslations('empleados').then(async () => {
 			groupsUser: groups,
 			employee,
 			subordinatesGroup: subordinates,
+			permissionsContext,
 		},
 	}).$mount('#content')
 })
