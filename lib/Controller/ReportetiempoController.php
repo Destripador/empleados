@@ -38,6 +38,8 @@ require_once __DIR__ . '/SimpleXLSX.php';
  */
 class reportetiempoController extends BaseController {
 
+	private const ID_CLIENTE_AUSENCIA   = 99999;
+    private const ID_ACTIVIDAD_CARGABLE = 99999;
 	protected $userManager;
     protected $reportetiempoMapper;
     protected $clientesMapper;

@@ -419,4 +419,15 @@ class reportetiempoMapper extends QBMapper {
 			)
 		);
 	}
+
+	public function deleteByFechaRangoAusencia(int $id_empleado, string $fecha_de, string $fecha_hasta): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('id_empleado', $qb->createNamedParameter($id_empleado)))
+			->andWhere($qb->expr()->eq('id_cliente', $qb->createNamedParameter(99999)))
+			->andWhere($qb->expr()->eq('id_actividad', $qb->createNamedParameter(99999)))
+			->andWhere($qb->expr()->gte('fecha_registro', $qb->createNamedParameter($fecha_de)))
+			->andWhere($qb->expr()->lte('fecha_registro', $qb->createNamedParameter($fecha_hasta)));
+		$qb->executeStatement();
+	}
 }

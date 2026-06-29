@@ -9,7 +9,7 @@ use OCP\IDBConnection;
 
 class tipoausenciaMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
-		parent::__construct($db, 'tipo_ausencia', tipo_ausencia::class);
+		parent::__construct($db, 'tipo_ausencia', tipoausencia::class);
 	}
 
 	public function getTipo(): array {
@@ -39,13 +39,14 @@ class tipoausenciaMapper extends QBMapper {
 		return $tipo_ausencia;
 	}
 
-	public function updateTipoAusencias(int $id_tipo_ausencia, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional): void {
+	public function updateTipoAusencias(int $id_tipo_ausencia, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('nombre', $query->createNamedParameter($nombre))
 			->set('descripcion', $query->createNamedParameter($descripcion))
-			->set('solicitar_archivo', $query->createNamedParameter((int) $solicitar_archivo))
-			->set('solicitar_prima_vacacional', $query->createNamedParameter((int) $solicitar_prima_vacacional))
+			->set('solicitar_archivo', $query->createNamedParameter($solicitar_archivo))
+			->set('solicitar_prima_vacacional', $query->createNamedParameter($solicitar_prima_vacacional))
+			->set('cargable', $query->createNamedParameter($cargable))
 			->where($query->expr()->eq('id_tipo_ausencia', $query->createNamedParameter($id_tipo_ausencia)));
 
 		$query->executeStatement();

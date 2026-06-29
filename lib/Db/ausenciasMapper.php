@@ -124,4 +124,12 @@ class ausenciasMapper extends QBMapper {
 
 		return $rows;
 	}
+
+	public function updatePrimaVacacional(int $id_ausencias, int $valor): void {
+		$query = $this->db->getQueryBuilder();
+		$query->update($this->getTableName())
+			->set('prima_vacacional', $query->createNamedParameter($valor))
+			->where($query->expr()->eq('id_ausencias', $query->createNamedParameter($id_ausencias)));
+		$query->executeStatement();
+	}
 }

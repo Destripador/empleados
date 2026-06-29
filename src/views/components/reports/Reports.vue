@@ -562,9 +562,13 @@ export default {
 						const idCliente = r.id_cliente ?? r.idCliente ?? r.Id_cliente ?? null
 						const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null
 
-						const clienteNombre = clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim()
-						const actividadNombre = actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim()
-
+						const esAusencia = Number(idCliente) === 99999
+						const clienteNombre = esAusencia
+							? t('empleados', 'Absence')
+							: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
+						const actividadNombre = esAusencia
+							? t('empleados', 'Cargable')
+							: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())
 						return {
 							...r,
 							id,
@@ -572,6 +576,7 @@ export default {
 							idActividad,
 							clienteNombre,
 							actividadNombre,
+							esAusencia,
 						}
 					})
 

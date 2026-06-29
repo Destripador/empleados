@@ -10445,6 +10445,7 @@ __webpack_require__.r(__webpack_exports__);
       DescripcionTipo: null,
       SolicitarArchivoTipo: false,
       solicitar_prima_vacacional: false,
+      cargable: false,
       // ── Holidays ──
       Festivos: [],
       modalFestivo: false,
@@ -10588,6 +10589,7 @@ __webpack_require__.r(__webpack_exports__);
       this.DescripcionTipo = null;
       this.SolicitarArchivoTipo = false;
       this.solicitar_prima_vacacional = false;
+      this.cargable = false;
       this.modalAddTipo = true;
     },
     editTipo(item) {
@@ -10596,6 +10598,7 @@ __webpack_require__.r(__webpack_exports__);
       this.DescripcionTipo = item.descripcion;
       this.SolicitarArchivoTipo = item.solicitar_archivo === 1;
       this.solicitar_prima_vacacional = item.solicitar_prima_vacacional === 1;
+      this.cargable = item.cargable === 1;
       this.modalAddTipo = true;
     },
     closeModalTipo() {
@@ -10605,6 +10608,7 @@ __webpack_require__.r(__webpack_exports__);
       this.DescripcionTipo = null;
       this.SolicitarArchivoTipo = false;
       this.solicitar_prima_vacacional = false;
+      this.cargable = false;
     },
     async getTipo() {
       try {
@@ -10628,14 +10632,16 @@ __webpack_require__.r(__webpack_exports__);
             nombre: this.NombreTipo,
             descripcion: this.DescripcionTipo,
             solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
-            solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0
+            solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0,
+            cargable: this.cargable ? 1 : 0
           });
         } else {
           await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_11__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_10__.generateUrl)('/apps/empleados/AgregarNuevoTipo'), {
             nombre: this.NombreTipo,
             descripcion: this.DescripcionTipo,
             solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
-            solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0
+            solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0,
+            cargable: this.cargable ? 1 : 0
           });
         }
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_9__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_12__.translate)('empleados', 'Absence type saved'));
@@ -12035,11 +12041,13 @@ var render = function render() {
   }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Name")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Description")))]), _vm._v(" "), _c("th", {
     staticClass: "col-center"
   }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "File")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-center"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Billable")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
     staticClass: "col-actions"
   })])]), _vm._v(" "), _c("tbody", [_vm.TipoAusencias.length === 0 ? _c("tr", [_c("td", {
     staticClass: "empty-row",
     attrs: {
-      colspan: "4"
+      colspan: "5"
     }
   }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "No absence types defined yet.")) + "\n\t\t\t\t\t\t\t")])]) : _vm._e(), _vm._v(" "), _vm._l(_vm.TipoAusencias, function (item) {
     return _c("tr", {
@@ -12053,6 +12061,10 @@ var render = function render() {
     }, [_c("span", {
       class: item.solicitar_archivo == 1 ? "pill pill--yes" : "pill pill--no"
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(item.solicitar_archivo == 1 ? _vm.t("empleados", "Yes") : _vm.t("empleados", "No")) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+      staticClass: "col-center"
+    }, [_c("span", {
+      class: item.cargable == 1 ? "pill pill--yes" : "pill pill--no"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(item.cargable == 1 ? _vm.t("empleados", "Yes") : _vm.t("empleados", "No")) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
       staticClass: "col-actions"
     }, [_c("NcActions", [_c("NcActionButton", {
       attrs: {
@@ -12412,7 +12424,24 @@ var render = function render() {
     staticClass: "switch-label"
   }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Vacation bonus")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("p", {
     staticClass: "switch-desc"
-  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "This absence type triggers vacation bonus calculation.")) + "\n\t\t\t\t\t\t")])])], 1)], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "This absence type triggers vacation bonus calculation.")) + "\n\t\t\t\t\t\t")])])], 1), _vm._v(" "), _c("div", {
+    staticClass: "switch-card span-2"
+  }, [_c("NcCheckboxRadioSwitch", {
+    attrs: {
+      type: "switch"
+    },
+    model: {
+      value: _vm.cargable,
+      callback: function ($$v) {
+        _vm.cargable = $$v;
+      },
+      expression: "cargable"
+    }
+  }), _vm._v(" "), _c("div", [_c("p", {
+    staticClass: "switch-label"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Billable")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("p", {
+    staticClass: "switch-desc"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "This absence type is deducted from the employee's available days.")) + "\n\t\t\t\t\t\t")])])], 1)], 1), _vm._v(" "), _c("div", {
     staticClass: "modal-actions"
   }, [_c("NcButton", {
     on: {
@@ -145418,4 +145447,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=8451d048bd6bcaf5e5b0
+//# sourceMappingURL=empleados-settings.js.map?v=f8005841899434c8bc1e

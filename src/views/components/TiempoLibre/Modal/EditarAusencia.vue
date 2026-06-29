@@ -97,13 +97,17 @@
 
 		<!-- Prima y comentarios -->
 		<section class="form-section">
-			<NcCheckboxRadioSwitch
-				v-if="AusenciaSeleccionada &&
-					AusenciaSeleccionada.solicitar_prima_vacacional == 1 &&
-					prima == 1"
-				v-model="SolicitarPrima">
-				{{ t('empleados', 'Request vacation bonus') }}
-			</NcCheckboxRadioSwitch>
+			<template v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
+				<NcCheckboxRadioSwitch
+					v-model="SolicitarPrima"
+					:disabled="primaVacacionalUsada">
+					{{ t('empleados', 'Request vacation bonus') }}
+				</NcCheckboxRadioSwitch>
+				<NcNoteCard
+					v-if="primaVacacionalUsada"
+					type="warning"
+					:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
+			</template>
 
 			<NcTextArea
 				v-model="comentarios"
@@ -187,6 +191,11 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+
+		idHistorial: {
+			type: [Number, String],
+			default: 0,
+		},
 	},
 
 	emits: ['saved', 'close'],
@@ -208,6 +217,7 @@ export default {
 			SolicitarPrima: Number(this.ausencia.prima_vacacional) === 1,
 			selectedFiles: [],
 			loading: false,
+			primaVacacionalUsada: false,
 		}
 	},
 
@@ -246,9 +256,21 @@ export default {
 		},
 	},
 
+	watch: {
+		async AusenciaSeleccionada(tipo) {
+			this.primaVacacionalUsada = false
+			if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
+				await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
+			}
+		},
+	},
+
 	mounted() {
 		this.GetTipoAusencias()
 		this.recalcularDias()
+		if (this.ausencia?.solicitar_prima_vacacional === 1) {
+			this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
+		}
 	},
 
 	methods: {
@@ -264,10 +286,15 @@ export default {
 					solicitar_archivo: item.solicitar_archivo,
 					solicitar_prima_vacacional: item.solicitar_prima_vacacional,
 				}))
-				// Preseleccionar el tipo de la ausencia actual
 				this.AusenciaSeleccionada = this.TipoAusencias.find(
 					t => String(t.id) === String(this.ausencia.id_tipo_ausencia),
 				) || null
+
+				// ← NUEVO: verifica prima al precargar el tipo
+				if (this.AusenciaSeleccionada
+					&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+					await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
+				}
 			} catch (err) {
 				showError(t('empleados', 'An exception has occurred [{error}]', { error: String(err) }))
 			}
@@ -344,6 +371,18 @@ export default {
 				showError(t('empleados', 'Error updating absence: {error}', { error: String(err) }))
 			} finally {
 				this.loading = false
+			}
+		},
+
+		async checkPrimaVacacional(excludeId = 0) {
+			try {
+				const res = await axios.get(
+					generateUrl('/apps/empleados/check-prima-vacacional')
+					+ `?exclude_id=${excludeId}`
+				)
+				this.primaVacacionalUsada = res.data.ocs.data.used === true
+			} catch (e) {
+				console.error('Error al verificar prima vacacional', e)
 			}
 		},
 	},

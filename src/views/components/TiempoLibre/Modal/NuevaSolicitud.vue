@@ -76,15 +76,19 @@
 					</li>
 				</ul>
 			</section>
-
+			<!-- Prima y comentarios -->
 			<section class="form-section">
-				<NcCheckboxRadioSwitch
-					v-if="AusenciaSeleccionada &&
-						AusenciaSeleccionada.solicitar_prima_vacacional == 1 &&
-						prima == 1"
-					v-model="SolicitarPrima">
-					{{ t('empleados', 'Request vacation bonus') }}
-				</NcCheckboxRadioSwitch>
+				<template v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
+					<NcCheckboxRadioSwitch
+						v-model="SolicitarPrima"
+						:disabled="primaVacacionalUsada">
+						{{ t('empleados', 'Request vacation bonus') }}
+					</NcCheckboxRadioSwitch>
+					<NcNoteCard
+						v-if="primaVacacionalUsada"
+						type="warning"
+						:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
+				</template>
 
 				<NcTextArea
 					v-model="comentarios"
@@ -182,6 +186,7 @@ export default {
 				options: this.employees,
 			},
 			employees_list: [],
+			primaVacacionalUsada: false,
 		}
 	},
 
@@ -223,10 +228,23 @@ export default {
 		},
 	},
 
+	watch: {
+		async AusenciaSeleccionada(tipo) {
+			this.SolicitarPrima = false
+			this.primaVacacionalUsada = false
+			if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
+				await this.checkPrimaVacacional()
+			}
+		},
+	},
+
 	mounted() {
 		this.TotalDias = parseInt(this.diasDisponibles, 10)
 		this.RestanteDias = this.TotalDias - this.diasSolicitados
 		this.GetTipoAusencias()
+		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+			this.checkPrimaVacacional()
+		}
 	},
 
 	methods: {
@@ -281,7 +299,7 @@ export default {
 				formData.append('dias_solicitados', this.diasSolicitados)
 				formData.append('fecha_de', this.date.start.toLocaleDateString())
 				formData.append('fecha_hasta', this.date.end ? this.date.end.toLocaleDateString() : '')
-				formData.append('prima_vacacional', this.SolicitarPrima)
+				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
 
 				for (let i = 0; i < this.selectedFiles.length; i++) {
@@ -305,6 +323,20 @@ export default {
 			} catch (err) {
 				this.loading = false
 				showError(t('empleados', 'Error sending absence request: {error}', { error: String(err) }))
+			}
+		},
+
+		async checkPrimaVacacional(excludeId = 0) {
+			try {
+				let url = generateUrl('/apps/empleados/check-prima-vacacional')
+					+ `?exclude_id=${excludeId}`
+				if (this.admin && this.employees_list?.user) {
+					url += `&id_usuario=${this.employees_list.user}`
+				}
+				const res = await axios.get(url)
+				this.primaVacacionalUsada = res.data.ocs.data.used === true
+			} catch (e) {
+				console.error('Error al verificar prima vacacional', e)
 			}
 		},
 	},

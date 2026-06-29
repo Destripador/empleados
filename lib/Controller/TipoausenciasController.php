@@ -129,12 +129,13 @@ class TipoausenciasController extends Controller {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function AgregarNuevoTipo(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional): void {
+    public function AgregarNuevoTipo(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable): void {
         $tipo = new tipoausencia();
         $tipo->setnombre($nombre);
         $tipo->setdescripcion($descripcion);
         $tipo->setsolicitar_archivo($solicitar_archivo);
         $tipo->setsolicitar_prima_vacacional($solicitar_prima_vacacional);
+        $tipo->setcargable($cargable);
         $this->tipoausenciaMapper->insert($tipo);
     }
 
@@ -170,16 +171,15 @@ class TipoausenciasController extends Controller {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional): DataResponse {
+    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable): DataResponse {
         try {
-            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional);
+            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional, $cargable);
             return new DataResponse('ok', Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
-
-    /**
+        /**
      * Elimina un tipo de ausencia.
      */
     #[UseSession]

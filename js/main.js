@@ -14881,6 +14881,10 @@ __webpack_require__.r(__webpack_exports__);
     admin: {
       type: Boolean,
       default: false
+    },
+    idHistorial: {
+      type: [Number, String],
+      default: 0
     }
   },
   emits: ['saved', 'close'],
@@ -14896,7 +14900,8 @@ __webpack_require__.r(__webpack_exports__);
       comentarios: this.ausencia.notas || '',
       SolicitarPrima: Number(this.ausencia.prima_vacacional) === 1,
       selectedFiles: [],
-      loading: false
+      loading: false,
+      primaVacacionalUsada: false
     };
   },
   computed: {
@@ -14924,9 +14929,20 @@ __webpack_require__.r(__webpack_exports__);
       return this.AusenciaSeleccionada && this.fechaDesdeStr && this.fechaHastaStr && this.diasHabiles > 0 && !this.exceedsAvailableDays;
     }
   },
+  watch: {
+    async AusenciaSeleccionada(tipo) {
+      this.primaVacacionalUsada = false;
+      if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
+        await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias);
+      }
+    }
+  },
   mounted() {
     this.GetTipoAusencias();
     this.recalcularDias();
+    if (this.ausencia?.solicitar_prima_vacacional === 1) {
+      this.checkPrimaVacacional(this.ausencia.id_historial_ausencias);
+    }
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate,
@@ -14940,8 +14956,12 @@ __webpack_require__.r(__webpack_exports__);
           solicitar_archivo: item.solicitar_archivo,
           solicitar_prima_vacacional: item.solicitar_prima_vacacional
         }));
-        // Preseleccionar el tipo de la ausencia actual
         this.AusenciaSeleccionada = this.TipoAusencias.find(t => String(t.id) === String(this.ausencia.id_tipo_ausencia)) || null;
+
+        // ← NUEVO: verifica prima al precargar el tipo
+        if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+          await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias);
+        }
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'An exception has occurred [{error}]', {
           error: String(err)
@@ -15014,6 +15034,14 @@ __webpack_require__.r(__webpack_exports__);
         }));
       } finally {
         this.loading = false;
+      }
+    },
+    async checkPrimaVacacional(excludeId = 0) {
+      try {
+        const res = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/check-prima-vacacional') + `?exclude_id=${excludeId}`);
+        this.primaVacacionalUsada = res.data.ocs.data.used === true;
+      } catch (e) {
+        console.error('Error al verificar prima vacacional', e);
       }
     }
   }
@@ -15109,7 +15137,8 @@ __webpack_require__.r(__webpack_exports__);
         closeOnSelect: true,
         options: this.employees
       },
-      employees_list: []
+      employees_list: [],
+      primaVacacionalUsada: false
     };
   },
   computed: {
@@ -15140,10 +15169,22 @@ __webpack_require__.r(__webpack_exports__);
       return items;
     }
   },
+  watch: {
+    async AusenciaSeleccionada(tipo) {
+      this.SolicitarPrima = false;
+      this.primaVacacionalUsada = false;
+      if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
+        await this.checkPrimaVacacional();
+      }
+    }
+  },
   mounted() {
     this.TotalDias = parseInt(this.diasDisponibles, 10);
     this.RestanteDias = this.TotalDias - this.diasSolicitados;
     this.GetTipoAusencias();
+    if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+      this.checkPrimaVacacional();
+    }
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate,
@@ -15192,7 +15233,7 @@ __webpack_require__.r(__webpack_exports__);
         formData.append('dias_solicitados', this.diasSolicitados);
         formData.append('fecha_de', this.date.start.toLocaleDateString());
         formData.append('fecha_hasta', this.date.end ? this.date.end.toLocaleDateString() : '');
-        formData.append('prima_vacacional', this.SolicitarPrima);
+        formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0);
         formData.append('notas', this.comentarios || '');
         for (let i = 0; i < this.selectedFiles.length; i++) {
           formData.append('archivos[]', this.selectedFiles[i]);
@@ -15215,6 +15256,270 @@ __webpack_require__.r(__webpack_exports__);
           error: String(err)
         }));
       }
+    },
+    async checkPrimaVacacional(excludeId = 0) {
+      try {
+        let url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/check-prima-vacacional') + `?exclude_id=${excludeId}`;
+        if (this.admin && this.employees_list?.user) {
+          url += `&id_usuario=${this.employees_list.user}`;
+        }
+        const res = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].get(url);
+        this.primaVacacionalUsada = res.data.ocs.data.used === true;
+      } catch (e) {
+        console.error('Error al verificar prima vacacional', e);
+      }
+    }
+  }
+});
+
+/***/ }),
+
+/***/ "./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=script&lang=js":
+/*!*******************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=script&lang=js ***!
+  \*******************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @nextcloud/axios */ "./node_modules/@nextcloud/axios/dist/index.mjs");
+/* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var _nextcloud_vue_dist_Components_NcButton_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/vue/dist/Components/NcButton.js */ "./node_modules/@nextcloud/vue/dist/Components/NcButton.mjs");
+/* harmony import */ var _nextcloud_vue_dist_Components_NcLoadingIcon_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @nextcloud/vue/dist/Components/NcLoadingIcon.js */ "./node_modules/@nextcloud/vue/dist/Components/NcLoadingIcon.mjs");
+/* harmony import */ var _nextcloud_vue_dist_Components_NcModal_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! @nextcloud/vue/dist/Components/NcModal.js */ "./node_modules/@nextcloud/vue/dist/Components/NcModal.mjs");
+/* harmony import */ var vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! vue-material-design-icons/Close.vue */ "./node_modules/vue-material-design-icons/Close.vue");
+/* harmony import */ var vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! vue-material-design-icons/Magnify.vue */ "./node_modules/vue-material-design-icons/Magnify.vue");
+/* harmony import */ var vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! vue-material-design-icons/FilterVariant.vue */ "./node_modules/vue-material-design-icons/FilterVariant.vue");
+/* harmony import */ var vue_material_design_icons_FilterOff_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/FilterOff.vue */ "./node_modules/vue-material-design-icons/FilterOff.vue");
+
+
+
+
+
+
+
+
+
+
+const PALETA_TIPOS = [{
+  bg: '#dbeafe',
+  color: '#1d4ed8'
+}, {
+  bg: '#fef3c7',
+  color: '#b45309'
+}, {
+  bg: '#d1fae5',
+  color: '#065f46'
+}, {
+  bg: '#ede9fe',
+  color: '#5b21b6'
+}, {
+  bg: '#fee2e2',
+  color: '#b91c1c'
+}, {
+  bg: '#fce7f3',
+  color: '#9d174d'
+}, {
+  bg: '#ccfbf1',
+  color: '#0f766e'
+}, {
+  bg: '#ffedd5',
+  color: '#c2410c'
+}];
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = h * 31 + str.charCodeAt(i) >>> 0;
+  return h;
+}
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  name: 'ReporteAusencias',
+  components: {
+    NcButton: _nextcloud_vue_dist_Components_NcButton_js__WEBPACK_IMPORTED_MODULE_3__["default"],
+    NcLoadingIcon: _nextcloud_vue_dist_Components_NcLoadingIcon_js__WEBPACK_IMPORTED_MODULE_4__["default"],
+    NcModal: _nextcloud_vue_dist_Components_NcModal_js__WEBPACK_IMPORTED_MODULE_5__["default"],
+    Close: vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_6__["default"],
+    Magnify: vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_7__["default"],
+    FilterVariant: vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
+    FilterOff: vue_material_design_icons_FilterOff_vue__WEBPACK_IMPORTED_MODULE_9__["default"]
+  },
+  emits: ['close'],
+  data() {
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    return {
+      cargando: false,
+      registros: [],
+      filtroDesde: primerDia.toISOString().slice(0, 10),
+      filtroHasta: hoy.toISOString().slice(0, 10),
+      mostrarFiltros: false,
+      filtroEmpleado: '',
+      filtroTipo: '',
+      filtroEstado: '',
+      filtroAprobacion: '',
+      filtroPrima: false
+    };
+  },
+  computed: {
+    opcionesEmpleados() {
+      return [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort();
+    },
+    opcionesTipos() {
+      return [...new Set(this.registros.map(r => r.tipo_ausencia).filter(Boolean))].sort();
+    },
+    hayFiltrosActivos() {
+      return !!(this.filtroEmpleado || this.filtroTipo || this.filtroEstado || this.filtroAprobacion || this.filtroPrima);
+    },
+    contadorFiltros() {
+      return [this.filtroEmpleado, this.filtroTipo, this.filtroEstado, this.filtroAprobacion, this.filtroPrima].filter(Boolean).length;
+    },
+    registrosFiltrados() {
+      return this.registros.filter(item => {
+        if (this.filtroEmpleado && item.nombre_empleado !== this.filtroEmpleado) return false;
+        if (this.filtroTipo && item.tipo_ausencia !== this.filtroTipo) return false;
+        if (this.filtroPrima && parseInt(item.prima_vacacional) !== 1) return false;
+        if (this.filtroEstado && this.chipEstado(item).texto !== this.filtroEstado) return false;
+        if (this.filtroAprobacion !== '') {
+          const v = parseInt(this.filtroAprobacion);
+          if (parseInt(item.a_gerente) !== v && parseInt(item.a_socio) !== v) return false;
+        }
+        return true;
+      });
+    }
+  },
+  mounted() {
+    this.cargarReporte();
+  },
+  methods: {
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate,
+    limpiarFiltros() {
+      this.filtroEmpleado = '';
+      this.filtroTipo = '';
+      this.filtroEstado = '';
+      this.filtroAprobacion = '';
+      this.filtroPrima = false;
+    },
+    async cargarReporte() {
+      this.cargando = true;
+      this.registros = [];
+      this.limpiarFiltros();
+      try {
+        const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte');
+        const {
+          data
+        } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
+          params: {
+            desde: this.filtroDesde,
+            hasta: this.filtroHasta
+          }
+        });
+        const mensaje = data?.ocs?.data?.message ?? data?.message ?? [];
+        this.registros = Array.isArray(mensaje) ? mensaje : [];
+      } catch (e) {
+        console.error('Error cargando reporte:', e);
+      } finally {
+        this.cargando = false;
+      }
+    },
+    avatarUrl(uid) {
+      return (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/avatar/{uid}/32', {
+        uid
+      });
+    },
+    onAvatarError(event, nombre) {
+      const iniciales = this.iniciales(nombre);
+      const paleta = PALETA_TIPOS[hashStr(nombre) % PALETA_TIPOS.length];
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+				<circle cx="16" cy="16" r="16" fill="${paleta.bg}"/>
+				<text x="16" y="21" text-anchor="middle" font-size="13" font-weight="700" font-family="sans-serif" fill="${paleta.color}">${iniciales}</text>
+			</svg>`;
+      event.target.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    },
+    colorTipo(tipo) {
+      if (!tipo) return {};
+      const p = PALETA_TIPOS[hashStr(tipo) % PALETA_TIPOS.length];
+      return {
+        background: p.bg,
+        color: p.color
+      };
+    },
+    parseFecha(str) {
+      if (!str) return null;
+      return new Date(str.replace(' ', 'T'));
+    },
+    rowClass(item) {
+      if (parseInt(item.a_gerente) === 3 || parseInt(item.a_socio) === 3) return 'row-cancelado';
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const hasta = this.parseFecha(item.fecha_hasta);
+      return hasta < hoy ? 'row-pasado' : 'row-futuro';
+    },
+    chipEstado(item) {
+      if (parseInt(item.a_gerente) === 3 || parseInt(item.a_socio) === 3) {
+        return {
+          texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Cancelada'),
+          clase: 'chip-cancelado'
+        };
+      }
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const hasta = this.parseFecha(item.fecha_hasta);
+      const de = this.parseFecha(item.fecha_de);
+      if (hasta < hoy) return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Completada'),
+        clase: 'chip-completado'
+      };
+      if (de <= hoy && hasta >= hoy) return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'En curso'),
+        clase: 'chip-encurso'
+      };
+      return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Pendiente'),
+        clase: 'chip-pendiente'
+      };
+    },
+    chipAprobacion(valor) {
+      const v = parseInt(valor);
+      if (v === 1) return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Aprobado'),
+        clase: 'chip-a-aprobado'
+      };
+      if (v === 2) return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Rechazado'),
+        clase: 'chip-a-rechazado'
+      };
+      if (v === 3) return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Cancelado'),
+        clase: 'chip-a-cancelado'
+      };
+      return {
+        texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Pendiente'),
+        clase: 'chip-a-pendiente'
+      };
+    },
+    iniciales(nombre) {
+      if (!nombre) return '?';
+      return nombre.split(/[\s._-]/).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    },
+    formatFecha(fecha) {
+      if (!fecha) return '—';
+      const [y, m, d] = fecha.slice(0, 10).split('-');
+      return `${d}/${m}/${y}`;
+    },
+    formatTimestamp(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      if (isNaN(d)) return ts;
+      return d.toLocaleString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
   }
 });
@@ -15237,20 +15542,22 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _Modal_NuevaSolicitud_vue__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Modal/NuevaSolicitud.vue */ "./src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue");
 /* harmony import */ var _Modal_DetalleAusencia_vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Modal/DetalleAusencia.vue */ "./src/views/components/TiempoLibre/Modal/DetalleAusencia.vue");
 /* harmony import */ var _Modal_EditarAusencia_vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./Modal/EditarAusencia.vue */ "./src/views/components/TiempoLibre/Modal/EditarAusencia.vue");
-/* harmony import */ var _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @fullcalendar/vue */ "./node_modules/@fullcalendar/vue/dist/index.js");
-/* harmony import */ var _fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! @fullcalendar/daygrid */ "./node_modules/@fullcalendar/daygrid/index.js");
-/* harmony import */ var _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! @fullcalendar/interaction */ "./node_modules/@fullcalendar/interaction/index.js");
-/* harmony import */ var _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! @fullcalendar/multimonth */ "./node_modules/@fullcalendar/multimonth/index.js");
-/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.runtime.esm.js");
-/* harmony import */ var _nextcloud_vue_functions_usernameToColor__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! @nextcloud/vue/functions/usernameToColor */ "./node_modules/@nextcloud/vue/dist/Functions/usernameToColor.mjs");
-/* harmony import */ var _nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! @nextcloud/dialogs */ "./node_modules/@nextcloud/dialogs/dist/index.es.js");
-/* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
-/* harmony import */ var _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! @nextcloud/axios */ "./node_modules/@nextcloud/axios/dist/index.mjs");
-/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
-/* harmony import */ var vue_material_design_icons_BellOutline_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/BellOutline.vue */ "./node_modules/vue-material-design-icons/BellOutline.vue");
-/* harmony import */ var vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/AccountGroup.vue */ "./node_modules/vue-material-design-icons/AccountGroup.vue");
-/* harmony import */ var vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/CalendarQuestionOutline.vue */ "./node_modules/vue-material-design-icons/CalendarQuestionOutline.vue");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var _ReporteAusencias_vue__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./ReporteAusencias.vue */ "./src/views/components/TiempoLibre/ReporteAusencias.vue");
+/* harmony import */ var _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! @fullcalendar/vue */ "./node_modules/@fullcalendar/vue/dist/index.js");
+/* harmony import */ var _fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! @fullcalendar/daygrid */ "./node_modules/@fullcalendar/daygrid/index.js");
+/* harmony import */ var _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! @fullcalendar/interaction */ "./node_modules/@fullcalendar/interaction/index.js");
+/* harmony import */ var _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! @fullcalendar/multimonth */ "./node_modules/@fullcalendar/multimonth/index.js");
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.runtime.esm.js");
+/* harmony import */ var _nextcloud_vue_functions_usernameToColor__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! @nextcloud/vue/functions/usernameToColor */ "./node_modules/@nextcloud/vue/dist/Functions/usernameToColor.mjs");
+/* harmony import */ var _nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! @nextcloud/dialogs */ "./node_modules/@nextcloud/dialogs/dist/index.es.js");
+/* harmony import */ var _nextcloud_router__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! @nextcloud/router */ "./node_modules/@nextcloud/router/dist/index.js");
+/* harmony import */ var _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! @nextcloud/axios */ "./node_modules/@nextcloud/axios/dist/index.mjs");
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_BellOutline_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/BellOutline.vue */ "./node_modules/vue-material-design-icons/BellOutline.vue");
+/* harmony import */ var vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/AccountGroup.vue */ "./node_modules/vue-material-design-icons/AccountGroup.vue");
+/* harmony import */ var vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/CalendarQuestionOutline.vue */ "./node_modules/vue-material-design-icons/CalendarQuestionOutline.vue");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+
 
 
 
@@ -15278,26 +15585,27 @@ __webpack_require__.r(__webpack_exports__);
     NuevaSolicitud: _Modal_NuevaSolicitud_vue__WEBPACK_IMPORTED_MODULE_2__["default"],
     DetalleAusencia: _Modal_DetalleAusencia_vue__WEBPACK_IMPORTED_MODULE_3__["default"],
     EditarAusencia: _Modal_EditarAusencia_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
-    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcAppContent,
-    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcModal,
-    NcActions: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActions,
-    NcActionButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcActionButton,
-    AccountGroup: vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
-    CalendarQuestionOutline: vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
-    FullCalendar: _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_14__["default"],
-    NcListItem: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcListItem,
-    NcAvatar: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcAvatar,
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcButton,
-    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcSelect,
-    NcCounterBubble: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcCounterBubble,
-    BellOutline: vue_material_design_icons_BellOutline_vue__WEBPACK_IMPORTED_MODULE_10__["default"],
-    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcLoadingIcon,
-    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_13__.NcNoteCard
+    NcAppContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcAppContent,
+    NcModal: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcModal,
+    NcActions: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcActions,
+    NcActionButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcActionButton,
+    AccountGroup: vue_material_design_icons_AccountGroup_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
+    CalendarQuestionOutline: vue_material_design_icons_CalendarQuestionOutline_vue__WEBPACK_IMPORTED_MODULE_13__["default"],
+    FullCalendar: _fullcalendar_vue__WEBPACK_IMPORTED_MODULE_15__["default"],
+    NcListItem: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcListItem,
+    NcAvatar: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcAvatar,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcButton,
+    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcSelect,
+    NcCounterBubble: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcCounterBubble,
+    BellOutline: vue_material_design_icons_BellOutline_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
+    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcLoadingIcon,
+    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__.NcNoteCard,
+    ReporteAusencias: _ReporteAusencias_vue__WEBPACK_IMPORTED_MODULE_5__["default"]
   },
   inject: ['employee', 'configuraciones', 'groupuser', 'subordinates'],
   data() {
     return {
-      modalRef: (0,vue__WEBPACK_IMPORTED_MODULE_15__.ref)(null),
+      modalRef: (0,vue__WEBPACK_IMPORTED_MODULE_16__.ref)(null),
       attributes: [],
       FechaInitial: null,
       FechaMaxima: null,
@@ -15308,7 +15616,7 @@ __webpack_require__.r(__webpack_exports__);
       Ausencias: [],
       Aniversarios: [],
       diasSolicitados: 0,
-      date: (0,vue__WEBPACK_IMPORTED_MODULE_15__.ref)({
+      date: (0,vue__WEBPACK_IMPORTED_MODULE_16__.ref)({
         start: new Date(),
         end: null
       }),
@@ -15321,7 +15629,7 @@ __webpack_require__.r(__webpack_exports__);
         },
         initialView: 'dayGridMonth',
         locale: 'en',
-        plugins: [_fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_16__["default"], _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_17__["default"], _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_18__["default"]],
+        plugins: [_fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_17__["default"], _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_18__["default"], _fullcalendar_multimonth__WEBPACK_IMPORTED_MODULE_19__["default"]],
         events: this.fetchEvents,
         dateClick: this.onDateClick,
         eventClick: this.OnClickEvent,
@@ -15353,7 +15661,7 @@ __webpack_require__.r(__webpack_exports__);
       typePetition: null,
       selected_user: null,
       propsEmployees: {
-        inputLabel: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'All employees'),
+        inputLabel: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'All employees'),
         userSelect: true,
         multiple: true,
         closeOnSelect: false,
@@ -15361,7 +15669,7 @@ __webpack_require__.r(__webpack_exports__);
       },
       employees: [],
       infoSelected: null,
-      vista_actual: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'My absences'),
+      vista_actual: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'My absences'),
       accordeon: [{
         abierto: false
       }, {
@@ -15377,7 +15685,8 @@ __webpack_require__.r(__webpack_exports__);
       notifications_result: [],
       isShaking: false,
       selectedEventId: null,
-      ausenciaEditar: null
+      ausenciaEditar: null,
+      mostrarReporte: false
     };
   },
   computed: {
@@ -15415,20 +15724,13 @@ __webpack_require__.r(__webpack_exports__);
       return agrupados;
     }
   },
-  watch: {
-    employees(news) {
-      if (news !== null && news.length > 0) {
-        this.selected_user = news;
-        this.typePetition = 'employee';
-        this.$refs.fullCalendar.getApi().refetchEvents();
-      }
-    }
-  },
   mounted() {
     this.$bus.on('close-solicitud', () => {
       this.GetAusencias();
+      this.$nextTick(() => {
+        this.$refs.fullCalendar?.getApi()?.refetchEvents();
+      });
       this.closeModal();
-      this.$refs.fullCalendar.getApi().refetchEvents();
     });
     this.GetAusencias();
     if (this.isAdmin()) {
@@ -15439,11 +15741,11 @@ __webpack_require__.r(__webpack_exports__);
     this.checkNotifications();
   },
   methods: {
-    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate,
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate,
     async checkNotifications() {
       if (this.subordinates.length > 0) {
         try {
-          await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetNotificationsSubordinates')).then(response => {
+          await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetNotificationsSubordinates')).then(response => {
             if (response.data.length > 0) {
               this.notificaciones = true;
               this.notifications_counter = response.data.length;
@@ -15454,7 +15756,7 @@ __webpack_require__.r(__webpack_exports__);
             }
           });
         } catch (err) {
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'An exception has occurred [01] [{err}]', {
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception has occurred [01] [{err}]', {
             err
           }));
         }
@@ -15493,23 +15795,23 @@ __webpack_require__.r(__webpack_exports__);
     },
     async GetAusencias() {
       try {
-        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetAusenciasByUser'), {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetAusenciasByUser'), {
           id: this.employee[0].Id_empleados
         });
         this.Ausencias = response?.data?.ocs?.data[0];
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'An exception has occurred [03] [{err}]', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception has occurred [03] [{err}]', {
           err
         }));
       }
     },
     async getAniversarios() {
       try {
-        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/Getaniversarios'));
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/Getaniversarios'));
         this.Aniversarios = response?.data?.ocs?.data;
         this.ModalAniversario = true;
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'An exception has occurred [01] [{err}]', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception has occurred [01] [{err}]', {
           err
         }));
       }
@@ -15518,11 +15820,11 @@ __webpack_require__.r(__webpack_exports__);
       const entero = Math.floor(dias);
       const decimal = dias % 1;
       if (decimal === 0) {
-        return `${entero} ${entero === 1 ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'day') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'days')}`;
+        return `${entero} ${entero === 1 ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'day') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'days')}`;
       } else if (decimal === 0.5) {
-        return `${entero} ${entero === 1 ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'day') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'days')} ${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'and a half')}`;
+        return `${entero} ${entero === 1 ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'day') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'days')} ${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'and a half')}`;
       } else {
-        return `${dias} ${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'days')}`;
+        return `${dias} ${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'days')}`;
       }
     },
     onDatesSet() {
@@ -15532,15 +15834,15 @@ __webpack_require__.r(__webpack_exports__);
       switch (this.typePetition) {
         case 'all':
           this.getAllAusencias(fetchInfo, success, failure);
-          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'All my team');
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'All my team');
           break;
         case 'employee':
           this.getEmployeeAusencias(fetchInfo, success, failure);
-          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'Selected employee');
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Selected employee');
           break;
         case 'all-employees':
           this.GetAusenciasMyWorkers(fetchInfo, success, failure);
-          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'All my subordinates');
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'All my subordinates');
           break;
         default:
           this.accordeon = this.accordeon.map(item => ({
@@ -15549,7 +15851,7 @@ __webpack_require__.r(__webpack_exports__);
           }));
           this.employees = [];
           this.getMyAusencias(fetchInfo, success, failure);
-          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'My absences');
+          this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'My absences');
       }
     },
     // Convierte a_gerente/a_socio en color: gris si cancelado, color normal si no
@@ -15558,7 +15860,7 @@ __webpack_require__.r(__webpack_exports__);
       return isCancelled ? '#9e9e9e' : this.color(fallbackUsername);
     },
     getMyAusencias(fetchInfo, success, failure) {
-      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetAusenciasHistorial'), {
+      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetAusenciasHistorial'), {
         desde: fetchInfo.startStr,
         hasta: fetchInfo.endStr
       }).then(r => {
@@ -15586,11 +15888,11 @@ __webpack_require__.r(__webpack_exports__);
       });
     },
     GetAusenciasMyWorkers(fetchInfo, success, failure) {
-      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetAusenciasMyWorkers'), {
+      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetAusenciasMyWorkers'), {
         desde: fetchInfo.startStr,
         hasta: fetchInfo.endStr
       }).then(r => {
-        const data = r.data.message || [];
+        const data = r?.data?.ocs?.data?.message || r?.data?.message || [];
         const events = data.map(item => {
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
@@ -15614,11 +15916,11 @@ __webpack_require__.r(__webpack_exports__);
       });
     },
     getAllAusencias(fetchInfo, success, failure) {
-      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetAusenciasHistorialAll'), {
+      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetAusenciasHistorialAll'), {
         desde: fetchInfo.startStr,
         hasta: fetchInfo.endStr
       }).then(r => {
-        const data = r.data.message || [];
+        const data = r?.data?.ocs?.data?.message || r?.data?.message || [];
         const events = data.map(item => {
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
@@ -15642,12 +15944,13 @@ __webpack_require__.r(__webpack_exports__);
       });
     },
     getEmployeeAusencias(fetchInfo, success, failure) {
-      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetAusenciasEmployeeHistorial'), {
-        id_employee: this.selected_user,
+      const usuarios = Array.isArray(this.selected_user) ? this.selected_user : [this.selected_user];
+      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetAusenciasEmployeeHistorial'), {
+        id_employee: usuarios,
         desde: fetchInfo.startStr,
         hasta: fetchInfo.endStr
       }).then(r => {
-        const data = r.data.message || [];
+        const data = r?.data?.ocs?.data?.message || r?.data?.message || [];
         const events = data.map(item => {
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
@@ -15673,7 +15976,7 @@ __webpack_require__.r(__webpack_exports__);
     },
     onDateClick(arg) {
       if (this.configuraciones.modulo_ausencias_readonly === 'true') {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showInfo)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'This module is in read-only mode'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showInfo)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'This module is in read-only mode'));
       }
     },
     OnClickEvent(info) {
@@ -15702,7 +16005,7 @@ __webpack_require__.r(__webpack_exports__);
         r,
         g,
         b
-      } = (0,_nextcloud_vue_functions_usernameToColor__WEBPACK_IMPORTED_MODULE_5__["default"])(username);
+      } = (0,_nextcloud_vue_functions_usernameToColor__WEBPACK_IMPORTED_MODULE_6__["default"])(username);
       return `rgb(${r}, ${g}, ${b})`;
     },
     isAdmin() {
@@ -15710,7 +16013,7 @@ __webpack_require__.r(__webpack_exports__);
     },
     async updateList() {
       try {
-        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetEmpleadosList'));
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetEmpleadosList'));
         const empleados = response?.data?.ocs?.data.Empleados || [];
         this.propsEmployees.options = empleados.map(user => ({
           Id_empleados: user.Id_empleados,
@@ -15721,11 +16024,11 @@ __webpack_require__.r(__webpack_exports__);
           preloadedUserStatus: {
             icon: '',
             status: user.Estatus === 'activo' ? 'online' : 'offline',
-            message: user.Estatus === 'activo' ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'Active') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'Inactive')
+            message: user.Estatus === 'activo' ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Active') : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Inactive')
           }
         }));
       } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'An exception has occurred: {err}', {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception has occurred: {err}', {
           err
         }));
         console.error(err);
@@ -15743,14 +16046,14 @@ __webpack_require__.r(__webpack_exports__);
       endDate.setDate(endDate.getDate() - 1);
       if (!this.isAdmin()) {
         if (new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) < new Date(nDate.getFullYear(), nDate.getMonth(), nDate.getDate())) {
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'You cannot request absences on past dates'));
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'You cannot request absences on past dates'));
           return;
         }
       }
       const dia = endDate.getDay();
       const diaInicio = startDate.getDay();
       if (dia === 0 || dia === 6 || diaInicio === 0 || diaInicio === 6) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_6__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_9__.translate)('empleados', 'You cannot start or end your absence on a weekend'));
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'You cannot start or end your absence on a weekend'));
         return;
       }
       let fecha = new Date(startDate);
@@ -15769,7 +16072,7 @@ __webpack_require__.r(__webpack_exports__);
     },
     async GetAllEquipo() {
       try {
-        await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetMyEquipo')).then(response => {
+        await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetMyEquipo')).then(response => {
           this.peopleEquipo = response?.data?.ocs?.data;
         });
       } catch (err) {
@@ -15778,13 +16081,25 @@ __webpack_require__.r(__webpack_exports__);
       }
     },
     async getEquipos() {
-      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_8__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_7__.generateUrl)('/apps/empleados/GetEquipoJefe')), {
+      _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetEquipoJefe')), {
         id: this.employee[0].Id_equipo
       }).then(r => {
         const response = r?.data?.ocs?.data || [];
         this.Equipo = response[0] || {};
       }).catch(error => {
         console.error('Error getting team lead:', error);
+      });
+    },
+    onEmployeesChange(news) {
+      if (news !== null && news.length > 0) {
+        this.selected_user = news;
+        this.typePetition = 'employee';
+      } else {
+        this.selected_user = null;
+        this.typePetition = null;
+      }
+      this.$nextTick(() => {
+        this.$refs.fullCalendar?.getApi()?.refetchEvents();
       });
     }
   }
@@ -19542,15 +19857,17 @@ __webpack_require__.r(__webpack_exports__);
           const id = String(rawId);
           const idCliente = r.id_cliente ?? r.idCliente ?? r.Id_cliente ?? null;
           const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null;
-          const clienteNombre = clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim();
-          const actividadNombre = actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim();
+          const esAusencia = Number(idCliente) === 99999;
+          const clienteNombre = esAusencia ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_8__.translate)('empleados', 'Absence') : clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim();
+          const actividadNombre = esAusencia ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_8__.translate)('empleados', 'Cargable') : actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim();
           return {
             ...r,
             id,
             idCliente,
             idActividad,
             clienteNombre,
-            actividadNombre
+            actividadNombre,
+            esAusencia
           };
         });
       } catch (e) {
@@ -27382,7 +27699,10 @@ var render = function render() {
     }), _vm._v(" "), _c("span", [_vm._v(_vm._s(file.name))]), _vm._v(" "), _c("small", [_vm._v(_vm._s(_vm.formatFileSize(file.size)))])], 1);
   }), 0) : _vm._e()], 1) : _vm._e(), _vm._v(" "), _c("section", {
     staticClass: "form-section"
-  }, [_vm.AusenciaSeleccionada && _vm.AusenciaSeleccionada.solicitar_prima_vacacional == 1 && _vm.prima == 1 ? _c("NcCheckboxRadioSwitch", {
+  }, [_vm.AusenciaSeleccionada && _vm.AusenciaSeleccionada.solicitar_prima_vacacional == 1 ? [_c("NcCheckboxRadioSwitch", {
+    attrs: {
+      disabled: _vm.primaVacacionalUsada
+    },
     model: {
       value: _vm.SolicitarPrima,
       callback: function ($$v) {
@@ -27390,7 +27710,12 @@ var render = function render() {
       },
       expression: "SolicitarPrima"
     }
-  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Request vacation bonus")) + "\n\t\t")]) : _vm._e(), _vm._v(" "), _c("NcTextArea", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Request vacation bonus")) + "\n\t\t\t")]), _vm._v(" "), _vm.primaVacacionalUsada ? _c("NcNoteCard", {
+    attrs: {
+      type: "warning",
+      text: _vm.t("empleados", "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.")
+    }
+  }) : _vm._e()] : _vm._e(), _vm._v(" "), _c("NcTextArea", {
     attrs: {
       resize: "vertical",
       label: _vm.t("empleados", "Comments"),
@@ -27404,7 +27729,7 @@ var render = function render() {
       },
       expression: "comentarios"
     }
-  })], 1), _vm._v(" "), _c("div", {
+  })], 2), _vm._v(" "), _c("div", {
     staticClass: "form-actions"
   }, [_vm.loading ? _c("NcLoadingIcon", {
     attrs: {
@@ -27566,7 +27891,10 @@ var render = function render() {
     }), _vm._v(" "), _c("span", [_vm._v(_vm._s(file.name))]), _vm._v(" "), _c("small", [_vm._v(_vm._s(_vm.formatFileSize(file.size)))])], 1);
   }), 0) : _vm._e()], 1) : _vm._e(), _vm._v(" "), _c("section", {
     staticClass: "form-section"
-  }, [_vm.AusenciaSeleccionada && _vm.AusenciaSeleccionada.solicitar_prima_vacacional == 1 && _vm.prima == 1 ? _c("NcCheckboxRadioSwitch", {
+  }, [_vm.AusenciaSeleccionada && _vm.AusenciaSeleccionada.solicitar_prima_vacacional == 1 ? [_c("NcCheckboxRadioSwitch", {
+    attrs: {
+      disabled: _vm.primaVacacionalUsada
+    },
     model: {
       value: _vm.SolicitarPrima,
       callback: function ($$v) {
@@ -27574,7 +27902,12 @@ var render = function render() {
       },
       expression: "SolicitarPrima"
     }
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Request vacation bonus")) + "\n\t\t\t")]) : _vm._e(), _vm._v(" "), _c("NcTextArea", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Request vacation bonus")) + "\n\t\t\t\t")]), _vm._v(" "), _vm.primaVacacionalUsada ? _c("NcNoteCard", {
+    attrs: {
+      type: "warning",
+      text: _vm.t("empleados", "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.")
+    }
+  }) : _vm._e()] : _vm._e(), _vm._v(" "), _c("NcTextArea", {
     attrs: {
       resize: "vertical",
       label: _vm.t("empleados", "Comments"),
@@ -27588,7 +27921,7 @@ var render = function render() {
       },
       expression: "comentarios"
     }
-  })], 1), _vm._v(" "), _c("div", {
+  })], 2), _vm._v(" "), _c("div", {
     staticClass: "form-actions"
   }, [_vm.loading ? _c("NcLoadingIcon", {
     attrs: {
@@ -27612,6 +27945,490 @@ var render = function render() {
       proxy: true
     }], null, false, 3555554628)
   }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Submit")) + "\n\t\t\t")])], 1)] : _vm._e()], 2);
+};
+var staticRenderFns = [];
+render._withStripped = true;
+
+
+/***/ }),
+
+/***/ "./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true":
+/*!******************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render),
+/* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
+/* harmony export */ });
+var render = function render() {
+  var _vm = this,
+    _c = _vm._self._c;
+  return _c("div", {
+    staticClass: "reporte-contenido"
+  }, [_c("div", {
+    staticClass: "reporte-header"
+  }, [_c("div", {
+    staticClass: "reporte-header-left"
+  }, [_c("h2", {
+    staticClass: "reporte-titulo"
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Reporte de Ausencias")) + "\n\t\t\t")]), _vm._v(" "), !_vm.cargando && _vm.registrosFiltrados.length > 0 ? _c("span", {
+    staticClass: "reporte-count"
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.registrosFiltrados.length) + " " + _vm._s(_vm.t("empleados", "registro")) + _vm._s(_vm.registrosFiltrados.length !== 1 ? "s" : "") + "\n\t\t\t")]) : _vm._e()]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "tertiary"
+    },
+    on: {
+      click: function ($event) {
+        return _vm.$emit("close");
+      }
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Close", {
+          attrs: {
+            size: 20
+          }
+        })];
+      },
+      proxy: true
+    }])
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Cerrar")) + "\n\t\t")])], 1), _vm._v(" "), _c("div", {
+    staticClass: "reporte-filtros"
+  }, [_c("div", {
+    staticClass: "filtro-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Desde")))]), _vm._v(" "), _c("input", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroDesde,
+      expression: "filtroDesde"
+    }],
+    staticClass: "filtro-input",
+    attrs: {
+      type: "date"
+    },
+    domProps: {
+      value: _vm.filtroDesde
+    },
+    on: {
+      input: function ($event) {
+        if ($event.target.composing) return;
+        _vm.filtroDesde = $event.target.value;
+      }
+    }
+  })]), _vm._v(" "), _c("div", {
+    staticClass: "filtro-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Hasta")))]), _vm._v(" "), _c("input", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroHasta,
+      expression: "filtroHasta"
+    }],
+    staticClass: "filtro-input",
+    attrs: {
+      type: "date"
+    },
+    domProps: {
+      value: _vm.filtroHasta
+    },
+    on: {
+      input: function ($event) {
+        if ($event.target.composing) return;
+        _vm.filtroHasta = $event.target.value;
+      }
+    }
+  })]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "primary",
+      disabled: _vm.cargando
+    },
+    on: {
+      click: _vm.cargarReporte
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("Magnify", {
+          attrs: {
+            size: 18
+          }
+        })];
+      },
+      proxy: true
+    }])
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.cargando ? _vm.t("empleados", "Cargando…") : _vm.t("empleados", "Buscar")) + "\n\t\t")]), _vm._v(" "), !_vm.cargando && _vm.registros.length > 0 ? _c("div", {
+    staticClass: "filtros-btn-wrap"
+  }, [_c("NcButton", {
+    attrs: {
+      type: _vm.hayFiltrosActivos ? "primary" : "secondary"
+    },
+    on: {
+      click: function ($event) {
+        _vm.mostrarFiltros = true;
+      }
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("FilterVariant", {
+          attrs: {
+            size: 18
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 950285108)
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Filtros")) + "\n\t\t\t\t"), _vm.contadorFiltros > 0 ? _c("span", {
+    staticClass: "filtros-badge"
+  }, [_vm._v(_vm._s(_vm.contadorFiltros))]) : _vm._e()]), _vm._v(" "), _vm.hayFiltrosActivos ? _c("NcButton", {
+    attrs: {
+      type: "tertiary"
+    },
+    on: {
+      click: _vm.limpiarFiltros
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("FilterOff", {
+          attrs: {
+            size: 16
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 3827893474)
+  }) : _vm._e()], 1) : _vm._e()], 1), _vm._v(" "), _c("div", {
+    staticClass: "reporte-body"
+  }, [_vm.cargando ? _c("div", {
+    staticClass: "reporte-estado"
+  }, [_c("NcLoadingIcon", {
+    attrs: {
+      size: 40
+    }
+  }), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Cargando registros…")))])], 1) : _vm.registros.length === 0 ? _c("div", {
+    staticClass: "reporte-estado"
+  }, [_c("span", {
+    staticClass: "reporte-estado-icon"
+  }, [_vm._v("📋")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros en el periodo seleccionado.")))])]) : _vm.registrosFiltrados.length === 0 ? _c("div", {
+    staticClass: "reporte-estado"
+  }, [_c("span", {
+    staticClass: "reporte-estado-icon"
+  }, [_vm._v("🔍")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Ningún registro coincide con los filtros.")))]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "secondary"
+    },
+    on: {
+      click: _vm.limpiarFiltros
+    }
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Limpiar filtros")) + "\n\t\t\t")])], 1) : _c("div", {
+    staticClass: "reporte-tabla-wrap"
+  }, [_c("table", {
+    staticClass: "reporte-tabla"
+  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Empleado")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Tipo de ausencia")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Periodo")))]), _vm._v(" "), _c("th", {
+    staticClass: "col-dias cell-center"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Días")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-prima"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Prima vac.")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Estado")))]), _vm._v(" "), _c("th", {
+    staticClass: "col-aprobacion"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Aprobación")) + "\n\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-solicitud"
+  }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Solicitud")) + "\n\t\t\t\t\t\t")])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.registrosFiltrados, function (item, i) {
+    return _c("tr", {
+      key: item.id_historial_ausencias || i,
+      class: _vm.rowClass(item)
+    }, [_c("td", {
+      staticClass: "cell-empleado"
+    }, [_c("img", {
+      staticClass: "empleado-avatar",
+      attrs: {
+        src: _vm.avatarUrl(item.nombre_empleado),
+        alt: item.nombre_empleado
+      },
+      on: {
+        error: function ($event) {
+          return _vm.onAvatarError($event, item.nombre_empleado);
+        }
+      }
+    }), _vm._v(" "), _c("span", {
+      staticClass: "empleado-nombre"
+    }, [_vm._v(_vm._s(item.nombre_empleado))])]), _vm._v(" "), _c("td", [_c("span", {
+      staticClass: "badge-tipo",
+      style: _vm.colorTipo(item.tipo_ausencia)
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+      staticClass: "cell-periodo"
+    }, [_c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_de)))]), _vm._v(" "), _c("span", {
+      staticClass: "periodo-sep"
+    }, [_vm._v("→")]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_hasta)))])]), _vm._v(" "), _c("td", {
+      staticClass: "col-dias cell-center"
+    }, [_c("strong", [_vm._v(_vm._s(item.dias_solicitados ?? "—"))])]), _vm._v(" "), _c("td", {
+      staticClass: "col-prima cell-center"
+    }, [parseInt(item.prima_vacacional) === 1 ? _c("span", {
+      staticClass: "badge-prima"
+    }, [_vm._v(_vm._s(_vm.t("empleados", "Sí")))]) : _c("span", {
+      staticClass: "badge-prima-no"
+    }, [_vm._v(_vm._s(_vm.t("empleados", "No")))])]), _vm._v(" "), _c("td", [_c("span", {
+      staticClass: "chip",
+      class: _vm.chipEstado(item).clase
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.chipEstado(item).texto) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+      staticClass: "col-aprobacion"
+    }, [_c("span", {
+      staticClass: "chip-mini",
+      class: _vm.chipAprobacion(item.a_gerente).clase,
+      attrs: {
+        title: _vm.t("empleados", "Gerente")
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "G:")) + " " + _vm._s(_vm.chipAprobacion(item.a_gerente).texto) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
+      staticClass: "chip-mini",
+      class: _vm.chipAprobacion(item.a_socio).clase,
+      attrs: {
+        title: _vm.t("empleados", "Socio")
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "S:")) + " " + _vm._s(_vm.chipAprobacion(item.a_socio).texto) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+      staticClass: "cell-fecha"
+    }, [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(_vm.formatTimestamp(item.timestamp)) + "\n\t\t\t\t\t\t")])]);
+  }), 0)])])]), _vm._v(" "), _vm.mostrarFiltros ? _c("NcModal", {
+    attrs: {
+      size: "small",
+      name: _vm.t("empleados", "Filtrar registros")
+    },
+    on: {
+      close: function ($event) {
+        _vm.mostrarFiltros = false;
+      }
+    }
+  }, [_c("div", {
+    staticClass: "filtros-modal"
+  }, [_c("div", {
+    staticClass: "filtro-modal-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Empleado")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroEmpleado,
+      expression: "filtroEmpleado"
+    }],
+    staticClass: "filtro-input filtro-select",
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.filtroEmpleado = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Todos")) + "\n\t\t\t\t\t")]), _vm._v(" "), _vm._l(_vm.opcionesEmpleados, function (emp) {
+    return _c("option", {
+      key: emp,
+      domProps: {
+        value: emp
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(emp) + "\n\t\t\t\t\t")]);
+  })], 2)]), _vm._v(" "), _c("div", {
+    staticClass: "filtro-modal-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Tipo de ausencia")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroTipo,
+      expression: "filtroTipo"
+    }],
+    staticClass: "filtro-input filtro-select",
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.filtroTipo = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Todos")) + "\n\t\t\t\t\t")]), _vm._v(" "), _vm._l(_vm.opcionesTipos, function (tipo) {
+    return _c("option", {
+      key: tipo,
+      domProps: {
+        value: tipo
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(tipo) + "\n\t\t\t\t\t")]);
+  })], 2)]), _vm._v(" "), _c("div", {
+    staticClass: "filtro-modal-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Estado")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroEstado,
+      expression: "filtroEstado"
+    }],
+    staticClass: "filtro-input filtro-select",
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.filtroEstado = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Todos")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "Pendiente"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Pendiente")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "En curso"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "En curso")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "Completada"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Completada")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "Cancelada"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Cancelada")) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
+    staticClass: "filtro-modal-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Aprobación")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroAprobacion,
+      expression: "filtroAprobacion"
+    }],
+    staticClass: "filtro-input filtro-select",
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.filtroAprobacion = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Todos")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "0"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Pendiente")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "1"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Aprobado")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "2"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Rechazado")) + "\n\t\t\t\t\t")]), _vm._v(" "), _c("option", {
+    attrs: {
+      value: "3"
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Cancelado")) + "\n\t\t\t\t\t")])])]), _vm._v(" "), _c("div", {
+    staticClass: "filtro-modal-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-check-label"
+  }, [_c("input", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.filtroPrima,
+      expression: "filtroPrima"
+    }],
+    staticClass: "filtro-check",
+    attrs: {
+      type: "checkbox"
+    },
+    domProps: {
+      checked: Array.isArray(_vm.filtroPrima) ? _vm._i(_vm.filtroPrima, null) > -1 : _vm.filtroPrima
+    },
+    on: {
+      change: function ($event) {
+        var $$a = _vm.filtroPrima,
+          $$el = $event.target,
+          $$c = $$el.checked ? true : false;
+        if (Array.isArray($$a)) {
+          var $$v = null,
+            $$i = _vm._i($$a, $$v);
+          if ($$el.checked) {
+            $$i < 0 && (_vm.filtroPrima = $$a.concat([$$v]));
+          } else {
+            $$i > -1 && (_vm.filtroPrima = $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+          }
+        } else {
+          _vm.filtroPrima = $$c;
+        }
+      }
+    }
+  }), _vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Solo con prima vacacional")) + "\n\t\t\t\t")])]), _vm._v(" "), _c("div", {
+    staticClass: "filtros-modal-acciones"
+  }, [_c("NcButton", {
+    attrs: {
+      type: "tertiary"
+    },
+    on: {
+      click: _vm.limpiarFiltros
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("FilterOff", {
+          attrs: {
+            size: 16
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 3827893474)
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Limpiar")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
+    attrs: {
+      type: "primary"
+    },
+    on: {
+      click: function ($event) {
+        _vm.mostrarFiltros = false;
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Aplicar")) + "\n\t\t\t\t")])], 1)])]) : _vm._e()], 1);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -27766,7 +28583,18 @@ var render = function render() {
         proxy: true
       }], null, true)
     });
-  }), 1)])])])])]) : _vm._e(), _vm._v(" "), _c("NcButton", {
+  }), 1)])])])])]) : _vm._e(), _vm._v(" "), _vm.isAdmin() ? _c("NcButton", {
+    staticClass: "btn-top",
+    attrs: {
+      variant: "secondary",
+      wide: ""
+    },
+    on: {
+      click: function ($event) {
+        _vm.mostrarReporte = true;
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Show report")) + "\n\t\t\t\t\t\t\t")]) : _vm._e(), _vm._v(" "), _c("NcButton", {
     staticClass: "btn-top",
     attrs: {
       text: "center (default)",
@@ -27869,6 +28697,9 @@ var render = function render() {
   }, [_c("div", {
     staticClass: "btn-top"
   }, [_c("NcSelect", _vm._b({
+    on: {
+      "update:model-value": _vm.onEmployeesChange
+    },
     model: {
       value: _vm.employees,
       callback: function ($$v) {
@@ -27944,7 +28775,24 @@ var render = function render() {
     });
   }), 1)])])])])]) : _vm._e()], 1), _vm._v(" "), _c("div", {
     staticClass: "footers"
-  }, [_c("p", [_vm._v("\n\t\t\t\t\t\t\t\t🔎 " + _vm._s(_vm.vista_actual) + "\n\t\t\t\t\t\t\t")])])])])])])]), _vm._v(" "), _vm.modalEvento ? _c("NcModal", {
+  }, [_c("p", [_vm._v("\n\t\t\t\t\t\t\t\t🔎 " + _vm._s(_vm.vista_actual) + "\n\t\t\t\t\t\t\t")])])])])])])]), _vm._v(" "), _vm.mostrarReporte ? _c("NcModal", {
+    attrs: {
+      size: "full",
+      "can-close": false,
+      name: _vm.t("empleados", "Absence report")
+    },
+    on: {
+      close: function ($event) {
+        _vm.mostrarReporte = false;
+      }
+    }
+  }, [_c("ReporteAusencias", {
+    on: {
+      close: function ($event) {
+        _vm.mostrarReporte = false;
+      }
+    }
+  })], 1) : _vm._e(), _vm._v(" "), _vm.modalEvento ? _c("NcModal", {
     ref: "modalEventoRef",
     attrs: {
       size: "normal",
@@ -58549,6 +59397,398 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 
 /***/ }),
 
+/***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css":
+/*!*********************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../../node_modules/css-loader/dist/runtime/noSourceMaps.js */ "./node_modules/css-loader/dist/runtime/noSourceMaps.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../../node_modules/css-loader/dist/runtime/api.js */ "./node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
+// Imports
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
+// Module
+___CSS_LOADER_EXPORT___.push([module.id, `
+.col-aprobacion[data-v-71a4011e] {
+	min-width: 170px;
+	width: 170px;
+}
+.reporte-contenido[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	height: 80vh;
+	overflow: hidden;
+}
+
+/* ── Header ── */
+.reporte-header[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 24px;
+	border-bottom: 1px solid var(--color-border);
+	flex-shrink: 0;
+}
+.reporte-header-left[data-v-71a4011e] {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+}
+.reporte-titulo[data-v-71a4011e] {
+	font-size: 1.15rem;
+	font-weight: 700;
+	margin: 0;
+	color: var(--color-main-text);
+}
+.reporte-count[data-v-71a4011e] {
+	font-size: 0.8rem;
+	color: var(--color-text-maxcontrast);
+	background: var(--color-background-dark);
+	padding: 2px 8px;
+	border-radius: 20px;
+}
+
+/* ── Filtros de fecha ── */
+.reporte-filtros[data-v-71a4011e] {
+	display: flex;
+	align-items: flex-end;
+	gap: 16px;
+	padding: 14px 24px;
+	border-bottom: 1px solid var(--color-border);
+	flex-shrink: 0;
+	flex-wrap: wrap;
+}
+.filtros-btn-wrap[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: auto;
+}
+.filtros-badge[data-v-71a4011e] {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: white;
+	color: var(--color-primary);
+	border-radius: 20px;
+	font-size: 0.7rem;
+	font-weight: 700;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	margin-left: 4px;
+}
+.filtro-grupo[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.filtro-label[data-v-71a4011e] {
+	font-size: 0.75rem;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.filtro-input[data-v-71a4011e] {
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius);
+	padding: 6px 10px;
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 0.875rem;
+	height: 36px;
+}
+.filtro-select[data-v-71a4011e] {
+	min-width: 160px;
+	cursor: pointer;
+}
+.filtro-check-label[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.875rem;
+	color: var(--color-main-text);
+	cursor: pointer;
+}
+.filtro-check[data-v-71a4011e] { cursor: pointer;
+}
+
+/* ── Modal de filtros ── */
+.filtros-modal[data-v-71a4011e] {
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	min-width: 300px;
+}
+.filtro-modal-grupo[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.filtro-modal-grupo .filtro-select[data-v-71a4011e] {
+	width: 100%;
+}
+.filtros-modal-acciones[data-v-71a4011e] {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--color-border);
+}
+
+/* ── Body ── */
+.reporte-body[data-v-71a4011e] {
+	flex: 1;
+	overflow-y: auto;
+	overflow-x: auto;
+	padding: 20px 24px;
+	position: relative;
+}
+.reporte-estado[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	gap: 12px;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.9rem;
+}
+.reporte-estado-icon[data-v-71a4011e] { font-size: 2rem;
+}
+.reporte-tabla-wrap[data-v-71a4011e] { overflow-x: unset;
+}
+
+/* ── Tabla ── */
+.reporte-tabla[data-v-71a4011e] {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.875rem;
+	table-layout: fixed;
+}
+.reporte-tabla th[data-v-71a4011e] {
+	text-align: left;
+	padding: 10px 12px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
+}
+.reporte-tabla thead[data-v-71a4011e] {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+.reporte-tabla thead tr[data-v-71a4011e] { border-bottom: 2px solid var(--color-border-dark);
+}
+.reporte-tabla thead th[data-v-71a4011e] {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	background: var(--color-main-background);
+	box-shadow: 0 2px 0 var(--color-border);
+}
+.reporte-tabla tbody[data-v-71a4011e] {
+	display: block;
+	overflow-y: auto;
+	max-height: calc(80vh - 220px);
+}
+.reporte-tabla tbody tr[data-v-71a4011e] {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+	transition: background 0.12s;
+}
+.reporte-tabla tbody tr[data-v-71a4011e]:hover { background: var(--color-background-hover);
+}
+.reporte-tabla td[data-v-71a4011e] {
+	padding: 8px 12px;
+	vertical-align: middle;
+	border-bottom: 1px solid var(--color-border);
+}
+
+/* ── Filas por estado ── */
+.row-cancelado td[data-v-71a4011e]:first-child { border-left: 3px solid var(--color-error);
+}
+.row-pasado td[data-v-71a4011e]:first-child    { border-left: 3px solid var(--color-success);
+}
+.row-futuro td[data-v-71a4011e]:first-child    { border-left: 3px solid #f0a500;
+}
+
+/* ── Celda empleado ── */
+.cell-empleado[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 160px;
+}
+.empleado-avatar[data-v-71a4011e] {
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	object-fit: cover;
+	flex-shrink: 0;
+	background: var(--color-background-dark);
+}
+.empleado-nombre[data-v-71a4011e] { font-weight: 500; white-space: nowrap;
+}
+
+/* ── Badge tipo ── */
+.badge-tipo[data-v-71a4011e] {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 20px;
+	font-size: 0.78rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+/* ── Celda periodo ── */
+.cell-periodo[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.periodo-sep[data-v-71a4011e] { color: var(--color-text-maxcontrast); font-size: 0.8rem;
+}
+
+/* ── Utilidades ── */
+.cell-center[data-v-71a4011e] { text-align: center;
+}
+.col-dias[data-v-71a4011e], .col-prima[data-v-71a4011e], col-aprobacion[data-v-71a4011e] { min-width: 70px; width: 70px;
+}
+
+/* ── Badge prima ── */
+.badge-prima[data-v-71a4011e] {
+	background: #d1fae5;
+	color: #065f46;
+	padding: 2px 8px;
+	border-radius: 20px;
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+.badge-prima-no[data-v-71a4011e] {
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	padding: 2px 8px;
+	border-radius: 20px;
+	font-size: 0.75rem;
+}
+
+/* ── Chips de estado ── */
+.chip[data-v-71a4011e] {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 20px;
+	font-size: 0.75rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+.chip-cancelado[data-v-71a4011e]  { background: #fee2e2; color: #b91c1c;
+}
+.chip-completado[data-v-71a4011e] { background: #d1fae5; color: #065f46;
+}
+.chip-encurso[data-v-71a4011e]    { background: #dbeafe; color: #1d4ed8;
+}
+.chip-pendiente[data-v-71a4011e]  { background: #fef3c7; color: #b45309;
+}
+
+/* ── Chips de aprobación ── */
+.cell-aprobacion[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	align-items: flex-start;
+	justify-content: center;
+}
+.chip-mini[data-v-71a4011e] {
+	display: inline-block;
+	padding: 2px 6px;
+	border-radius: 12px;
+	font-size: 0.68rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.chip-a-aprobado[data-v-71a4011e]  { background: #d1fae5; color: #065f46;
+}
+.chip-a-rechazado[data-v-71a4011e] { background: #fee2e2; color: #b91c1c;
+}
+.chip-a-cancelado[data-v-71a4011e] { background: #fce7f3; color: #9d174d;
+}
+.chip-a-pendiente[data-v-71a4011e] { background: var(--color-background-dark); color: var(--color-text-maxcontrast);
+}
+
+/* ── Celda fecha ── */
+.cell-fecha[data-v-71a4011e] {
+	font-size: 0.78rem;
+	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+.reporte-tabla[data-v-71a4011e] { font-size: 0.78rem;
+}
+.reporte-tabla th[data-v-71a4011e],
+	.reporte-tabla td[data-v-71a4011e] { padding: 6px 8px;
+}
+.cell-empleado[data-v-71a4011e] { min-width: 120px;
+}
+.empleado-avatar[data-v-71a4011e] { width: 24px; height: 24px;
+}
+}
+@media (max-width: 768px) {
+.reporte-tabla[data-v-71a4011e] { font-size: 0.72rem;
+}
+.reporte-tabla th[data-v-71a4011e],
+	.reporte-tabla td[data-v-71a4011e] { padding: 5px 6px;
+}
+.reporte-tabla th[data-v-71a4011e]:nth-child(5),
+	.reporte-tabla td[data-v-71a4011e]:nth-child(5),
+	.reporte-tabla th[data-v-71a4011e]:nth-child(8),
+	.reporte-tabla td[data-v-71a4011e]:nth-child(8) { display: none;
+}
+.reporte-filtros[data-v-71a4011e] { padding: 10px 12px; gap: 10px;
+}
+.reporte-body[data-v-71a4011e] { padding: 12px;
+}
+}
+@media (max-width: 540px) {
+.reporte-tabla th[data-v-71a4011e]:nth-child(3),
+	.reporte-tabla td[data-v-71a4011e]:nth-child(3),
+	.reporte-tabla th[data-v-71a4011e]:nth-child(4),
+	.reporte-tabla td[data-v-71a4011e]:nth-child(4),
+	.reporte-tabla th[data-v-71a4011e]:nth-child(7),
+	.reporte-tabla td[data-v-71a4011e]:nth-child(7) { display: none;
+}
+.cell-empleado[data-v-71a4011e] { min-width: 90px;
+}
+.empleado-nombre[data-v-71a4011e] { max-width: 80px; overflow: hidden; text-overflow: ellipsis;
+}
+}
+`, ""]);
+// Exports
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
+
+
+/***/ }),
+
 /***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/TiempoLibre.vue?vue&type=style&index=0&id=83d6d36c&lang=css":
 /*!****************************************************************************************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/TiempoLibre.vue?vue&type=style&index=0&id=83d6d36c&lang=css ***!
@@ -78048,6 +79288,61 @@ var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js
 
 /***/ }),
 
+/***/ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css":
+/*!*************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css ***!
+  \*************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! !../../../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "./node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
+/* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! !../../../../node_modules/style-loader/dist/runtime/styleDomAPI.js */ "./node_modules/style-loader/dist/runtime/styleDomAPI.js");
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../../../../node_modules/style-loader/dist/runtime/insertBySelector.js */ "./node_modules/style-loader/dist/runtime/insertBySelector.js");
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! !../../../../node_modules/style-loader/dist/runtime/setAttributesWithoutAttributes.js */ "./node_modules/style-loader/dist/runtime/setAttributesWithoutAttributes.js");
+/* harmony import */ var _node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! !../../../../node_modules/style-loader/dist/runtime/insertStyleElement.js */ "./node_modules/style-loader/dist/runtime/insertStyleElement.js");
+/* harmony import */ var _node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! !../../../../node_modules/style-loader/dist/runtime/styleTagTransform.js */ "./node_modules/style-loader/dist/runtime/styleTagTransform.js");
+/* harmony import */ var _node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var _node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! !!../../../../node_modules/css-loader/dist/cjs.js!../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css */ "./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css");
+
+      
+      
+      
+      
+      
+      
+      
+      
+      
+
+var options = {};
+
+options.styleTagTransform = (_node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5___default());
+options.setAttributes = (_node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3___default());
+
+      options.insert = _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2___default().bind(null, "head");
+    
+options.domAPI = (_node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1___default());
+options.insertStyleElement = (_node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4___default());
+
+var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"], options);
+
+
+
+
+       /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"] && _node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"].locals ? _node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_6__["default"].locals : undefined);
+
+
+/***/ }),
+
 /***/ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/TiempoLibre.vue?vue&type=style&index=0&id=83d6d36c&lang=css":
 /*!********************************************************************************************************************************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/TiempoLibre.vue?vue&type=style&index=0&id=83d6d36c&lang=css ***!
@@ -86359,6 +87654,78 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/FilterOff.vue":
+/*!**************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/FilterOff.vue ***!
+  \**************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _FilterOff_vue_vue_type_template_id_7f06624a__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./FilterOff.vue?vue&type=template&id=7f06624a */ "./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=template&id=7f06624a");
+/* harmony import */ var _FilterOff_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./FilterOff.vue?vue&type=script&lang=js */ "./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=script&lang=js");
+/* harmony import */ var _vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+;
+var component = (0,_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+  _FilterOff_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _FilterOff_vue_vue_type_template_id_7f06624a__WEBPACK_IMPORTED_MODULE_0__.render,
+  _FilterOff_vue_vue_type_template_id_7f06624a__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  false,
+  null,
+  null,
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "node_modules/vue-material-design-icons/FilterOff.vue"
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=script&lang=js":
+/*!*************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=script&lang=js ***!
+  \*************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  name: "FilterOffIcon",
+  emits: ['click'],
+  props: {
+    title: {
+      type: String,
+    },
+    fillColor: {
+      type: String,
+      default: "currentColor"
+    },
+    size: {
+      type: Number,
+      default: 24
+    }
+  }
+});
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/FilterVariant.vue":
 /*!******************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/FilterVariant.vue ***!
@@ -89702,6 +91069,47 @@ component.options.__file = "src/views/components/TiempoLibre/Modal/NuevaSolicitu
 
 /***/ }),
 
+/***/ "./src/views/components/TiempoLibre/ReporteAusencias.vue":
+/*!***************************************************************!*\
+  !*** ./src/views/components/TiempoLibre/ReporteAusencias.vue ***!
+  \***************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _ReporteAusencias_vue_vue_type_template_id_71a4011e_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true */ "./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true");
+/* harmony import */ var _ReporteAusencias_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./ReporteAusencias.vue?vue&type=script&lang=js */ "./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=script&lang=js");
+/* harmony import */ var _ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css */ "./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css");
+/* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! !../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+;
+
+
+/* normalize component */
+
+var component = (0,_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__["default"])(
+  _ReporteAusencias_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _ReporteAusencias_vue_vue_type_template_id_71a4011e_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render,
+  _ReporteAusencias_vue_vue_type_template_id_71a4011e_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  false,
+  null,
+  "71a4011e",
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "src/views/components/TiempoLibre/ReporteAusencias.vue"
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
+
+/***/ }),
+
 /***/ "./src/views/components/TiempoLibre/TiempoLibre.vue":
 /*!**********************************************************!*\
   !*** ./src/views/components/TiempoLibre/TiempoLibre.vue ***!
@@ -91206,6 +92614,22 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=script&lang=js":
+/*!***************************************************************************************!*\
+  !*** ./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=script&lang=js ***!
+  \***************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../node_modules/babel-loader/lib/index.js!../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./ReporteAusencias.vue?vue&type=script&lang=js */ "./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
 /***/ "./src/views/components/TiempoLibre/TiempoLibre.vue?vue&type=script&lang=js":
 /*!**********************************************************************************!*\
   !*** ./src/views/components/TiempoLibre/TiempoLibre.vue?vue&type=script&lang=js ***!
@@ -92077,6 +93501,23 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   staticRenderFns: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_node_modules_vue_loader_lib_index_js_vue_loader_options_NuevaSolicitud_vue_vue_type_template_id_d4d275c2_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
 /* harmony import */ var _node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_node_modules_vue_loader_lib_index_js_vue_loader_options_NuevaSolicitud_vue_vue_type_template_id_d4d275c2_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../node_modules/babel-loader/lib/index.js!../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./NuevaSolicitud.vue?vue&type=template&id=d4d275c2&scoped=true */ "./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue?vue&type=template&id=d4d275c2&scoped=true");
+
+
+/***/ }),
+
+/***/ "./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true":
+/*!*********************************************************************************************************!*\
+  !*** ./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true ***!
+  \*********************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_template_id_71a4011e_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_template_id_71a4011e_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */ });
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_template_id_71a4011e_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../node_modules/babel-loader/lib/index.js!../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true */ "./node_modules/babel-loader/lib/index.js!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=template&id=71a4011e&scoped=true");
 
 
 /***/ }),
@@ -93091,6 +94532,19 @@ __webpack_require__.r(__webpack_exports__);
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _node_modules_style_loader_dist_cjs_js_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_NuevaSolicitud_vue_vue_type_style_index_0_id_d4d275c2_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../node_modules/style-loader/dist/cjs.js!../../../../../node_modules/css-loader/dist/cjs.js!../../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./NuevaSolicitud.vue?vue&type=style&index=0&id=d4d275c2&scoped=true&lang=css */ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue?vue&type=style&index=0&id=d4d275c2&scoped=true&lang=css");
+
+
+/***/ }),
+
+/***/ "./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css":
+/*!***********************************************************************************************************************!*\
+  !*** ./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css ***!
+  \***********************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_style_loader_dist_cjs_js_node_modules_css_loader_dist_cjs_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_vue_loader_lib_index_js_vue_loader_options_ReporteAusencias_vue_vue_type_style_index_0_id_71a4011e_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../node_modules/style-loader/dist/cjs.js!../../../../node_modules/css-loader/dist/cjs.js!../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css */ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/vue-loader/lib/index.js??vue-loader-options!./src/views/components/TiempoLibre/ReporteAusencias.vue?vue&type=style&index=0&id=71a4011e&scoped=true&lang=css");
 
 
 /***/ }),
@@ -94154,6 +95608,22 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_FileSign_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./FileSign.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FileSign.vue?vue&type=script&lang=js");
  /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_FileSign_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=script&lang=js":
+/*!**************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=script&lang=js ***!
+  \**************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_FilterOff_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./FilterOff.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_FilterOff_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
 
 /***/ }),
 
@@ -95584,6 +97054,23 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_FileSign_vue_vue_type_template_id_5d1d1df6__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
 /* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_FileSign_vue_vue_type_template_id_5d1d1df6__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./FileSign.vue?vue&type=template&id=5d1d1df6 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FileSign.vue?vue&type=template&id=5d1d1df6");
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=template&id=7f06624a":
+/*!********************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=template&id=7f06624a ***!
+  \********************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_FilterOff_vue_vue_type_template_id_7f06624a__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_FilterOff_vue_vue_type_template_id_7f06624a__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_FilterOff_vue_vue_type_template_id_7f06624a__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./FilterOff.vue?vue&type=template&id=7f06624a */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=template&id=7f06624a");
 
 
 /***/ }),
@@ -99890,6 +101377,75 @@ var render = function render() {
             {
               attrs: {
                 d: "M19.7 12.9L14 18.6H11.7V16.3L17.4 10.6L19.7 12.9M23.1 12.1C23.1 12.4 22.8 12.7 22.5 13L20 15.5L19.1 14.6L21.7 12L21.1 11.4L20.4 12.1L18.1 9.8L20.3 7.7C20.5 7.5 20.9 7.5 21.2 7.7L22.6 9.1C22.8 9.3 22.8 9.7 22.6 10C22.4 10.2 22.2 10.4 22.2 10.6C22.2 10.8 22.4 11 22.6 11.2C22.9 11.5 23.2 11.8 23.1 12.1M3 20V4H10V9H15V10.5L17 8.5V8L11 2H3C1.9 2 1 2.9 1 4V20C1 21.1 1.9 22 3 22H15C16.1 22 17 21.1 17 20H3M11 17.1C10.8 17.1 10.6 17.2 10.5 17.2L10 15H8.5L6.4 16.7L7 14H5.5L4.5 19H6L8.9 16.4L9.5 18.7H10.5L11 18.6V17.1Z",
+              },
+            },
+            [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
+          ),
+        ]
+      ),
+    ]
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=template&id=7f06624a":
+/*!************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/FilterOff.vue?vue&type=template&id=7f06624a ***!
+  \************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render),
+/* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
+/* harmony export */ });
+var render = function render() {
+  var _vm = this,
+    _c = _vm._self._c
+  return _c(
+    "span",
+    _vm._b(
+      {
+        staticClass: "material-design-icon filter-off-icon",
+        attrs: {
+          "aria-hidden": _vm.title ? null : true,
+          "aria-label": _vm.title,
+          role: "img",
+        },
+        on: {
+          click: function ($event) {
+            return _vm.$emit("click", $event)
+          },
+        },
+      },
+      "span",
+      _vm.$attrs,
+      false
+    ),
+    [
+      _c(
+        "svg",
+        {
+          staticClass: "material-design-icon__svg",
+          attrs: {
+            fill: _vm.fillColor,
+            width: _vm.size,
+            height: _vm.size,
+            viewBox: "0 0 24 24",
+          },
+        },
+        [
+          _c(
+            "path",
+            {
+              attrs: {
+                d: "M2.39 1.73L1.11 3L9.5 11.37L9.97 12H10V17.87C9.96 18.16 10.06 18.47 10.29 18.7L12.3 20.71C12.69 21.1 13.32 21.1 13.71 20.71C13.94 20.5 14.04 20.18 14 19.88V15.89L20.84 22.73L22.11 21.46L14 13.35L9.41 8.76L4.15 3.5L2.39 1.73M6.21 3L14.54 11.34L19.79 4.62C20.13 4.19 20.05 3.56 19.62 3.22C19.43 3.08 19.22 3 19 3H6.21Z",
               },
             },
             [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]

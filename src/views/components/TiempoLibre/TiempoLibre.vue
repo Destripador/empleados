@@ -81,6 +81,14 @@
 										</div>
 									</div>
 								</div>
+								<NcButton
+									v-if="isAdmin()"
+									class="btn-top"
+									variant="secondary"
+									wide
+									@click="mostrarReporte = true">
+									{{ t('empleados', 'Show report') }}
+								</NcButton>
 
 								<!-- Show only my absences -->
 								<NcButton class="btn-top"
@@ -144,7 +152,7 @@
 									</button>
 									<div :class="['acordeon-contenido', { abierto: accordeon[2].abierto }]">
 										<div class="btn-top">
-											<NcSelect v-bind="propsEmployees" v-model="employees" />
+											<NcSelect v-bind="propsEmployees" v-model="employees" @update:model-value="onEmployeesChange" />
 										</div>
 									</div>
 								</div>
@@ -200,6 +208,16 @@
 			</div>
 		</div>
 
+		<!-- ABSENCE REPORT MODAL -->
+		<NcModal
+			v-if="mostrarReporte"
+			size="full"
+			:can-close="false"
+			:name="t('empleados', 'Absence report')"
+			@close="mostrarReporte = false">
+			<ReporteAusencias @close="mostrarReporte = false" />
+		</NcModal>
+		<!-- END ABSENCE REPORT MODAL -->
 		<!-- EVENT DETAILS MODAL -->
 		<NcModal
 			v-if="modalEvento"
@@ -307,6 +325,7 @@ import TrofeosAniversarios from './TrofeosAniversarios.vue'
 import NuevaSolicitud from './Modal/NuevaSolicitud.vue'
 import DetalleAusencia from './Modal/DetalleAusencia.vue'
 import EditarAusencia from './Modal/EditarAusencia.vue'
+import ReporteAusencias from './ReporteAusencias.vue'
 
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -363,6 +382,7 @@ export default {
 		BellOutline,
 		NcLoadingIcon,
 		NcNoteCard,
+		ReporteAusencias,
 	},
 
 	inject: ['employee', 'configuraciones', 'groupuser', 'subordinates'],
@@ -447,6 +467,7 @@ export default {
 			isShaking: false,
 			selectedEventId: null,
 			ausenciaEditar: null,
+			mostrarReporte: false,
 		}
 	},
 
@@ -480,21 +501,15 @@ export default {
 		},
 	},
 
-	watch: {
-		employees(news) {
-			if (news !== null && news.length > 0) {
-				this.selected_user = news
-				this.typePetition = 'employee'
-				this.$refs.fullCalendar.getApi().refetchEvents()
-			}
-		},
-	},
-
 	mounted() {
 		this.$bus.on('close-solicitud', () => {
 			this.GetAusencias()
+
+			this.$nextTick(() => {
+				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+			})
+
 			this.closeModal()
-			this.$refs.fullCalendar.getApi().refetchEvents()
 		})
 		this.GetAusencias()
 		if (this.isAdmin()) {
@@ -655,7 +670,7 @@ export default {
 				hasta: fetchInfo.endStr,
 			})
 				.then(r => {
-					const data = r.data.message || []
+					const data = r?.data?.ocs?.data?.message || r?.data?.message || []
 					const events = data.map(item => {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
@@ -683,7 +698,7 @@ export default {
 				hasta: fetchInfo.endStr,
 			})
 				.then(r => {
-					const data = r.data.message || []
+					const data = r?.data?.ocs?.data?.message || r?.data?.message || []
 					const events = data.map(item => {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
@@ -706,13 +721,17 @@ export default {
 		},
 
 		getEmployeeAusencias(fetchInfo, success, failure) {
+			const usuarios = Array.isArray(this.selected_user)
+				? this.selected_user
+				: [this.selected_user]
+
 			axios.post(generateUrl('/apps/empleados/GetAusenciasEmployeeHistorial'), {
-				id_employee: this.selected_user,
+				id_employee: usuarios,
 				desde: fetchInfo.startStr,
 				hasta: fetchInfo.endStr,
 			})
 				.then(r => {
-					const data = r.data.message || []
+					const data = r?.data?.ocs?.data?.message || r?.data?.message || []
 					const events = data.map(item => {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
@@ -865,6 +884,19 @@ export default {
 				.catch(error => {
 					console.error('Error getting team lead:', error)
 				})
+		},
+
+		onEmployeesChange(news) {
+			if (news !== null && news.length > 0) {
+				this.selected_user = news
+				this.typePetition = 'employee'
+			} else {
+				this.selected_user = null
+				this.typePetition = null
+			}
+			this.$nextTick(() => {
+				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+			})
 		},
 	},
 }

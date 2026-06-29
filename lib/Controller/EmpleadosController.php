@@ -189,6 +189,11 @@ class EmpleadosController extends BaseController {
     public function GetMyEquipo(): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
         $empleado = $this->empleadosMapper->GetMyEmployeeInfo($this->userSession->getUser()->getUID());
+
+        if (empty($empleado) || empty($empleado[0]['Id_equipo'])) {
+            return new DataResponse(['equipo' => []], Http::STATUS_OK);
+        }
+
         $people = $this->empleadosMapper->GetMyEquipo($empleado[0]['Id_equipo']);
 
         return new DataResponse([
