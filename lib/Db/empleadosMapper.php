@@ -45,10 +45,12 @@ class empleadosMapper extends QBMapper {
     public function GetMyEmployeeInfo($id): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*') // Solo traemos empleados sin duplicar
+		$qb->select('*')
 			->from('empleados', 'e')
 			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
-			->where($qb->expr()->eq('e.Id_user', $qb->createNamedParameter($id)));
+			->where($qb->expr()->eq('e.Id_user', $qb->createNamedParameter($id)))
+			->orderBy('e.Id_empleados', 'DESC')
+			->setMaxResults(1);
 		
 		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
@@ -449,5 +451,26 @@ class empleadosMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $data;
+	}
+	
+	public function getDisplayNameById(int $idEmpleado): ?string {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('u.displayname')
+			->from($this->getTableName(), 'e')
+			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->where(
+				$qb->expr()->eq(
+					'e.Id_empleados',
+					$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->setMaxResults(1);
+
+		$result = $qb->executeQuery();
+		$nombre = $result->fetchOne();
+		$result->closeCursor();
+
+		return $nombre !== false ? $nombre : null;
 	}
 }

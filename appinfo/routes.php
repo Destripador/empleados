@@ -165,8 +165,14 @@ return [
 		['name' => 'honorariosParcialidades#findByHonorario', 'url' => '/findParcialidadesByHonorario', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#marcarPagada', 'url' => '/marcarParcialidadPagada', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#findById', 'url' => '/findParcialidadesById', 'verb' => 'POST'],
-		['name' => 'HonorariosParcialidades#actualizarFechaPago', 'url' => '/actualizarFechaPagoParcialidad', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#actualizarFechaPago', 'url' => '/actualizarFechaPagoParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#marcar_facturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#cancelarPago', 'url' => '/cancelarPagoParcialidad', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#agregarParcialidadIguala', 'url' => '/agregarParcialidadIguala', 'verb' => 'POST'],
+		['name' => 'honorarios#finalizarHonorario', 'url' => '/finalizarHonorario', 'verb' => 'POST'],
+		['name' => 'honorarios#reactivarHonorario', 'url' => '/reactivarHonorario', 'verb' => 'POST'],
+		['name' => 'honorarios#actualizarMetadatos', 'url' => '/actualizarMetadatosHonorario', 'verb' => 'POST'],
+		['name' => 'honorarios#generarSolicitudRecibo', 'url' => '/generarSolicitudRecibo', 'verb' => 'GET'],
 
 		/****************************** ACTIVIDADES ***************************************/
 		['name' => 'actividades#crearActividad', 'url' => '/crearActividad', 'verb' => 'POST'],

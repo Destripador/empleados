@@ -8,7 +8,9 @@ use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Db\honorarios;
 use OCA\Empleados\Db\honorariosMapper;
 use OCA\Empleados\Db\empleadosMapper;
+use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Db\configuracionesMapper;
+use OCA\Empleados\Service\XlsxTemplateFiller;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -19,9 +21,14 @@ use OCP\IRequest;
 use OCP\IUserSession;
 use OCP\IGroupManager;
 
+use OCP\AppFramework\Http\DataDownloadResponse;
+use Psr\Log\LoggerInterface;
+
 class HonorariosController extends BaseController {
 
 	protected honorariosMapper $honorariosMapper;
+	protected clientesMapper $clientesMapper;
+	private LoggerInterface $logger;
 
 	public function __construct(
 		IRequest $request,
@@ -29,7 +36,9 @@ class HonorariosController extends BaseController {
 		IGroupManager $groupManager,
 		empleadosMapper $empleadosMapper,
 		configuracionesMapper $configuracionesMapper,
-		honorariosMapper $honorariosMapper
+		honorariosMapper $honorariosMapper,
+		clientesMapper $clientesMapper,
+		LoggerInterface $logger
 	) {
 
 		parent::__construct(
@@ -42,6 +51,8 @@ class HonorariosController extends BaseController {
 		);
 
 		$this->honorariosMapper = $honorariosMapper;
+		$this->clientesMapper = $clientesMapper;
+		$this->logger = $logger;
 	}
 
 	#[UseSession]
@@ -98,7 +109,9 @@ class HonorariosController extends BaseController {
 		string $tipo_moneda,
 		string $fecha_inicio,
 		string $fecha_fin,
-		?string $tipo_servicio
+		?string $tipo_servicio,
+		bool $especial,
+		string $tipo_honorario = 'parcial'
 	): DataResponse {
 
 		$this->checkAccess(['admin', 'recursos_humanos']);
@@ -114,6 +127,9 @@ class HonorariosController extends BaseController {
 		$honorario->setFecha_fin($fecha_fin);
 
 		$honorario->setTipo_servicio($tipo_servicio);
+		$honorario->setTipo_honorario($tipo_honorario);
+
+		$honorario->setEspecial($especial);
 
 		$honorario->setActivo(true);
 
@@ -135,7 +151,8 @@ class HonorariosController extends BaseController {
 		string $fecha_inicio,
 		string $fecha_fin,
 		?string $tipo_servicio,
-		bool $activo
+		bool $especial,
+		string $tipo_honorario = 'parcial'
 	): DataResponse {
 
 		$this->checkAccess(['admin', 'recursos_humanos']);
@@ -148,7 +165,8 @@ class HonorariosController extends BaseController {
 			$fecha_inicio,
 			$fecha_fin,
 			$tipo_servicio,
-			$activo
+			$especial,
+			$tipo_honorario
 		);
 
 		return new DataResponse(
@@ -169,6 +187,8 @@ class HonorariosController extends BaseController {
 		$fechaInicio  = (string)$this->request->getParam('fecha_inicio');
 		$fechaFin     = (string)$this->request->getParam('fecha_fin');
 		$tipoServicio = $this->request->getParam('tipo_servicio');
+		$especial = (bool)$this->request->getParam('especial', false);
+		$tipoHonorario = (string)$this->request->getParam('tipo_honorario', 'parcial');
 
 		try {
 			$this->honorariosMapper->updateHonorario(
@@ -179,7 +199,8 @@ class HonorariosController extends BaseController {
 				$fechaInicio,
 				$fechaFin,
 				$tipoServicio !== null ? (string)$tipoServicio : null,
-				true  // <- el activo que faltaba
+				$especial,
+				$tipoHonorario
 			);
 		} catch (\Exception $e) {
 			return new DataResponse(
@@ -189,5 +210,248 @@ class HonorariosController extends BaseController {
 		}
 
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function finalizarHonorario(int $id_honorario): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->honorariosMapper->desactivarHonorario($id_honorario);
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function reactivarHonorario(int $id_honorario): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->honorariosMapper->reactivarHonorario($id_honorario);
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function actualizarMetadatos(): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos']);
+
+		$idHonorario  = (int)$this->request->getParam('id_honorario');
+		$tipoServicio = $this->request->getParam('tipo_servicio');
+		$tipoMoneda   = (string)$this->request->getParam('tipo_moneda', 'MXN');
+		$especial     = (bool)$this->request->getParam('especial', false);
+
+		$this->honorariosMapper->actualizarMetadatos(
+			$idHonorario,
+			$tipoServicio !== null ? (string)$tipoServicio : null,
+			$tipoMoneda,
+			$especial
+		);
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function generarSolicitudRecibo(
+		int $id_honorario,
+		?string $departamento = null,
+		?string $asunto = null,
+		?string $quienSolicita = null,
+		?string $quienAutoriza = null,
+		?string $claveGerenteJunior = null,
+		?string $nombreGerenteJunior = null,
+		?string $claveSupervisorSenior = null,
+		?string $nombreSupervisorSenior = null,
+		?string $claveSupervisorJunior = null,
+		?string $nombreSupervisorJunior = null,
+		?string $claveOtro = null,
+		?string $nombreOtro = null,
+		?string $nombreGerente = null,
+		?string $nombreSocio = null
+	) {
+
+		$this->checkAccess(['admin', 'recursos_humanos']);
+
+		try {
+
+			$honorario = $this->honorariosMapper->findById($id_honorario);
+
+			if (!$honorario) {
+				throw new \Exception('No se encontró el honorario.');
+			}
+
+			$cliente = $this->clientesMapper->findById(
+				(int)$honorario['id_cliente']
+			);
+
+			if (!$cliente) {
+				throw new \Exception('No se encontró el cliente.');
+			}
+
+			$templatePath = __DIR__ . '/../../templates/PlantillaReporte.xlsx';
+			/*
+			* DATOS CLIENTE
+			*/
+
+			$grupoNombre = '';
+
+			if (!empty($cliente['cliente_padre'])) {
+
+				try {
+
+					$clientePadre = $this->clientesMapper->findById(
+						(int)$cliente['cliente_padre']
+					);
+
+					if ($clientePadre) {
+						$grupoNombre = $clientePadre['nombre'] ?? '';
+					}
+
+				} catch (\Throwable $e) {
+					$grupoNombre = '';
+				}
+			}
+
+			/*
+			* HONORARIO
+			*/
+
+			$importeTotal = (float)$honorario['importe_total'];
+			$esIguala = $honorario['tipo_honorario'] === 'iguala';
+
+			$numParcialidades = (int)($honorario['numero_parcialidades'] ?? 0);
+
+			$montoParcialidad = $numParcialidades > 0
+				? $importeTotal / $numParcialidades
+				: $importeTotal;
+
+			/* 
+			* PERIODO (mmm-yy)
+			*/
+
+			$mesesEs = [
+				'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+				'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
+			];
+			$periodoTxt = '';
+
+			if (!empty($honorario['fecha_inicio'])) {
+				$fecha = new \DateTime($honorario['fecha_inicio']);
+				$periodoTxt = $mesesEs[(int)$fecha->format('n') - 1] . ' ' . $fecha->format('Y');
+			}
+
+			/*
+			* MONEDA ("FACTURACIÓN EN: PESOS" / "DÓLARES" / etc.)
+			*/
+
+			$monedasTxt = [
+				'MXN' => 'PESOS',
+				'USD' => 'DÓLARES',
+				'EUR' => 'EUROS',
+			];
+			$tipoMoneda = strtoupper((string)($honorario['tipo_moneda'] ?? 'MXN'));
+			$monedaTxt = $monedasTxt[$tipoMoneda] ?? $tipoMoneda;
+
+			/*
+			* LÍDER Y COLABORADORES
+			*/
+
+			$liderNombre = '';
+
+			if (!empty($cliente['lider_proyecto'])) {
+				$liderNombre = $this->empleadosMapper->getDisplayNameById(
+					(int)$cliente['lider_proyecto']
+				) ?? '';
+			}
+
+			$colaboradoresNombres = [];
+
+			foreach (($cliente['colaboradores'] ?? []) as $idColaborador) {
+				$nombre = $this->empleadosMapper->getDisplayNameById((int)$idColaborador);
+
+				if ($nombre) {
+					$colaboradoresNombres[] = $nombre;
+				}
+			}
+
+			$colaboradoresTxt = implode(', ', $colaboradoresNombres);
+
+			/*
+			* GENERAR ARCHIVO
+			*/
+
+			$replacements = [
+				'{fecha}' => date('d/m/Y'),
+				'{departamento}'  => $departamento ?? '',
+
+				'{cliente.nombre}' => $cliente['nombre'] ?? '',
+				'{cliente.grupo}' => $grupoNombre,
+				'{cliente.ubicacion}' => $cliente['ubicacion'] ?? '',
+				'{cliente.telefono}' => $cliente['telefono'] ?? '',
+				'{cliente.correo}' => $cliente['correo'] ?? '',
+				'{cliente.contacto}' => $cliente['nombre_contacto'] ?? '',
+
+				'{honorario.importe}' => number_format($importeTotal, 2, '.', ','),
+				'{honorario.moneda}' => $monedaTxt,
+				'{tipo_moneda}' => $tipoMoneda,
+				'{honorario.iguala_mark}' => $esIguala ? 'X' : '',
+				'{honorario.parcialidad_mark}' => $esIguala ? '' : 'X',
+				'{honorario.num_parcialidades}' => $esIguala ? '1' : (($numParcialidades > 0) ? (string)$numParcialidades : ''),
+				'{honorario.monto_parcialidad}' => $esIguala
+					? number_format($importeTotal, 2, '.', ',')
+					: number_format(round($montoParcialidad, 2), 2, '.', ','),
+				'{honorario.asunto}' => $asunto ?? ($honorario['tipo_servicio'] ?? ''),
+				'{honorario.periodo}' => $periodoTxt,
+
+				'{lider}'        => $liderNombre,
+				'{colaborador}'  => $colaboradoresTxt,
+
+				'{gerente_junior.clave}' => $claveGerenteJunior ?? '',
+				'{gerente_junior.nombre}' => $nombreGerenteJunior ?? '',
+				'{supervisor_senior.clave}' => $claveSupervisorSenior ?? '',
+				'{supervisor_senior.nombre}' => $nombreSupervisorSenior ?? '',
+				'{supervisor_junior.clave}' => $claveSupervisorJunior ?? '',
+				'{supervisor_junior.nombre}' => $nombreSupervisorJunior ?? '',
+				'{otro.clave}' => $claveOtro ?? '',
+				'{otro.nombre}' => $nombreOtro ?? '',
+
+				'{solicita}' => $quienSolicita ?? '',
+				'{autoriza}' => $this->userSession->getUser()?->getDisplayName() ?? '',
+				'{gerente}' => $nombreGerente ?? '',
+				'{socio}' => $nombreSocio ?? '',
+			];
+
+			$filler = new XlsxTemplateFiller($templatePath);
+			$contenido = $filler->fill($replacements);
+
+			$nombreArchivo =
+				'Solicitud_Recibo_' .
+				preg_replace('/[^A-Za-z0-9_]+/', '_', $cliente['nombre'] ?? 'cliente') .
+				'_' .
+				date('Y-m-d') .
+				'.xlsx';
+
+			return new DataDownloadResponse(
+				$contenido,
+				$nombreArchivo,
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+			);
+
+		} catch (\Throwable $e) {
+
+			$this->logger->error(
+				$e->getMessage(),
+				[
+					'app' => 'empleados',
+					'exception' => $e,
+				]
+			);
+
+			return new DataResponse(
+				[
+					'status' => 'error',
+					'message' => $e->getMessage(),
+				],
+				500
+			);
+		}
 	}
 }

@@ -365,12 +365,52 @@
 										</p>
 										<h3>{{ t('empleados', 'Service Fees') }}</h3>
 									</div>
-									<NcButton type="primary" @click="openHonorarioModal">
-										{{ t('empleados', 'New fee') }}
-									</NcButton>
+									<div style="display:flex; align-items:center; gap:8px;">
+										<NcActions>
+											<template #icon>
+												<DotsHorizontal :size="20" />
+											</template>
+
+											<NcActionButton @click="honorarioFilterModal = true">
+												<template #icon>
+													<FilterVariant :size="20" />
+												</template>
+												{{ t('empleados', 'Filters') }}
+											</NcActionButton>
+
+											<NcActionButton @click="toggleSelectMode">
+												<template #icon>
+													<CheckboxMarkedOutline :size="20" />
+												</template>
+												{{ selectMode ? t('empleados', 'Exit selection') : t('empleados', 'Select') }}
+											</NcActionButton>
+										</NcActions>
+
+										<span v-if="honorarioFilterCount > 0" class="filter-badge">
+											{{ honorarioFilterCount }}
+										</span>
+
+										<NcButton type="primary" @click="openHonorarioModal">
+											{{ t('empleados', 'New fee') }}
+										</NcButton>
+									</div>
 								</div>
 
-								<NcEmptyContent v-if="!honorarios.length"
+								<div v-if="selectMode" class="select-bar">
+									<span>{{ selectedHonorarios.length }} {{ t('empleados', 'selected') }}</span>
+									<div style="display:flex; gap:8px;">
+										<NcButton @click="toggleSelectMode">
+											{{ t('empleados', 'Cancel') }}
+										</NcButton>
+										<NcButton type="primary"
+											:disabled="selectedHonorarios.length === 0"
+											@click="generarReporteHonorarios">
+											{{ t('empleados', 'Generate report') }}
+										</NcButton>
+									</div>
+								</div>
+
+								<NcEmptyContent v-if="!filteredHonorarios.length"
 									:name="t('empleados', 'No fees registered')"
 									:description="t('empleados', 'Register a service fee for this company.')">
 									<template #icon>
@@ -379,10 +419,17 @@
 								</NcEmptyContent>
 
 								<div v-else class="honorarios-list">
-									<div v-for="honorario in honorarios"
+									<div v-for="honorario in filteredHonorarios"
 										:key="honorario.id_honorario"
-										class="honorario-card">
+										class="honorario-card"
+										:class="{ 'honorario-especial': Number(honorario.especial) === 1 }">
 										<div class="honorario-header">
+											<input v-if="selectMode"
+												type="checkbox"
+												:checked="selectedHonorarios.includes(honorario.id_honorario)"
+												class="honorario-checkbox"
+												@change="toggleSeleccionHonorario(honorario.id_honorario)">
+
 											<div class="honorario-info">
 												<span class="value-text">{{ honorario.tipo_servicio || t('empleados',
 													'Service') }}</span>
@@ -390,29 +437,90 @@
 											</div>
 											<div class="honorario-meta">
 												<span class="honorario-amount">
-													{{ formatImporte(honorario.importe_total) }} {{
-														honorario.tipo_moneda }}
+													{{ formatImporte(montoAcumulado(honorario)) }} {{ honorario.tipo_moneda }}
 												</span>
 												<span class="honorario-badge"
 													:class="Number(honorario.activo) ? 'badge-active' : 'badge-done'">
-													{{ Number(honorario.activo) ? t('empleados', 'Active') :
-														t('empleados', 'Completed') }}
+													{{ Number(honorario.activo) ? t('empleados', 'Active') : t('empleados', 'Completed') }}
 												</span>
-												<NcButton v-if="Number(honorario.numero_parcialidades) === 0"
-													type="secondary"
-													@click="completarHonorarioBorrador(honorario)">
-													{{ t('empleados', 'Complete fee') }}
-												</NcButton>
 
-												<NcButton v-if="Number(honorario.numero_parcialidades) > 0"
-													type="tertiary"
-													@click="toggleParcialidades(honorario.id_honorario)">
-													{{ t('empleados', 'Installments') }}
-												</NcButton>
-												<NcButton type="tertiary-no-background"
-													@click="askDeleteHonorario(honorario.id_honorario)">
-													{{ t('empleados', 'Delete') }}
-												</NcButton>
+												<!-- badge de tipo -->
+												<span class="honorario-badge badge-tipo"
+													:class="'badge-tipo-' + (honorario.tipo_honorario || 'parcial')">
+													{{ honorario.tipo_honorario || 'parcial' }}
+												</span>
+												<!-- Botón reactivar — solo igualas completadas -->
+												<div class="honorario-right-actions">
+													<NcButton v-if="Number(honorario.numero_parcialidades) === 0"
+														type="secondary"
+														@click="completarHonorarioBorrador(honorario)">
+														{{ t('empleados', 'Complete fee') }}
+													</NcButton>
+
+													<NcButton v-if="Number(honorario.numero_parcialidades) > 0"
+														type="tertiary"
+														@click="toggleParcialidades(honorario.id_honorario)">
+														{{ t('empleados', 'Installments') }}
+													</NcButton>
+
+													<NcActions :force-menu="true">
+														<template #icon>
+															<DotsHorizontal :size="20" />
+														</template>
+
+														<NcActionButton
+															v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 1"
+															@click="agregarParcialidadIguala(honorario.id_honorario)">
+															<template #icon>
+																<CalendarPlus :size="20" />
+															</template>
+															{{ t('empleados', '+ Month') }}
+														</NcActionButton>
+
+														<NcActionButton
+															v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 1"
+															class="action-danger"
+															@click="askFinalizarHonorario(honorario.id_honorario)">
+															<template #icon>
+																<CloseCircleOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Finalize') }}
+														</NcActionButton>
+
+														<NcActionButton
+															v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 0"
+															@click="reactivarHonorario(honorario.id_honorario)">
+															<template #icon>
+																<Restore :size="20" />
+															</template>
+															{{ t('empleados', 'Reactivate') }}
+														</NcActionButton>
+
+														<NcActionSeparator
+															v-if="honorario.tipo_honorario === 'iguala'" />
+
+														<NcActionButton @click="abrirModificarHonorario(honorario)">
+															<template #icon>
+																<PencilOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Modify') }}
+														</NcActionButton>
+
+														<NcActionButton @click="abrirReporteHonorario(honorario)">
+															<template #icon>
+																<FileDocumentOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Report') }}
+														</NcActionButton>
+
+														<NcActionButton @click="askDeleteHonorario(honorario.id_honorario)">
+															<template #icon>
+																<TrashCanOutline :size="20" />
+															</template>
+															{{ t('empleados', 'Delete') }}
+														</NcActionButton>
+													</NcActions>
+												</div>
 											</div>
 										</div>
 
@@ -472,11 +580,28 @@
 															</template>
 														</div>
 													</div>
-													<div v-if="detalleAbierto[p.id_parcialidad]"
-														class="parcialidad-detalle">
+													<div v-if="detalleAbierto[p.id_parcialidad]" class="parcialidad-detalle">
 														<span v-if="p.fecha_pago" class="parcialidad-detail-text">
 															💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
 														</span>
+
+														<NcActions v-if="Number(p.pagado) === 1" class="parcialidad-detalle-actions">
+															<template #icon>
+																<DotsHorizontal :size="18" />
+															</template>
+															<NcActionButton @click="editarFechaPago(p, honorario.id_honorario)">
+																<template #icon>
+																	<PencilOutline :size="20" />
+																</template>
+																{{ t('empleados', 'Edit payment date') }}
+															</NcActionButton>
+															<NcActionButton @click="askCancelarPago(p, honorario.id_honorario)">
+																<template #icon>
+																	<CloseCircleOutline :size="20" />
+																</template>
+																{{ t('empleados', 'Cancel payment') }}
+															</NcActionButton>
+														</NcActions>
 													</div>
 												</div>
 											</template>
@@ -486,22 +611,40 @@
 							</div>
 						</div>
 
-						<NcDialog v-if="showPagoDialog"
-							:name="t('empleados', 'Payment date')"
-							:open.sync="showPagoDialog"
+						<!-- Modal - Fecha Pago -->
+						<NcModal
+							v-if="showPagoDialog"
+							size="small"
+							:name="t('empleados', 'Register payment')"
 							@close="showPagoDialog = false">
-							<input v-model="fechaPago" class="fecha-pago-input" type="date">
-
-							<template #actions>
-								<NcButton @click="showPagoDialog = false">
-									{{ t('empleados', 'Cancel') }}
-								</NcButton>
-								<NcButton type="primary" @click="confirmarPago">
-									{{ t('empleados', 'Save') }}
-								</NcButton>
-							</template>
-						</NcDialog>
-
+							<div class="payment-modal">
+								<div class="payment-icon-wrapper">
+									<div class="payment-icon">
+										💳
+									</div>
+								</div>
+								<h2>{{ t('empleados', 'Register payment') }}</h2>
+								<p class="payment-subtitle">
+									{{ t('empleados', 'Select the payment date for this installment.') }}
+								</p>
+								<div class="payment-field">
+									<NcTextField
+										v-model="fechaPago"
+										type="date"
+										:label="t('empleados', 'Payment date')" />
+								</div>
+								<div class="payment-actions">
+									<NcButton @click="showPagoDialog = false">
+										{{ t('empleados', 'Cancel') }}
+									</NcButton>
+									<NcButton
+										type="primary"
+										@click="confirmarPago">
+										{{ t('empleados', 'Save') }}
+									</NcButton>
+								</div>
+							</div>
+						</NcModal>
 						<NcDialog v-if="showFacturaDialog"
 							:name="t('empleados', 'Invoice date')"
 							@close="showFacturaDialog = false">
@@ -525,6 +668,20 @@
 							)
 							"
 							:buttons="deleteHonorarioButtons" />
+						<NcDialog :open.sync="showCancelarPagoDialog"
+							:name="t('empleados', 'Confirm')"
+							:message="t('empleados', 'This will mark the installment as pending again. Continue?')"
+							:buttons="[
+								{ label: t('empleados', 'Cancel'), callback: () => { showCancelarPagoDialog = false } },
+								{ label: t('empleados', 'Cancel payment'), type: 'primary', callback: () => { confirmarCancelarPago() } },
+							]" />
+						<NcDialog :open.sync="showFinalizarDialog"
+							:name="t('empleados', 'Finalize fee')"
+							:message="t('empleados', 'This will mark the fee as completed. No new installments will be generated. Continue?')"
+							:buttons="[
+								{ label: t('empleados', 'Cancel'), callback: () => { showFinalizarDialog = false } },
+								{ label: t('empleados', 'Finalize'), type: 'primary', callback: () => { confirmarFinalizarHonorario() } },
+							]" />
 					</div>
 				</template>
 			</List>
@@ -636,19 +793,158 @@
 			</div>
 		</NcModal>
 
-		<!-- Modal: Honorario -->
-		<NcModal v-if="honorarioModal" :name="t('empleados', 'New service fee')" @close="closeHonorarioModal">
+		<!-- Modal: Filtros Honorarios -->
+		<NcModal v-if="honorarioFilterModal"
+			size="small"
+			:name="t('empleados', 'Filter fees')"
+			@close="honorarioFilterModal = false">
 			<div class="modal-content">
 				<div class="modal-header">
 					<p class="section-label">
 						{{ t('empleados', 'Billing') }}
 					</p>
-					<h2>{{ t('empleados', 'New service fee') }}</h2>
-					<p>{{ t('empleados', 'The installments will be calculated automatically by month.') }}</p>
+					<h2>{{ t('empleados', 'Filter fees') }}</h2>
 				</div>
 
 				<div class="form-grid">
+					<NcTextField class="span-2"
+						:value.sync="hf_busqueda"
+						:label="t('empleados', 'Search by service name')" />
+
+					<NcSelect v-model="hf_estado"
+						class="span-2"
+						:options="hf_estadoOptions"
+						:placeholder="t('empleados', 'Status')"
+						label="label"
+						track-by="value"
+						:clearable="true" />
+
+					<NcSelect v-model="hf_tipo"
+						class="span-2"
+						:options="hf_tipoOptions"
+						:placeholder="t('empleados', 'Fee type')"
+						label="label"
+						track-by="value"
+						:clearable="true" />
+
+					<div class="special-client-card span-2">
+						<NcCheckboxRadioSwitch v-model="hf_soloEspecial" type="switch" />
+						<div class="special-client-info">
+							<h3>{{ t('empleados', 'Special fees only') }}</h3>
+						</div>
+					</div>
+
+					<div class="span-2">
+						<span class="date-label">{{ t('empleados', 'Date range') }}</span>
+					</div>
+					<NcTextField :value.sync="hf_desde" type="date" :label="t('empleados', 'From')" />
+					<NcTextField :value.sync="hf_hasta" type="date" :label="t('empleados', 'To')" />
+				</div>
+
+				<div class="modal-actions">
+					<NcButton @click="resetHonorarioFilters">
+						{{ t('empleados', 'Clear filters') }}
+					</NcButton>
+					<NcButton type="primary" @click="honorarioFilterModal = false">
+						{{ t('empleados', 'Apply') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
+		<!-- Modal - Reporte-Honorarios -->
+		<NcModal v-if="reporteModal"
+			size="normal"
+			:name="t('empleados', 'Generate report')"
+			@close="reporteModal = false">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2>{{ t('empleados', 'Generate service fee report') }}</h2>
+				</div>
+
+				<div class="form-grid">
+					<NcSelect v-model="rep_departamento"
+						class="span-2"
+						:options="rep_departamentoOptions"
+						:placeholder="t('empleados', 'Department')"
+						label="label"
+						track-by="value" />
+
+					<NcTextField class="span-2" :value.sync="rep_asunto" :label="t('empleados', 'Subject')" />
+				</div>
+
+				<div class="modal-actions">
+					<NcButton @click="reporteModal = false">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="generandoReporte" @click="generarReporte">
+						{{ generandoReporte ? t('empleados', 'Generating...') : t('empleados', 'Generate') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
+		<!-- Modal - Honorarios -->
+		<NcModal v-if="honorarioModal" :name="honorarioModalTitle" @close="closeHonorarioModal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<p class="section-label">
+						{{ t('empleados', 'Billing') }}
+					</p>
+					<h2>{{ honorarioModalTitle }}</h2>
+				</div>
+
+				<!-- Selector de tipo -->
+				<div class="tipo-honorario-selector">
+					<button v-for="tipo in tiposHonorario"
+						:key="tipo.value"
+						class="tipo-btn"
+						:class="{ 'tipo-btn--active': h_tipo_honorario === tipo.value }"
+						type="button"
+						:disabled="isEditingHonorario"
+						@click="!isEditingHonorario && (h_tipo_honorario = tipo.value)">
+						<span class="tipo-icon">
+							<span v-if="tipo.value === 'parcial'">📅</span>
+							<span v-else-if="tipo.value === 'iguala'">🔄</span>
+							<span v-else>⚡</span>
+						</span>
+						{{ tipo.label }}
+					</button>
+				</div>
+
+				<!-- Descripción contextual -->
+				<NcNoteCard type="info" class="tipo-desc">
+					<span v-if="h_tipo_honorario === 'parcial'">
+						{{ t('empleados', 'Fixed period. Installments are calculated automatically by month between start and end date.') }}
+					</span>
+					<span v-else-if="h_tipo_honorario === 'iguala'">
+						{{ t('empleados', 'Indefinite monthly fee. A new installment is generated each month. You can finalize it at any time.') }}
+					</span>
+					<span v-else>
+						{{ t('empleados', 'One-time fee. A single installment is created for the selected month.') }}
+					</span>
+				</NcNoteCard>
+
+				<!-- Aviso de edición bloqueada -->
+				<NcNoteCard v-if="isEditingHonorario" type="warning" class="tipo-desc">
+					{{ t('empleados', 'Dates and amount cannot be changed here to avoid regenerating installments. Only service, currency, title date and special flag can be edited.') }}
+				</NcNoteCard>
+
+				<div class="form-grid">
 					<NcTextField :value.sync="h_tipo_servicio" :label="t('empleados', 'Service type')" />
+
+					<NcSelect v-model="h_titulo_mes"
+						:options="meses"
+						:placeholder="t('empleados', 'Month')"
+						label="label"
+						track-by="value"
+						:searchable="false" />
+					<NcSelect v-model="h_titulo_anio"
+						:options="anios"
+						:placeholder="t('empleados', 'Year')"
+						label="label"
+						track-by="value"
+						:searchable="false" />
 
 					<NcSelect v-model="h_tipo_moneda"
 						:options="currencyOptions"
@@ -659,7 +955,18 @@
 					<NcTextField type="number"
 						class="span-2"
 						:value.sync="h_importe_total"
+						:disabled="isEditingHonorario"
 						:label="t('empleados', 'Total amount')" />
+
+					<div class="special-client-card span-2">
+						<NcCheckboxRadioSwitch v-model="h_especial" type="switch" />
+						<div class="special-client-info">
+							<h3>{{ t('empleados', 'Special fee') }}</h3>
+							<p>{{ t('empleados', 'Marks this service fee as special.') }}</p>
+						</div>
+					</div>
+
+					<!-- Fecha inicio (todos los tipos) -->
 					<div class="span-2">
 						<span class="date-label">{{ t('empleados', 'Start date') }}</span>
 					</div>
@@ -668,34 +975,58 @@
 						:placeholder="t('empleados', 'Month')"
 						label="label"
 						track-by="value"
-						:searchable="false" />
+						:searchable="false"
+						:disabled="isEditingHonorario" />
 					<NcSelect v-model="h_anio_inicio"
 						:options="anios"
 						:placeholder="t('empleados', 'Year')"
 						label="label"
 						track-by="value"
-						:searchable="false" />
+						:searchable="false"
+						:disabled="isEditingHonorario" />
 
-					<div class="span-2">
-						<span class="date-label">{{ t('empleados', 'End date') }}</span>
-					</div>
-					<NcSelect v-model="h_mes_fin"
-						:options="meses"
-						:placeholder="t('empleados', 'Month')"
-						label="label"
-						track-by="value"
-						:searchable="false" />
-					<NcSelect v-model="h_anio_fin"
-						:options="anios"
-						:placeholder="t('empleados', 'Year')"
-						label="label"
-						track-by="value"
-						:searchable="false" />
+					<!-- Fecha fin solo para parciales -->
+					<template v-if="h_tipo_honorario === 'parcial'">
+						<div class="span-2">
+							<span class="date-label">{{ t('empleados', 'End date') }}</span>
+						</div>
+						<NcSelect v-model="h_mes_fin"
+							:options="meses"
+							:placeholder="t('empleados', 'Month')"
+							label="label"
+							track-by="value"
+							:searchable="false"
+							:disabled="isEditingHonorario" />
+						<NcSelect v-model="h_anio_fin"
+							:options="anios"
+							:placeholder="t('empleados', 'Year')"
+							label="label"
+							track-by="value"
+							:searchable="false"
+							:disabled="isEditingHonorario" />
+					</template>
 
-					<NcNoteCard v-if="h_numero_parcialidades > 0" type="info" class="span-2">
+					<!-- Preview -->
+					<NcNoteCard v-if="!isEditingHonorario && h_tipo_honorario === 'parcial' && h_numero_parcialidades > 0"
+						type="info"
+						class="span-2">
 						{{ t('empleados', '{n} installment(s) of {amount} {currency}', {
 							n: h_numero_parcialidades,
 							amount: formatImporte(h_importe_parcialidad),
+							currency: h_tipo_moneda ? h_tipo_moneda.value : ''
+						}) }}
+					</NcNoteCard>
+					<NcNoteCard v-else-if="!isEditingHonorario && h_tipo_honorario === 'iguala'" type="info" class="span-2">
+						{{ t('empleados', 'Monthly fee of {amount} {currency} starting {mes} {anio}', {
+							amount: formatImporte(Number(h_importe_total || 0)),
+							currency: h_tipo_moneda ? h_tipo_moneda.value : '',
+							mes: h_mes_inicio ? h_mes_inicio.label : '—',
+							anio: h_anio_inicio ? h_anio_inicio.value : ''
+						}) }}
+					</NcNoteCard>
+					<NcNoteCard v-else-if="!isEditingHonorario && h_tipo_honorario === 'eventual'" type="info" class="span-2">
+						{{ t('empleados', 'Single installment of {amount} {currency}', {
+							amount: formatImporte(Number(h_importe_total || 0)),
 							currency: h_tipo_moneda ? h_tipo_moneda.value : ''
 						}) }}
 					</NcNoteCard>
@@ -705,8 +1036,8 @@
 					<NcButton @click="closeHonorarioModal">
 						{{ t('empleados', 'Cancel') }}
 					</NcButton>
-					<NcButton type="primary" :disabled="!isHonorarioValid || savingHonorario" @click="crearHonorario">
-						{{ savingHonorario ? t('empleados', 'Saving...') : t('empleados', 'Create fee') }}
+					<NcButton type="primary" :disabled="!isHonorarioValid || savingHonorario" @click="handleSaveHonorario">
+						{{ honorarioSaveLabel }}
 					</NcButton>
 				</div>
 			</div>
@@ -731,11 +1062,19 @@ import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOut
 import OfficeBuilding from 'vue-material-design-icons/OfficeBuilding.vue'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
+import CheckboxMarkedOutline from 'vue-material-design-icons/CheckboxMarkedOutline.vue'
 // import Cog from 'vue-material-design-icons/Cog.vue'
 import AccountMultiplePlusOutline from 'vue-material-design-icons/AccountMultiplePlusOutline.vue'
 import DatabaseExport from 'vue-material-design-icons/DatabaseExport.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
+import DotsHorizontal from 'vue-material-design-icons/DotsHorizontal.vue'
+import PencilOutline from 'vue-material-design-icons/PencilOutline.vue'
+import CloseCircleOutline from 'vue-material-design-icons/CloseCircleOutline.vue'
+import TrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
+import CalendarPlus from 'vue-material-design-icons/CalendarPlus.vue'
+import Restore from 'vue-material-design-icons/Restore.vue'
+import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 // import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
 // import IconTrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 // import IconOpenInNew from 'vue-material-design-icons/OpenInNew.vue'
@@ -762,6 +1101,13 @@ export default {
 	name: 'CompaniesGroups',
 
 	components: {
+		TrashCanOutline,
+		Restore,
+		CalendarPlus,
+		CheckboxMarkedOutline,
+		DotsHorizontal,
+		PencilOutline,
+		CloseCircleOutline,
 		NcAppContent,
 		NcDialog,
 		List,
@@ -772,6 +1118,7 @@ export default {
 		AccountMultiplePlusOutline,
 		DatabaseExport,
 		Upload,
+		FileDocumentOutline,
 		// IconTrashCanOutline,
 		// IconOpenInNew,
 		// IconPencilOutline,
@@ -841,18 +1188,18 @@ export default {
 			loadingParcialidades: {},
 			parcialidades: {},
 			meses: [
-				{ label: 'January', value: 1 },
-				{ label: 'February', value: 2 },
-				{ label: 'March', value: 3 },
-				{ label: 'April', value: 4 },
-				{ label: 'May', value: 5 },
-				{ label: 'June', value: 6 },
-				{ label: 'July', value: 7 },
-				{ label: 'August', value: 8 },
-				{ label: 'September', value: 9 },
-				{ label: 'October', value: 10 },
-				{ label: 'November', value: 11 },
-				{ label: 'December', value: 12 },
+				{ label: t('empleados', 'January'), value: 1 },
+				{ label: t('empleados', 'February'), value: 2 },
+				{ label: t('empleados', 'March'), value: 3 },
+				{ label: t('empleados', 'April'), value: 4 },
+				{ label: t('empleados', 'May'), value: 5 },
+				{ label: t('empleados', 'June'), value: 6 },
+				{ label: t('empleados', 'July'), value: 7 },
+				{ label: t('empleados', 'August'), value: 8 },
+				{ label: t('empleados', 'September'), value: 9 },
+				{ label: t('empleados', 'October'), value: 10 },
+				{ label: t('empleados', 'November'), value: 11 },
+				{ label: t('empleados', 'December'), value: 12 },
 			],
 			anios: Array.from({ length: 2070 - 2000 + 1 }, (_, i) => {
 				const year = 2000 + i
@@ -882,6 +1229,55 @@ export default {
 				{ abierto: false },
 				{ abierto: false },
 			],
+			h_titulo_mes: null,
+			h_titulo_anio: { label: String(new Date().getFullYear()), value: new Date().getFullYear() },
+			h_especial: false,
+			honorarioFilterModal: false,
+			hf_busqueda: '',
+			hf_estado: null,
+			hf_estadoOptions: [
+				{ label: t('empleados', 'Active'), value: 'activo' },
+				{ label: t('empleados', 'Completed'), value: 'completado' },
+			],
+			hf_soloEspecial: false,
+			hf_desde: '',
+			hf_hasta: '',
+			showCancelarPagoDialog: false,
+			parcialidadACancelar: null,
+			selectMode: false,
+			selectedHonorarios: [],
+			h_tipo_honorario: 'parcial', // 'parcial' | 'iguala' | 'eventual'
+			tiposHonorario: [
+				{ label: 'Parcialidades', value: 'parcial' },
+				{ label: 'Iguala mensual', value: 'iguala' },
+				{ label: 'Eventual', value: 'eventual' },
+			],
+			honorarioToFinalizar: null,
+			showFinalizarDialog: false,
+			hf_tipo: null,
+			hf_tipoOptions: [
+				{ label: t('empleados', 'Installments'), value: 'parcial' },
+				{ label: t('empleados', 'Retainer fee'), value: 'iguala' },
+				{ label: t('empleados', 'One-time'), value: 'eventual' },
+			],
+			editingHonorarioId: null,
+			reporteModal: false,
+			honorarioParaReporte: null,
+			generandoReporte: false,
+			rep_departamento: null,
+			rep_departamentoOptions: [],
+			rep_asunto: '',
+			rep_quienSolicita: '',
+			rep_claveGerenteJunior: '',
+			rep_nombreGerenteJunior: '',
+			rep_claveSupervisorSenior: '',
+			rep_nombreSupervisorSenior: '',
+			rep_claveSupervisorJunior: '',
+			rep_nombreSupervisorJunior: '',
+			rep_claveOtro: '',
+			rep_nombreOtro: '',
+			rep_nombreGerente: '',
+			rep_nombreSocio: '',
 		}
 	},
 
@@ -1044,12 +1440,20 @@ export default {
 		},
 
 		isHonorarioValid() {
-			return Number(this.h_importe_total) > 0
+			if (this.editingHonorarioId) {
+				return Boolean(this.h_tipo_moneda)
+			}
+
+			const base = Number(this.h_importe_total) > 0
 				&& Boolean(this.h_tipo_moneda)
 				&& Boolean(this.h_mes_inicio)
 				&& Boolean(this.h_anio_inicio)
-				&& Boolean(this.h_mes_fin)
-				&& Boolean(this.h_anio_fin)
+
+			if (this.h_tipo_honorario === 'parcial') {
+				return base && Boolean(this.h_mes_fin) && Boolean(this.h_anio_fin)
+			}
+
+			return base
 		},
 
 		projectManagerName() {
@@ -1084,6 +1488,68 @@ export default {
 			return this.projectManagers.filter(
 				emp => Number(emp.value) !== leaderId,
 			)
+		},
+
+		filteredHonorarios() {
+			let data = [...this.honorarios]
+
+			if (this.hf_busqueda.trim()) {
+				const q = this.hf_busqueda.trim().toLowerCase()
+				data = data.filter(h => (h.tipo_servicio || '').toLowerCase().includes(q))
+			}
+
+			if (this.hf_estado) {
+				data = data.filter(h => {
+					const activo = Number(h.activo) === 1
+					return this.hf_estado.value === 'activo' ? activo : !activo
+				})
+			}
+
+			if (this.hf_tipo) {
+				data = data.filter(h => (h.tipo_honorario || 'parcial') === this.hf_tipo.value)
+			}
+
+			if (this.hf_soloEspecial) {
+				data = data.filter(h => Number(h.especial) === 1)
+			}
+
+			if (this.hf_desde) {
+				data = data.filter(h => h.fecha_inicio >= this.hf_desde)
+			}
+
+			if (this.hf_hasta) {
+				data = data.filter(h => h.fecha_fin <= this.hf_hasta)
+			}
+
+			return data
+		},
+
+		honorarioFilterCount() {
+			return (this.hf_busqueda.trim() ? 1 : 0)
+				+ (this.hf_estado ? 1 : 0)
+				+ (this.hf_tipo ? 1 : 0)
+				+ (this.hf_soloEspecial ? 1 : 0)
+				+ (this.hf_desde ? 1 : 0)
+				+ (this.hf_hasta ? 1 : 0)
+		},
+
+		isEditingHonorario() {
+			return Boolean(this.editingHonorarioId)
+		},
+
+		honorarioModalTitle() {
+			return this.editingHonorarioId
+				? t('empleados', 'Edit service fee')
+				: t('empleados', 'New service fee')
+		},
+
+		honorarioSaveLabel() {
+			if (this.savingHonorario) {
+				return t('empleados', 'Saving...')
+			}
+			return this.editingHonorarioId
+				? t('empleados', 'Save changes')
+				: t('empleados', 'Create fee')
 		},
 	},
 
@@ -1128,6 +1594,7 @@ export default {
 
 		this.GetCompaniesGroups()
 		this.GetEmpleadosList()
+		this.GetAreasList()
 		this._onClickOutside = (e) => {
 			const wrap = this.$el.querySelector('.filter-wrap')
 			if (wrap && !wrap.contains(e.target)) {
@@ -1163,6 +1630,20 @@ export default {
 			return true
 		},
 
+		async GetAreasList() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/GetAreasList'))
+				const areas = this.getOcsData(response) || []
+
+				this.rep_departamentoOptions = areas.map((a) => ({
+					label: a.Nombre,
+					value: a.Nombre,
+				}))
+			} catch (err) {
+				showError(t('empleados', 'Error loading departments: {error}', { error: String(err) }))
+			}
+		},
+
 		AgregarNuevo() {
 			this.toggle()
 			this.$root.$emit('new', true)
@@ -1188,6 +1669,19 @@ export default {
 				minimumFractionDigits: 2,
 				maximumFractionDigits: 2,
 			})
+		},
+
+		montoAcumulado(honorario) {
+			const lista = this.parcialidades[honorario.id_honorario]
+
+			if (Array.isArray(lista) && lista.length > 0) {
+				return lista.reduce((sum, p) => sum + Number(p.importe_parcialidad || 0), 0)
+			}
+
+			// Aún no se han cargado las parcialidades en el front: usar el
+			// valor que ya trajo el backend, o el importe_total como último recurso.
+			const acumuladoBackend = Number(honorario.monto_acumulado || 0)
+			return acumuladoBackend > 0 ? acumuladoBackend : Number(honorario.importe_total || 0)
 		},
 
 		onEsc() {
@@ -1526,6 +2020,7 @@ export default {
 			this.honorarioModal = false
 			this.savingHonorario = false
 			this.honorarioBorradorId = null
+			this.editingHonorarioId = null
 		},
 
 		resetHonorarioForm() {
@@ -1539,6 +2034,18 @@ export default {
 			this.h_anio_inicio = { label: String(currentYear), value: currentYear }
 			this.h_mes_fin = null
 			this.h_anio_fin = { label: String(currentYear), value: currentYear }
+			this.h_titulo_mes = null
+			this.h_titulo_anio = { label: String(currentYear), value: currentYear }
+			this.h_especial = false
+		},
+
+		resetHonorarioFilters() {
+			this.hf_busqueda = ''
+			this.hf_estado = null
+			this.hf_tipo = null
+			this.hf_soloEspecial = false
+			this.hf_desde = ''
+			this.hf_hasta = ''
 		},
 
 		async GetHonorariosByCliente(idCliente) {
@@ -1579,27 +2086,45 @@ export default {
 			this.savingHonorario = true
 
 			try {
+				// fecha_fin según tipo
+				let fechaFin = ''
+				if (this.h_tipo_honorario === 'parcial') {
+					fechaFin = this.h_mes_fin && this.h_anio_fin
+						? `${this.h_anio_fin.value}-${String(this.h_mes_fin.value).padStart(2, '0')}-01`
+						: ''
+				} else if (this.h_tipo_honorario === 'eventual') {
+					// misma fecha que inicio
+					fechaFin = this.h_mes_inicio && this.h_anio_inicio
+						? `${this.h_anio_inicio.value}-${String(this.h_mes_inicio.value).padStart(2, '0')}-01`
+						: ''
+				}
+				// iguala: fecha_fin vacía (indefinida)
+
 				const payload = {
 					id_cliente: this.selectedClient.id,
 					importe_total: Number(this.h_importe_total),
 					tipo_moneda: this.h_tipo_moneda?.value || 'MXN',
+					especial: this.h_especial ? 1 : 0,
+					tipo_honorario: this.h_tipo_honorario,
 					fecha_inicio: this.h_mes_inicio && this.h_anio_inicio
 						? `${this.h_anio_inicio.value}-${String(this.h_mes_inicio.value).padStart(2, '0')}-01`
 						: '',
-					fecha_fin: this.h_mes_fin && this.h_anio_fin
-						? `${this.h_anio_fin.value}-${String(this.h_mes_fin.value).padStart(2, '0')}-01`
-						: '',
-					tipo_servicio: String(this.h_tipo_servicio || '').trim() || null,
+					fecha_fin: fechaFin,
+					tipo_servicio: (() => {
+						const base = String(this.h_tipo_servicio || '').trim()
+						const mes = this.h_titulo_mes?.label || ''
+						const anio = this.h_titulo_anio?.value || ''
+						const sufijo = (mes && anio) ? ` - ${mes} ${anio}` : ''
+						return base ? `${base}${sufijo}` : (sufijo.trim() || null)
+					})(),
 				}
 
 				if (this.honorarioBorradorId) {
-					// Es un borrador del import — actualizar y generar parcialidades
 					await axios.post(generateUrl('/apps/empleados/completarHonorario'), {
 						...payload,
 						id_honorario: this.honorarioBorradorId,
 					})
 				} else {
-					// Flujo normal — crear nuevo
 					await axios.post(generateUrl('/apps/empleados/crearHonorario'), payload)
 				}
 
@@ -1763,6 +2288,38 @@ export default {
 			}
 		},
 
+		editarFechaPago(p, idHonorario) {
+			this.parcialidadSeleccionada = p.id_parcialidad
+			this.honorarioSeleccionado = idHonorario
+			this.fechaPago = p.fecha_pago || new Date().toISOString().split('T')[0]
+			this.showPagoDialog = true
+		},
+
+		askCancelarPago(p, idHonorario) {
+			this.parcialidadACancelar = p.id_parcialidad
+			this.honorarioSeleccionado = idHonorario
+			this.showCancelarPagoDialog = true
+		},
+
+		async confirmarCancelarPago() {
+			try {
+				await axios.post(
+					generateUrl('/apps/empleados/cancelarPagoParcialidad'),
+					{ id_parcialidad: this.parcialidadACancelar },
+				)
+
+				await this.GetParcialidades(this.honorarioSeleccionado)
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+
+				showSuccess(t('empleados', 'Payment cancelled'))
+			} catch (err) {
+				showError(t('empleados', 'Error cancelling payment: {error}', { error: String(err) }))
+			} finally {
+				this.showCancelarPagoDialog = false
+				this.parcialidadACancelar = null
+			}
+		},
+
 		toggleDetalleParcialidad(idParcialidad) {
 			this.$set(
 				this.detalleAbierto,
@@ -1834,6 +2391,227 @@ export default {
 				await this.GetCompanieGroup(this.selectedClient.id)
 			} catch (err) {
 				showError(t('empleados', 'Error updating status: {error}', { error: String(err) }))
+			}
+		},
+
+		toggleSelectMode() {
+			this.selectMode = !this.selectMode
+			this.selectedHonorarios = []
+		},
+
+		toggleSeleccionHonorario(id) {
+			const idx = this.selectedHonorarios.indexOf(id)
+			if (idx === -1) {
+				this.selectedHonorarios.push(id)
+			} else {
+				this.selectedHonorarios.splice(idx, 1)
+			}
+		},
+
+		generarReporteHonorarios() {
+			// Falta agregar todo el reporte
+			showSuccess(
+				t('empleados', '{n} fees selected for report', { n: this.selectedHonorarios.length }),
+			)
+		},
+
+		async agregarParcialidadIguala(idHonorario) {
+			try {
+				await axios.post(
+					generateUrl('/apps/empleados/agregarParcialidadIguala'),
+					{ id_honorario: idHonorario },
+				)
+				await this.GetParcialidades(idHonorario)
+				showSuccess(t('empleados', 'Installment added'))
+			} catch (err) {
+				showError(t('empleados', 'Error adding installment: {error}', { error: String(err) }))
+			}
+		},
+
+		askFinalizarHonorario(idHonorario) {
+			this.honorarioToFinalizar = idHonorario
+			this.showFinalizarDialog = true
+		},
+
+		async confirmarFinalizarHonorario() {
+			try {
+				await axios.post(
+					generateUrl('/apps/empleados/finalizarHonorario'),
+					{ id_honorario: this.honorarioToFinalizar },
+				)
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+				showSuccess(t('empleados', 'Fee finalized'))
+			} catch (err) {
+				showError(t('empleados', 'Error finalizing fee: {error}', { error: String(err) }))
+			} finally {
+				this.showFinalizarDialog = false
+				this.honorarioToFinalizar = null
+			}
+		},
+
+		async reactivarHonorario(idHonorario) {
+			try {
+				await axios.post(
+					generateUrl('/apps/empleados/reactivarHonorario'),
+					{ id_honorario: idHonorario },
+				)
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+				showSuccess(t('empleados', 'Fee reactivated'))
+			} catch (err) {
+				showError(t('empleados', 'Error reactivating fee: {error}', { error: String(err) }))
+			}
+		},
+
+		abrirModificarHonorario(honorario) {
+			this.resetHonorarioForm()
+
+			this.editingHonorarioId = honorario.id_honorario
+			this.h_tipo_honorario = honorario.tipo_honorario || 'parcial'
+			this.h_especial = Boolean(Number(honorario.especial))
+			this.h_importe_total = String(honorario.importe_total)
+
+			this.h_tipo_moneda = this.currencyOptions.find(c => c.value === honorario.tipo_moneda)
+				|| this.currencyOptions[0]
+
+			// Separar el tipo_servicio base del sufijo "- Mes Año" que se concatena al crear
+			const raw = String(honorario.tipo_servicio || '')
+			const match = raw.match(/^(.*?)(?:\s-\s([A-Za-z]+)\s(\d{4}))?$/)
+
+			this.h_tipo_servicio = match && match[1] ? match[1].trim() : raw
+
+			if (match && match[2] && match[3]) {
+				this.h_titulo_mes = this.meses.find(m => m.label === match[2]) || null
+				this.h_titulo_anio = { label: match[3], value: Number(match[3]) }
+			}
+
+			// Fechas se muestran solo de referencia (bloqueadas)
+			if (honorario.fecha_inicio) {
+				const [anio, mes] = honorario.fecha_inicio.split('-')
+				this.h_anio_inicio = { label: anio, value: Number(anio) }
+				this.h_mes_inicio = this.meses.find(m => m.value === Number(mes)) || null
+			}
+
+			if (honorario.fecha_fin) {
+				const [anio, mes] = honorario.fecha_fin.split('-')
+				this.h_anio_fin = { label: anio, value: Number(anio) }
+				this.h_mes_fin = this.meses.find(m => m.value === Number(mes)) || null
+			}
+
+			this.honorarioModal = true
+		},
+
+		handleSaveHonorario() {
+			return this.editingHonorarioId
+				? this.guardarModificacionHonorario()
+				: this.crearHonorario()
+		},
+
+		async guardarModificacionHonorario() {
+			this.savingHonorario = true
+
+			try {
+				const tipoServicioFinal = (() => {
+					const base = String(this.h_tipo_servicio || '').trim()
+					const mes = this.h_titulo_mes?.label || ''
+					const anio = this.h_titulo_anio?.value || ''
+					const sufijo = (mes && anio) ? ` - ${mes} ${anio}` : ''
+					return base ? `${base}${sufijo}` : (sufijo.trim() || null)
+				})()
+
+				await axios.post(generateUrl('/apps/empleados/actualizarMetadatosHonorario'), {
+					id_honorario: this.editingHonorarioId,
+					tipo_servicio: tipoServicioFinal,
+					tipo_moneda: this.h_tipo_moneda?.value || 'MXN',
+					especial: this.h_especial ? 1 : 0,
+				})
+
+				showSuccess(t('empleados', 'Service fee updated successfully'))
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+				this.closeHonorarioModal()
+			} catch (err) {
+				showError(t('empleados', 'Error updating fee: {error}', { error: String(err) }))
+			} finally {
+				this.savingHonorario = false
+			}
+		},
+
+		abrirReporteHonorario(honorario) {
+			this.honorarioParaReporte = honorario
+			this.rep_departamento = null
+			this.rep_asunto = honorario.tipo_servicio || ''
+			this.rep_quienSolicita = ''
+			this.rep_claveGerenteJunior = ''
+			this.rep_nombreGerenteJunior = ''
+			this.rep_claveSupervisorSenior = ''
+			this.rep_nombreSupervisorSenior = ''
+			this.rep_claveSupervisorJunior = ''
+			this.rep_nombreSupervisorJunior = ''
+			this.rep_claveOtro = ''
+			this.rep_nombreOtro = ''
+			this.rep_nombreGerente = ''
+			this.rep_nombreSocio = ''
+			this.reporteModal = true
+		},
+
+		async generarReporte() {
+			if (!this.honorarioParaReporte?.id_honorario) {
+				showError(t('empleados', 'No fee selected for the report.'))
+				return
+			}
+
+			this.generandoReporte = true
+
+			try {
+				const response = await axios.get(
+					generateUrl('/apps/empleados/generarSolicitudRecibo'),
+					{
+						responseType: 'blob',
+						params: {
+							id_honorario: this.honorarioParaReporte.id_honorario,
+							departamento: this.rep_departamento?.value || null,
+							asunto: this.rep_asunto || null,
+							quienSolicita: this.rep_quienSolicita || null,
+							claveGerenteJunior: this.rep_claveGerenteJunior || null,
+							nombreGerenteJunior: this.rep_nombreGerenteJunior || null,
+							claveSupervisorSenior: this.rep_claveSupervisorSenior || null,
+							nombreSupervisorSenior: this.rep_nombreSupervisorSenior || null,
+							claveSupervisorJunior: this.rep_claveSupervisorJunior || null,
+							nombreSupervisorJunior: this.rep_nombreSupervisorJunior || null,
+							claveOtro: this.rep_claveOtro || null,
+							nombreOtro: this.rep_nombreOtro || null,
+							nombreGerente: this.rep_nombreGerente || null,
+							nombreSocio: this.rep_nombreSocio || null,
+						},
+					},
+				)
+
+				// Si el backend regresó un error, el blob real es JSON, no xlsx
+				if (response.data.type === 'application/json') {
+					const text = await response.data.text()
+					const parsed = JSON.parse(text)
+					throw new Error(parsed?.ocs?.data?.message || parsed?.message || 'Error desconocido')
+				}
+
+				const url = URL.createObjectURL(new Blob([response.data], {
+					type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				}))
+
+				const nombreCliente = (this.selectedClient?.nombre || 'cliente')
+					.replace(/[^A-Za-z0-9_]+/g, '_')
+
+				const link = document.createElement('a')
+				link.href = url
+				link.setAttribute('download', `Solicitud_Recibo_${nombreCliente}.xlsx`)
+				document.body.appendChild(link)
+				link.click()
+				link.remove()
+				URL.revokeObjectURL(url)
+
+				this.reporteModal = false
+			} catch (err) {
+				showError(t('empleados', 'Error generating report: {error}', { error: String(err) }))
+			} finally {
+				this.generandoReporte = false
 			}
 		},
 	},
@@ -2657,5 +3435,201 @@ export default {
 .acordeon-contenido.abierto {
 	max-height: 500px;
 	opacity: 1;
+}
+
+.honorario-especial {
+	background: linear-gradient(
+		135deg,
+		rgba(92, 181, 255, 0.2) 0%,
+		rgba(75, 172, 252, 0.1) 20%,
+		rgba(33, 150, 243, 0.03) 40%,
+		rgba(255, 255, 255, 1) 100%
+	);
+
+	border: 1px solid rgba(63, 112, 151, 0.3);
+	border-left: 2px solid #08243b;
+
+	box-shadow:
+		0 2px 8px rgba(33,150,243,.08),
+		inset 0 1px 0 rgba(255,255,255,.45);
+
+	transition: all .2s ease;
+}
+
+.payment-modal {
+	padding: 32px 28px 28px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.payment-icon-wrapper {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #43a047, #2e7d32);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 16px;
+	box-shadow: 0 4px 14px rgba(46, 125, 50, 0.35);
+}
+
+.payment-icon {
+	font-size: 32px;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	transform: translate(0px, -5px);
+}
+
+.payment-modal h2 {
+	margin: 0 0 8px;
+	font-size: 1.3rem;
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.payment-subtitle {
+	margin: 0 0 24px;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.9rem;
+	line-height: 1.4;
+}
+
+.payment-field {
+	width: 100%;
+	margin-bottom: 28px;
+	text-align: left;
+}
+
+.payment-actions {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	width: 100%;
+}
+
+.payment-actions :deep(button) {
+	min-width: 110px;
+	border-radius: 8px;
+}
+
+.parcialidad-detalle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 5px 30px 5px 14px;
+	background: #ffffff !important;
+	border-radius: 8px;
+	margin-top: 8px;
+}
+
+.parcialidad-detalle-actions {
+	margin-left: auto;
+}
+
+.select-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: var(--color-primary-element-light);
+	border-radius: var(--border-radius-large);
+	padding: 8px 14px;
+	margin-bottom: 10px;
+	font-size: 0.875rem;
+	font-weight: 600;
+}
+
+.honorario-checkbox {
+	width: 16px;
+	height: 16px;
+	margin-right: 4px;
+	flex-shrink: 0;
+	align-self: flex-start;
+	margin-top: 4px;
+}
+
+.tipo-honorario-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.tipo-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large);
+    background: var(--color-background-soft);
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--color-text-maxcontrast);
+    transition: all 0.15s ease;
+
+    &:hover {
+        border-color: var(--color-primary-element);
+        background: var(--color-primary-element-light);
+    }
+
+    &--active {
+        border-color: var(--color-primary-element);
+        border-width: 2px;
+        background: var(--color-primary-element-light);
+        color: var(--color-primary-element);
+        font-weight: 600;
+    }
+}
+
+.tipo-icon {
+    font-size: 1.3rem;
+}
+
+.tipo-desc {
+    margin-bottom: 4px;
+}
+
+.badge-tipo {
+    background: #f3e8ff;
+    color: #7c3aed;
+    text-transform: capitalize;
+}
+
+.honorario-right-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: auto;
+}
+
+.action-danger :deep(button) {
+	color: #a82222 !important;
+}
+
+.action-danger :deep(.action-button__icon) {
+	color: var(--color-error) !important;
+}
+
+.badge-tipo-parcial {
+	background-color: #f3e8ff;
+	color: #6b21a8;
+}
+
+.badge-tipo-iguala {
+	background-color: #dcfce7;
+	color: #15803d;
+}
+
+.badge-tipo-eventual {
+	background-color: #fef9c3;
+	color: #92400e;
 }
 </style>

@@ -384,7 +384,13 @@ class AusenciasController extends BaseController {
             // aqui se disminuyen los dias de la ausencia
             $tipo_ausencia = $this->tipoausenciaMapper->getTipoById($id_tipo_ausencia);
             $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($user->getUID());
-            $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado[0]['Id_empleados']);
+            error_log('Empleado: ' . print_r($id_empleado, true));
+
+            $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser(
+                (int)$id_empleado[0]['Id_empleados']
+            );
+
+            error_log('Ausencias: ' . print_r($empleado_ausencias, true));
             
             $fechaDeObj = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_de'));
             $fechaHastaObj = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_hasta'));
@@ -401,6 +407,9 @@ class AusenciasController extends BaseController {
             // Si es privilegiado, solo se descuentan días si la ausencia abarca hoy o el futuro
             // Si no es privilegiado, también solo si la ausencia abarca hoy o el futuro
             $puedeDescontarDias = $ausenciaAbarcaPresenteOFuturo;
+
+            error_log('TIPO AUSENCIA: ' . print_r($tipo_ausencia, true));
+            error_log('PUEDE DESCONTAR: ' . ($puedeDescontarDias ? 'SI' : 'NO'));
 
             // Aplicamos solo si se debe y el tipo de ausencia lo requiere
             if ($puedeDescontarDias && !empty($tipo_ausencia) && $tipo_ausencia[0]['solicitar_prima_vacacional'] == 1) {
@@ -472,8 +481,26 @@ class AusenciasController extends BaseController {
         $hasta = $this->request->getParam('hasta');
 
         $user = $this->userSession->getUser()->getUID();
+
         $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($user);
-        $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado[0]['Id_empleados']);
+
+        if (empty($id_empleado)) {
+            return new DataResponse(
+                ['error' => 'No se encontró el empleado'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
+
+        $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser(
+            (int)$id_empleado[0]['Id_empleados']
+        );
+
+        if (empty($empleado_ausencias)) {
+            return new DataResponse(
+                ['error' => 'El empleado no tiene registro en la tabla ausencias'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
 
         $historial = $this->historialausenciasMapper->GetAusenciasEnRango(
             $desde,
@@ -533,16 +560,23 @@ class AusenciasController extends BaseController {
         $response = [];
 
         foreach ($equipo_empleado as $empleado) {
-            $empleado_inf = $this->ausenciasMapper->GetAusenciasByUser($empleado['Id_empleados']);
+
+            $empleado_inf = $this->ausenciasMapper->GetAusenciasByUser(
+                (int)$empleado['Id_empleados']
+            );
+
+            if (empty($empleado_inf)) {
+                continue;
+            }
+
             $ausencias = $this->historialausenciasMapper->GetAusenciasEnRango(
                 $desde,
                 $hasta,
-                $empleado_inf[0]['id_ausencias']
+                (int)$empleado_inf[0]['id_ausencias']
             );
 
-            // opcional: agrega nombre del empleado a cada evento
             foreach ($ausencias as &$a) {
-                $a['nombre_empleado'] = $empleado['Id_user']; // si existe
+                $a['nombre_empleado'] = $empleado['Id_user'];
             }
 
             $response = array_merge($response, $ausencias);

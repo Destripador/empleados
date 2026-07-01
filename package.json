@@ -23,6 +23,7 @@
     "@fullcalendar/multimonth": "^6.1.18",
     "@fullcalendar/vue": "^6.1.17",
     "@nextcloud/axios": "^2.5.0",
+    "@nextcloud/auth": "^2.4.0",
     "@nextcloud/dialogs": "^3.1.4",
     "@nextcloud/event-bus": "^3.1.0",
     "@nextcloud/files": "^3.10.1",

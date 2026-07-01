@@ -144,4 +144,38 @@ class HonorariosParcialidadesController extends BaseController {
 			Http::STATUS_OK
 		);
 	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function cancelarPago(
+		int $id_parcialidad
+	): DataResponse {
+
+		$this->checkAccess([
+			'admin',
+			'recursos_humanos'
+		]);
+
+		$idHonorario =
+			$this->honorariosParcialidadesMapper
+				->cancelarPago($id_parcialidad);
+
+		if ($idHonorario !== null) {
+			$this->honorariosMapper
+				->reactivarHonorario($idHonorario);
+		}
+
+		return new DataResponse(
+			['status' => 'ok'],
+			Http::STATUS_OK
+		);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function agregarParcialidadIguala(int $id_honorario): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->honorariosParcialidadesMapper->agregarParcialidadIguala($id_honorario);
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
 }
