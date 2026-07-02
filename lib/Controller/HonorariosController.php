@@ -11,6 +11,7 @@ use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Service\XlsxTemplateFiller;
+use OCA\Empleados\Service\LogoService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -29,6 +30,7 @@ class HonorariosController extends BaseController {
 	protected honorariosMapper $honorariosMapper;
 	protected clientesMapper $clientesMapper;
 	private LoggerInterface $logger;
+	private LogoService $logoService;
 
 	public function __construct(
 		IRequest $request,
@@ -38,7 +40,8 @@ class HonorariosController extends BaseController {
 		configuracionesMapper $configuracionesMapper,
 		honorariosMapper $honorariosMapper,
 		clientesMapper $clientesMapper,
-		LoggerInterface $logger
+		LoggerInterface $logger,
+		LogoService $logoService
 	) {
 
 		parent::__construct(
@@ -53,6 +56,7 @@ class HonorariosController extends BaseController {
 		$this->honorariosMapper = $honorariosMapper;
 		$this->clientesMapper = $clientesMapper;
 		$this->logger = $logger;
+		$this->logoService = $logoService;
 	}
 
 	#[UseSession]
@@ -427,7 +431,8 @@ class HonorariosController extends BaseController {
 			];
 
 			$filler = new XlsxTemplateFiller($templatePath);
-			$contenido = $filler->fill($replacements);
+			$logo = $this->logoService->getLogo();
+			$contenido = $filler->fill($replacements, $logo);
 
 			$nombreArchivo =
 				'Solicitud_Recibo_' .

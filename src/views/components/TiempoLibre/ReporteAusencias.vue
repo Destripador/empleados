@@ -6,8 +6,8 @@
 				<h2 class="reporte-titulo">
 					{{ t('empleados', 'Reporte de Ausencias') }}
 				</h2>
-				<span v-if="!cargando && registrosFiltrados.length > 0" class="reporte-count">
-					{{ registrosFiltrados.length }} {{ t('empleados', 'registro') }}{{ registrosFiltrados.length !== 1 ? 's' : '' }}
+				<span v-if="!cargando && registrosVistaActual.length > 0" class="reporte-count">
+					{{ registrosVistaActual.length }} {{ t('empleados', 'registro') }}{{ registrosVistaActual.length !== 1 ? 's' : '' }}
 				</span>
 			</div>
 			<NcButton type="tertiary" @click="$emit('close')">
@@ -18,16 +18,46 @@
 			</NcButton>
 		</div>
 
-		<!-- Filtros de fecha + botón filtros -->
+		<!-- Pestañas de vista -->
+		<div v-if="!cargando && registros.length > 0" class="vista-switch">
+			<button
+				type="button"
+				class="vista-switch-btn"
+				:class="{ 'vista-switch-btn--activo': vistaActual === 'todos' }"
+				@click="vistaActual = 'todos'">
+				{{ t('empleados', 'Todos los registros') }}
+			</button>
+			<button
+				type="button"
+				class="vista-switch-btn"
+				:class="{ 'vista-switch-btn--activo': vistaActual === 'resumen' }"
+				@click="vistaActual = 'resumen'">
+				{{ t('empleados', 'Resumen por empleado') }}
+			</button>
+		</div>
+
+		<!-- Filtros de fecha/año + botón filtros -->
 		<div class="reporte-filtros">
-			<div class="filtro-grupo">
-				<label class="filtro-label">{{ t('empleados', 'Desde') }}</label>
-				<input v-model="filtroDesde" type="date" class="filtro-input">
+			<template v-if="vistaActual === 'todos'">
+				<div class="filtro-grupo">
+					<label class="filtro-label">{{ t('empleados', 'Desde') }}</label>
+					<input v-model="filtroDesde" type="date" class="filtro-input">
+				</div>
+				<div class="filtro-grupo">
+					<label class="filtro-label">{{ t('empleados', 'Hasta') }}</label>
+					<input v-model="filtroHasta" type="date" class="filtro-input">
+				</div>
+			</template>
+
+			<div v-else class="filtro-grupo">
+				<label class="filtro-label">{{ t('empleados', 'Año') }}</label>
+				<select v-model.number="filtroAnio" class="filtro-input filtro-select">
+					<option v-for="anio in opcionesAnios" :key="anio" :value="anio">
+						{{ anio }}
+					</option>
+				</select>
 			</div>
-			<div class="filtro-grupo">
-				<label class="filtro-label">{{ t('empleados', 'Hasta') }}</label>
-				<input v-model="filtroHasta" type="date" class="filtro-input">
-			</div>
+
 			<NcButton type="primary" :disabled="cargando" @click="cargarReporte">
 				<template #icon>
 					<Magnify :size="18" />
@@ -35,8 +65,8 @@
 				{{ cargando ? t('empleados', 'Cargando…') : t('empleados', 'Buscar') }}
 			</NcButton>
 
-			<!-- Botón filtros de tabla -->
-			<div v-if="!cargando && registros.length > 0" class="filtros-btn-wrap">
+			<!-- Botón filtros de tabla (solo aplica a "Todos los registros") -->
+			<div v-if="!cargando && registros.length > 0 && vistaActual === 'todos'" class="filtros-btn-wrap">
 				<NcButton :type="hayFiltrosActivos ? 'primary' : 'secondary'" @click="mostrarFiltros = true">
 					<template #icon>
 						<FilterVariant :size="18" />
@@ -62,6 +92,125 @@
 			<div v-else-if="registros.length === 0" class="reporte-estado">
 				<span class="reporte-estado-icon">📋</span>
 				<p>{{ t('empleados', 'Sin registros en el periodo seleccionado.') }}</p>
+			</div>
+
+			<!-- ─── Vista: Resumen por empleado ─── -->
+			<div v-else-if="vistaActual === 'resumen'" class="resumen-vista">
+				<div class="resumen-selector">
+					<AccountSearch :size="20" class="resumen-selector-icon" />
+					<select v-model="empleadoResumen" class="filtro-input filtro-select resumen-selector-input">
+						<option value="" disabled>
+							{{ t('empleados', 'Selecciona un empleado') }}
+						</option>
+						<option v-for="emp in opcionesEmpleados" :key="emp" :value="emp">
+							{{ emp }}
+						</option>
+					</select>
+				</div>
+
+				<div v-if="!empleadoResumen" class="reporte-estado periodo-vac-vacio">
+					<span class="reporte-estado-icon">🏖️</span>
+					<p>{{ t('empleados', 'Selecciona un empleado para ver su resumen.') }}</p>
+				</div>
+
+				<template v-else>
+					<div class="periodo-vac-resumen">
+						<div class="resumen-card">
+							<span class="resumen-label">{{ t('empleados', 'Registros') }}</span>
+							<span class="resumen-valor">{{ resumenEmpleadoStats.total }}</span>
+						</div>
+						<div class="resumen-card">
+							<span class="resumen-label">{{ t('empleados', 'Días disfrutados') }}</span>
+							<span class="resumen-valor">{{ resumenEmpleadoStats.dias }}</span>
+						</div>
+						<div class="resumen-card">
+							<span class="resumen-label">{{ t('empleados', 'Con prima vac.') }}</span>
+							<span class="resumen-valor">{{ resumenEmpleadoStats.conPrima }}</span>
+						</div>
+						<div class="resumen-card">
+							<span class="resumen-label">{{ t('empleados', 'Sin prima vac.') }}</span>
+							<span class="resumen-valor">{{ resumenEmpleadoStats.sinPrima }}</span>
+						</div>
+					</div>
+
+					<div v-if="registrosResumenEmpleado.length === 0" class="reporte-estado periodo-vac-vacio">
+						<span class="reporte-estado-icon">🔍</span>
+						<p>{{ t('empleados', 'Sin registros para este empleado en el año seleccionado.') }}</p>
+					</div>
+
+					<div v-else class="reporte-tabla-wrap">
+						<table class="reporte-tabla">
+							<thead>
+								<tr>
+									<th>{{ t('empleados', 'Empleado') }}</th>
+									<th>{{ t('empleados', 'Tipo de ausencia') }}</th>
+									<th>{{ t('empleados', 'Periodo') }}</th>
+									<th class="col-dias cell-center">
+										{{ t('empleados', 'Días') }}
+									</th>
+									<th class="col-prima">
+										{{ t('empleados', 'Prima vac.') }}
+									</th>
+									<th>{{ t('empleados', 'Estado') }}</th>
+									<th class="col-aprobacion">
+										{{ t('empleados', 'Aprobación') }}
+									</th>
+									<th class="col-solicitud">
+										{{ t('empleados', 'Solicitud') }}
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="(item, i) in registrosResumenEmpleado"
+									:key="item.id_historial_ausencias || i"
+									:class="rowClass(item)">
+									<td class="cell-empleado">
+										<img
+											class="empleado-avatar"
+											:src="avatarUrl(item.nombre_empleado)"
+											:alt="item.nombre_empleado"
+											@error="onAvatarError($event, item.nombre_empleado)">
+										<span class="empleado-nombre">{{ item.nombre_empleado }}</span>
+									</td>
+									<td>
+										<span class="badge-tipo" :style="colorTipo(item.tipo_ausencia)">
+											{{ item.tipo_ausencia }}
+										</span>
+									</td>
+									<td>
+										<span>{{ formatFecha(item.fecha_de) }}</span>
+										<span class="periodo-sep">→</span>
+										<span>{{ formatFecha(item.fecha_hasta) }}</span>
+									</td>
+									<td class="col-dias cell-center">
+										<strong>{{ item.dias_solicitados ?? '—' }}</strong>
+									</td>
+									<td class="col-prima cell-center">
+										<span v-if="parseInt(item.prima_vacacional) === 1" class="badge-prima">{{ t('empleados', 'Sí') }}</span>
+										<span v-else class="badge-prima-no">{{ t('empleados', 'No') }}</span>
+									</td>
+									<td>
+										<span class="chip" :class="chipEstado(item).clase">
+											{{ chipEstado(item).texto }}
+										</span>
+									</td>
+									<td class="col-aprobacion">
+										<span class="chip-mini" :class="chipAprobacion(item.a_gerente).clase" :title="t('empleados', 'Gerente')">
+											{{ t('empleados', 'G:') }} {{ chipAprobacion(item.a_gerente).texto }}
+										</span>
+										<span class="chip-mini" :class="chipAprobacion(item.a_socio).clase" :title="t('empleados', 'Socio')">
+											{{ t('empleados', 'S:') }} {{ chipAprobacion(item.a_socio).texto }}
+										</span>
+									</td>
+									<td class="cell-fecha">
+										{{ formatTimestamp(item.timestamp) }}
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</template>
 			</div>
 
 			<div v-else-if="registrosFiltrados.length === 0" class="reporte-estado">
@@ -112,7 +261,7 @@
 									{{ item.tipo_ausencia }}
 								</span>
 							</td>
-							<td class="cell-periodo">
+							<td>
 								<span>{{ formatFecha(item.fecha_de) }}</span>
 								<span class="periodo-sep">→</span>
 								<span>{{ formatFecha(item.fecha_hasta) }}</span>
@@ -259,6 +408,7 @@ import Close from 'vue-material-design-icons/Close.vue'
 import Magnify from 'vue-material-design-icons/Magnify.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 import FilterOff from 'vue-material-design-icons/FilterOff.vue'
+import AccountSearch from 'vue-material-design-icons/AccountSearch.vue'
 
 const PALETA_TIPOS = [
 	{ bg: '#dbeafe', color: '#1d4ed8' },
@@ -280,7 +430,7 @@ function hashStr(str) {
 export default {
 	name: 'ReporteAusencias',
 
-	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff },
+	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch },
 
 	emits: ['close'],
 
@@ -298,6 +448,9 @@ export default {
 			filtroEstado: '',
 			filtroAprobacion: '',
 			filtroPrima: false,
+			vistaActual: 'todos',
+			empleadoResumen: '',
+			filtroAnio: hoy.getFullYear(),
 		}
 	},
 
@@ -332,6 +485,53 @@ export default {
 				return true
 			})
 		},
+
+		registrosVistaActual() {
+			return this.vistaActual === 'resumen' ? this.registrosResumenEmpleado : this.registrosFiltrados
+		},
+
+		opcionesAnios() {
+			const actual = new Date().getFullYear()
+			const inicio = 2025
+			const fin = Math.max(actual + 1, inicio + 2)
+			const anios = []
+			for (let y = fin; y >= inicio; y--) anios.push(y)
+			return anios
+		},
+
+		registrosResumenEmpleado() {
+			if (!this.empleadoResumen) return []
+			return this.registros.filter(item => {
+				if (item.nombre_empleado !== this.empleadoResumen) return false
+				if (this.chipEstado(item).texto === t('empleados', 'Cancelada')) return false
+				if (parseInt(item.solicitar_prima_vacacional) !== 1) return false
+				return true
+			}).sort((a, b) => this.parseFecha(a.fecha_de) - this.parseFecha(b.fecha_de))
+		},
+
+		resumenEmpleadoStats() {
+			const registros = this.registrosResumenEmpleado
+			const dias = registros.reduce((acc, r) => acc + (parseInt(r.dias_solicitados) || 0), 0)
+			const conPrima = registros.filter(r => parseInt(r.prima_vacacional) === 1).length
+			return {
+				total: registros.length,
+				dias,
+				conPrima,
+				sinPrima: registros.length - conPrima,
+			}
+		},
+	},
+
+	watch: {
+		vistaActual() {
+			this.cargarReporte()
+		},
+
+		filtroAnio() {
+			if (this.vistaActual === 'resumen') {
+				this.cargarReporte()
+			}
+		},
 	},
 
 	mounted() {
@@ -355,9 +555,10 @@ export default {
 			this.limpiarFiltros()
 			try {
 				const url = generateUrl('/apps/empleados/historial-reporte')
-				const { data } = await axios.get(url, {
-					params: { desde: this.filtroDesde, hasta: this.filtroHasta },
-				})
+				const params = this.vistaActual === 'resumen'
+					? { desde: `${this.filtroAnio}-01-01`, hasta: `${this.filtroAnio}-12-31` }
+					: { desde: this.filtroDesde, hasta: this.filtroHasta }
+				const { data } = await axios.get(url, { params })
 				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
 				this.registros = Array.isArray(mensaje) ? mensaje : []
 			} catch (e) {
@@ -488,6 +689,34 @@ export default {
 	background: var(--color-background-dark);
 	padding: 2px 8px;
 	border-radius: 20px;
+}
+
+/* ── Pestañas de vista ── */
+.vista-switch {
+	display: flex;
+	gap: 4px;
+	padding: 10px 24px 0;
+	flex-shrink: 0;
+}
+
+.vista-switch-btn {
+	border: 1px solid var(--color-border-dark);
+	background: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	border-radius: 20px;
+	padding: 7px 16px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.vista-switch-btn:hover { background: var(--color-background-hover); }
+
+.vista-switch-btn--activo {
+	background: var(--color-main-text);
+	color: var(--color-main-background);
+	border-color: var(--color-main-text);
 }
 
 /* ── Filtros de fecha ── */
@@ -719,6 +948,8 @@ export default {
 .cell-center { text-align: center; }
 .col-dias, .col-prima, col-aprobacion { min-width: 70px; width: 70px; }
 
+th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
+
 /* ── Badge prima ── */
 .badge-prima {
 	background: #d1fae5;
@@ -813,5 +1044,109 @@ export default {
 	.reporte-tabla td:nth-child(7) { display: none; }
 	.cell-empleado { min-width: 90px; }
 	.empleado-nombre { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+}
+
+.periodo-vac-modal {
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	min-width: 420px;
+}
+
+.periodo-vac-vacio {
+	height: auto;
+	padding: 32px 0;
+}
+
+.periodo-vac-resumen {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
+
+/* ── Vista resumen inline ── */
+.resumen-vista {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	width: 100%;
+}
+
+.resumen-selector {
+	display: flex;
+	align-items: center;
+	max-width: 480px;
+	gap: 10px;
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	padding: 4px 14px;
+	background: var(--color-main-background);
+}
+
+.resumen-selector-icon { color: var(--color-text-maxcontrast); flex-shrink: 0; }
+
+.resumen-selector-input {
+	border: none !important;
+	height: 40px;
+	flex: 1;
+	padding: 0 !important;
+	background: transparent;
+}
+
+.resumen-lista {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.resumen-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.resumen-item-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.resumen-item-periodo {
+	font-size: 0.8rem;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
+}
+
+.resumen-card {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--color-background-dark);
+	border-radius: var(--border-radius);
+	padding: 10px 14px;
+}
+
+.resumen-label {
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+
+.resumen-valor {
+	font-size: 1.3rem;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+
+.periodo-vac-tabla {
+	table-layout: auto;
 }
 </style>

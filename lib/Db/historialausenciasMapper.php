@@ -221,7 +221,12 @@ class historialausenciasMapper extends QBMapper {
 	public function GetHistorialReporteCompleto(string $desde, string $hasta): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('h.*', 't.nombre AS tipo_ausencia', 'e.Id_user AS nombre_empleado')
+		$qb->select(
+				'h.*',
+				't.nombre AS tipo_ausencia',
+				't.solicitar_prima_vacacional',
+				'e.Id_user AS nombre_empleado'
+			)
 			->from($this->getTableName(), 'h')
 			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
 			->innerJoin('h', 'ausencias', 'a', $qb->expr()->eq('h.id_ausencias', 'a.id_ausencias'))

@@ -15295,6 +15295,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! vue-material-design-icons/Magnify.vue */ "./node_modules/vue-material-design-icons/Magnify.vue");
 /* harmony import */ var vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! vue-material-design-icons/FilterVariant.vue */ "./node_modules/vue-material-design-icons/FilterVariant.vue");
 /* harmony import */ var vue_material_design_icons_FilterOff_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/FilterOff.vue */ "./node_modules/vue-material-design-icons/FilterOff.vue");
+/* harmony import */ var vue_material_design_icons_AccountSearch_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/AccountSearch.vue */ "./node_modules/vue-material-design-icons/AccountSearch.vue");
+
 
 
 
@@ -15344,7 +15346,8 @@ function hashStr(str) {
     Close: vue_material_design_icons_Close_vue__WEBPACK_IMPORTED_MODULE_6__["default"],
     Magnify: vue_material_design_icons_Magnify_vue__WEBPACK_IMPORTED_MODULE_7__["default"],
     FilterVariant: vue_material_design_icons_FilterVariant_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
-    FilterOff: vue_material_design_icons_FilterOff_vue__WEBPACK_IMPORTED_MODULE_9__["default"]
+    FilterOff: vue_material_design_icons_FilterOff_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
+    AccountSearch: vue_material_design_icons_AccountSearch_vue__WEBPACK_IMPORTED_MODULE_10__["default"]
   },
   emits: ['close'],
   data() {
@@ -15360,7 +15363,10 @@ function hashStr(str) {
       filtroTipo: '',
       filtroEstado: '',
       filtroAprobacion: '',
-      filtroPrima: false
+      filtroPrima: false,
+      vistaActual: 'todos',
+      empleadoResumen: '',
+      filtroAnio: hoy.getFullYear()
     };
   },
   computed: {
@@ -15388,6 +15394,47 @@ function hashStr(str) {
         }
         return true;
       });
+    },
+    registrosVistaActual() {
+      return this.vistaActual === 'resumen' ? this.registrosResumenEmpleado : this.registrosFiltrados;
+    },
+    opcionesAnios() {
+      const actual = new Date().getFullYear();
+      const inicio = 2025;
+      const fin = Math.max(actual + 1, inicio + 2);
+      const anios = [];
+      for (let y = fin; y >= inicio; y--) anios.push(y);
+      return anios;
+    },
+    registrosResumenEmpleado() {
+      if (!this.empleadoResumen) return [];
+      return this.registros.filter(item => {
+        if (item.nombre_empleado !== this.empleadoResumen) return false;
+        if (this.chipEstado(item).texto === (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Cancelada')) return false;
+        if (parseInt(item.solicitar_prima_vacacional) !== 1) return false;
+        return true;
+      }).sort((a, b) => this.parseFecha(a.fecha_de) - this.parseFecha(b.fecha_de));
+    },
+    resumenEmpleadoStats() {
+      const registros = this.registrosResumenEmpleado;
+      const dias = registros.reduce((acc, r) => acc + (parseInt(r.dias_solicitados) || 0), 0);
+      const conPrima = registros.filter(r => parseInt(r.prima_vacacional) === 1).length;
+      return {
+        total: registros.length,
+        dias,
+        conPrima,
+        sinPrima: registros.length - conPrima
+      };
+    }
+  },
+  watch: {
+    vistaActual() {
+      this.cargarReporte();
+    },
+    filtroAnio() {
+      if (this.vistaActual === 'resumen') {
+        this.cargarReporte();
+      }
     }
   },
   mounted() {
@@ -15408,13 +15455,17 @@ function hashStr(str) {
       this.limpiarFiltros();
       try {
         const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte');
+        const params = this.vistaActual === 'resumen' ? {
+          desde: `${this.filtroAnio}-01-01`,
+          hasta: `${this.filtroAnio}-12-31`
+        } : {
+          desde: this.filtroDesde,
+          hasta: this.filtroHasta
+        };
         const {
           data
         } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
-          params: {
-            desde: this.filtroDesde,
-            hasta: this.filtroHasta
-          }
+          params
         });
         const mensaje = data?.ocs?.data?.message ?? data?.message ?? [];
         this.registros = Array.isArray(mensaje) ? mensaje : [];
@@ -28401,9 +28452,9 @@ var render = function render() {
     staticClass: "reporte-header-left"
   }, [_c("h2", {
     staticClass: "reporte-titulo"
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Reporte de Ausencias")) + "\n\t\t\t")]), _vm._v(" "), !_vm.cargando && _vm.registrosFiltrados.length > 0 ? _c("span", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Reporte de Ausencias")) + "\n\t\t\t")]), _vm._v(" "), !_vm.cargando && _vm.registrosVistaActual.length > 0 ? _c("span", {
     staticClass: "reporte-count"
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.registrosFiltrados.length) + " " + _vm._s(_vm.t("empleados", "registro")) + _vm._s(_vm.registrosFiltrados.length !== 1 ? "s" : "") + "\n\t\t\t")]) : _vm._e()]), _vm._v(" "), _c("NcButton", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.registrosVistaActual.length) + " " + _vm._s(_vm.t("empleados", "registro")) + _vm._s(_vm.registrosVistaActual.length !== 1 ? "s" : "") + "\n\t\t\t")]) : _vm._e()]), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "tertiary"
     },
@@ -28423,9 +28474,37 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Cerrar")) + "\n\t\t")])], 1), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Cerrar")) + "\n\t\t")])], 1), _vm._v(" "), !_vm.cargando && _vm.registros.length > 0 ? _c("div", {
+    staticClass: "vista-switch"
+  }, [_c("button", {
+    staticClass: "vista-switch-btn",
+    class: {
+      "vista-switch-btn--activo": _vm.vistaActual === "todos"
+    },
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: function ($event) {
+        _vm.vistaActual = "todos";
+      }
+    }
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Todos los registros")) + "\n\t\t")]), _vm._v(" "), _c("button", {
+    staticClass: "vista-switch-btn",
+    class: {
+      "vista-switch-btn--activo": _vm.vistaActual === "resumen"
+    },
+    attrs: {
+      type: "button"
+    },
+    on: {
+      click: function ($event) {
+        _vm.vistaActual = "resumen";
+      }
+    }
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Resumen por empleado")) + "\n\t\t")])]) : _vm._e(), _vm._v(" "), _c("div", {
     staticClass: "reporte-filtros"
-  }, [_c("div", {
+  }, [_vm.vistaActual === "todos" ? [_c("div", {
     staticClass: "filtro-grupo"
   }, [_c("label", {
     staticClass: "filtro-label"
@@ -28473,7 +28552,40 @@ var render = function render() {
         _vm.filtroHasta = $event.target.value;
       }
     }
-  })]), _vm._v(" "), _c("NcButton", {
+  })])] : _c("div", {
+    staticClass: "filtro-grupo"
+  }, [_c("label", {
+    staticClass: "filtro-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Año")))]), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model.number",
+      value: _vm.filtroAnio,
+      expression: "filtroAnio",
+      modifiers: {
+        number: true
+      }
+    }],
+    staticClass: "filtro-input filtro-select",
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return _vm._n(val);
+        });
+        _vm.filtroAnio = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, _vm._l(_vm.opcionesAnios, function (anio) {
+    return _c("option", {
+      key: anio,
+      domProps: {
+        value: anio
+      }
+    }, [_vm._v("\n\t\t\t\t\t" + _vm._s(anio) + "\n\t\t\t\t")]);
+  }), 0)]), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "primary",
       disabled: _vm.cargando
@@ -28492,7 +28604,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.cargando ? _vm.t("empleados", "Cargando…") : _vm.t("empleados", "Buscar")) + "\n\t\t")]), _vm._v(" "), !_vm.cargando && _vm.registros.length > 0 ? _c("div", {
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.cargando ? _vm.t("empleados", "Cargando…") : _vm.t("empleados", "Buscar")) + "\n\t\t")]), _vm._v(" "), !_vm.cargando && _vm.registros.length > 0 && _vm.vistaActual === "todos" ? _c("div", {
     staticClass: "filtros-btn-wrap"
   }, [_c("NcButton", {
     attrs: {
@@ -28534,7 +28646,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 3827893474)
-  }) : _vm._e()], 1) : _vm._e()], 1), _vm._v(" "), _c("div", {
+  }) : _vm._e()], 1) : _vm._e()], 2), _vm._v(" "), _c("div", {
     staticClass: "reporte-body"
   }, [_vm.cargando ? _c("div", {
     staticClass: "reporte-estado"
@@ -28546,7 +28658,145 @@ var render = function render() {
     staticClass: "reporte-estado"
   }, [_c("span", {
     staticClass: "reporte-estado-icon"
-  }, [_vm._v("📋")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros en el periodo seleccionado.")))])]) : _vm.registrosFiltrados.length === 0 ? _c("div", {
+  }, [_vm._v("📋")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros en el periodo seleccionado.")))])]) : _vm.vistaActual === "resumen" ? _c("div", {
+    staticClass: "resumen-vista"
+  }, [_c("div", {
+    staticClass: "resumen-selector"
+  }, [_c("AccountSearch", {
+    staticClass: "resumen-selector-icon",
+    attrs: {
+      size: 20
+    }
+  }), _vm._v(" "), _c("select", {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: _vm.empleadoResumen,
+      expression: "empleadoResumen"
+    }],
+    staticClass: "filtro-input filtro-select resumen-selector-input",
+    on: {
+      change: function ($event) {
+        var $$selectedVal = Array.prototype.filter.call($event.target.options, function (o) {
+          return o.selected;
+        }).map(function (o) {
+          var val = "_value" in o ? o._value : o.value;
+          return val;
+        });
+        _vm.empleadoResumen = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+      }
+    }
+  }, [_c("option", {
+    attrs: {
+      value: "",
+      disabled: ""
+    }
+  }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Selecciona un empleado")) + "\n\t\t\t\t\t")]), _vm._v(" "), _vm._l(_vm.opcionesEmpleados, function (emp) {
+    return _c("option", {
+      key: emp,
+      domProps: {
+        value: emp
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(emp) + "\n\t\t\t\t\t")]);
+  })], 2)], 1), _vm._v(" "), !_vm.empleadoResumen ? _c("div", {
+    staticClass: "reporte-estado periodo-vac-vacio"
+  }, [_c("span", {
+    staticClass: "reporte-estado-icon"
+  }, [_vm._v("🏖️")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Selecciona un empleado para ver su resumen.")))])]) : [_c("div", {
+    staticClass: "periodo-vac-resumen"
+  }, [_c("div", {
+    staticClass: "resumen-card"
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Registros")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor"
+  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.total))])]), _vm._v(" "), _c("div", {
+    staticClass: "resumen-card"
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Días disfrutados")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor"
+  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.dias))])]), _vm._v(" "), _c("div", {
+    staticClass: "resumen-card"
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Con prima vac.")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor"
+  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.conPrima))])]), _vm._v(" "), _c("div", {
+    staticClass: "resumen-card"
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Sin prima vac.")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor"
+  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.sinPrima))])])]), _vm._v(" "), _vm.registrosResumenEmpleado.length === 0 ? _c("div", {
+    staticClass: "reporte-estado periodo-vac-vacio"
+  }, [_c("span", {
+    staticClass: "reporte-estado-icon"
+  }, [_vm._v("🔍")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros para este empleado en el año seleccionado.")))])]) : _c("div", {
+    staticClass: "reporte-tabla-wrap"
+  }, [_c("table", {
+    staticClass: "reporte-tabla"
+  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Empleado")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Tipo de ausencia")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Periodo")))]), _vm._v(" "), _c("th", {
+    staticClass: "col-dias cell-center"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Días")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-prima"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Prima vac.")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Estado")))]), _vm._v(" "), _c("th", {
+    staticClass: "col-aprobacion"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Aprobación")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-solicitud"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Solicitud")) + "\n\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.registrosResumenEmpleado, function (item, i) {
+    return _c("tr", {
+      key: item.id_historial_ausencias || i,
+      class: _vm.rowClass(item)
+    }, [_c("td", {
+      staticClass: "cell-empleado"
+    }, [_c("img", {
+      staticClass: "empleado-avatar",
+      attrs: {
+        src: _vm.avatarUrl(item.nombre_empleado),
+        alt: item.nombre_empleado
+      },
+      on: {
+        error: function ($event) {
+          return _vm.onAvatarError($event, item.nombre_empleado);
+        }
+      }
+    }), _vm._v(" "), _c("span", {
+      staticClass: "empleado-nombre"
+    }, [_vm._v(_vm._s(item.nombre_empleado))])]), _vm._v(" "), _c("td", [_c("span", {
+      staticClass: "badge-tipo",
+      style: _vm.colorTipo(item.tipo_ausencia)
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_de)))]), _vm._v(" "), _c("span", {
+      staticClass: "periodo-sep"
+    }, [_vm._v("→")]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_hasta)))])]), _vm._v(" "), _c("td", {
+      staticClass: "col-dias cell-center"
+    }, [_c("strong", [_vm._v(_vm._s(item.dias_solicitados ?? "—"))])]), _vm._v(" "), _c("td", {
+      staticClass: "col-prima cell-center"
+    }, [parseInt(item.prima_vacacional) === 1 ? _c("span", {
+      staticClass: "badge-prima"
+    }, [_vm._v(_vm._s(_vm.t("empleados", "Sí")))]) : _c("span", {
+      staticClass: "badge-prima-no"
+    }, [_vm._v(_vm._s(_vm.t("empleados", "No")))])]), _vm._v(" "), _c("td", [_c("span", {
+      staticClass: "chip",
+      class: _vm.chipEstado(item).clase
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.chipEstado(item).texto) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+      staticClass: "col-aprobacion"
+    }, [_c("span", {
+      staticClass: "chip-mini",
+      class: _vm.chipAprobacion(item.a_gerente).clase,
+      attrs: {
+        title: _vm.t("empleados", "Gerente")
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "G:")) + " " + _vm._s(_vm.chipAprobacion(item.a_gerente).texto) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
+      staticClass: "chip-mini",
+      class: _vm.chipAprobacion(item.a_socio).clase,
+      attrs: {
+        title: _vm.t("empleados", "Socio")
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "S:")) + " " + _vm._s(_vm.chipAprobacion(item.a_socio).texto) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+      staticClass: "cell-fecha"
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatTimestamp(item.timestamp)) + "\n\t\t\t\t\t\t\t\t")])]);
+  }), 0)])])]], 2) : _vm.registrosFiltrados.length === 0 ? _c("div", {
     staticClass: "reporte-estado"
   }, [_c("span", {
     staticClass: "reporte-estado-icon"
@@ -28591,9 +28841,7 @@ var render = function render() {
     }, [_vm._v(_vm._s(item.nombre_empleado))])]), _vm._v(" "), _c("td", [_c("span", {
       staticClass: "badge-tipo",
       style: _vm.colorTipo(item.tipo_ausencia)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
-      staticClass: "cell-periodo"
-    }, [_c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_de)))]), _vm._v(" "), _c("span", {
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_de)))]), _vm._v(" "), _c("span", {
       staticClass: "periodo-sep"
     }, [_vm._v("→")]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_hasta)))])]), _vm._v(" "), _c("td", {
       staticClass: "col-dias cell-center"
@@ -60604,6 +60852,32 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	border-radius: 20px;
 }
 
+/* ── Pestañas de vista ── */
+.vista-switch[data-v-71a4011e] {
+	display: flex;
+	gap: 4px;
+	padding: 10px 24px 0;
+	flex-shrink: 0;
+}
+.vista-switch-btn[data-v-71a4011e] {
+	border: 1px solid var(--color-border-dark);
+	background: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	border-radius: 20px;
+	padding: 7px 16px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.vista-switch-btn[data-v-71a4011e]:hover { background: var(--color-background-hover);
+}
+.vista-switch-btn--activo[data-v-71a4011e] {
+	background: var(--color-main-text);
+	color: var(--color-main-background);
+	border-color: var(--color-main-text);
+}
+
 /* ── Filtros de fecha ── */
 .reporte-filtros[data-v-71a4011e] {
 	display: flex;
@@ -60819,6 +61093,8 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 .col-dias[data-v-71a4011e], .col-prima[data-v-71a4011e], col-aprobacion[data-v-71a4011e] { min-width: 70px; width: 70px;
 }
+th.col-dias[data-v-71a4011e], td.col-dias[data-v-71a4011e] { text-align: right; padding-right: 24px;
+}
 
 /* ── Badge prima ── */
 .badge-prima[data-v-71a4011e] {
@@ -60928,6 +61204,97 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 .empleado-nombre[data-v-71a4011e] { max-width: 80px; overflow: hidden; text-overflow: ellipsis;
 }
+}
+.periodo-vac-modal[data-v-71a4011e] {
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	min-width: 420px;
+}
+.periodo-vac-vacio[data-v-71a4011e] {
+	height: auto;
+	padding: 32px 0;
+}
+.periodo-vac-resumen[data-v-71a4011e] {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
+
+/* ── Vista resumen inline ── */
+.resumen-vista[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	width: 100%;
+}
+.resumen-selector[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	max-width: 480px;
+	gap: 10px;
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	padding: 4px 14px;
+	background: var(--color-main-background);
+}
+.resumen-selector-icon[data-v-71a4011e] { color: var(--color-text-maxcontrast); flex-shrink: 0;
+}
+.resumen-selector-input[data-v-71a4011e] {
+	border: none !important;
+	height: 40px;
+	flex: 1;
+	padding: 0 !important;
+	background: transparent;
+}
+.resumen-lista[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.resumen-item[data-v-71a4011e] {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+.resumen-item-info[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.resumen-item-periodo[data-v-71a4011e] {
+	font-size: 0.8rem;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
+}
+.resumen-card[data-v-71a4011e] {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--color-background-dark);
+	border-radius: var(--border-radius);
+	padding: 10px 14px;
+}
+.resumen-label[data-v-71a4011e] {
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+.resumen-valor[data-v-71a4011e] {
+	font-size: 1.3rem;
+	font-weight: 700;
+	color: var(--color-main-text);
+}
+.periodo-vac-tabla[data-v-71a4011e] {
+	table-layout: auto;
 }
 `, ""]);
 // Exports
@@ -85129,6 +85496,78 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/AccountSearch.vue":
+/*!******************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/AccountSearch.vue ***!
+  \******************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _AccountSearch_vue_vue_type_template_id_6f384939__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./AccountSearch.vue?vue&type=template&id=6f384939 */ "./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=template&id=6f384939");
+/* harmony import */ var _AccountSearch_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./AccountSearch.vue?vue&type=script&lang=js */ "./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=script&lang=js");
+/* harmony import */ var _vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+;
+var component = (0,_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+  _AccountSearch_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _AccountSearch_vue_vue_type_template_id_6f384939__WEBPACK_IMPORTED_MODULE_0__.render,
+  _AccountSearch_vue_vue_type_template_id_6f384939__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  false,
+  null,
+  null,
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "node_modules/vue-material-design-icons/AccountSearch.vue"
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=script&lang=js":
+/*!*****************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=script&lang=js ***!
+  \*****************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  name: "AccountSearchIcon",
+  emits: ['click'],
+  props: {
+    title: {
+      type: String,
+    },
+    fillColor: {
+      type: String,
+      default: "currentColor"
+    },
+    size: {
+      type: Number,
+      default: 24
+    }
+  }
+});
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/AccountTieOutline.vue":
 /*!**********************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/AccountTieOutline.vue ***!
@@ -96302,6 +96741,22 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=script&lang=js":
+/*!******************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=script&lang=js ***!
+  \******************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_AccountSearch_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./AccountSearch.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_AccountSearch_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/AccountTieOutline.vue?vue&type=script&lang=js":
 /*!**********************************************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/AccountTieOutline.vue?vue&type=script&lang=js ***!
@@ -97774,6 +98229,23 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_AccountMultiplePlusOutline_vue_vue_type_template_id_58ac7152__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
 /* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_AccountMultiplePlusOutline_vue_vue_type_template_id_58ac7152__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./AccountMultiplePlusOutline.vue?vue&type=template&id=58ac7152 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountMultiplePlusOutline.vue?vue&type=template&id=58ac7152");
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=template&id=6f384939":
+/*!************************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=template&id=6f384939 ***!
+  \************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_AccountSearch_vue_vue_type_template_id_6f384939__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_AccountSearch_vue_vue_type_template_id_6f384939__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_AccountSearch_vue_vue_type_template_id_6f384939__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./AccountSearch.vue?vue&type=template&id=6f384939 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=template&id=6f384939");
 
 
 /***/ }),
@@ -99534,6 +100006,75 @@ var render = function render() {
             {
               attrs: {
                 d: "M13 11A3 3 0 1 0 10 8A3 3 0 0 0 13 11M13 7A1 1 0 1 1 12 8A1 1 0 0 1 13 7M17.11 10.86A5 5 0 0 0 17.11 5.14A2.91 2.91 0 0 1 18 5A3 3 0 0 1 18 11A2.91 2.91 0 0 1 17.11 10.86M13 13C7 13 7 17 7 17V19H19V17S19 13 13 13M9 17C9 16.71 9.32 15 13 15C16.5 15 16.94 16.56 17 17M24 17V19H21V17A5.6 5.6 0 0 0 19.2 13.06C24 13.55 24 17 24 17M8 12H5V15H3V12H0V10H3V7H5V10H8Z",
+              },
+            },
+            [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
+          ),
+        ]
+      ),
+    ]
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=template&id=6f384939":
+/*!****************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/AccountSearch.vue?vue&type=template&id=6f384939 ***!
+  \****************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render),
+/* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
+/* harmony export */ });
+var render = function render() {
+  var _vm = this,
+    _c = _vm._self._c
+  return _c(
+    "span",
+    _vm._b(
+      {
+        staticClass: "material-design-icon account-search-icon",
+        attrs: {
+          "aria-hidden": _vm.title ? null : true,
+          "aria-label": _vm.title,
+          role: "img",
+        },
+        on: {
+          click: function ($event) {
+            return _vm.$emit("click", $event)
+          },
+        },
+      },
+      "span",
+      _vm.$attrs,
+      false
+    ),
+    [
+      _c(
+        "svg",
+        {
+          staticClass: "material-design-icon__svg",
+          attrs: {
+            fill: _vm.fillColor,
+            width: _vm.size,
+            height: _vm.size,
+            viewBox: "0 0 24 24",
+          },
+        },
+        [
+          _c(
+            "path",
+            {
+              attrs: {
+                d: "M15.5,12C18,12 20,14 20,16.5C20,17.38 19.75,18.21 19.31,18.9L22.39,22L21,23.39L17.88,20.32C17.19,20.75 16.37,21 15.5,21C13,21 11,19 11,16.5C11,14 13,12 15.5,12M15.5,14A2.5,2.5 0 0,0 13,16.5A2.5,2.5 0 0,0 15.5,19A2.5,2.5 0 0,0 18,16.5A2.5,2.5 0 0,0 15.5,14M10,4A4,4 0 0,1 14,8C14,8.91 13.69,9.75 13.18,10.43C12.32,10.75 11.55,11.26 10.91,11.9L10,12A4,4 0 0,1 6,8A4,4 0 0,1 10,4M2,20V18C2,15.88 5.31,14.14 9.5,14C9.18,14.78 9,15.62 9,16.5C9,17.79 9.38,19 10,20H2Z",
               },
             },
             [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
