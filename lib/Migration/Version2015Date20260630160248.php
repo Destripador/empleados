@@ -28,9 +28,10 @@ class Version2015Date20260630160248 extends SimpleMigrationStep {
 		$table = $schema->getTable('empleados_honorarios');
 
 		if (!$table->hasColumn('especial')) {
-			$table->addColumn('especial', Types::BOOLEAN, [
+			$table->addColumn('especial', Types::INTEGER, [
 				'notnull' => true,
-				'default' => false,
+				'default' => 0,
+				'length' => 1,
 			]);
 		}
 

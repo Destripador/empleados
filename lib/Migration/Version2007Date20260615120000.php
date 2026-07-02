@@ -6,6 +6,7 @@ namespace OCA\Empleados\Migration;
 
 use Closure;
 use OCP\DB\ISchemaWrapper;
+use OCP\DB\Types;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
@@ -15,96 +16,78 @@ class Version2007Date20260615120000 extends SimpleMigrationStep {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
 
-		if (!$schema->hasTable('empleados_clientes')) {
-			return null;
+		if ($schema->hasTable('empleados_clientes')) {
+			$schema->dropTable('empleados_clientes');
 		}
 
-		$table = $schema->getTable('empleados_clientes');
+		$table = $schema->createTable('empleados_clientes');
 
-		if (!$table->hasColumn('razon_social')) {
-			$table->addColumn('razon_social', 'string', [
-				'notnull' => false,
-				'length' => 255,
-			]);
-		}
+		$table->addColumn('id', Types::INTEGER, [
+			'autoincrement' => true,
+			'notnull' => true,
+			'unsigned' => true,
+		]);
 
-		if (!$table->hasColumn('tipo_cliente')) {
-			$table->addColumn('tipo_cliente', 'string', [
-				'notnull' => false,
-				'length' => 100,
-			]);
-		}
+		$table->addColumn('nombre', Types::STRING, [
+			'notnull' => true,
+			'length' => 255,
+			'default' => '',
+		]);
 
-		if (!$table->hasColumn('tipo_servicio')) {
-			$table->addColumn('tipo_servicio', 'string', [
-				'notnull' => false,
-				'length' => 100,
-			]);
-		}
+		$table->addColumn('detalles', Types::TEXT, [
+			'notnull' => false,
+		]);
 
-		if (!$table->hasColumn('lider_proyecto')) {
-			$table->addColumn('lider_proyecto', 'string', [
-				'notnull' => false,
-				'length' => 255,
-			]);
-		}
+		$table->addColumn('lider_proyecto', Types::INTEGER, [
+			'notnull' => false,
+		]);
 
-		if (!$table->hasColumn('nombre_contacto')) {
-			$table->addColumn('nombre_contacto', 'string', [
-				'notnull' => false,
-				'length' => 255,
-			]);
-		}
+		$table->addColumn('colaboradores', Types::TEXT, [
+			'notnull' => false,
+		]);
 
-		if (!$table->hasColumn('telefono')) {
-			$table->addColumn('telefono', 'string', [
-				'notnull' => false,
-				'length' => 50,
-			]);
-		}
+		$table->addColumn('razon_social', Types::STRING, [
+			'notnull' => false,
+			'length' => 255,
+		]);
 
-		if (!$table->hasColumn('correo')) {
-			$table->addColumn('correo', 'string', [
-				'notnull' => false,
-				'length' => 255,
-			]);
-		}
+		$table->addColumn('nombre_contacto', Types::STRING, [
+			'notnull' => false,
+			'length' => 255,
+		]);
 
-		if (!$table->hasColumn('status')) {
-			$table->addColumn('status', 'string', [
-				'notnull' => false,
-				'length' => 50,
-			]);
-		}
+		$table->addColumn('telefono', Types::STRING, [
+			'notnull' => false,
+			'length' => 64,
+		]);
 
-		if (!$table->hasColumn('ubicacion')) {
-			$table->addColumn('ubicacion', 'string', [
-				'notnull' => false,
-				'length' => 255,
-			]);
-		}
+		$table->addColumn('correo', Types::STRING, [
+			'notnull' => false,
+			'length' => 255,
+		]);
 
-		if (!$table->hasColumn('honorarios')) {
-			$table->addColumn('honorarios', 'string', [
-				'notnull' => false,
-				'length' => 100,
-			]);
-		}
+		$table->addColumn('ubicacion', Types::STRING, [
+			'notnull' => false,
+			'length' => 255,
+		]);
 
-		if (!$table->hasColumn('tipo_moneda')) {
-			$table->addColumn('tipo_moneda', 'string', [
-				'notnull' => false,
-				'length' => 10,
-			]);
-		}
+		$table->addColumn('especial', Types::INTEGER, [
+			'notnull' => true,
+			'default' => 0,
+			'length' => 1,
+		]);
 
-		if (!$table->hasColumn('especial')) {
-			$table->addColumn('especial', 'integer', [
-				'notnull' => true,
-				'default' => 0,
-				'length' => 1,
-			]);
-		}
+		$table->addColumn('cliente_padre', Types::INTEGER, [
+			'notnull' => false,
+		]);
+
+		$table->addColumn('estado', Types::INTEGER, [
+			'notnull' => true,
+			'default' => 1,
+			'length' => 1,
+		]);
+
+		$table->setPrimaryKey(['id']);
 
 		return $schema;
 	}

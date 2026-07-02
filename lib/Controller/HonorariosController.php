@@ -315,7 +315,13 @@ class HonorariosController extends BaseController {
 			*/
 
 			$importeTotal = (float)$honorario['importe_total'];
-			$esIguala = $honorario['tipo_honorario'] === 'iguala';
+			$tipoHonorario = $honorario['tipo_honorario'] ?? 'parcial';
+			$esIguala = $tipoHonorario === 'iguala';
+			$esEventual = $tipoHonorario === 'eventual';
+
+			$textoTipo = $esEventual
+				? 'TRABAJOS ESPECIALES'
+				: 'FACTURACIÓN DE IGUALAS Y PAGOS EN PARCIALIDADES';
 
 			$numParcialidades = (int)($honorario['numero_parcialidades'] ?? 0);
 
@@ -392,8 +398,9 @@ class HonorariosController extends BaseController {
 				'{honorario.importe}' => number_format($importeTotal, 2, '.', ','),
 				'{honorario.moneda}' => $monedaTxt,
 				'{tipo_moneda}' => $tipoMoneda,
-				'{honorario.iguala_mark}' => $esIguala ? 'X' : '',
-				'{honorario.parcialidad_mark}' => $esIguala ? '' : 'X',
+				'{texto_tipo}'                  => $textoTipo,
+				'{honorario.iguala_mark}'       => $esIguala ? 'X' : '',
+				'{honorario.parcialidad_mark}'  => (!$esIguala && !$esEventual) ? 'X' : '',
 				'{honorario.num_parcialidades}' => $esIguala ? '1' : (($numParcialidades > 0) ? (string)$numParcialidades : ''),
 				'{honorario.monto_parcialidad}' => $esIguala
 					? number_format($importeTotal, 2, '.', ',')

@@ -28,9 +28,10 @@ class Version2014Date20260626191208 extends SimpleMigrationStep {
         $table = $schema->getTable('tipo_ausencia');
 
         if (!$table->hasColumn('cargable')) {
-            $table->addColumn('cargable', Types::BOOLEAN, [
+            $table->addColumn('cargable', Types::INTEGER, [
                 'notnull' => false,
-                'default' => false,
+                'default' => 0,
+                'length' => 1,
             ]);
         }
 
