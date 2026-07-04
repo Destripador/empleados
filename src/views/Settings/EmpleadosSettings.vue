@@ -466,8 +466,8 @@ export default {
 			return this.permisosGrupos.map((group) => {
 				return {
 					...group,
-					description: this.getPermisoDescription(group.id),
-					restriction: this.getPermisoRestriction(group.id),
+					description: group.description || this.getPermisoDescription(group),
+					restriction: this.getPermisoRestriction(group),
 					disabled: this.isPermissionDisabled(group.id),
 				}
 			})
@@ -612,9 +612,7 @@ export default {
 			this.selectedPermisosGroups = []
 			this.showPermisosDialog = true
 
-			if (this.permisosGrupos.length === 0) {
-				await this.loadPermisosGrupos()
-			}
+			await this.loadPermisosGrupos()
 
 			await this.loadPermisosUsuario()
 		},
@@ -798,7 +796,11 @@ export default {
 			return false
 		},
 
-		getPermisoDescription(groupId) {
+		getPermisoDescription(group) {
+			const groupId = typeof group === 'string' ? group : group?.id
+			const moduleName = typeof group === 'string' ? '' : group?.module
+			const permissionName = typeof group === 'string' ? '' : group?.permission
+
 			const descriptions = {
 				admin: t('empleados', 'Global Nextcloud administrator. This role already has full access and should be assigned only when strictly necessary.'),
 				compras_admin: t('empleados', 'Full control of the purchases module: view all requests, create requests, select requester, approve, reject and process purchases.'),
@@ -806,12 +808,32 @@ export default {
 				compras_autorizadores: t('empleados', 'Can view purchase requests from all users and approve or reject requests pending approval.'),
 				compras_contabilidad: t('empleados', 'Can view purchase requests from all users for accounting review and tracking. Cannot approve or reject requests.'),
 				recursos_humanos: t('empleados', 'Can manage employee-related information in the employees module. This does not grant purchase approval permissions.'),
+				clientes_admin: t('empleados', 'Can create, edit, delete, import and export customers.'),
+				clientes_view: t('empleados', 'Can view customers without editing the customer catalog.'),
 			}
 
-			return descriptions[groupId] || t('empleados', 'Controlled group used to grant access to a specific module or workflow.')
+			if (descriptions[groupId]) {
+				return descriptions[groupId]
+			}
+
+			if (moduleName && permissionName) {
+				return t(
+					'empleados',
+					'Grants {permission} access to the {module} module.',
+					{
+						permission: permissionName,
+						module: moduleName,
+					},
+				)
+			}
+
+			return t('empleados', 'Controlled group used to grant access to a specific module or workflow.')
 		},
 
-		getPermisoRestriction(groupId) {
+		getPermisoRestriction(group) {
+			const groupId = typeof group === 'string' ? group : group?.id
+			const restricted = typeof group === 'string' ? false : Boolean(group?.restricted)
+
 			const restrictions = {
 				admin: t('empleados', 'Do not combine with purchase groups unless there is a specific reason.'),
 				compras_admin: t('empleados', 'Includes requester, approver and accounting purchase permissions. Other purchase groups will be ignored.'),
@@ -819,9 +841,19 @@ export default {
 				compras_autorizadores: t('empleados', 'Does not allow selecting another requester when creating a request.'),
 				compras_contabilidad: t('empleados', 'Read-only for approvals: approval and rejection actions are hidden.'),
 				recursos_humanos: t('empleados', 'Independent from purchase permissions.'),
+				clientes_admin: t('empleados', 'Administrative customer permission. Assign only to users who should maintain the customer catalog.'),
+				clientes_view: t('empleados', 'Read-only customer permission.'),
 			}
 
-			return restrictions[groupId] || ''
+			if (restrictions[groupId]) {
+				return restrictions[groupId]
+			}
+
+			if (restricted) {
+				return t('empleados', 'Restricted permission. Assign only when necessary.')
+			}
+
+			return ''
 		},
 	},
 }

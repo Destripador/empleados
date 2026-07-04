@@ -84,7 +84,11 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetAreasList(): DataResponse {
-        $this->requireHumanResourcesAccess();
+        $this->permisosService->requireCanSeeAny([
+            'empleados.hr',
+            'empleados.admin',
+            'clientes',
+        ]);
         return new DataResponse($this->departamentosMapper->GetAreasList(), Http::STATUS_OK);
     }
 

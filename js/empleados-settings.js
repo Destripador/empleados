@@ -9526,8 +9526,8 @@ const GLOBAL_ADMIN_GROUP = 'admin';
       return this.permisosGrupos.map(group => {
         return {
           ...group,
-          description: this.getPermisoDescription(group.id),
-          restriction: this.getPermisoRestriction(group.id),
+          description: group.description || this.getPermisoDescription(group),
+          restriction: this.getPermisoRestriction(group),
           disabled: this.isPermissionDisabled(group.id)
         };
       });
@@ -9658,9 +9658,7 @@ const GLOBAL_ADMIN_GROUP = 'admin';
       this.selectedPermisosUid = uid;
       this.selectedPermisosGroups = [];
       this.showPermisosDialog = true;
-      if (this.permisosGrupos.length === 0) {
-        await this.loadPermisosGrupos();
-      }
+      await this.loadPermisosGrupos();
       await this.loadPermisosUsuario();
     },
     async loadPermisosGrupos() {
@@ -9806,27 +9804,51 @@ const GLOBAL_ADMIN_GROUP = 'admin';
       }
       return false;
     },
-    getPermisoDescription(groupId) {
+    getPermisoDescription(group) {
+      const groupId = typeof group === 'string' ? group : group?.id;
+      const moduleName = typeof group === 'string' ? '' : group?.module;
+      const permissionName = typeof group === 'string' ? '' : group?.permission;
       const descriptions = {
         admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Global Nextcloud administrator. This role already has full access and should be assigned only when strictly necessary.'),
         compras_admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Full control of the purchases module: view all requests, create requests, select requester, approve, reject and process purchases.'),
         compras_solicitantes: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can access the purchases module, create own purchase requests, edit drafts, send them for approval and follow their own requests.'),
         compras_autorizadores: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can view purchase requests from all users and approve or reject requests pending approval.'),
         compras_contabilidad: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can view purchase requests from all users for accounting review and tracking. Cannot approve or reject requests.'),
-        recursos_humanos: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can manage employee-related information in the employees module. This does not grant purchase approval permissions.')
+        recursos_humanos: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can manage employee-related information in the employees module. This does not grant purchase approval permissions.'),
+        clientes_admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can create, edit, delete, import and export customers.'),
+        clientes_view: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Can view customers without editing the customer catalog.')
       };
-      return descriptions[groupId] || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Controlled group used to grant access to a specific module or workflow.');
+      if (descriptions[groupId]) {
+        return descriptions[groupId];
+      }
+      if (moduleName && permissionName) {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Grants {permission} access to the {module} module.', {
+          permission: permissionName,
+          module: moduleName
+        });
+      }
+      return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Controlled group used to grant access to a specific module or workflow.');
     },
-    getPermisoRestriction(groupId) {
+    getPermisoRestriction(group) {
+      const groupId = typeof group === 'string' ? group : group?.id;
+      const restricted = typeof group === 'string' ? false : Boolean(group?.restricted);
       const restrictions = {
         admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Do not combine with purchase groups unless there is a specific reason.'),
         compras_admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Includes requester, approver and accounting purchase permissions. Other purchase groups will be ignored.'),
         compras_solicitantes: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Does not allow viewing requests from other users.'),
         compras_autorizadores: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Does not allow selecting another requester when creating a request.'),
         compras_contabilidad: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Read-only for approvals: approval and rejection actions are hidden.'),
-        recursos_humanos: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Independent from purchase permissions.')
+        recursos_humanos: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Independent from purchase permissions.'),
+        clientes_admin: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Administrative customer permission. Assign only to users who should maintain the customer catalog.'),
+        clientes_view: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Read-only customer permission.')
       };
-      return restrictions[groupId] || '';
+      if (restrictions[groupId]) {
+        return restrictions[groupId];
+      }
+      if (restricted) {
+        return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'Restricted permission. Assign only when necessary.');
+      }
+      return '';
     }
   }
 });
@@ -9917,12 +9939,20 @@ const EMPTY_FORM = {
       structureDialog: false,
       structure: {
         summary: {
+          base_total: 0,
+          base_missing: 0,
+          catalog_total: 0,
+          catalog_missing: 0,
+          catalog_entries_required: 0,
+          catalog_entries_missing: 0,
           missing_total: 0
         },
         base_groups: [],
         catalog_groups: [],
+        required_catalog_entries: [],
         missing_base_groups: [],
-        missing_catalog_groups: []
+        missing_catalog_groups: [],
+        missing_catalog_entries: []
       },
       modulesOptions: [{
         id: 'empleados',
@@ -10152,7 +10182,7 @@ const EMPTY_FORM = {
         if (payload.status !== 'ok') {
           throw new Error(payload.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_11__.translate)('empleados', 'Could not check group structure.'));
         }
-        this.structure = payload.data || this.structure;
+        this.structure = this.normalizeStructure(payload.data || {});
         this.structureDialog = true;
       } catch (err) {
         (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_10__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_11__.translate)('empleados', 'Error checking group structure: {error}', {
@@ -10253,6 +10283,25 @@ const EMPTY_FORM = {
           label: `${this.form.group_id} (${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_11__.translate)('empleados', 'new group')})`
         };
       }
+    },
+    normalizeStructure(data = {}) {
+      return {
+        summary: {
+          base_total: Number(data?.summary?.base_total || 0),
+          base_missing: Number(data?.summary?.base_missing || 0),
+          catalog_total: Number(data?.summary?.catalog_total || 0),
+          catalog_missing: Number(data?.summary?.catalog_missing || 0),
+          catalog_entries_required: Number(data?.summary?.catalog_entries_required || 0),
+          catalog_entries_missing: Number(data?.summary?.catalog_entries_missing || 0),
+          missing_total: Number(data?.summary?.missing_total || 0)
+        },
+        base_groups: data?.base_groups || [],
+        catalog_groups: data?.catalog_groups || [],
+        required_catalog_entries: data?.required_catalog_entries || [],
+        missing_base_groups: data?.missing_base_groups || [],
+        missing_catalog_groups: data?.missing_catalog_groups || [],
+        missing_catalog_entries: data?.missing_catalog_entries || []
+      };
     }
   }
 });
@@ -12124,13 +12173,15 @@ var render = function render() {
     attrs: {
       type: "warning"
     }
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Some required groups are missing. You can repair the structure to recreate the missing groups.")) + "\n\t\t\t")]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Some required groups or catalog entries are missing. You can repair the structure to recreate them.")) + "\n\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "structure-summary"
   }, [_c("div", {
     staticClass: "structure-summary__item"
   }, [_c("strong", [_vm._v(_vm._s(_vm.structure.summary.base_missing))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Missing base groups")))])]), _vm._v(" "), _c("div", {
     staticClass: "structure-summary__item"
   }, [_c("strong", [_vm._v(_vm._s(_vm.structure.summary.catalog_missing))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Missing permission groups")))])]), _vm._v(" "), _c("div", {
+    staticClass: "structure-summary__item"
+  }, [_c("strong", [_vm._v(_vm._s(_vm.structure.summary.catalog_entries_missing))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Missing catalog entries")))])]), _vm._v(" "), _c("div", {
     staticClass: "structure-summary__item"
   }, [_c("strong", [_vm._v(_vm._s(_vm.structure.summary.missing_total))]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.t("empleados", "Total missing")))])])]), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Base groups")))]), _vm._v(" "), _c("div", {
     staticClass: "structure-list"
@@ -12143,7 +12194,37 @@ var render = function render() {
     }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Exists")) + "\n\t\t\t\t\t")]) : _c("span", {
       staticClass: "status-badge status-badge--missing"
     }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Missing")) + "\n\t\t\t\t\t")])]);
-  }), 0), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Permission groups")))]), _vm._v(" "), _c("div", {
+  }), 0), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Required catalog entries")))]), _vm._v(" "), _c("div", {
+    staticClass: "structure-list"
+  }, [_vm._l(_vm.structure.required_catalog_entries, function (entry) {
+    return _c("div", {
+      key: `required-catalog-${entry.module}-${entry.permission}-${entry.group_id}`,
+      staticClass: "structure-row",
+      class: {
+        "structure-row--disabled": !entry.enabled
+      }
+    }, [_c("div", [_c("strong", [_vm._v(_vm._s(entry.label))]), _vm._v(" "), _c("code", [_vm._v(_vm._s(entry.group_id))]), _vm._v(" "), _c("p", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(entry.module) + " · " + _vm._s(entry.permission) + "\n\t\t\t\t\t\t\t"), entry.restricted ? _c("span", [_vm._v("· " + _vm._s(_vm.t("empleados", "Restricted")))]) : _vm._e()]), _vm._v(" "), entry.description ? _c("p", [_vm._v("\n\t\t\t\t\t\t\t" + _vm._s(entry.description) + "\n\t\t\t\t\t\t")]) : _vm._e()]), _vm._v(" "), entry.exists ? _c("span", {
+      staticClass: "status-badge status-badge--enabled"
+    }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Exists in catalog")) + "\n\t\t\t\t\t")]) : _c("span", {
+      staticClass: "status-badge status-badge--missing"
+    }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Missing in catalog")) + "\n\t\t\t\t\t")])]);
+  }), _vm._v(" "), _vm.structure.required_catalog_entries.length === 0 ? _c("NcEmptyContent", {
+    attrs: {
+      name: _vm.t("empleados", "No required catalog entries"),
+      description: _vm.t("empleados", "There are no required permission definitions configured for this check.")
+    },
+    scopedSlots: _vm._u([{
+      key: "icon",
+      fn: function () {
+        return [_c("AccountGroup", {
+          attrs: {
+            size: 28
+          }
+        })];
+      },
+      proxy: true
+    }], null, false, 3451539934)
+  }) : _vm._e()], 2), _vm._v(" "), _c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Permission groups")))]), _vm._v(" "), _c("div", {
     staticClass: "structure-list"
   }, _vm._l(_vm.structure.catalog_groups, function (group) {
     return _c("div", {
@@ -12184,7 +12265,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 4158712913)
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.repairingStructure ? _vm.t("empleados", "Repairing") : _vm.t("empleados", "Repair missing groups")) + "\n\t\t\t\t")])], 1)], 1)]) : _vm._e()], 1);
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.repairingStructure ? _vm.t("empleados", "Repairing") : _vm.t("empleados", "Repair structure")) + "\n\t\t\t\t")])], 1)], 1)]) : _vm._e()], 1);
 };
 var staticRenderFns = [];
 render._withStripped = true;
@@ -147502,4 +147583,4 @@ new View().$mount('#admin');
 
 /******/ })()
 ;
-//# sourceMappingURL=empleados-settings.js.map?v=a08e59b628125c658aa4
+//# sourceMappingURL=empleados-settings.js.map?v=5b7799c8ee1b0b091e77

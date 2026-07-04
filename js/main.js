@@ -15643,6 +15643,8 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+
+
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'TiempoLibre',
   components: {
@@ -61576,8 +61578,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 90%  { transform: rotate(5deg);
 }
-100% {
-		transform: rotate(0deg);
+100% { transform: rotate(0deg);
 }
 }
 .bell-shake[data-v-83d6d36c] { animation: shake-83d6d36c 0.8s ease;

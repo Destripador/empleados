@@ -29,6 +29,29 @@ class PermisoGruposController extends Controller {
 		],
 	];
 
+	private const REQUIRED_PERMISSION_GROUPS = [
+		[
+			'module' => 'clientes',
+			'permission' => 'admin',
+			'group_id' => 'clientes_admin',
+			'label' => 'Administradores de clientes',
+			'description' => 'Permite crear, editar, eliminar, importar y exportar clientes.',
+			'restricted' => true,
+			'enabled' => true,
+			'sort_order' => 300,
+		],
+		[
+			'module' => 'clientes',
+			'permission' => 'view',
+			'group_id' => 'clientes_view',
+			'label' => 'Consulta de clientes',
+			'description' => 'Permite consultar y ver clientes sin administrar el catálogo.',
+			'restricted' => false,
+			'enabled' => true,
+			'sort_order' => 310,
+		],
+	];
+
 	public function __construct(
 		IRequest $request,
 		private PermisoGrupoMapper $permisoGrupoMapper,
@@ -248,6 +271,9 @@ class PermisoGruposController extends Controller {
 		$catalogGroups = [];
 		$missingBase = [];
 		$missingCatalog = [];
+		$requiredCatalogEntries = [];
+		$missingCatalogEntries = [];
+		$catalogEntryKeys = [];
 
 		foreach (self::BASE_GROUPS as $baseGroup) {
 			$groupId = $baseGroup['id'];
@@ -266,6 +292,44 @@ class PermisoGruposController extends Controller {
 
 			if (!$exists) {
 				$missingBase[] = $item;
+			}
+		}
+
+		foreach ($this->permisoGrupoMapper->findAllCatalog() as $row) {
+			$catalogEntryKeys[$this->catalogKey(
+				(string)$row['module'],
+				(string)$row['permission'],
+				(string)$row['group_id']
+			)] = true;
+		}
+		
+		foreach (self::REQUIRED_PERMISSION_GROUPS as $requiredPermission) {
+			$key = $this->catalogKey(
+				$requiredPermission['module'],
+				$requiredPermission['permission'],
+				$requiredPermission['group_id']
+			);
+
+			$exists = isset($catalogEntryKeys[$key]);
+
+			$item = [
+				'type' => 'required_catalog_entry',
+				'module' => $requiredPermission['module'],
+				'permission' => $requiredPermission['permission'],
+				'group_id' => $requiredPermission['group_id'],
+				'label' => $requiredPermission['label'],
+				'description' => $requiredPermission['description'],
+				'restricted' => $requiredPermission['restricted'],
+				'enabled' => $requiredPermission['enabled'],
+				'sort_order' => $requiredPermission['sort_order'],
+				'exists' => $exists,
+				'required' => true,
+			];
+
+			$requiredCatalogEntries[] = $item;
+
+			if (!$exists) {
+				$missingCatalogEntries[] = $item;
 			}
 		}
 
@@ -303,7 +367,11 @@ class PermisoGruposController extends Controller {
 					'base_missing' => count($missingBase),
 					'catalog_total' => count($catalogGroups),
 					'catalog_missing' => count($missingCatalog),
-					'missing_total' => count($missingBase) + count($missingCatalog),
+					'missing_total' => count($missingBase) + count($missingCatalog) + count($missingCatalogEntries),
+					'catalog_entries_required' => count($requiredCatalogEntries),
+					'catalog_entries_missing' => count($missingCatalogEntries),
+					'required_catalog_entries' => $requiredCatalogEntries,
+					'missing_catalog_entries' => $missingCatalogEntries,
 				],
 				'base_groups' => $baseGroups,
 				'catalog_groups' => $catalogGroups,
@@ -318,6 +386,41 @@ class PermisoGruposController extends Controller {
 		$created = [];
 		$alreadyExists = [];
 		$failed = [];
+		$createdCatalogEntries = [];
+		$alreadyExistingCatalogEntries = [];
+
+		foreach (self::REQUIRED_PERMISSION_GROUPS as $requiredPermission) {
+			$module = $requiredPermission['module'];
+			$permission = $requiredPermission['permission'];
+			$groupId = $requiredPermission['group_id'];
+
+			if ($this->permisoGrupoMapper->catalogEntryExists($module, $permission, $groupId)) {
+				$alreadyExistingCatalogEntries[] = $requiredPermission;
+			} else {
+				$this->permisoGrupoMapper->createCatalogEntry(
+					$module,
+					$permission,
+					$groupId,
+					$requiredPermission['label'],
+					$requiredPermission['description'],
+					$requiredPermission['restricted'] ? 1 : 0,
+					$requiredPermission['enabled'] ? 1 : 0,
+					$requiredPermission['sort_order']
+				);
+
+				$createdCatalogEntries[] = $requiredPermission;
+			}
+
+			if ($requiredPermission['enabled']) {
+				$groupsToCheck[$groupId] = [
+					'id' => $groupId,
+					'label' => $requiredPermission['label'],
+					'type' => 'permission',
+					'module' => $module,
+					'permission' => $permission,
+				];
+			}
+		}
 
 		$groupsToCheck = [];
 
@@ -372,9 +475,12 @@ class PermisoGruposController extends Controller {
 				'created' => $created,
 				'already_exists' => $alreadyExists,
 				'failed' => $failed,
+				'created_catalog_entries' => $createdCatalogEntries,
+				'already_existing_catalog_entries' => $alreadyExistingCatalogEntries,
 			],
 		], empty($failed) ? Http::STATUS_OK : Http::STATUS_MULTI_STATUS);
 	}
+
 	#[NoCSRFRequired]
 	#[AdminRequired]
 	public function gruposNextcloud(): DataResponse {
@@ -396,5 +502,9 @@ class PermisoGruposController extends Controller {
 			'status' => 'ok',
 			'data' => $data,
 		], Http::STATUS_OK);
+	}
+
+	private function catalogKey(string $module, string $permission, string $groupId): string {
+		return $module . '::' . $permission . '::' . $groupId;
 	}
 }

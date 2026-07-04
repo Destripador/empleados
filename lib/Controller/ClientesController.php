@@ -19,6 +19,7 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\clientes;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
+use OCA\Empleados\Service\PermisosService;
 use OCP\IGroupManager;
 use OCP\IConfig;
 use OCP\IURLGenerator;
@@ -40,6 +41,7 @@ class ClientesController extends BaseController {
     protected $honorariosMapper;
     protected $l10n;
     protected $groupManager;
+    protected PermisosService $permisosService;
     private IConfig $config;
     private IClientService $clientService;
     private ISubAdmin $subAdmin;
@@ -59,6 +61,7 @@ class ClientesController extends BaseController {
         IURLGenerator $urlGenerator,
         IClientService $clientService,
         ISubAdmin $subAdmin,
+        PermisosService $permisosService,
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -74,12 +77,21 @@ class ClientesController extends BaseController {
         $this->urlGenerator = $urlGenerator;
         $this->clientService = $clientService;
         $this->subAdmin = $subAdmin;
+        $this->permisosService = $permisosService;
+    }
+
+    private function requireClientesAccess(): void {
+        $this->permisosService->requireCanSee('clientes');
+    }
+
+    private function requireClientesAdminAccess(): void {
+        $this->permisosService->requireCanSee('clientes.admin');
     }
 
     #[UseSession]
     #[NoAdminRequired]
     public function GetCompaniesGroups(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+        $this->requireClientesAccess();
 
         $clientes = $this->clientesMapper->findAll();
 
@@ -89,7 +101,7 @@ class ClientesController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetCompanieGroup($id): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireClientesAccess();
 
         $cliente = $this->clientesMapper->findById((int)$id);
 
@@ -99,7 +111,7 @@ class ClientesController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function deleteById($id): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireClientesAdminAccess();
 
         $this->honorariosMapper->deleteByCliente((int)$id);
         $this->clientesMapper->deleteById((int)$id);
@@ -124,7 +136,7 @@ class ClientesController extends BaseController {
         ?int $cliente_padre = null,
         ?int $estado = null
     ): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireClientesAdminAccess();
 
         $colaboradoresArr = json_decode($colaboradores ?? '[]', true) ?: [];
 
@@ -164,7 +176,7 @@ class ClientesController extends BaseController {
         ?int $cliente_padre = null,
         ?int $estado = null
     ): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireClientesAdminAccess();
 
         try {
             $colaboradoresArr = json_decode($colaboradores ?? '[]', true) ?: [];
@@ -207,7 +219,7 @@ class ClientesController extends BaseController {
     }
 
     public function Exportarclientes(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireClientesAdminAccess();
 
         $clientes = $this->clientesMapper->findAll();
 
@@ -304,9 +316,8 @@ class ClientesController extends BaseController {
         );
     }
 
-    
     public function importarClientes(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireClientesAdminAccess();
 
         $file = $this->getUploadedFile('clientesfileXLSX');
         $xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name']);
@@ -359,12 +370,9 @@ class ClientesController extends BaseController {
 
         $dataRows = array_slice($rows, 1);
 
-        // --- Paso 1: crear grupos únicos que no existan aún ---
-        // $gruposMap: nombre_grupo -> id en BD
         $gruposMap = [];
 
         if (isset($colIndex['grupo'])) {
-            // Recopilar nombres de grupos únicos presentes en el excel
             $gruposEnExcel = [];
             foreach ($dataRows as $row) {
                 $grupo = trim((string)($row[$colIndex['grupo']] ?? ''));
@@ -373,17 +381,15 @@ class ClientesController extends BaseController {
                 }
             }
 
-            // Buscar cuáles ya existen en BD para no duplicar
             $existentes = $this->clientesMapper->findAll();
             foreach ($existentes as $c) {
                 $nombreExistente = trim((string)($c['nombre'] ?? ''));
                 if (isset($gruposEnExcel[$nombreExistente])) {
                     $gruposMap[$nombreExistente] = (int)$c['id'];
-                    unset($gruposEnExcel[$nombreExistente]); // ya existe, no crear
+                    unset($gruposEnExcel[$nombreExistente]);
                 }
             }
 
-            // Crear los que faltan
             foreach (array_keys($gruposEnExcel) as $nombreGrupo) {
                 $padre = new clientes();
                 $padre->setNombre($nombreGrupo);
@@ -404,7 +410,6 @@ class ClientesController extends BaseController {
             }
         }
 
-        // --- Paso 2: crear cada empresa ---
         $creados = 0;
         $errores = [];
 
@@ -415,7 +420,7 @@ class ClientesController extends BaseController {
         foreach ($dataRows as $lineaNum => $row) {
             $nombre = $get($row, 'nombre');
             if (!$nombre) {
-                $errores[] = "Fila " . ($lineaNum + 2) . ": nombre vacío, se omitió.";
+                $errores[] = 'Fila ' . ($lineaNum + 2) . ': nombre vacío, se omitió.';
                 continue;
             }
 
@@ -446,7 +451,6 @@ class ClientesController extends BaseController {
             $inserted = $this->clientesMapper->insert($cliente);
             $idCliente = (int)$inserted->getId();
 
-            // Honorario borrador si viene importe
             $importeRaw = $get($row, 'importe_total');
             if ($importeRaw !== null && (float)$importeRaw > 0) {
                 $honorario = new honorarios();
@@ -469,6 +473,8 @@ class ClientesController extends BaseController {
     }
 
     private function getUploadedFile(string $key): array {
+        $this->requireClientesAdminAccess();
+
         $file = $this->request->getUploadedFile($key);
 
         if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {

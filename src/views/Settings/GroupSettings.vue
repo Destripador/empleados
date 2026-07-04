@@ -257,7 +257,7 @@
 				</NcNoteCard>
 
 				<NcNoteCard v-else type="warning">
-					{{ t('empleados', 'Some required groups are missing. You can repair the structure to recreate the missing groups.') }}
+					{{ t('empleados', 'Some required groups or catalog entries are missing. You can repair the structure to recreate them.') }}
 				</NcNoteCard>
 
 				<div class="structure-summary">
@@ -268,6 +268,10 @@
 					<div class="structure-summary__item">
 						<strong>{{ structure.summary.catalog_missing }}</strong>
 						<span>{{ t('empleados', 'Missing permission groups') }}</span>
+					</div>
+					<div class="structure-summary__item">
+						<strong>{{ structure.summary.catalog_entries_missing }}</strong>
+						<span>{{ t('empleados', 'Missing catalog entries') }}</span>
 					</div>
 					<div class="structure-summary__item">
 						<strong>{{ structure.summary.missing_total }}</strong>
@@ -292,7 +296,40 @@
 						</span>
 					</div>
 				</div>
+				<h3>{{ t('empleados', 'Required catalog entries') }}</h3>
+				<div class="structure-list">
+					<div v-for="entry in structure.required_catalog_entries"
+						:key="`required-catalog-${entry.module}-${entry.permission}-${entry.group_id}`"
+						class="structure-row"
+						:class="{ 'structure-row--disabled': !entry.enabled }">
+						<div>
+							<strong>{{ entry.label }}</strong>
+							<code>{{ entry.group_id }}</code>
+							<p>
+								{{ entry.module }} · {{ entry.permission }}
+								<span v-if="entry.restricted">· {{ t('empleados', 'Restricted') }}</span>
+							</p>
+							<p v-if="entry.description">
+								{{ entry.description }}
+							</p>
+						</div>
 
+						<span v-if="entry.exists" class="status-badge status-badge--enabled">
+							{{ t('empleados', 'Exists in catalog') }}
+						</span>
+						<span v-else class="status-badge status-badge--missing">
+							{{ t('empleados', 'Missing in catalog') }}
+						</span>
+					</div>
+
+					<NcEmptyContent v-if="structure.required_catalog_entries.length === 0"
+						:name="t('empleados', 'No required catalog entries')"
+						:description="t('empleados', 'There are no required permission definitions configured for this check.')">
+						<template #icon>
+							<AccountGroup :size="28" />
+						</template>
+					</NcEmptyContent>
+				</div>
 				<h3>{{ t('empleados', 'Permission groups') }}</h3>
 				<div class="structure-list">
 					<div v-for="group in structure.catalog_groups"
@@ -331,7 +368,7 @@
 						<template #icon>
 							<ShieldCheck :size="20" />
 						</template>
-						{{ repairingStructure ? t('empleados', 'Repairing') : t('empleados', 'Repair missing groups') }}
+						{{ repairingStructure ? t('empleados', 'Repairing') : t('empleados', 'Repair structure') }}
 					</NcButton>
 				</div>
 			</div>
@@ -417,12 +454,20 @@ export default {
 			structureDialog: false,
 			structure: {
 				summary: {
+					base_total: 0,
+					base_missing: 0,
+					catalog_total: 0,
+					catalog_missing: 0,
+					catalog_entries_required: 0,
+					catalog_entries_missing: 0,
 					missing_total: 0,
 				},
 				base_groups: [],
 				catalog_groups: [],
+				required_catalog_entries: [],
 				missing_base_groups: [],
 				missing_catalog_groups: [],
+				missing_catalog_entries: [],
 			},
 			modulesOptions: [
 				{ id: 'empleados', label: t('empleados', 'Employees / HR') },
@@ -669,7 +714,7 @@ export default {
 					throw new Error(payload.message || t('empleados', 'Could not check group structure.'))
 				}
 
-				this.structure = payload.data || this.structure
+				this.structure = this.normalizeStructure(payload.data || {})
 				this.structureDialog = true
 			} catch (err) {
 				showError(t('empleados', 'Error checking group structure: {error}', { error: String(err) }))
@@ -787,6 +832,25 @@ export default {
 					id: this.form.group_id,
 					label: `${this.form.group_id} (${t('empleados', 'new group')})`,
 				}
+			}
+		},
+		normalizeStructure(data = {}) {
+			return {
+				summary: {
+					base_total: Number(data?.summary?.base_total || 0),
+					base_missing: Number(data?.summary?.base_missing || 0),
+					catalog_total: Number(data?.summary?.catalog_total || 0),
+					catalog_missing: Number(data?.summary?.catalog_missing || 0),
+					catalog_entries_required: Number(data?.summary?.catalog_entries_required || 0),
+					catalog_entries_missing: Number(data?.summary?.catalog_entries_missing || 0),
+					missing_total: Number(data?.summary?.missing_total || 0),
+				},
+				base_groups: data?.base_groups || [],
+				catalog_groups: data?.catalog_groups || [],
+				required_catalog_entries: data?.required_catalog_entries || [],
+				missing_base_groups: data?.missing_base_groups || [],
+				missing_catalog_groups: data?.missing_catalog_groups || [],
+				missing_catalog_entries: data?.missing_catalog_entries || [],
 			}
 		},
 	},

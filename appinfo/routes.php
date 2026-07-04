@@ -132,7 +132,12 @@ return [
 		['name' => 'ausencias#GetAusenciasMyWorkers', 'url' => '/GetAusenciasMyWorkers', 'verb' => 'POST'],
 		['name' => 'ausencias#GetAusenciasByUser', 'url' => '/GetAusenciasByUser', 'verb' => 'POST'],
 		['name' => 'ausencias#EnviarAusencia', 'url' => '/EnviarAusencia', 'verb' => 'POST'],
-
+		['name' => 'ausencias#GetDetalleAusencia', 'url' => '/GetDetalleAusencia', 'verb' => 'GET'],
+		['name' => 'ausencias#CancelarAusencia',   'url' => '/CancelarAusencia',   'verb' => 'POST'],
+		['name' => 'ausencias#EditarAusencia', 'url' => '/EditarAusencia', 'verb' => 'POST'],
+		['name' => 'ausencias#EditarAusencia', 'url' => '/EditarAusencia', 'verb' => 'POST'],
+		['name' => 'ausencias#CheckPrimaVacacional', 'url' => '/check-prima-vacacional', 'verb' => 'GET'],
+		['name' => 'ausencias#GetHistorialReporte', 'url' => '/historial-reporte', 'verb' => 'GET'],
 
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],

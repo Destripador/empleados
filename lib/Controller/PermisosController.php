@@ -7,6 +7,8 @@ namespace OCA\Empleados\Controller;
 use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\empleadosMapper;
+use OCA\Empleados\Db\PermisoGrupoMapper;
+use OCA\Empleados\Service\PermisosService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -17,19 +19,11 @@ use OCP\IRequest;
 use OCP\IUserManager;
 use OCP\IUserSession;
 
-use OCA\Empleados\Service\PermisosService;
-
 class PermisosController extends BaseController {
 
 	private IUserManager $userManager;
-
-	private const ALLOWED_GROUPS = [
-		'compras_solicitantes' => 'Compras - Solicitantes',
-		'compras_autorizadores' => 'Compras - Autorizadores',
-		'compras_admin' => 'Compras - Administradores',
-		'compras_contabilidad' => 'Compras - Contabilidad',
-		'recursos_humanos' => 'Recursos Humanos',
-	];
+	private PermisoGrupoMapper $permisoGrupoMapper;
+	private PermisosService $permisosService;
 
 	public function __construct(
 		IRequest $request,
@@ -38,6 +32,7 @@ class PermisosController extends BaseController {
 		IGroupManager $groupManager,
 		empleadosMapper $empleadosMapper,
 		configuracionesMapper $configuracionesMapper,
+		PermisoGrupoMapper $permisoGrupoMapper,
 		PermisosService $permisosService
 	) {
 		parent::__construct(
@@ -49,23 +44,31 @@ class PermisosController extends BaseController {
 			$configuracionesMapper,
 		);
 
-		$this->permisosService = $permisosService;
 		$this->userManager = $userManager;
+		$this->permisoGrupoMapper = $permisoGrupoMapper;
+		$this->permisosService = $permisosService;
 	}
 
 	#[UseSession]
 	#[NoCSRFRequired]
 	#[NoAdminRequired]
 	public function grupos(): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requirePermissionManagementAccess();
 
 		$data = [];
 
-		foreach (self::ALLOWED_GROUPS as $gid => $label) {
+		foreach ($this->permisoGrupoMapper->findEnabled() as $row) {
+			$groupId = (string)$row['group_id'];
+
 			$data[] = [
-				'id' => $gid,
-				'label' => $label,
-				'exists' => $this->groupManager->get($gid) !== null,
+				'id' => $groupId,
+				'label' => (string)$row['label'],
+				'description' => $row['description'] ?? '',
+				'module' => (string)$row['module'],
+				'permission' => (string)$row['permission'],
+				'restricted' => ((int)$row['restricted']) === 1,
+				'enabled' => ((int)$row['enabled']) === 1,
+				'exists' => $this->groupManager->get($groupId) !== null,
 			];
 		}
 
@@ -79,7 +82,7 @@ class PermisosController extends BaseController {
 	#[NoCSRFRequired]
 	#[NoAdminRequired]
 	public function usuario(string $uid): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requirePermissionManagementAccess();
 
 		$user = $this->userManager->get($uid);
 
@@ -91,7 +94,7 @@ class PermisosController extends BaseController {
 		}
 
 		$userGroups = $this->groupManager->getUserGroupIds($user);
-		$allowedGroupIds = array_keys(self::ALLOWED_GROUPS);
+		$allowedGroupIds = $this->permisoGrupoMapper->findEnabledGroupIds();
 
 		return new DataResponse([
 			'status' => 'ok',
@@ -107,7 +110,7 @@ class PermisosController extends BaseController {
 	#[NoCSRFRequired]
 	#[NoAdminRequired]
 	public function actualizarUsuario(string $uid): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requirePermissionManagementAccess();
 
 		$user = $this->userManager->get($uid);
 
@@ -124,7 +127,7 @@ class PermisosController extends BaseController {
 			$groups = [];
 		}
 
-		$allowedGroupIds = array_keys(self::ALLOWED_GROUPS);
+		$allowedGroupIds = $this->permisoGrupoMapper->findEnabledGroupIds();
 		$requestedGroups = array_values(array_intersect($allowedGroupIds, $groups));
 		$currentGroups = $this->groupManager->getUserGroupIds($user);
 
@@ -164,5 +167,12 @@ class PermisosController extends BaseController {
 			'status' => 'ok',
 			'data' => $context,
 		], Http::STATUS_OK);
+	}
+
+	private function requirePermissionManagementAccess(): void {
+		$this->permisosService->requireCanSeeAny([
+			'empleados.hr',
+			'empleados.admin',
+		]);
 	}
 }

@@ -145,7 +145,11 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEmpleadosList(): DataResponse {
-        $this->requireHumanResourcesAccess();
+         $this->permisosService->requireCanSeeAny([
+            'empleados.hr',
+            'empleados.admin',
+            'clientes',
+        ]);
         return new DataResponse([
             'Empleados'    => $this->empleadosMapper->GetUserLists()
         ], Http::STATUS_OK);
