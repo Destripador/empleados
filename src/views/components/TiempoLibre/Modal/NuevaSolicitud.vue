@@ -76,15 +76,19 @@
 					</li>
 				</ul>
 			</section>
-
+			<!-- Prima y comentarios -->
 			<section class="form-section">
-				<NcCheckboxRadioSwitch
-					v-if="AusenciaSeleccionada &&
-						AusenciaSeleccionada.solicitar_prima_vacacional == 1 &&
-						prima == 1"
-					v-model="SolicitarPrima">
-					{{ t('empleados', 'Request vacation bonus') }}
-				</NcCheckboxRadioSwitch>
+				<template v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
+					<NcCheckboxRadioSwitch
+						v-model="SolicitarPrima"
+						:disabled="primaVacacionalUsada">
+						{{ t('empleados', 'Request vacation bonus') }}
+					</NcCheckboxRadioSwitch>
+					<NcNoteCard
+						v-if="primaVacacionalUsada"
+						type="warning"
+						:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
+				</template>
 
 				<NcTextArea
 					v-model="comentarios"
@@ -112,7 +116,7 @@
 </template>
 
 <script>
-import { showError /* showSuccess */ } from '@nextcloud/dialogs'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
@@ -182,6 +186,7 @@ export default {
 				options: this.employees,
 			},
 			employees_list: [],
+			primaVacacionalUsada: false,
 		}
 	},
 
@@ -223,10 +228,23 @@ export default {
 		},
 	},
 
+	watch: {
+		async AusenciaSeleccionada(tipo) {
+			this.SolicitarPrima = false
+			this.primaVacacionalUsada = false
+			if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
+				await this.checkPrimaVacacional()
+			}
+		},
+	},
+
 	mounted() {
 		this.TotalDias = parseInt(this.diasDisponibles, 10)
 		this.RestanteDias = this.TotalDias - this.diasSolicitados
 		this.GetTipoAusencias()
+		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+			this.checkPrimaVacacional()
+		}
 	},
 
 	methods: {
@@ -274,12 +292,14 @@ export default {
 			this.loading = true
 			try {
 				const formData = new FormData()
-				formData.append('id_usuario', this.employees_list.user)
+				if (this.admin && this.employees_list?.user) {
+					formData.append('id_usuario', this.employees_list.user)
+				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('dias_solicitados', this.diasSolicitados)
 				formData.append('fecha_de', this.date.start.toLocaleDateString())
 				formData.append('fecha_hasta', this.date.end ? this.date.end.toLocaleDateString() : '')
-				formData.append('prima_vacacional', this.SolicitarPrima)
+				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
 
 				for (let i = 0; i < this.selectedFiles.length; i++) {
@@ -292,14 +312,31 @@ export default {
 					{ headers: { 'Content-Type': 'multipart/form-data' } },
 				)
 
-				// eslint-disable-next-line no-console
-				console.log(response.data)
+				if (response.data?.ocs?.data?.success) {
+					showSuccess(t('empleados', 'Absence request submitted successfully'))
+					this.$bus.emit('close-solicitud')
+				} else {
+					showError(t('empleados', 'Error sending absence request'))
+				}
 
-				this.$bus.emit('close-solicitud')
 				this.loading = false
 			} catch (err) {
 				this.loading = false
 				showError(t('empleados', 'Error sending absence request: {error}', { error: String(err) }))
+			}
+		},
+
+		async checkPrimaVacacional(excludeId = 0) {
+			try {
+				let url = generateUrl('/apps/empleados/check-prima-vacacional')
+					+ `?exclude_id=${excludeId}`
+				if (this.admin && this.employees_list?.user) {
+					url += `&id_usuario=${this.employees_list.user}`
+				}
+				const res = await axios.get(url)
+				this.primaVacacionalUsada = res.data.ocs.data.used === true
+			} catch (e) {
+				console.error('Error al verificar prima vacacional', e)
 			}
 		},
 	},

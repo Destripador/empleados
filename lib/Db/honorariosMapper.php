@@ -78,7 +78,7 @@ class honorariosMapper extends QBMapper {
 	}
 
 	/**
-	 * Obtener honorarios de un cliente
+	 * Obtener honorarios de un cliente, incluyendo el monto acumulado
 	 */
 	public function findByCliente(int $id_cliente): array {
 		$qb = $this->db->getQueryBuilder();
@@ -96,6 +96,18 @@ class honorariosMapper extends QBMapper {
 		$result = $qb->executeQuery();
 		$data = $result->fetchAll();
 		$result->closeCursor();
+
+		if (empty($data)) {
+			return $data;
+		}
+
+		$ids = array_map(static fn ($row) => (int)$row['id_honorario'], $data);
+		$sums = $this->parcialidadesMapper->sumByHonorarios($ids);
+
+		foreach ($data as &$row) {
+			$row['monto_acumulado'] = $sums[(int)$row['id_honorario']] ?? 0.0;
+		}
+		unset($row);
 
 		return $data;
 	}
@@ -152,9 +164,12 @@ class honorariosMapper extends QBMapper {
 	 * Crear honorario y generar parcialidades
 	 */
 	public function crearHonorario(honorarios $honorario): honorarios {
+		$tipoHonorario = $honorario->getTipo_honorario() ?: 'parcial';
+
 		$parcialidades = $this->calcularNumeroParcialidades(
 			$honorario->getFecha_inicio(),
-			$honorario->getFecha_fin()
+			$honorario->getFecha_fin(),
+			$tipoHonorario
 		);
 
 		$honorario->setNumero_parcialidades($parcialidades);
@@ -189,11 +204,14 @@ class honorariosMapper extends QBMapper {
 		string $tipo_moneda,
 		?string $fecha_inicio,
 		?string $fecha_fin,
-		?string $tipo_servicio
+		?string $tipo_servicio,
+		bool $especial,
+		string $tipo_honorario = 'parcial'
 	): void {
 		$parcialidades = $this->calcularNumeroParcialidades(
 			$fecha_inicio,
-			$fecha_fin
+			$fecha_fin,
+			$tipo_honorario
 		);
 
 		$qb = $this->db->getQueryBuilder();
@@ -226,6 +244,17 @@ class honorariosMapper extends QBMapper {
 			->set(
 				'tipo_servicio',
 				$qb->createNamedParameter($tipo_servicio)
+			)
+			->set(
+				'tipo_honorario',
+				$qb->createNamedParameter($tipo_honorario)
+			)
+			->set(
+				'especial',
+				$qb->createNamedParameter(
+					$especial,
+					IQueryBuilder::PARAM_INT
+				)
 			)
 			->where(
 				$qb->expr()->eq(
@@ -268,12 +297,19 @@ class honorariosMapper extends QBMapper {
 	}
 
 	/**
-	 * Calcular cantidad de parcialidades
+	 * Calcular cantidad de parcialidades.
+	 * Solo el tipo 'parcial' calcula por rango de fechas; 'iguala' y
+	 * 'eventual' siempre arrancan con una sola parcialidad inicial.
 	 */
 	private function calcularNumeroParcialidades(
 		?string $fecha_inicio,
-		?string $fecha_fin
+		?string $fecha_fin,
+		string $tipo_honorario = 'parcial'
 	): int {
+
+		if ($tipo_honorario !== 'parcial') {
+			return 1;
+		}
 
 		if (
 			empty($fecha_inicio)
@@ -322,6 +358,19 @@ class honorariosMapper extends QBMapper {
 		$qb->executeStatement();
 	}
 
+	public function reactivarHonorario(int $idHonorario): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('activo', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq(
+				'id_honorario',
+				$qb->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
+			));
+
+		$qb->executeStatement();
+	}
+
 	public function getResumenPorCliente(): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -340,5 +389,31 @@ class honorariosMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $data;
+	}
+
+	/**
+	 * Actualiza solo tipo_servicio, tipo_moneda y especial.
+	 * No modifica fechas, importes ni regenera parcialidades.
+	 */
+	public function actualizarMetadatos(
+		int $id_honorario,
+		?string $tipo_servicio,
+		string $tipo_moneda,
+		bool $especial
+	): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('tipo_servicio', $qb->createNamedParameter($tipo_servicio))
+			->set('tipo_moneda', $qb->createNamedParameter($tipo_moneda))
+			->set('especial', $qb->createNamedParameter($especial, IQueryBuilder::PARAM_INT))
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
 	}
 }

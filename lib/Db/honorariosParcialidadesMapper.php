@@ -281,4 +281,127 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		return $existe !== false;
 	}
+
+	public function cancelarPago(int $idParcialidad): ?int {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('id_honorario')
+			->from($this->getTableName())
+			->where($qb->expr()->eq(
+				'id_parcialidad',
+				$qb->createNamedParameter($idParcialidad, IQueryBuilder::PARAM_INT)
+			));
+
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		if (!$row) {
+			return null;
+		}
+
+		$idHonorario = (int)$row['id_honorario'];
+
+		$qb2 = $this->db->getQueryBuilder();
+		$qb2->update($this->getTableName())
+			->set('pagado', $qb2->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+			->set('fecha_pago', $qb2->createNamedParameter(null))
+			->where($qb2->expr()->eq(
+				'id_parcialidad',
+				$qb2->createNamedParameter($idParcialidad, IQueryBuilder::PARAM_INT)
+			));
+
+		$qb2->executeStatement();
+
+		return $idHonorario;
+	}
+
+	public function agregarParcialidadIguala(int $idHonorario): void {
+		// Busca la última parcialidad para saber qué número y qué mes sigue
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('numero_parcialidad', 'pfecha_fin')
+			->from($this->getTableName())
+			->where($qb->expr()->eq(
+				'id_honorario',
+				$qb->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
+			))
+			->orderBy('numero_parcialidad', 'DESC')
+			->setMaxResults(1);
+
+		$result = $qb->executeQuery();
+		$last = $result->fetch();
+		$result->closeCursor();
+
+		$nextNum = $last ? (int)$last['numero_parcialidad'] + 1 : 1;
+
+		// Obtener datos del honorario padre (fecha_inicio e importe_total)
+		$qb2 = $this->db->getQueryBuilder();
+		$qb2->select('fecha_inicio', 'importe_total')
+			->from('empleados_honorarios')
+			->where($qb2->expr()->eq(
+				'id_honorario',
+				$qb2->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
+			));
+		$r2 = $qb2->executeQuery();
+		$hon = $r2->fetch();
+		$r2->closeCursor();
+
+		$importeMensual = $hon ? (float)$hon['importe_total'] : 0;
+
+		// Calcular siguiente mes
+		if ($last && $last['pfecha_fin']) {
+			$fecha = new \DateTime($last['pfecha_fin']);
+			$fecha->modify('+1 day'); // primer día del siguiente mes
+		} else {
+			$fecha = new \DateTime($hon['fecha_inicio']);
+		}
+
+		$inicioMes = (clone $fecha)->modify('first day of this month');
+		$finMes    = (clone $fecha)->modify('last day of this month');
+
+		$qb3 = $this->db->getQueryBuilder();
+		$qb3->insert($this->getTableName())
+			->values([
+				'id_honorario'        => $qb3->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT),
+				'numero_parcialidad'  => $qb3->createNamedParameter($nextNum, IQueryBuilder::PARAM_INT),
+				'pfecha_inicio'       => $qb3->createNamedParameter($inicioMes->format('Y-m-d')),
+				'pfecha_fin'          => $qb3->createNamedParameter($finMes->format('Y-m-d')),
+				'importe_parcialidad' => $qb3->createNamedParameter($importeMensual),
+				'pagado'              => $qb3->createNamedParameter(0, IQueryBuilder::PARAM_INT),
+			]);
+		$qb3->executeStatement();
+	}
+
+	/**
+	 * Suma el importe de las parcialidades agrupado por id_honorario
+	 */
+	public function sumByHonorarios(array $idsHonorarios): array {
+		if (empty($idsHonorarios)) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('id_honorario')
+			->selectAlias($qb->createFunction('SUM(importe_parcialidad)'), 'total')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->in(
+					'id_honorario',
+					$qb->createNamedParameter($idsHonorarios, IQueryBuilder::PARAM_INT_ARRAY)
+				)
+			)
+			->groupBy('id_honorario');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$sums = [];
+		foreach ($rows as $row) {
+			$sums[(int)$row['id_honorario']] = (float)$row['total'];
+		}
+
+		return $sums;
+	}
 }
