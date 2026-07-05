@@ -33,8 +33,12 @@
 								{{ t('empleados', 'Sort') }}
 							</p>
 							<select v-model="sortOrder">
-								<option value="az">A to Z</option>
-								<option value="za">Z to A</option>
+								<option value="az">
+									A to Z
+								</option>
+								<option value="za">
+									Z to A
+								</option>
 							</select>
 						</div>
 						<hr class="filter-divider">
@@ -59,7 +63,6 @@
 			:name="editing ? t('empleados', 'Edit activity') : t('empleados', 'New activity')"
 			@close="closeModal">
 			<div class="modal__content">
-
 				<NcTextField
 					:value.sync="name_activity"
 					:label="t('empleados', 'Activity name')"

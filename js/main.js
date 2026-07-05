@@ -31053,11 +31053,11 @@ var render = function render() {
           attrs: {
             value: "az"
           }
-        }, [_vm._v("A to Z")]), _vm._v(" "), _c("option", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\tA to Z\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("option", {
           attrs: {
             value: "za"
           }
-        }, [_vm._v("Z to A")])])]), _vm._v(" "), _c("hr", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\tZ to A\n\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("hr", {
           staticClass: "filter-divider"
         }), _vm._v(" "), _c("div", {
           staticClass: "filter-section"
@@ -31415,15 +31415,7 @@ var render = function render() {
     }
   }, [_c("div", {
     staticClass: "companies-page"
-  }, [_c("div", {
-    staticClass: "companies-header"
-  }, [_c("div", {
-    staticClass: "header-title"
-  }, [_c("p", {
-    staticClass: "section-label"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Customers module")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Companies and groups")))]), _vm._v(" "), _c("p", {
-    staticClass: "section-description"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Manage customer groups, companies and sub-companies used by the time reportsmodule.")) + "\n\t\t\t\t")])])]), _vm._v(" "), _c("List", {
+  }, [_c("List", {
     attrs: {
       loading: _vm.loading,
       listas: _vm.filteredListas,
@@ -31449,7 +31441,7 @@ var render = function render() {
             src: __webpack_require__(/*! ../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
             alt: "Empty area state"
           }
-        }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select a client for more details")))]), _vm._v(" "), _c("p", {
+        }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Companies and groups")))]), _vm._v(" "), _c("h1", [_vm._v(_vm._s(_vm.t("empleados", "Select a client for more details")))]), _vm._v(" "), _c("p", {
           staticClass: "areas-empty-description"
         }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
           staticClass: "stats-grid"
@@ -31720,7 +31712,7 @@ var render = function render() {
         }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("span", {
           staticClass: "value-text"
         }, [_vm._v(_vm._s(Number(_vm.selectedClient.estado) ? _vm.t("empleados", "Active") : _vm.t("empleados", "Inactive")))])])])])])])]), _vm._v(" "), _c("div", {
-          staticClass: "acordeon-item btn-top"
+          staticClass: "acordeon-item separator-top"
         }, [_c("button", {
           staticClass: "acordeon-titulo",
           on: {
@@ -31800,7 +31792,7 @@ var render = function render() {
             proxy: true
           }])
         })], 1)])])])]), _vm._v(" "), _c("div", {
-          staticClass: "info-section"
+          staticClass: "info-section separator-top"
         }, [_c("div", {
           staticClass: "section-head"
         }, [_c("div", [_c("p", {
@@ -31845,7 +31837,7 @@ var render = function render() {
         }), 0) : _c("span", {
           staticClass: "value-text"
         }, [_vm._v("No one has registered yet")])])])]), _vm._v(" "), _c("div", {
-          staticClass: "info-section"
+          staticClass: "info-section top"
         }, [_c("div", {
           staticClass: "section-head"
         }, [_c("div", [_c("p", {
@@ -55538,6 +55530,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-dff7acc0] {
 .input-container[data-v-dff7acc0] {
   flex: 1;
   margin-right: 5px;
+  margin-left: 13%;
 }
 .input-container input[data-v-dff7acc0] {
   width: 100%;
@@ -55597,6 +55590,11 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.container[data-v-29e3b771] {
 }
 .board-title .icon[data-v-29e3b771] {
   margin-right: 8px;
+}
+.button-container[data-v-29e3b771] {
+  margin-right: 20px;
+  position: absolute;
+  margin-top: 20px;
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -56577,7 +56575,6 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 .companies-page[data-v-c590d670] {
   flex-direction: column;
   gap: 24px;
-  padding: 24px;
 }
 
 /* ── Header ── */
@@ -56663,6 +56660,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   background: var(--color-primary-element-light);
   color: var(--color-primary-element);
   flex-shrink: 0;
+  margin-inline: 38%;
 }
 .filter-wrap[data-v-c590d670] {
   position: relative;
@@ -57258,7 +57256,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   border-color: var(--color-primary);
 }
 .details-header--especial[data-v-c590d670] {
-  background: linear-gradient(135deg, #6c9cda 20%, #0c254b 100%);
+  background: linear-gradient(135deg, #6c9cda 10%, #f9f9f9 100%);
   border-radius: 8px;
   padding: 16px 16px 10px 16px;
 }
@@ -57276,7 +57274,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   padding-right: 4px !important;
 }
 .acordeon-item[data-v-c590d670] {
-  margin-bottom: 10px;
+  margin-top: 10px;
   border-radius: 5px;
   overflow: hidden;
 }
@@ -57455,6 +57453,12 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 .badge-tipo-eventual[data-v-c590d670] {
   background-color: #fef9c3;
   color: #92400e;
+}
+.separator-top[data-v-c590d670] {
+  margin-bottom: 20px;
+}
+.top[data-v-c590d670] {
+  margin-top: 40px;
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);

@@ -217,4 +217,10 @@ export default {
 			margin-right: 8px;
 		}
 	}
+
+	.button-container {
+		margin-right: 20px;
+		position: absolute;
+		margin-top: 20px;
+	}
 </style>

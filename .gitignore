@@ -13,6 +13,7 @@ coverage/
 dist/
 
 # Mantén bundles pero ignora artefactos
+js/*.js
 js/**/*.map
 js/**/.hot-update.*
 js/**/hot/*.json
