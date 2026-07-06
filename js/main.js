@@ -15366,11 +15366,20 @@ function hashStr(str) {
       filtroPrima: false,
       vistaActual: 'todos',
       empleadoResumen: '',
-      filtroAnio: hoy.getFullYear()
+      periodosEmpleado: [],
+      periodoSeleccionado: null,
+      cargandoPeriodos: false,
+      haCargadoAlMenos: false,
+      // Catálogo de empleados independiente del periodo/rango consultado.
+      // Antes "opcionesEmpleados" salía de "registros", que se reemplaza en
+      // cada cargarReporte(); si el periodo elegido no tenía registros, el
+      // selector de empleados se quedaba sin opciones (el bug reportado).
+      empleadosCatalogo: []
     };
   },
   computed: {
     opcionesEmpleados() {
+      if (this.empleadosCatalogo.length > 0) return this.empleadosCatalogo;
       return [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort();
     },
     opcionesTipos() {
@@ -15398,13 +15407,8 @@ function hashStr(str) {
     registrosVistaActual() {
       return this.vistaActual === 'resumen' ? this.registrosResumenEmpleado : this.registrosFiltrados;
     },
-    opcionesAnios() {
-      const actual = new Date().getFullYear();
-      const inicio = 2025;
-      const fin = Math.max(actual + 1, inicio + 2);
-      const anios = [];
-      for (let y = fin; y >= inicio; y--) anios.push(y);
-      return anios;
+    periodoInfo() {
+      return this.periodosEmpleado.find(p => p.numero_aniversario === this.periodoSeleccionado) || null;
     },
     registrosResumenEmpleado() {
       if (!this.empleadoResumen) return [];
@@ -15431,13 +15435,17 @@ function hashStr(str) {
     vistaActual() {
       this.cargarReporte();
     },
-    filtroAnio() {
+    empleadoResumen() {
+      this.cargarPeriodosEmpleado();
+    },
+    periodoSeleccionado() {
       if (this.vistaActual === 'resumen') {
         this.cargarReporte();
       }
     }
   },
   mounted() {
+    this.cargarEmpleadosCatalogo();
     this.cargarReporte();
   },
   methods: {
@@ -15455,9 +15463,9 @@ function hashStr(str) {
       this.limpiarFiltros();
       try {
         const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte');
-        const params = this.vistaActual === 'resumen' ? {
-          desde: `${this.filtroAnio}-01-01`,
-          hasta: `${this.filtroAnio}-12-31`
+        const params = this.vistaActual === 'resumen' && this.periodoInfo ? {
+          desde: this.periodoInfo.periodo_inicio,
+          hasta: this.periodoInfo.periodo_fin
         } : {
           desde: this.filtroDesde,
           hasta: this.filtroHasta
@@ -15473,6 +15481,86 @@ function hashStr(str) {
         console.error('Error cargando reporte:', e);
       } finally {
         this.cargando = false;
+        this.haCargadoAlMenos = true;
+        // Alimenta el catálogo de empleados con lo que vaya llegando, por si
+        // aún no se cargó con cargarEmpleadosCatalogo() (p. ej. primera carga).
+        if (this.empleadosCatalogo.length === 0 && this.registros.length > 0) {
+          this.empleadosCatalogo = [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort();
+        }
+      }
+    },
+    /**
+     * Carga, una sola vez, el listado completo de empleados con historial
+     * (independiente del rango de fechas/periodo que esté activo en el
+     * reporte), para que el selector de "Resumen por empleado" no dependa
+     * de si el periodo seleccionado trajo registros o no.
+     */
+    async cargarEmpleadosCatalogo() {
+      try {
+        const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte');
+        const {
+          data
+        } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
+          params: {
+            desde: '1970-01-01',
+            hasta: '2999-12-31'
+          }
+        });
+        const mensaje = data?.ocs?.data?.message ?? data?.message ?? [];
+        const todos = Array.isArray(mensaje) ? mensaje : [];
+        this.empleadosCatalogo = [...new Set(todos.map(r => r.nombre_empleado).filter(Boolean))].sort();
+      } catch (e) {
+        console.error('Error cargando catálogo de empleados:', e);
+      }
+    },
+    async cargarVacacionesEmpleado() {
+      this.vacacionesInfo = null;
+      if (!this.empleadoResumen) return;
+      const item = this.registros.find(r => r.nombre_empleado === this.empleadoResumen);
+      const idEmpleado = item?.id_empleado;
+      if (!idEmpleado) return;
+      this.cargandoVacaciones = true;
+      try {
+        const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/vacaciones-empleado');
+        const {
+          data
+        } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
+          params: {
+            id_empleado: idEmpleado
+          }
+        });
+        this.vacacionesInfo = data?.ocs?.data?.message ?? data?.message ?? null;
+      } catch (e) {
+        console.error('Error cargando vacaciones:', e);
+      } finally {
+        this.cargandoVacaciones = false;
+      }
+    },
+    async cargarPeriodosEmpleado() {
+      this.periodosEmpleado = [];
+      this.periodoSeleccionado = null;
+      if (!this.empleadoResumen) return;
+      const item = this.registros.find(r => r.nombre_empleado === this.empleadoResumen);
+      const idEmpleado = item?.id_empleado;
+      if (!idEmpleado) return;
+      this.cargandoPeriodos = true;
+      try {
+        const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/periodos-vacaciones');
+        const {
+          data
+        } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
+          params: {
+            id_empleado: idEmpleado
+          }
+        });
+        const periodos = data?.ocs?.data?.message ?? data?.message ?? [];
+        this.periodosEmpleado = Array.isArray(periodos) ? periodos : [];
+        const actual = this.periodosEmpleado.find(p => p.es_actual);
+        this.periodoSeleccionado = actual ? actual.numero_aniversario : this.periodosEmpleado[0]?.numero_aniversario ?? null;
+      } catch (e) {
+        console.error('Error cargando periodos:', e);
+      } finally {
+        this.cargandoPeriodos = false;
       }
     },
     avatarUrl(uid) {
@@ -28474,7 +28562,7 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Cerrar")) + "\n\t\t")])], 1), _vm._v(" "), !_vm.cargando && _vm.registros.length > 0 ? _c("div", {
+  }, [_vm._v("\n\t\t\t" + _vm._s(_vm.t("empleados", "Cerrar")) + "\n\t\t")])], 1), _vm._v(" "), !_vm.cargando && _vm.haCargadoAlMenos ? _c("div", {
     staticClass: "vista-switch"
   }, [_c("button", {
     staticClass: "vista-switch-btn",
@@ -28552,16 +28640,16 @@ var render = function render() {
         _vm.filtroHasta = $event.target.value;
       }
     }
-  })])] : _c("div", {
+  })])] : _vm.empleadoResumen ? _c("div", {
     staticClass: "filtro-grupo"
   }, [_c("label", {
     staticClass: "filtro-label"
-  }, [_vm._v(_vm._s(_vm.t("empleados", "Año")))]), _vm._v(" "), _c("select", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Periodo")))]), _vm._v(" "), _c("select", {
     directives: [{
       name: "model",
       rawName: "v-model.number",
-      value: _vm.filtroAnio,
-      expression: "filtroAnio",
+      value: _vm.periodoSeleccionado,
+      expression: "periodoSeleccionado",
       modifiers: {
         number: true
       }
@@ -28575,17 +28663,17 @@ var render = function render() {
           var val = "_value" in o ? o._value : o.value;
           return _vm._n(val);
         });
-        _vm.filtroAnio = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
+        _vm.periodoSeleccionado = $event.target.multiple ? $$selectedVal : $$selectedVal[0];
       }
     }
-  }, _vm._l(_vm.opcionesAnios, function (anio) {
+  }, _vm._l(_vm.periodosEmpleado, function (p) {
     return _c("option", {
-      key: anio,
+      key: p.numero_aniversario,
       domProps: {
-        value: anio
+        value: p.numero_aniversario
       }
-    }, [_vm._v("\n\t\t\t\t\t" + _vm._s(anio) + "\n\t\t\t\t")]);
-  }), 0)]), _vm._v(" "), _c("NcButton", {
+    }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Aniversario")) + " " + _vm._s(p.numero_aniversario) + " (" + _vm._s(_vm.formatFecha(p.periodo_inicio)) + " → " + _vm._s(_vm.formatFecha(p.periodo_fin)) + ")\n\t\t\t\t")]);
+  }), 0)]) : _vm._e(), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "primary",
       disabled: _vm.cargando
@@ -28654,11 +28742,7 @@ var render = function render() {
     attrs: {
       size: 40
     }
-  }), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Cargando registros…")))])], 1) : _vm.registros.length === 0 ? _c("div", {
-    staticClass: "reporte-estado"
-  }, [_c("span", {
-    staticClass: "reporte-estado-icon"
-  }, [_vm._v("📋")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros en el periodo seleccionado.")))])]) : _vm.vistaActual === "resumen" ? _c("div", {
+  }), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Cargando registros…")))])], 1) : _vm.vistaActual === "resumen" ? _c("div", {
     staticClass: "resumen-vista"
   }, [_c("div", {
     staticClass: "resumen-selector"
@@ -28708,15 +28792,27 @@ var render = function render() {
     staticClass: "resumen-card"
   }, [_c("span", {
     staticClass: "resumen-label"
-  }, [_vm._v(_vm._s(_vm.t("empleados", "Registros")))]), _vm._v(" "), _c("span", {
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Días derecho")))]), _vm._v(" "), _c("span", {
     staticClass: "resumen-valor"
-  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.total))])]), _vm._v(" "), _c("div", {
+  }, [_vm._v(_vm._s(_vm.periodoInfo?.dias_derecho ?? "—"))])]), _vm._v(" "), _c("div", {
     staticClass: "resumen-card"
   }, [_c("span", {
     staticClass: "resumen-label"
   }, [_vm._v(_vm._s(_vm.t("empleados", "Días disfrutados")))]), _vm._v(" "), _c("span", {
     staticClass: "resumen-valor"
-  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.dias))])]), _vm._v(" "), _c("div", {
+  }, [_vm._v(_vm._s(_vm.periodoInfo?.dias_disfrutados ?? _vm.resumenEmpleadoStats.dias))])]), _vm._v(" "), _c("div", {
+    staticClass: "resumen-card"
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Días restantes")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor"
+  }, [_vm._v(_vm._s(_vm.periodoInfo?.dias_restantes ?? "—"))])]), _vm._v(" "), _c("div", {
+    staticClass: "resumen-card"
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Registros")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor"
+  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.total))])]), _vm._v(" "), _c("div", {
     staticClass: "resumen-card"
   }, [_c("span", {
     staticClass: "resumen-label"
@@ -28796,7 +28892,11 @@ var render = function render() {
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "S:")) + " " + _vm._s(_vm.chipAprobacion(item.a_socio).texto) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
       staticClass: "cell-fecha"
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatTimestamp(item.timestamp)) + "\n\t\t\t\t\t\t\t\t")])]);
-  }), 0)])])]], 2) : _vm.registrosFiltrados.length === 0 ? _c("div", {
+  }), 0)])])]], 2) : _vm.registros.length === 0 ? _c("div", {
+    staticClass: "reporte-estado"
+  }, [_c("span", {
+    staticClass: "reporte-estado-icon"
+  }, [_vm._v("📋")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros en el periodo seleccionado.")))])]) : _vm.registrosFiltrados.length === 0 ? _c("div", {
     staticClass: "reporte-estado"
   }, [_c("span", {
     staticClass: "reporte-estado-icon"
@@ -61218,7 +61318,7 @@ th.col-dias[data-v-71a4011e], td.col-dias[data-v-71a4011e] { text-align: right; 
 }
 .periodo-vac-resumen[data-v-71a4011e] {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 	gap: 12px;
 }
 

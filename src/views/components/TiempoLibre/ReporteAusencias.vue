@@ -19,7 +19,7 @@
 		</div>
 
 		<!-- Pestañas de vista -->
-		<div v-if="!cargando && registros.length > 0" class="vista-switch">
+		<div v-if="!cargando && haCargadoAlMenos" class="vista-switch">
 			<button
 				type="button"
 				class="vista-switch-btn"
@@ -49,11 +49,11 @@
 				</div>
 			</template>
 
-			<div v-else class="filtro-grupo">
-				<label class="filtro-label">{{ t('empleados', 'Año') }}</label>
-				<select v-model.number="filtroAnio" class="filtro-input filtro-select">
-					<option v-for="anio in opcionesAnios" :key="anio" :value="anio">
-						{{ anio }}
+			<div v-else-if="empleadoResumen" class="filtro-grupo">
+				<label class="filtro-label">{{ t('empleados', 'Periodo') }}</label>
+				<select v-model.number="periodoSeleccionado" class="filtro-input filtro-select">
+					<option v-for="p in periodosEmpleado" :key="p.numero_aniversario" :value="p.numero_aniversario">
+						{{ t('empleados', 'Aniversario') }} {{ p.numero_aniversario }} ({{ formatFecha(p.periodo_inicio) }} → {{ formatFecha(p.periodo_fin) }})
 					</option>
 				</select>
 			</div>
@@ -89,12 +89,10 @@
 				<p>{{ t('empleados', 'Cargando registros…') }}</p>
 			</div>
 
-			<div v-else-if="registros.length === 0" class="reporte-estado">
-				<span class="reporte-estado-icon">📋</span>
-				<p>{{ t('empleados', 'Sin registros en el periodo seleccionado.') }}</p>
-			</div>
-
 			<!-- ─── Vista: Resumen por empleado ─── -->
+			<!-- Esta vista se evalúa ANTES del check de "sin registros": el selector de
+			     empleados y las tarjetas de resumen deben verse aunque el periodo elegido
+			     no tenga ausencias (antes se ocultaban por completo, que era el bug). -->
 			<div v-else-if="vistaActual === 'resumen'" class="resumen-vista">
 				<div class="resumen-selector">
 					<AccountSearch :size="20" class="resumen-selector-icon" />
@@ -116,12 +114,20 @@
 				<template v-else>
 					<div class="periodo-vac-resumen">
 						<div class="resumen-card">
-							<span class="resumen-label">{{ t('empleados', 'Registros') }}</span>
-							<span class="resumen-valor">{{ resumenEmpleadoStats.total }}</span>
+							<span class="resumen-label">{{ t('empleados', 'Días derecho') }}</span>
+							<span class="resumen-valor">{{ periodoInfo?.dias_derecho ?? '—' }}</span>
 						</div>
 						<div class="resumen-card">
 							<span class="resumen-label">{{ t('empleados', 'Días disfrutados') }}</span>
-							<span class="resumen-valor">{{ resumenEmpleadoStats.dias }}</span>
+							<span class="resumen-valor">{{ periodoInfo?.dias_disfrutados ?? resumenEmpleadoStats.dias }}</span>
+						</div>
+						<div class="resumen-card">
+							<span class="resumen-label">{{ t('empleados', 'Días restantes') }}</span>
+							<span class="resumen-valor">{{ periodoInfo?.dias_restantes ?? '—' }}</span>
+						</div>
+						<div class="resumen-card">
+							<span class="resumen-label">{{ t('empleados', 'Registros') }}</span>
+							<span class="resumen-valor">{{ resumenEmpleadoStats.total }}</span>
 						</div>
 						<div class="resumen-card">
 							<span class="resumen-label">{{ t('empleados', 'Con prima vac.') }}</span>
@@ -211,6 +217,11 @@
 						</table>
 					</div>
 				</template>
+			</div>
+
+			<div v-else-if="registros.length === 0" class="reporte-estado">
+				<span class="reporte-estado-icon">📋</span>
+				<p>{{ t('empleados', 'Sin registros en el periodo seleccionado.') }}</p>
 			</div>
 
 			<div v-else-if="registrosFiltrados.length === 0" class="reporte-estado">
@@ -450,12 +461,21 @@ export default {
 			filtroPrima: false,
 			vistaActual: 'todos',
 			empleadoResumen: '',
-			filtroAnio: hoy.getFullYear(),
+			periodosEmpleado: [],
+			periodoSeleccionado: null,
+			cargandoPeriodos: false,
+			haCargadoAlMenos: false,
+			// Catálogo de empleados independiente del periodo/rango consultado.
+			// Antes "opcionesEmpleados" salía de "registros", que se reemplaza en
+			// cada cargarReporte(); si el periodo elegido no tenía registros, el
+			// selector de empleados se quedaba sin opciones (el bug reportado).
+			empleadosCatalogo: [],
 		}
 	},
 
 	computed: {
 		opcionesEmpleados() {
+			if (this.empleadosCatalogo.length > 0) return this.empleadosCatalogo
 			return [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort()
 		},
 
@@ -490,13 +510,8 @@ export default {
 			return this.vistaActual === 'resumen' ? this.registrosResumenEmpleado : this.registrosFiltrados
 		},
 
-		opcionesAnios() {
-			const actual = new Date().getFullYear()
-			const inicio = 2025
-			const fin = Math.max(actual + 1, inicio + 2)
-			const anios = []
-			for (let y = fin; y >= inicio; y--) anios.push(y)
-			return anios
+		periodoInfo() {
+			return this.periodosEmpleado.find(p => p.numero_aniversario === this.periodoSeleccionado) || null
 		},
 
 		registrosResumenEmpleado() {
@@ -527,7 +542,11 @@ export default {
 			this.cargarReporte()
 		},
 
-		filtroAnio() {
+		empleadoResumen() {
+			this.cargarPeriodosEmpleado()
+		},
+
+		periodoSeleccionado() {
 			if (this.vistaActual === 'resumen') {
 				this.cargarReporte()
 			}
@@ -535,6 +554,7 @@ export default {
 	},
 
 	mounted() {
+		this.cargarEmpleadosCatalogo()
 		this.cargarReporte()
 	},
 
@@ -555,8 +575,8 @@ export default {
 			this.limpiarFiltros()
 			try {
 				const url = generateUrl('/apps/empleados/historial-reporte')
-				const params = this.vistaActual === 'resumen'
-					? { desde: `${this.filtroAnio}-01-01`, hasta: `${this.filtroAnio}-12-31` }
+				const params = (this.vistaActual === 'resumen' && this.periodoInfo)
+					? { desde: this.periodoInfo.periodo_inicio, hasta: this.periodoInfo.periodo_fin }
 					: { desde: this.filtroDesde, hasta: this.filtroHasta }
 				const { data } = await axios.get(url, { params })
 				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
@@ -565,6 +585,74 @@ export default {
 				console.error('Error cargando reporte:', e)
 			} finally {
 				this.cargando = false
+				this.haCargadoAlMenos = true
+				// Alimenta el catálogo de empleados con lo que vaya llegando, por si
+				// aún no se cargó con cargarEmpleadosCatalogo() (p. ej. primera carga).
+				if (this.empleadosCatalogo.length === 0 && this.registros.length > 0) {
+					this.empleadosCatalogo = [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort()
+				}
+			}
+		},
+
+		/**
+		 * Carga, una sola vez, el listado completo de empleados con historial
+		 * (independiente del rango de fechas/periodo que esté activo en el
+		 * reporte), para que el selector de "Resumen por empleado" no dependa
+		 * de si el periodo seleccionado trajo registros o no.
+		 */
+		async cargarEmpleadosCatalogo() {
+			try {
+				const url = generateUrl('/apps/empleados/historial-reporte')
+				const { data } = await axios.get(url, { params: { desde: '1970-01-01', hasta: '2999-12-31' } })
+				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
+				const todos = Array.isArray(mensaje) ? mensaje : []
+				this.empleadosCatalogo = [...new Set(todos.map(r => r.nombre_empleado).filter(Boolean))].sort()
+			} catch (e) {
+				console.error('Error cargando catálogo de empleados:', e)
+			}
+		},
+
+		async cargarVacacionesEmpleado() {
+			this.vacacionesInfo = null
+			if (!this.empleadoResumen) return
+
+			const item = this.registros.find(r => r.nombre_empleado === this.empleadoResumen)
+			const idEmpleado = item?.id_empleado
+			if (!idEmpleado) return
+
+			this.cargandoVacaciones = true
+			try {
+				const url = generateUrl('/apps/empleados/vacaciones-empleado')
+				const { data } = await axios.get(url, { params: { id_empleado: idEmpleado } })
+				this.vacacionesInfo = data?.ocs?.data?.message ?? data?.message ?? null
+			} catch (e) {
+				console.error('Error cargando vacaciones:', e)
+			} finally {
+				this.cargandoVacaciones = false
+			}
+		},
+
+		async cargarPeriodosEmpleado() {
+			this.periodosEmpleado = []
+			this.periodoSeleccionado = null
+			if (!this.empleadoResumen) return
+
+			const item = this.registros.find(r => r.nombre_empleado === this.empleadoResumen)
+			const idEmpleado = item?.id_empleado
+			if (!idEmpleado) return
+
+			this.cargandoPeriodos = true
+			try {
+				const url = generateUrl('/apps/empleados/periodos-vacaciones')
+				const { data } = await axios.get(url, { params: { id_empleado: idEmpleado } })
+				const periodos = data?.ocs?.data?.message ?? data?.message ?? []
+				this.periodosEmpleado = Array.isArray(periodos) ? periodos : []
+				const actual = this.periodosEmpleado.find(p => p.es_actual)
+				this.periodoSeleccionado = actual ? actual.numero_aniversario : (this.periodosEmpleado[0]?.numero_aniversario ?? null)
+			} catch (e) {
+				console.error('Error cargando periodos:', e)
+			} finally {
+				this.cargandoPeriodos = false
 			}
 		},
 
@@ -1061,7 +1149,7 @@ th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
 
 .periodo-vac-resumen {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 	gap: 12px;
 }
 

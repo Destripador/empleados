@@ -29,6 +29,8 @@ use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\ausenciasMapper;
 use OCA\Empleados\Db\tipoausenciaMapper;
 use OCA\Empleados\Db\historialausenciasMapper;
+use OCA\Empleados\Db\historialvacacionesMapper;
+use OCA\Empleados\Db\aniversarioMapper;
 use OCA\Empleados\Db\ausencias;
 
 use OCP\AppFramework\Http;
@@ -54,6 +56,8 @@ class AusenciasController extends BaseController {
     protected $tipoausenciaMapper;
     protected $historialausenciasMapper;
     protected $reportetiempoMapper;
+    protected $aniversarioMapper;
+    protected $historialvacacionesMapper;
 
     protected $userManager;
 
@@ -73,6 +77,7 @@ class AusenciasController extends BaseController {
         equiposMapper $equiposMapper,
         historialausenciasMapper $historialausenciasMapper,
         tipoausenciaMapper $tipoausenciaMapper,
+        historialvacacionesMapper $historialvacacionesMapper,
         empleadosMapper $empleadosMapper,
         IRootFolder $rootFolder,
         IUserManager $userManager,
@@ -80,6 +85,7 @@ class AusenciasController extends BaseController {
 		IURLGenerator $urlGenerator,
         MailHelper $mailHelper,
         reportetiempoMapper $reportetiempoMapper,
+        aniversarioMapper $aniversarioMapper,
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
         
@@ -92,12 +98,14 @@ class AusenciasController extends BaseController {
         $this->equiposMapper = $equiposMapper;
         $this->tipoausenciaMapper = $tipoausenciaMapper;
         $this->historialausenciasMapper = $historialausenciasMapper;
+        $this->historialvacacionesMapper = $historialvacacionesMapper;
         $this->rootFolder = $rootFolder;
         $this->userManager = $userManager;
         $this->activityManager = $activityManager;
 		$this->urlGenerator = $urlGenerator;
         $this->mailHelper = $mailHelper;
         $this->reportetiempoMapper = $reportetiempoMapper; 
+        $this->aniversarioMapper = $aniversarioMapper;
     }
     /**
      * Obtiene la lista de ausencias.
@@ -960,6 +968,102 @@ class AusenciasController extends BaseController {
         }
 
         $response = $this->historialausenciasMapper->GetHistorialReporteCompleto($desde, $hasta);
+
+        return new DataResponse(['success' => true, 'message' => $response], Http::STATUS_OK);
+    }
+
+    /**
+     * Devuelve todos los periodos de vacaciones de un empleado.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetPeriodosVacaciones(int $id_empleado): DataResponse {
+        $this->checkAccess(['admin', 'empleados']);
+
+        $empleado = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $id_empleado);
+        if (empty($empleado) || empty($empleado[0]['Ingreso'])) {
+            return new DataResponse(['success' => false, 'message' => 'Empleado sin fecha de ingreso'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $fechaIngreso = new DateTime($empleado[0]['Ingreso']);
+        $hoy = new DateTime();
+        $numeroAniversarioActual = $hoy->diff($fechaIngreso)->y;
+
+        $empleadoAusencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado);
+        $idAusencias = $empleadoAusencias[0]['id_ausencias'] ?? null;
+
+        $ultimosDiasConocidos = 0;
+        $response = [];
+
+        for ($n = 0; $n <= $numeroAniversarioActual; $n++) {
+            // Las fechas del periodo son SIEMPRE aritmética pura sobre el Ingreso
+            // actual del empleado: nunca se leen "congeladas" de la BD. Si se
+            // leyeran congeladas, un cambio posterior al Ingreso (por una
+            // corrección de datos, por ejemplo) dejaría fechas obsoletas para
+            // siempre, que es justo el bug reportado (Aniversario 2 con las
+            // mismas fechas que el Aniversario 1).
+            $periodoInicio = (clone $fechaIngreso)->modify('+' . $n . ' years');
+            $periodoFin = (clone $fechaIngreso)->modify('+' . ($n + 1) . ' years');
+            $periodoInicioStr = $periodoInicio->format('Y-m-d');
+            $periodoFinStr = $periodoFin->format('Y-m-d');
+
+            $existente = $this->historialvacacionesMapper->getByEmpleadoYAniversario($id_empleado, $n);
+
+            if ($existente) {
+                // dias_derecho SÍ se respeta congelado (protege contra cambios futuros
+                // en la política/catálogo de días). Las fechas, si quedaron obsoletas
+                // por un cambio de Ingreso, se auto-corrigen aquí.
+                $diasDerecho = (float) $existente['dias_derecho'];
+
+                if ($existente['periodo_inicio'] !== $periodoInicioStr || $existente['periodo_fin'] !== $periodoFinStr) {
+                    error_log(sprintf(
+                        'GetPeriodosVacaciones: corrigiendo fechas obsoletas del aniversario %d (empleado %d): %s→%s pasa a %s→%s',
+                        $n, $id_empleado, $existente['periodo_inicio'], $existente['periodo_fin'], $periodoInicioStr, $periodoFinStr
+                    ));
+                    $this->historialvacacionesMapper->actualizarFechas($id_empleado, $n, $periodoInicioStr, $periodoFinStr);
+                }
+            } else {
+                $tablaAniversario = $this->aniversarioMapper->GetAniversarioByDate($n);
+
+                if (empty($tablaAniversario)) {
+                    error_log(sprintf(
+                        'GetPeriodosVacaciones: sin definición de días para el aniversario %d (empleado %d). Usando carry-forward de %s días.',
+                        $n, $id_empleado, $ultimosDiasConocidos
+                    ));
+                    $diasDerecho = $ultimosDiasConocidos;
+                } else {
+                    $diasDerecho = (float) ($tablaAniversario[0]['dias'] ?? 0);
+                }
+
+                $this->historialvacacionesMapper->guardar($id_empleado, $n, $periodoInicioStr, $periodoFinStr, $diasDerecho);
+            }
+
+            $ultimosDiasConocidos = $diasDerecho;
+
+            $diasDisfrutados = 0;
+            if ($idAusencias) {
+                $historial = $this->historialausenciasMapper->GetAusenciasEnRango($periodoInicioStr, $periodoFinStr, $idAusencias);
+                foreach ($historial as $item) {
+                    if ((int) $item['a_gerente'] === 3 || (int) $item['a_socio'] === 3) {
+                        continue; // cancelada
+                    }
+                    $diasDisfrutados += (float) $item['dias_solicitados'];
+                }
+            }
+
+            $response[] = [
+                'id_empleado'         => $id_empleado,
+                'numero_aniversario'  => $n,
+                'periodo_inicio'      => $periodoInicioStr,
+                'periodo_fin'         => $periodoFinStr,
+                'dias_derecho'        => $diasDerecho,
+                'dias_disfrutados'    => $diasDisfrutados,
+                'dias_restantes'      => $diasDerecho - $diasDisfrutados,
+                'es_actual'           => $n === $numeroAniversarioActual,
+            ];
+        }
+
+        usort($response, fn($a, $b) => $b['numero_aniversario'] <=> $a['numero_aniversario']);
 
         return new DataResponse(['success' => true, 'message' => $response], Http::STATUS_OK);
     }
