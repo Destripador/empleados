@@ -139,7 +139,7 @@
 						</template>
 					</NcAppNavigationItem>
 
-					<NcAppNavigationItem v-if="canSeeHumanResources"
+					<NcAppNavigationItem v-if="canSeeSavingsAdmin"
 						:name="t('empleados', 'Admin panel')"
 						:to="{ name: 'PanelAhorros' }">
 						<template #icon>
@@ -214,12 +214,12 @@ import {
 } from '@nextcloud/vue'
 
 import { translate as t } from '@nextcloud/l10n'
+import permissionsMixin from '../../mixins/permissions.js'
 
 const STORAGE_KEY = 'empleados.sideNavigationMode'
 
 export default {
 	name: 'Sidenavigation',
-
 	components: {
 		NcAppNavigation,
 		NcAppNavigationItem,
@@ -240,6 +240,8 @@ export default {
 		Laptop,
 		CartOutline,
 	},
+
+	mixins: [permissionsMixin],
 
 	inject: ['groupuser', 'configuraciones', 'subordinates'],
 
@@ -263,23 +265,24 @@ export default {
 		},
 
 		canSeeHumanResources() {
-			return this.hasGroup('admin') || this.hasGroup('recursos_humanos')
+			return this.canSeeAny([
+				'empleados.hr',
+				'empleados.admin',
+			])
 		},
 
 		canSeeAdminReports() {
-			return this.isTruthy(this.configuraciones?.CanAdminReports)
+			return this.canSee('reporte_tiempos.admin')
+				|| this.isTruthy(this.configuraciones?.CanAdminReports)
 		},
 
 		canSeeCustomers() {
-			return this.canSeeHumanResources && this.isModuleEnabled('modulo_clientes')
+			return this.canSee('clientes')
 		},
 
 		canSeeInventory() {
-			return this.canSeeHumanResources
-				&& (
-					this.isModuleEnabled('modulo_inventario')
-					|| this.isModuleEnabled('modulo_soporte')
-				)
+			return this.canSee('inventario')
+				|| this.canSee('soporte')
 		},
 
 		reportTimesEnabled() {
@@ -290,19 +293,20 @@ export default {
 			return this.isModuleEnabled('modulo_ahorro')
 		},
 
+		canSeeSavingsAdmin() {
+			return this.canSee('ahorro.admin')
+				|| this.canSeeAny([
+					'empleados.hr',
+					'empleados.admin',
+				])
+		},
+
 		absencesEnabled() {
 			return this.isModuleEnabled('modulo_ausencias')
 		},
 
 		canSeePurchases() {
-			return this.isModuleEnabled('modulo_compras')
-				&& (
-					this.hasGroup('admin')
-					|| this.hasGroup('compras_admin')
-					|| this.hasGroup('compras_autorizadores')
-					|| this.hasGroup('compras_contabilidad')
-					|| this.hasGroup('compras_solicitantes')
-				)
+			return this.canSee('compras')
 		},
 	},
 
@@ -355,36 +359,6 @@ export default {
 			}
 
 			this.navigationMode = nextMode[this.navigationMode] || 'normal'
-		},
-
-		hasGroup(groupName) {
-			if (!groupName || !this.groupuser) {
-				return false
-			}
-
-			if (Array.isArray(this.groupuser)) {
-				return this.groupuser.includes(groupName)
-					|| this.groupuser.some(group => {
-						return group?.id === groupName
-							|| group?.gid === groupName
-							|| group?.name === groupName
-					})
-			}
-
-			if (typeof this.groupuser === 'object') {
-				return Object.prototype.hasOwnProperty.call(this.groupuser, groupName)
-					|| this.groupuser[groupName] === true
-					|| Object.values(this.groupuser).includes(groupName)
-			}
-
-			return false
-		},
-
-		isTruthy(value) {
-			return value === true
-				|| value === 'true'
-				|| value === 1
-				|| value === '1'
 		},
 
 		isModuleEnabled(moduleName) {

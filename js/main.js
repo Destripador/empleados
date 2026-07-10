@@ -9423,12 +9423,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _navigator_Sidenavigation_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./navigator/Sidenavigation.vue */ "./src/views/navigator/Sidenavigation.vue");
 /* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
-/* harmony import */ var vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! vue-material-design-icons/AlertCircleOutline.vue */ "./node_modules/vue-material-design-icons/AlertCircleOutline.vue");
-// Importing necessary components
+/* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vue-material-design-icons/AlertCircleOutline.vue */ "./node_modules/vue-material-design-icons/AlertCircleOutline.vue");
 
 
 
-// icons
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'App',
@@ -9436,18 +9435,18 @@ __webpack_require__.r(__webpack_exports__);
     navigator: _navigator_Sidenavigation_vue__WEBPACK_IMPORTED_MODULE_0__["default"],
     NcContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__.NcContent,
     NcEmptyContent: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_1__.NcEmptyContent,
-    AlertCircleOutline: vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_2__["default"]
+    AlertCircleOutline: vue_material_design_icons_AlertCircleOutline_vue__WEBPACK_IMPORTED_MODULE_3__["default"]
   },
   provide() {
     return {
       configuraciones: this.configuraciones,
       groupuser: this.groupsuser,
-      employee: this.employee,
-      subordinates: this.subordinates
+      employee: this.employeeUser,
+      subordinates: this.subordinates,
+      permissions: this.permissions
     };
   },
   props: {
-    // Configuration parameters
     parameters: {
       type: Object,
       required: true
@@ -9463,6 +9462,15 @@ __webpack_require__.r(__webpack_exports__);
     subordinatesGroup: {
       type: Array,
       required: true
+    },
+    permissionsContext: {
+      type: Object,
+      default: () => ({
+        uid: null,
+        is_admin: false,
+        groups: [],
+        modules: {}
+      })
     }
   },
   data() {
@@ -9470,8 +9478,17 @@ __webpack_require__.r(__webpack_exports__);
       configuraciones: this.parameters,
       groupsuser: this.groupsUser,
       employeeUser: this.employee,
-      subordinates: this.subordinatesGroup
+      subordinates: this.subordinatesGroup,
+      permissions: this.permissionsContext
     };
+  },
+  computed: {
+    hasDataManager() {
+      return this.configuraciones.usuario_almacenamiento !== null && this.configuraciones.usuario_almacenamiento !== undefined && String(this.configuraciones.usuario_almacenamiento).trim() !== '';
+    }
+  },
+  methods: {
+    t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate
   }
 });
 
@@ -13727,10 +13744,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_LaptopAccount_vue__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! vue-material-design-icons/LaptopAccount.vue */ "./node_modules/vue-material-design-icons/LaptopAccount.vue");
 /* harmony import */ var vue_material_design_icons_BagSuitcase_vue__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! vue-material-design-icons/BagSuitcase.vue */ "./node_modules/vue-material-design-icons/BagSuitcase.vue");
 /* harmony import */ var vue_material_design_icons_PartyPopper_vue__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! vue-material-design-icons/PartyPopper.vue */ "./node_modules/vue-material-design-icons/PartyPopper.vue");
-/* harmony import */ var vue_material_design_icons_Refresh_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/Refresh.vue */ "./node_modules/vue-material-design-icons/Refresh.vue");
-/* harmony import */ var vue_material_design_icons_Bank_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/Bank.vue */ "./node_modules/vue-material-design-icons/Bank.vue");
-/* harmony import */ var vue_material_design_icons_Cash_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! vue-material-design-icons/Cash.vue */ "./node_modules/vue-material-design-icons/Cash.vue");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_Bank_vue__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! vue-material-design-icons/Bank.vue */ "./node_modules/vue-material-design-icons/Bank.vue");
+/* harmony import */ var vue_material_design_icons_Cash_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/Cash.vue */ "./node_modules/vue-material-design-icons/Cash.vue");
+/* harmony import */ var vue_material_design_icons_ContentSaveOutline_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! vue-material-design-icons/ContentSaveOutline.vue */ "./node_modules/vue-material-design-icons/ContentSaveOutline.vue");
+/* harmony import */ var vue_material_design_icons_ChevronUp_vue__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! vue-material-design-icons/ChevronUp.vue */ "./node_modules/vue-material-design-icons/ChevronUp.vue");
+/* harmony import */ var vue_material_design_icons_ChevronDown_vue__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! vue-material-design-icons/ChevronDown.vue */ "./node_modules/vue-material-design-icons/ChevronDown.vue");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
 
 
 
@@ -13749,24 +13768,29 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+
+
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'EmpleadoTab',
   components: {
-    NcAvatar: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_15__.NcAvatar,
+    NcAvatar: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__.NcAvatar,
     Badgeaccountoutline: vue_material_design_icons_BadgeAccountOutline_vue__WEBPACK_IMPORTED_MODULE_6__["default"],
     Calendarrange: vue_material_design_icons_CalendarRange_vue__WEBPACK_IMPORTED_MODULE_8__["default"],
-    Bank: vue_material_design_icons_Bank_vue__WEBPACK_IMPORTED_MODULE_13__["default"],
+    Bank: vue_material_design_icons_Bank_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
     PartyPopper: vue_material_design_icons_PartyPopper_vue__WEBPACK_IMPORTED_MODULE_11__["default"],
     BagSuitcase: vue_material_design_icons_BagSuitcase_vue__WEBPACK_IMPORTED_MODULE_10__["default"],
-    Refresh: vue_material_design_icons_Refresh_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
     Piggybankoutline: vue_material_design_icons_PiggyBankOutline_vue__WEBPACK_IMPORTED_MODULE_7__["default"],
     Laptopaccount: vue_material_design_icons_LaptopAccount_vue__WEBPACK_IMPORTED_MODULE_9__["default"],
-    Cash: vue_material_design_icons_Cash_vue__WEBPACK_IMPORTED_MODULE_14__["default"],
+    Cash: vue_material_design_icons_Cash_vue__WEBPACK_IMPORTED_MODULE_13__["default"],
+    ContentSaveOutline: vue_material_design_icons_ContentSaveOutline_vue__WEBPACK_IMPORTED_MODULE_14__["default"],
+    ChevronUp: vue_material_design_icons_ChevronUp_vue__WEBPACK_IMPORTED_MODULE_15__["default"],
+    ChevronDown: vue_material_design_icons_ChevronDown_vue__WEBPACK_IMPORTED_MODULE_16__["default"],
+    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__.NcLoadingIcon,
     OrganizationChart: (vue_organization_chart__WEBPACK_IMPORTED_MODULE_1___default()),
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_15__.NcButton,
-    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_15__.NcSelect,
-    NcListItem: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_15__.NcListItem,
-    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_15__.NcCheckboxRadioSwitch
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__.NcButton,
+    NcSelect: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__.NcSelect,
+    NcListItem: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__.NcListItem,
+    NcCheckboxRadioSwitch: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_17__.NcCheckboxRadioSwitch
   },
   props: {
     data: {
@@ -13811,7 +13835,10 @@ __webpack_require__.r(__webpack_exports__);
       Aniversario: '',
       Vacaciones: '',
       state: false,
-      inventarioEquipos: []
+      inventarioEquipos: [],
+      diasDerechoOriginal: '',
+      guardandoDias: false,
+      cargandoPeriodo: false
     };
   },
   watch: {
@@ -13826,7 +13853,17 @@ __webpack_require__.r(__webpack_exports__);
     async data(news) {
       if (news) {
         this.setAttr(news.Numero_empleado, news.Ingreso, news.Id_departamento, news.Id_puesto, news.Id_gerente, news.Id_socio, news.Fondo_clave, news.Fondo_ahorro, news.Numero_cuenta, news.Id_equipo, news.Equipo_asignado, news.Sueldo, news.dias_disponibles, news.id_aniversario, news.state);
+        await this.cargarPeriodoActual(news.Id_empleados);
         await this.getInventarioEquipos(news.Equipo_asignado);
+      }
+    },
+    Ingreso: {
+      handler(nuevaFecha) {
+        if (!nuevaFecha || !this.show) return;
+        const años = this.calcularAniversarioDesdeFecha(nuevaFecha);
+        if (años !== null) {
+          this.Aniversario = años;
+        }
       }
     }
   },
@@ -13839,11 +13876,12 @@ __webpack_require__.r(__webpack_exports__);
       user: empleados.Id_user
     }));
     this.setAttr(this.data.Numero_empleado, this.data.Ingreso, this.data.Id_departamento, this.data.Id_puesto, this.data.Id_gerente, this.data.Id_socio, this.data.Fondo_clave, this.data.Fondo_ahorro, this.data.Numero_cuenta, this.data.Id_equipo, this.data.Equipo_asignado, this.data.Sueldo, this.data.dias_disponibles, this.data.id_aniversario, this.data.state);
+    await this.cargarPeriodoActual(this.data.Id_empleados);
     await this.getInventarioEquipos(this.data.Equipo_asignado);
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate,
-    setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, Vacaciones, Aniversario, state) {
+    setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state) {
       this.Numero_empleado = this.checknull(NumeroEmpleado);
       this.Ingreso = this.checknull(Ingreso);
       this.area = Area;
@@ -13856,8 +13894,6 @@ __webpack_require__.r(__webpack_exports__);
       this.Equipo = this.checknull(Equipo);
       this.Equipo_asignado = this.checknull(EquipoAsignado);
       this.Sueldo = this.checknull(Sueldo);
-      this.Vacaciones = this.checknull(Vacaciones);
-      this.Aniversario = this.checknull(Aniversario);
 
       // Mapeo de estado: '1' = puede solicitar; '0'/'2' = solo lectura
       if (state === '0' || state === '2') {
@@ -13956,6 +13992,18 @@ __webpack_require__.r(__webpack_exports__);
         }]
       };
     },
+    calcularAniversarioDesdeFecha(fechaStr) {
+      if (!fechaStr) return null;
+      const ingreso = new Date(fechaStr);
+      if (Number.isNaN(ingreso.getTime())) return null;
+      const hoy = new Date();
+      let años = hoy.getFullYear() - ingreso.getFullYear();
+      const diffMeses = hoy.getMonth() - ingreso.getMonth();
+      if (diffMeses < 0 || diffMeses === 0 && hoy.getDate() < ingreso.getDate()) {
+        años--;
+      }
+      return Math.max(0, años);
+    },
     checknull(value) {
       return value ?? '';
     },
@@ -13999,19 +14047,6 @@ __webpack_require__.r(__webpack_exports__);
           error: String(err),
           close: true
         }));
-      }
-    },
-    async CalcularVacaciones() {
-      try {
-        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_2__.generateUrl)('/apps/empleados/GetAniversarioByDate'), {
-          ingreso: this.checknull(this.Ingreso)
-        });
-        this.Aniversario = response?.data?.ocs?.data[0]?.numero_aniversario;
-        this.Vacaciones = response?.data?.ocs?.data[0]?.dias;
-      } catch (err) {
-        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'No se pudo calcular las vacaciones, verifica tabla de aniversarios'), {
-          close: true
-        });
       }
     },
     async cambioEstado(state) {
@@ -14117,6 +14152,55 @@ __webpack_require__.r(__webpack_exports__);
         return '';
       }
       return [option.nombre_sistema && option.nombre_sistema !== option.nombre_dispositivo ? option.nombre_sistema : '', option.numero_serie ? `${(0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Serial')}: ${option.numero_serie}` : '', option.marca || option.modelo ? [option.marca, option.modelo].filter(Boolean).join(' ') : ''].filter(Boolean).join(' · ');
+    },
+    async GuardarDiasDerecho() {
+      if (String(this.Vacaciones) === String(this.diasDerechoOriginal)) return;
+      this.guardandoDias = true;
+      try {
+        await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_2__.generateUrl)('/apps/empleados/AsignarDiasDerecho'), {
+          id_empleado: this.data.Id_empleados,
+          dias_disponibles: this.checknull(this.Vacaciones)
+        });
+        this.diasDerechoOriginal = this.Vacaciones;
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'Días de vacaciones asignados'), {
+          close: true
+        });
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'No se pudieron asignar los días [{error}]', {
+          error: String(err),
+          close: true
+        }));
+      } finally {
+        this.guardandoDias = false;
+      }
+    },
+    async cargarPeriodoActual(idEmpleado) {
+      if (!idEmpleado) return;
+      this.cargandoPeriodo = true;
+      this.Aniversario = '';
+      this.Vacaciones = '';
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_2__.generateUrl)('/apps/empleados/GetAusenciasByUser'), {
+          id: idEmpleado
+        });
+        const periodo = response?.data?.ocs?.data?.[0];
+        if (periodo) {
+          this.Aniversario = this.checknull(periodo.id_aniversario);
+          this.Vacaciones = this.checknull(periodo.dias_disponibles);
+          this.diasDerechoOriginal = this.Vacaciones;
+        }
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_5__.translate)('empleados', 'No se pudo cargar el periodo de vacaciones [{error}]', {
+          error: String(err),
+          close: true
+        }));
+      } finally {
+        this.cargandoPeriodo = false;
+      }
+    },
+    incrementarVacaciones(delta) {
+      const actual = Number(this.Vacaciones) || 0;
+      this.Vacaciones = Math.max(0, actual + delta);
     }
   }
 });
@@ -14927,6 +15011,9 @@ __webpack_require__.r(__webpack_exports__);
     },
     canSave() {
       return this.AusenciaSeleccionada && this.fechaDesdeStr && this.fechaHastaStr && this.diasHabiles > 0 && !this.exceedsAvailableDays;
+    },
+    primaDisabled() {
+      return this.primaVacacionalUsada || this.diasHabiles < 2;
     }
   },
   watch: {
@@ -14934,6 +15021,11 @@ __webpack_require__.r(__webpack_exports__);
       this.primaVacacionalUsada = false;
       if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
         await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias);
+      }
+    },
+    fechaDesdeStr() {
+      if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+        this.checkPrimaVacacional(this.ausencia.id_historial_ausencias);
       }
     }
   },
@@ -14988,6 +15080,9 @@ __webpack_require__.r(__webpack_exports__);
         fecha.setDate(fecha.getDate() + 1);
       }
       this.diasHabiles = count;
+      if (this.diasHabiles < 2) {
+        this.SolicitarPrima = false;
+      }
     },
     handleDrop(event) {
       this.uploadFile({
@@ -15038,7 +15133,7 @@ __webpack_require__.r(__webpack_exports__);
     },
     async checkPrimaVacacional(excludeId = 0) {
       try {
-        const res = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/check-prima-vacacional') + `?exclude_id=${excludeId}`);
+        const res = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/check-prima-vacacional') + `?exclude_id=${excludeId}` + `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`);
         this.primaVacacionalUsada = res.data.ocs.data.used === true;
       } catch (e) {
         console.error('Error al verificar prima vacacional', e);
@@ -15101,6 +15196,14 @@ __webpack_require__.r(__webpack_exports__);
       type: String,
       required: true
     },
+    diasAcumulados: {
+      type: [Number, String],
+      default: 0
+    },
+    fechaExpiracionAcumulados: {
+      type: String,
+      default: null
+    },
     date: {
       type: Object,
       required: true,
@@ -15142,6 +15245,46 @@ __webpack_require__.r(__webpack_exports__);
     };
   },
   computed: {
+    diasAcumuladosNum() {
+      return parseFloat(this.diasAcumulados) || 0;
+    },
+    esAusenciaVacacional() {
+      return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1;
+    },
+    fechaExpiracionFormateada() {
+      if (!this.fechaExpiracionAcumulados) return '';
+      return new Date(this.fechaExpiracionAcumulados).toLocaleDateString('es-MX');
+    },
+    diasDentroDeVigencia() {
+      if (!this.fechaExpiracionAcumulados || !this.date?.start) return this.diasSolicitados;
+      const limite = new Date(this.fechaExpiracionAcumulados);
+      limite.setHours(0, 0, 0, 0);
+      const start = new Date(this.date.start);
+      start.setHours(0, 0, 0, 0);
+      const end = this.date.end ? new Date(this.date.end) : start;
+      end.setHours(0, 0, 0, 0);
+      const cursor = new Date(start);
+      let count = 0;
+      // eslint-disable-next-line no-unmodified-loop-condition
+      while (cursor <= end) {
+        if (cursor > limite) break;
+        const dia = cursor.getDay();
+        if (dia !== 0 && dia !== 6) count++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return count;
+    },
+    diasDelAcumuladoAUsar() {
+      if (!this.esAusenciaVacacional) return 0;
+      return Math.min(this.diasAcumuladosNum, this.diasSolicitados, this.diasDentroDeVigencia);
+    },
+    diasDelPeriodoActualAUsar() {
+      if (!this.esAusenciaVacacional) return 0;
+      return this.diasSolicitados - this.diasDelAcumuladoAUsar;
+    },
+    acumuladoNoAplicaPorFecha() {
+      return this.esAusenciaVacacional && this.diasAcumuladosNum > 0 && this.diasDelAcumuladoAUsar === 0;
+    },
     exceedsAvailableDays() {
       return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1 && this.diasSolicitados > this.TotalDias;
     },
@@ -15167,6 +15310,9 @@ __webpack_require__.r(__webpack_exports__);
         });
       }
       return items;
+    },
+    primaDisabled() {
+      return this.primaVacacionalUsada || this.diasSolicitados < 2;
     }
   },
   watch: {
@@ -15176,10 +15322,15 @@ __webpack_require__.r(__webpack_exports__);
       if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
         await this.checkPrimaVacacional();
       }
+    },
+    diasSolicitados(nuevo) {
+      if (nuevo < 2) {
+        this.SolicitarPrima = false;
+      }
     }
   },
   mounted() {
-    this.TotalDias = parseInt(this.diasDisponibles, 10);
+    this.TotalDias = parseInt(this.diasDisponibles, 10) + this.diasAcumuladosNum;
     this.RestanteDias = this.TotalDias - this.diasSolicitados;
     this.GetTipoAusencias();
     if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
@@ -15259,7 +15410,7 @@ __webpack_require__.r(__webpack_exports__);
     },
     async checkPrimaVacacional(excludeId = 0) {
       try {
-        let url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/check-prima-vacacional') + `?exclude_id=${excludeId}`;
+        let url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/check-prima-vacacional') + `?exclude_id=${excludeId}` + `&fecha_de=${encodeURIComponent(this.date.start.toLocaleDateString())}`;
         if (this.admin && this.employees_list?.user) {
           url += `&id_usuario=${this.employees_list.user}`;
         }
@@ -15370,11 +15521,8 @@ function hashStr(str) {
       periodoSeleccionado: null,
       cargandoPeriodos: false,
       haCargadoAlMenos: false,
-      // Catálogo de empleados independiente del periodo/rango consultado.
-      // Antes "opcionesEmpleados" salía de "registros", que se reemplaza en
-      // cada cargarReporte(); si el periodo elegido no tenía registros, el
-      // selector de empleados se quedaba sin opciones (el bug reportado).
-      empleadosCatalogo: []
+      empleadosCatalogo: [],
+      empleadoIdPorNombre: {}
     };
   },
   computed: {
@@ -15422,12 +15570,12 @@ function hashStr(str) {
     resumenEmpleadoStats() {
       const registros = this.registrosResumenEmpleado;
       const dias = registros.reduce((acc, r) => acc + (parseInt(r.dias_solicitados) || 0), 0);
-      const conPrima = registros.filter(r => parseInt(r.prima_vacacional) === 1).length;
+      const registroPrima = registros.find(r => parseInt(r.prima_vacacional) === 1) || null;
       return {
         total: registros.length,
         dias,
-        conPrima,
-        sinPrima: registros.length - conPrima
+        primaSolicitada: !!registroPrima,
+        primaFecha: registroPrima ? registroPrima.fecha_de : null
       };
     }
   },
@@ -15462,19 +15610,31 @@ function hashStr(str) {
       this.registros = [];
       this.limpiarFiltros();
       try {
-        const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte');
-        const params = this.vistaActual === 'resumen' && this.periodoInfo ? {
-          desde: this.periodoInfo.periodo_inicio,
-          hasta: this.periodoInfo.periodo_fin
-        } : {
-          desde: this.filtroDesde,
-          hasta: this.filtroHasta
-        };
-        const {
-          data
-        } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
-          params
-        });
+        let data;
+        if (this.vistaActual === 'resumen' && this.periodoInfo) {
+          // Filtra por id_aniversario, no por rango de fechas
+          const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte-aniversario');
+          const params = {
+            id_empleado: this.periodoInfo.id_empleado,
+            numero_aniversario: this.periodoInfo.numero_aniversario
+          };
+          ({
+            data
+          } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
+            params
+          }));
+        } else {
+          const url = (0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/historial-reporte');
+          const params = {
+            desde: this.filtroDesde,
+            hasta: this.filtroHasta
+          };
+          ({
+            data
+          } = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_0__["default"].get(url, {
+            params
+          }));
+        }
         const mensaje = data?.ocs?.data?.message ?? data?.message ?? [];
         this.registros = Array.isArray(mensaje) ? mensaje : [];
       } catch (e) {
@@ -15482,18 +15642,19 @@ function hashStr(str) {
       } finally {
         this.cargando = false;
         this.haCargadoAlMenos = true;
-        // Alimenta el catálogo de empleados con lo que vaya llegando, por si
-        // aún no se cargó con cargarEmpleadosCatalogo() (p. ej. primera carga).
+        // Alimenta el catálogo de empleados con lo que vaya llegando.
         if (this.empleadosCatalogo.length === 0 && this.registros.length > 0) {
           this.empleadosCatalogo = [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort();
         }
+        this.registros.forEach(r => {
+          if (r.nombre_empleado && r.id_empleado) {
+            this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado;
+          }
+        });
       }
     },
     /**
      * Carga, una sola vez, el listado completo de empleados con historial
-     * (independiente del rango de fechas/periodo que esté activo en el
-     * reporte), para que el selector de "Resumen por empleado" no dependa
-     * de si el periodo seleccionado trajo registros o no.
      */
     async cargarEmpleadosCatalogo() {
       try {
@@ -15509,6 +15670,11 @@ function hashStr(str) {
         const mensaje = data?.ocs?.data?.message ?? data?.message ?? [];
         const todos = Array.isArray(mensaje) ? mensaje : [];
         this.empleadosCatalogo = [...new Set(todos.map(r => r.nombre_empleado).filter(Boolean))].sort();
+        todos.forEach(r => {
+          if (r.nombre_empleado && r.id_empleado) {
+            this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado;
+          }
+        });
       } catch (e) {
         console.error('Error cargando catálogo de empleados:', e);
       }
@@ -15540,8 +15706,7 @@ function hashStr(str) {
       this.periodosEmpleado = [];
       this.periodoSeleccionado = null;
       if (!this.empleadoResumen) return;
-      const item = this.registros.find(r => r.nombre_empleado === this.empleadoResumen);
-      const idEmpleado = item?.id_empleado;
+      const idEmpleado = this.empleadoIdPorNombre[this.empleadoResumen];
       if (!idEmpleado) return;
       this.cargandoPeriodos = true;
       try {
@@ -15885,7 +16050,7 @@ __webpack_require__.r(__webpack_exports__);
       if (this.subordinates.length > 0) {
         try {
           await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetNotificationsSubordinates')).then(response => {
-            if (response.data.length > 0) {
+            if (response?.data?.ocs?.data.length > 0) {
               this.notificaciones = true;
               this.notifications_counter = response.data.length;
               this.notifications_result = response.data;
@@ -15993,7 +16158,6 @@ __webpack_require__.r(__webpack_exports__);
           this.vista_actual = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'My absences');
       }
     },
-    // Convierte a_gerente/a_socio en color: gris si cancelado, color normal si no
     eventColor(item, fallbackUsername) {
       const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3;
       return isCancelled ? '#9e9e9e' : this.color(fallbackUsername);
@@ -20423,7 +20587,7 @@ __webpack_require__.r(__webpack_exports__);
           const idCliente = r.id_cliente ?? r.idCliente ?? r.Id_cliente ?? null;
           const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null;
           const esAusencia = Number(idCliente) === 99999;
-          const clienteNombre = esAusencia ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_8__.translate)('empleados', 'Absence') : clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim();
+          const clienteNombre = esAusencia ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_8__.translate)('empleados', 'Absence - Vacation') : clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim();
           const actividadNombre = esAusencia ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_8__.translate)('empleados', 'Cargable') : actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim();
           return {
             ...r,
@@ -22640,6 +22804,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_CartOutline_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/CartOutline.vue */ "./node_modules/vue-material-design-icons/CartOutline.vue");
 /* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
 /* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
+/* harmony import */ var _mixins_permissions_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ../../mixins/permissions.js */ "./src/mixins/permissions.js");
+
 
 
 
@@ -22679,6 +22845,7 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
     Laptop: vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
     CartOutline: vue_material_design_icons_CartOutline_vue__WEBPACK_IMPORTED_MODULE_13__["default"]
   },
+  mixins: [_mixins_permissions_js__WEBPACK_IMPORTED_MODULE_16__["default"]],
   inject: ['groupuser', 'configuraciones', 'subordinates'],
   data() {
     return {
@@ -22696,16 +22863,16 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
       return (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_15__.translate)('empleados', 'Show navigation');
     },
     canSeeHumanResources() {
-      return this.hasGroup('admin') || this.hasGroup('recursos_humanos');
+      return this.canSeeAny(['empleados.hr', 'empleados.admin']);
     },
     canSeeAdminReports() {
-      return this.isTruthy(this.configuraciones?.CanAdminReports);
+      return this.canSee('reporte_tiempos.admin') || this.isTruthy(this.configuraciones?.CanAdminReports);
     },
     canSeeCustomers() {
-      return this.canSeeHumanResources && this.isModuleEnabled('modulo_clientes');
+      return this.canSee('clientes');
     },
     canSeeInventory() {
-      return this.canSeeHumanResources && (this.isModuleEnabled('modulo_inventario') || this.isModuleEnabled('modulo_soporte'));
+      return this.canSee('inventario') || this.canSee('soporte');
     },
     reportTimesEnabled() {
       return this.isModuleEnabled('modulo_reporte_tiempos');
@@ -22713,11 +22880,14 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
     savingsEnabled() {
       return this.isModuleEnabled('modulo_ahorro');
     },
+    canSeeSavingsAdmin() {
+      return this.canSee('ahorro.admin') || this.canSeeAny(['empleados.hr', 'empleados.admin']);
+    },
     absencesEnabled() {
       return this.isModuleEnabled('modulo_ausencias');
     },
     canSeePurchases() {
-      return this.isModuleEnabled('modulo_compras') && (this.hasGroup('admin') || this.hasGroup('compras_admin') || this.hasGroup('compras_autorizadores') || this.hasGroup('compras_contabilidad') || this.hasGroup('compras_solicitantes'));
+      return this.canSee('compras');
     }
   },
   watch: {
@@ -22759,23 +22929,6 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
       };
       this.navigationMode = nextMode[this.navigationMode] || 'normal';
     },
-    hasGroup(groupName) {
-      if (!groupName || !this.groupuser) {
-        return false;
-      }
-      if (Array.isArray(this.groupuser)) {
-        return this.groupuser.includes(groupName) || this.groupuser.some(group => {
-          return group?.id === groupName || group?.gid === groupName || group?.name === groupName;
-        });
-      }
-      if (typeof this.groupuser === 'object') {
-        return Object.prototype.hasOwnProperty.call(this.groupuser, groupName) || this.groupuser[groupName] === true || Object.values(this.groupuser).includes(groupName);
-      }
-      return false;
-    },
-    isTruthy(value) {
-      return value === true || value === 'true' || value === 1 || value === '1';
-    },
     isModuleEnabled(moduleName) {
       return this.isTruthy(this.configuraciones?.[moduleName]);
     }
@@ -22803,7 +22956,7 @@ var render = function render() {
     attrs: {
       "app-name": "empleados"
     }
-  }, [_vm.configuraciones.usuario_almacenamiento != null && String(_vm.configuraciones.usuario_almacenamiento).trim() !== "" ? _c("navigator") : _vm._e(), _vm._v(" "), _vm.configuraciones.usuario_almacenamiento != null && String(_vm.configuraciones.usuario_almacenamiento).trim() !== "" ? _c("router-view") : _c("NcEmptyContent", {
+  }, [_vm.hasDataManager ? _c("navigator") : _vm._e(), _vm._v(" "), _vm.hasDataManager ? _c("router-view") : _c("NcEmptyContent", {
     staticStyle: {
       "background-color": "white"
     },
@@ -26829,26 +26982,14 @@ var render = function render() {
       size: 20
     }
   }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Anniversary")) + "\n\t\t\t\t\t\t\t")], 1), _vm._v(" "), _c("input", {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: _vm.Aniversario,
-      expression: "Aniversario"
-    }],
     staticClass: "inputtype",
     attrs: {
       id: "Aniversario",
       type: "text",
-      disabled: !_vm.show
+      disabled: ""
     },
     domProps: {
-      value: _vm.Aniversario
-    },
-    on: {
-      input: function ($event) {
-        if ($event.target.composing) return;
-        _vm.Aniversario = $event.target.value;
-      }
+      value: _vm.cargandoPeriodo ? "…" : _vm.Aniversario
     }
   })]), _vm._v(" "), _c("div", {
     staticClass: "box1Inside"
@@ -26861,18 +27002,60 @@ var render = function render() {
     attrs: {
       size: 20
     }
-  }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Vacation")) + "\n\t\t\t\t\t\t\t")], 1), _vm._v(" "), _c("input", {
+  }), _vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Vacation")) + "\n\t\t\t\t\t\t\t")], 1), _vm._v(" "), _c("div", {
+    staticClass: "stepper-wrapper"
+  }, [_vm.show ? _c("div", {
+    staticClass: "stepper-arrows"
+  }, [_c("button", {
+    staticClass: "stepper-btn",
+    attrs: {
+      type: "button",
+      disabled: _vm.cargandoPeriodo
+    },
+    on: {
+      click: function ($event) {
+        return _vm.incrementarVacaciones(1);
+      }
+    }
+  }, [_c("ChevronUp", {
+    attrs: {
+      size: 11,
+      "fill-color": "currentColor"
+    }
+  })], 1), _vm._v(" "), _c("button", {
+    staticClass: "stepper-btn",
+    attrs: {
+      type: "button",
+      disabled: _vm.cargandoPeriodo
+    },
+    on: {
+      click: function ($event) {
+        return _vm.incrementarVacaciones(-1);
+      }
+    }
+  }, [_c("ChevronDown", {
+    attrs: {
+      size: 11,
+      "fill-color": "currentColor"
+    }
+  })], 1)]) : _vm._e(), _vm._v(" "), _c("input", {
     directives: [{
       name: "model",
-      rawName: "v-model",
+      rawName: "v-model.number",
       value: _vm.Vacaciones,
-      expression: "Vacaciones"
+      expression: "Vacaciones",
+      modifiers: {
+        number: true
+      }
     }],
-    staticClass: "inputtype",
+    staticClass: "inputtype stepper-input",
     attrs: {
       id: "Vacaciones",
-      type: "text",
-      disabled: !_vm.show
+      type: "number",
+      step: "1",
+      min: "0",
+      disabled: !_vm.show || _vm.cargandoPeriodo,
+      placeholder: _vm.cargandoPeriodo ? "…" : ""
     },
     domProps: {
       value: _vm.Vacaciones
@@ -26880,33 +27063,40 @@ var render = function render() {
     on: {
       input: function ($event) {
         if ($event.target.composing) return;
-        _vm.Vacaciones = $event.target.value;
+        _vm.Vacaciones = _vm._n($event.target.value);
+      },
+      blur: function ($event) {
+        return _vm.$forceUpdate();
       }
     }
-  })]), _vm._v(" "), _vm.Ingreso && (_vm.Aniversario == 0 || !_vm.Aniversario) && (!_vm.Vacaciones || _vm.Vacaciones == 0.0) ? _c("div", {
+  })])]), _vm._v(" "), _vm.show ? _c("div", {
     staticClass: "topRefresh MarginRight"
   }, [_c("NcButton", {
     attrs: {
       type: "primary",
-      disabled: !_vm.show
+      disabled: _vm.guardandoDias || _vm.cargandoPeriodo || String(_vm.Vacaciones) === String(_vm.diasDerechoOriginal)
     },
     on: {
       click: function ($event) {
-        return _vm.CalcularVacaciones();
+        return _vm.GuardarDiasDerecho();
       }
     },
     scopedSlots: _vm._u([{
       key: "icon",
       fn: function () {
-        return [_c("Refresh", {
+        return [_vm.guardandoDias ? _c("NcLoadingIcon", {
+          attrs: {
+            size: 20
+          }
+        }) : _c("ContentSaveOutline", {
           attrs: {
             size: 20
           }
         })];
       },
       proxy: true
-    }], null, false, 2587275189)
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Calculate")) + "\n\t\t\t\t\t\t\t")])], 1) : _vm._e()])]), _vm._v(" "), _c("div", [_c("div", {
+    }], null, false, 93562060)
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Save")) + "\n\t\t\t\t\t\t\t")])], 1) : _vm._e()])]), _vm._v(" "), _c("div", [_c("div", {
     staticClass: "divider"
   }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Savings fund")))])]), _vm._v(" "), _c("div", {
     staticClass: "flexible"
@@ -28266,7 +28456,7 @@ var render = function render() {
     staticClass: "form-section"
   }, [_vm.AusenciaSeleccionada && _vm.AusenciaSeleccionada.solicitar_prima_vacacional == 1 ? [_c("NcCheckboxRadioSwitch", {
     attrs: {
-      disabled: _vm.primaVacacionalUsada
+      disabled: _vm.primaDisabled
     },
     model: {
       value: _vm.SolicitarPrima,
@@ -28394,7 +28584,30 @@ var render = function render() {
       type: "info",
       text: _vm.t("empleados", "You cannot request more days than available.")
     }
-  }) : _vm._e(), _vm._v(" "), _vm.AusenciaSeleccionada && !_vm.exceedsAvailableDays ? [_c("section", {
+  }) : _vm._e(), _vm._v(" "), _vm.AusenciaSeleccionada && !_vm.exceedsAvailableDays ? [_vm.esAusenciaVacacional && _vm.diasAcumuladosNum > 0 ? _c("NcNoteCard", {
+    attrs: {
+      type: "warning",
+      text: _vm.t("empleados", "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.", {
+        dias: _vm.diasAcumuladosNum,
+        fecha: _vm.fechaExpiracionFormateada
+      })
+    }
+  }) : _vm._e(), _vm._v(" "), _vm.esAusenciaVacacional && _vm.diasDelAcumuladoAUsar > 0 && _vm.diasDelPeriodoActualAUsar > 0 ? _c("NcNoteCard", {
+    attrs: {
+      type: "info",
+      text: _vm.t("empleados", "This request will be split: {acumulado} day(s) will be taken from your accumulated (expiring) balance, and {actual} day(s) from your current period.", {
+        acumulado: _vm.diasDelAcumuladoAUsar,
+        actual: _vm.diasDelPeriodoActualAUsar
+      })
+    }
+  }) : _vm._e(), _vm._v(" "), _vm.acumuladoNoAplicaPorFecha ? _c("NcNoteCard", {
+    attrs: {
+      type: "info",
+      text: _vm.t("empleados", "Vacation days will be deducted from the balance of your current period, as accrued vacation days must be used within the corresponding period (before {fecha}).", {
+        fecha: _vm.fechaExpiracionFormateada
+      })
+    }
+  }) : _vm._e(), _vm._v(" "), _c("section", {
     staticClass: "form-section"
   }, [_c("h3", [_vm._v(_vm._s(_vm.t("empleados", "Absence period")))]), _vm._v(" "), _c("div", {
     staticClass: "period-grid"
@@ -28458,7 +28671,7 @@ var render = function render() {
     staticClass: "form-section"
   }, [_vm.AusenciaSeleccionada && _vm.AusenciaSeleccionada.solicitar_prima_vacacional == 1 ? [_c("NcCheckboxRadioSwitch", {
     attrs: {
-      disabled: _vm.primaVacacionalUsada
+      disabled: _vm.primaDisabled
     },
     model: {
       value: _vm.SolicitarPrima,
@@ -28807,24 +29020,23 @@ var render = function render() {
   }, [_vm._v(_vm._s(_vm.t("empleados", "Días restantes")))]), _vm._v(" "), _c("span", {
     staticClass: "resumen-valor"
   }, [_vm._v(_vm._s(_vm.periodoInfo?.dias_restantes ?? "—"))])]), _vm._v(" "), _c("div", {
+    staticClass: "resumen-card",
+    class: {
+      "resumen-card--prima-si": _vm.resumenEmpleadoStats.primaSolicitada
+    }
+  }, [_c("span", {
+    staticClass: "resumen-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Prima vacacional")))]), _vm._v(" "), _c("span", {
+    staticClass: "resumen-valor resumen-valor-prima"
+  }, [_vm.resumenEmpleadoStats.primaSolicitada ? [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Solicitado en: {fecha}", {
+    fecha: _vm.formatFecha(_vm.resumenEmpleadoStats.primaFecha)
+  })) + "\n\t\t\t\t\t\t\t")] : [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "No solicitado aún")) + "\n\t\t\t\t\t\t\t")]], 2)]), _vm._v(" "), _c("div", {
     staticClass: "resumen-card"
   }, [_c("span", {
     staticClass: "resumen-label"
   }, [_vm._v(_vm._s(_vm.t("empleados", "Registros")))]), _vm._v(" "), _c("span", {
     staticClass: "resumen-valor"
-  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.total))])]), _vm._v(" "), _c("div", {
-    staticClass: "resumen-card"
-  }, [_c("span", {
-    staticClass: "resumen-label"
-  }, [_vm._v(_vm._s(_vm.t("empleados", "Con prima vac.")))]), _vm._v(" "), _c("span", {
-    staticClass: "resumen-valor"
-  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.conPrima))])]), _vm._v(" "), _c("div", {
-    staticClass: "resumen-card"
-  }, [_c("span", {
-    staticClass: "resumen-label"
-  }, [_vm._v(_vm._s(_vm.t("empleados", "Sin prima vac.")))]), _vm._v(" "), _c("span", {
-    staticClass: "resumen-valor"
-  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.sinPrima))])])]), _vm._v(" "), _vm.registrosResumenEmpleado.length === 0 ? _c("div", {
+  }, [_vm._v(_vm._s(_vm.resumenEmpleadoStats.total))])])]), _vm._v(" "), _vm.registrosResumenEmpleado.length === 0 ? _c("div", {
     staticClass: "reporte-estado periodo-vac-vacio"
   }, [_c("span", {
     staticClass: "reporte-estado-icon"
@@ -28862,9 +29074,23 @@ var render = function render() {
     }, [_vm._v(_vm._s(item.nombre_empleado))])]), _vm._v(" "), _c("td", [_c("span", {
       staticClass: "badge-tipo",
       style: _vm.colorTipo(item.tipo_ausencia)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_de)))]), _vm._v(" "), _c("span", {
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", {
+      class: {
+        "fecha-tardia": parseFloat(item.dias_de_acumulado) > 0
+      },
+      attrs: {
+        title: parseFloat(item.dias_de_acumulado) > 0 ? _vm.t("empleados", "Usó días del periodo anterior") : ""
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatFecha(item.fecha_de)) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
       staticClass: "periodo-sep"
-    }, [_vm._v("→")]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_hasta)))])]), _vm._v(" "), _c("td", {
+    }, [_vm._v("→")]), _vm._v(" "), _c("span", {
+      class: {
+        "fecha-tardia": parseFloat(item.dias_de_acumulado) > 0
+      },
+      attrs: {
+        title: parseFloat(item.dias_de_acumulado) > 0 ? _vm.t("empleados", "Usó días del periodo anterior") : ""
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatFecha(item.fecha_hasta)) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
       staticClass: "col-dias cell-center"
     }, [_c("strong", [_vm._v(_vm._s(item.dias_solicitados ?? "—"))])]), _vm._v(" "), _c("td", {
       staticClass: "col-prima cell-center"
@@ -28941,9 +29167,23 @@ var render = function render() {
     }, [_vm._v(_vm._s(item.nombre_empleado))])]), _vm._v(" "), _c("td", [_c("span", {
       staticClass: "badge-tipo",
       style: _vm.colorTipo(item.tipo_ausencia)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_de)))]), _vm._v(" "), _c("span", {
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", {
+      class: {
+        "fecha-tardia": parseFloat(item.dias_de_acumulado) > 0
+      },
+      attrs: {
+        title: parseFloat(item.dias_de_acumulado) > 0 ? _vm.t("empleados", "Usó días del periodo anterior") : ""
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatFecha(item.fecha_de)) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
       staticClass: "periodo-sep"
-    }, [_vm._v("→")]), _vm._v(" "), _c("span", [_vm._v(_vm._s(_vm.formatFecha(item.fecha_hasta)))])]), _vm._v(" "), _c("td", {
+    }, [_vm._v("→")]), _vm._v(" "), _c("span", {
+      class: {
+        "fecha-tardia": parseFloat(item.dias_de_acumulado) > 0
+      },
+      attrs: {
+        title: parseFloat(item.dias_de_acumulado) > 0 ? _vm.t("empleados", "Usó días del periodo anterior") : ""
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatFecha(item.fecha_hasta)) + "\n\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
       staticClass: "col-dias cell-center"
     }, [_c("strong", [_vm._v(_vm._s(item.dias_solicitados ?? "—"))])]), _vm._v(" "), _c("td", {
       staticClass: "col-prima cell-center"
@@ -29272,13 +29512,38 @@ var render = function render() {
       },
       proxy: true
     }])
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "My information")) + "\n\t\t\t\t\t\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", [_c("h2", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "My information")) + "\n\t\t\t\t\t\t\t\t\t")])], 1)], 1), _vm._v(" "), _c("div", {
+    staticClass: "header-content"
+  }, [_c("h2", {
     staticClass: "h2-white"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Vacation")) + "\n\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Vacation")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
     staticClass: "vacations"
   }, [_c("div", {
-    staticClass: "gl"
-  }, [_vm.Ausencias.dias_disponibles ? _c("div", [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatearDias(_vm.Ausencias.dias_disponibles)) + "\n\t\t\t\t\t\t\t\t\t")]) : _c("div", [_c("NcLoadingIcon")], 1)])])]), _vm._v(" "), _c("div", {
+    staticClass: "vacations-panel"
+  }, [_vm.Ausencias.dias_acumulados > 0 && _vm.Ausencias.fecha_expiracion_acumulados ? _c("div", {
+    staticClass: "panel-row panel-row--accum"
+  }, [_c("AlertOutline", {
+    staticClass: "row-icon",
+    attrs: {
+      size: 16
+    }
+  }), _vm._v(" "), _c("p", {
+    staticClass: "row-text"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Accumulated from previous period:")) + "\n\t\t\t\t\t\t\t\t\t\t\t\t"), _c("strong", [_vm._v(_vm._s(_vm.formatearDias(_vm.Ausencias.dias_acumulados)))]), _vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "— use before {fecha} or they expire. ⚠️", {
+    fecha: new Date(_vm.Ausencias.fecha_expiracion_acumulados).toLocaleDateString("es-MX")
+  })) + "\n\t\t\t\t\t\t\t\t\t\t\t")])], 1) : _vm._e(), _vm._v(" "), _vm.Ausencias.dias_acumulados > 0 && _vm.Ausencias.fecha_expiracion_acumulados ? _c("div", {
+    staticClass: "panel-divider"
+  }) : _vm._e(), _vm._v(" "), _c("div", {
+    staticClass: "panel-row1 panel-row--current"
+  }, [_c("span", {
+    staticClass: "row-label"
+  }, [_vm._v(_vm._s(_vm.t("empleados", "Current period:")))]), _vm._v(" "), _vm.Ausencias.dias_disponibles !== undefined && _vm.Ausencias.dias_disponibles !== null ? _c("span", {
+    staticClass: "row-value"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatearDias(_vm.Ausencias.dias_disponibles)) + "\n\t\t\t\t\t\t\t\t\t\t\t")]) : _c("NcLoadingIcon", {
+    attrs: {
+      size: 20
+    }
+  })], 1)])])])]), _vm._v(" "), _c("div", {
     staticClass: "infos"
   }, [_vm.notificaciones ? _c("div", {
     staticClass: "acordeon-item"
@@ -29598,6 +29863,8 @@ var render = function render() {
       date: _vm.date,
       "dias-solicitados": _vm.diasSolicitados,
       "dias-disponibles": _vm.Ausencias.dias_disponibles,
+      "dias-acumulados": _vm.Ausencias.dias_acumulados,
+      "fecha-expiracion-acumulados": _vm.Ausencias.fecha_expiracion_acumulados,
       prima: _vm.Ausencias.prima_vacacional,
       employees: _vm.propsEmployees.options,
       admin: _vm.isAdmin()
@@ -31147,11 +31414,11 @@ var render = function render() {
           attrs: {
             value: "az"
           }
-        }, [_vm._v("A to Z")]), _vm._v(" "), _c("option", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\tA to Z\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("option", {
           attrs: {
             value: "za"
           }
-        }, [_vm._v("Z to A")])])]), _vm._v(" "), _c("hr", {
+        }, [_vm._v("\n\t\t\t\t\t\t\t\tZ to A\n\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("hr", {
           staticClass: "filter-divider"
         }), _vm._v(" "), _c("div", {
           staticClass: "filter-section"
@@ -31509,15 +31776,7 @@ var render = function render() {
     }
   }, [_c("div", {
     staticClass: "companies-page"
-  }, [_c("div", {
-    staticClass: "companies-header"
-  }, [_c("div", {
-    staticClass: "header-title"
-  }, [_c("p", {
-    staticClass: "section-label"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Customers module")) + "\n\t\t\t\t")]), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Companies and groups")))]), _vm._v(" "), _c("p", {
-    staticClass: "section-description"
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Manage customer groups, companies and sub-companies used by the time reportsmodule.")) + "\n\t\t\t\t")])])]), _vm._v(" "), _c("List", {
+  }, [_c("List", {
     attrs: {
       loading: _vm.loading,
       listas: _vm.filteredListas,
@@ -31543,7 +31802,7 @@ var render = function render() {
             src: __webpack_require__(/*! ../../../../img/crowesito-think.png */ "./img/crowesito-think.png"),
             alt: "Empty area state"
           }
-        }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Select a client for more details")))]), _vm._v(" "), _c("p", {
+        }), _vm._v(" "), _c("h2", [_vm._v(_vm._s(_vm.t("empleados", "Companies and groups")))]), _vm._v(" "), _c("h1", [_vm._v(_vm._s(_vm.t("empleados", "Select a client for more details")))]), _vm._v(" "), _c("p", {
           staticClass: "areas-empty-description"
         }, [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.")) + "\n\t\t\t\t\t\t\t")]), _vm._v(" "), _c("div", {
           staticClass: "stats-grid"
@@ -31814,7 +32073,7 @@ var render = function render() {
         }, [_c("span", [_vm._v(_vm._s(_vm.t("empleados", "Status")))]), _vm._v(" "), _c("span", {
           staticClass: "value-text"
         }, [_vm._v(_vm._s(Number(_vm.selectedClient.estado) ? _vm.t("empleados", "Active") : _vm.t("empleados", "Inactive")))])])])])])])]), _vm._v(" "), _c("div", {
-          staticClass: "acordeon-item btn-top"
+          staticClass: "acordeon-item separator-top"
         }, [_c("button", {
           staticClass: "acordeon-titulo",
           on: {
@@ -31894,7 +32153,7 @@ var render = function render() {
             proxy: true
           }])
         })], 1)])])])]), _vm._v(" "), _c("div", {
-          staticClass: "info-section"
+          staticClass: "info-section separator-top"
         }, [_c("div", {
           staticClass: "section-head"
         }, [_c("div", [_c("p", {
@@ -31939,7 +32198,7 @@ var render = function render() {
         }), 0) : _c("span", {
           staticClass: "value-text"
         }, [_vm._v("No one has registered yet")])])])]), _vm._v(" "), _c("div", {
-          staticClass: "info-section"
+          staticClass: "info-section top"
         }, [_c("div", {
           staticClass: "section-head"
         }, [_c("div", [_c("p", {
@@ -36249,7 +36508,7 @@ var render = function render() {
       },
       proxy: true
     }], null, false, 1641664189)
-  }), _vm._v(" "), _vm.canSeeHumanResources ? _c("NcAppNavigationItem", {
+  }), _vm._v(" "), _vm.canSeeSavingsAdmin ? _c("NcAppNavigationItem", {
     attrs: {
       name: _vm.t("empleados", "Admin panel"),
       to: {
@@ -36346,6 +36605,66 @@ var render = function render() {
 var staticRenderFns = [];
 render._withStripped = true;
 
+
+/***/ }),
+
+/***/ "./src/mixins/permissions.js":
+/*!***********************************!*\
+  !*** ./src/mixins/permissions.js ***!
+  \***********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  inject: {
+    permissions: {
+      default: () => ({
+        uid: null,
+        is_admin: false,
+        groups: [],
+        modules: {}
+      })
+    }
+  },
+  methods: {
+    canSee(permissionKey) {
+      if (!permissionKey) {
+        return false;
+      }
+      const key = String(permissionKey).trim();
+      if (key === '') {
+        return false;
+      }
+      if (key.includes('.')) {
+        const [moduleName, permissionName] = key.split('.', 2);
+        return this.canUseModulePermission(moduleName, permissionName);
+      }
+      return this.canViewModule(key);
+    },
+    canSeeAny(permissionKeys) {
+      if (!Array.isArray(permissionKeys)) {
+        return false;
+      }
+      return permissionKeys.some(permissionKey => this.canSee(permissionKey));
+    },
+    canViewModule(moduleName) {
+      return this.isTruthy(this.permissions?.modules?.[moduleName]?.view);
+    },
+    canUseModulePermission(moduleName, permissionName) {
+      return this.isTruthy(this.permissions?.modules?.[moduleName]?.[permissionName]) || this.isTruthy(this.permissions?.modules?.[moduleName]?.permissions?.[permissionName]);
+    },
+    isAdminUser() {
+      return this.isTruthy(this.permissions?.is_admin);
+    },
+    isTruthy(value) {
+      return value === true || value === 'true' || value === 1 || value === '1';
+    }
+  }
+});
 
 /***/ }),
 
@@ -55572,6 +55891,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.contacts-list[data-v-dff7acc0] {
 .input-container[data-v-dff7acc0] {
   flex: 1;
   margin-right: 5px;
+  margin-left: 13%;
 }
 .input-container input[data-v-dff7acc0] {
   width: 100%;
@@ -55631,6 +55951,11 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.container[data-v-29e3b771] {
 }
 .board-title .icon[data-v-29e3b771] {
   margin-right: 8px;
+}
+.button-container[data-v-29e3b771] {
+  margin-right: 20px;
+  position: absolute;
+  margin-top: 20px;
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -56611,7 +56936,6 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 .companies-page[data-v-c590d670] {
   flex-direction: column;
   gap: 24px;
-  padding: 24px;
 }
 
 /* ── Header ── */
@@ -56697,6 +57021,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   background: var(--color-primary-element-light);
   color: var(--color-primary-element);
   flex-shrink: 0;
+  margin-inline: 38%;
 }
 .filter-wrap[data-v-c590d670] {
   position: relative;
@@ -57292,7 +57617,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   border-color: var(--color-primary);
 }
 .details-header--especial[data-v-c590d670] {
-  background: linear-gradient(135deg, #6c9cda 20%, #0c254b 100%);
+  background: linear-gradient(135deg, #6c9cda 10%, #f9f9f9 100%);
   border-radius: 8px;
   padding: 16px 16px 10px 16px;
 }
@@ -57310,7 +57635,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
   padding-right: 4px !important;
 }
 .acordeon-item[data-v-c590d670] {
-  margin-bottom: 10px;
+  margin-top: 10px;
   border-radius: 5px;
   overflow: hidden;
 }
@@ -57489,6 +57814,12 @@ ___CSS_LOADER_EXPORT___.push([module.id, `@charset "UTF-8";
 .badge-tipo-eventual[data-v-c590d670] {
   background-color: #fef9c3;
   color: #92400e;
+}
+.separator-top[data-v-c590d670] {
+  margin-bottom: 20px;
+}
+.top[data-v-c590d670] {
+  margin-top: 40px;
 }`, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -60052,6 +60383,62 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	background: var(--color-background-dark);
 	color: var(--color-text-maxcontrast);
 }
+.stepper-wrapper {
+	display: flex;
+	align-items: stretch;
+	gap: 6px;
+}
+.stepper-input {
+	padding-right: 12px;
+	-moz-appearance: textfield;
+}
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+	margin: 0;
+	-webkit-appearance: none;
+}
+.stepper-arrows {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+/* Selector reforzado + !important para ganarle al botón default de Nextcloud */
+.stepper-wrapper .stepper-arrows button.stepper-btn {
+	display: flex !important;
+	width: 20px !important;
+	height: 16px !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	align-items: center;
+	justify-content: center;
+	padding: 0 !important;
+	margin: 0 !important;
+	border: 1px solid var(--color-border) !important;
+	border-radius: 5px !important;
+	background: var(--color-background-hover) !important;
+	box-shadow: none !important;
+	color: var(--color-text-maxcontrast);
+	line-height: 0;
+	cursor: pointer;
+	transition: background-color 100ms ease, color 100ms ease, border-color 100ms ease;
+}
+.stepper-wrapper .stepper-arrows button.stepper-btn:disabled {
+	cursor: not-allowed;
+	opacity: 0.35;
+}
+.stepper-wrapper .stepper-arrows button.stepper-btn:hover:not(:disabled) {
+	background: var(--color-primary-element-light) !important;
+	border-color: var(--color-primary-element) !important;
+	color: var(--color-primary-element);
+}
+.stepper-wrapper .stepper-arrows button.stepper-btn :deep(svg) {
+	width: 11px !important;
+	height: 11px !important;
+	margin: 0 !important;
+}
 `, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -61263,6 +61650,10 @@ th.col-dias[data-v-71a4011e], td.col-dias[data-v-71a4011e] { text-align: right; 
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
 }
+.fecha-tardia[data-v-71a4011e] {
+	color: #ac1818;
+	font-weight: 450;
+}
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {
@@ -61393,6 +61784,17 @@ th.col-dias[data-v-71a4011e], td.col-dias[data-v-71a4011e] { text-align: right; 
 	font-weight: 700;
 	color: var(--color-main-text);
 }
+.resumen-valor-prima[data-v-71a4011e] {
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--color-text-maxcontrast);
+}
+.resumen-card--prima-si .resumen-valor-prima[data-v-71a4011e] {
+	color: #065f46;
+}
+.resumen-card--prima-si[data-v-71a4011e] {
+	background: #d1fae5;
+}
 .periodo-vac-tabla[data-v-71a4011e] {
 	table-layout: auto;
 }
@@ -61478,18 +61880,6 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	background-color: white;
 	border: 1px solid #cbd5e0;
 }
-.headers[data-v-83d6d36c] {
-	position: relative;
-	background-clip: border-box;
-	margin-top: 1.5rem;
-	margin-left: 1rem;
-	margin-right: 1rem;
-	border-radius: 0.75rem;
-	background-color: rgb(33 150 243);
-	box-shadow: 0 10px 15px -3px rgba(33, 150, 243, .4), 0 4px 6px -4px rgba(33, 150, 243, .4);
-	height: 8rem;
-	text-align: center;
-}
 .infos[data-v-83d6d36c] {
 	border: none;
 	padding: 1.5rem;
@@ -61508,8 +61898,6 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	align-items: center;
 	justify-content: space-between;
 	background-color: rgba(0, 140, 255, 0.082);
-}
-.h2-white[data-v-83d6d36c] { color: white;
 }
 .btn-top-right[data-v-83d6d36c] {
 	position: absolute;
@@ -61616,6 +62004,139 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 }
 }
 .bell-shake[data-v-83d6d36c] { animation: shake-83d6d36c 0.8s ease;
+}
+.h2-white[data-v-83d6d36c] {
+	color: white;
+	margin: 0;
+	font-size: 1.4rem;
+	letter-spacing: 0.3px;
+}
+.gl[data-v-83d6d36c] {
+	display: flex;
+	justify-content: center;
+}
+.headers[data-v-83d6d36c] {
+	position: relative;
+	margin-top: 1.5rem;
+	margin-left: 1rem;
+	margin-right: 1rem;
+	border-radius: 1rem;
+	background: linear-gradient(135deg, rgb(33 150 243), rgb(25 118 210));
+	background-clip: border-box;
+	box-shadow: 0 10px 25px -5px rgba(33, 150, 243, .45), 0 4px 6px -4px rgba(33, 150, 243, .3);
+	min-height: 8rem;
+	padding: 1.5rem 1.25rem 1.25rem;
+	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.header-content[data-v-83d6d36c] {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+	width: 100%;
+}
+.dias-wrapper[data-v-83d6d36c] {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	color: white;
+}
+.dias-label[data-v-83d6d36c] {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: rgba(255, 255, 255, 0.829);
+}
+.dias-solo[data-v-83d6d36c] {
+	font-size: 1.1rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+.dias-acumulados[data-v-83d6d36c] {
+	display: inline-block;
+	padding: 2px 8px;
+	margin-left: 4px;
+	border-radius: 999px;
+	background: #2563eb;
+	color: white;
+	font-weight: 800;
+	font-size: .88rem;
+	letter-spacing: .02em;
+	box-shadow: 0 2px 6px rgba(37,99,235,.35);
+}
+.vacations[data-v-83d6d36c] {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+}
+.vacations-panel[data-v-83d6d36c] {
+	width: 100%;
+	max-width: 320px;
+	background: rgba(255, 255, 255, 0.97);
+	border-radius: 14px;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+	overflow: hidden;
+}
+.panel-row[data-v-83d6d36c] {
+	padding: 12px 16px 3px;
+}
+.panel-row1[data-v-83d6d36c] {
+	padding: 3px 16px 12px;
+}
+.panel-divider[data-v-83d6d36c] {
+	height: 1px;
+	background: rgba(15, 23, 42, 0.08);
+	margin: 0 16px;
+}
+
+/* — Accumulated (top) — */
+.panel-row--accum[data-v-83d6d36c] {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	text-align: left;
+}
+.row-icon[data-v-83d6d36c] {
+	flex-shrink: 0;
+	margin-top: 2px;
+	color: #b45309;
+}
+.row-text[data-v-83d6d36c] {
+	margin: 0;
+	font-size: 0.78rem;
+	line-height: 1.55;
+	color: #57534e;
+}
+.row-text strong[data-v-83d6d36c] {
+	color: #1c1917;
+	font-weight: 700;
+}
+
+/* — Current period (bottom) — */
+.panel-row--current[data-v-83d6d36c] {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+}
+.row-label[data-v-83d6d36c] {
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #78716c;
+}
+.row-value[data-v-83d6d36c] {
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: #1c1917;
+	letter-spacing: -0.01em;
 }
 `, ""]);
 // Exports
@@ -88188,6 +88709,78 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/ContentSaveOutline.vue":
+/*!***********************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/ContentSaveOutline.vue ***!
+  \***********************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _ContentSaveOutline_vue_vue_type_template_id_1b73b2f8__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./ContentSaveOutline.vue?vue&type=template&id=1b73b2f8 */ "./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=template&id=1b73b2f8");
+/* harmony import */ var _ContentSaveOutline_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./ContentSaveOutline.vue?vue&type=script&lang=js */ "./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=script&lang=js");
+/* harmony import */ var _vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+;
+var component = (0,_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+  _ContentSaveOutline_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _ContentSaveOutline_vue_vue_type_template_id_1b73b2f8__WEBPACK_IMPORTED_MODULE_0__.render,
+  _ContentSaveOutline_vue_vue_type_template_id_1b73b2f8__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  false,
+  null,
+  null,
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "node_modules/vue-material-design-icons/ContentSaveOutline.vue"
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=script&lang=js":
+/*!**********************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=script&lang=js ***!
+  \**********************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  name: "ContentSaveOutlineIcon",
+  emits: ['click'],
+  props: {
+    title: {
+      type: String,
+    },
+    fillColor: {
+      type: String,
+      default: "currentColor"
+    },
+    size: {
+      type: Number,
+      default: 24
+    }
+  }
+});
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/CurrencyUsd.vue":
 /*!****************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/CurrencyUsd.vue ***!
@@ -97417,6 +98010,22 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=script&lang=js":
+/*!***********************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=script&lang=js ***!
+  \***********************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_index_js_vue_loader_options_ContentSaveOutline_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/index.js??vue-loader-options!./ContentSaveOutline.vue?vue&type=script&lang=js */ "./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_vue_loader_lib_index_js_vue_loader_options_ContentSaveOutline_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
 /***/ "./node_modules/vue-material-design-icons/CurrencyUsd.vue?vue&type=script&lang=js":
 /*!****************************************************************************************!*\
   !*** ./node_modules/vue-material-design-icons/CurrencyUsd.vue?vue&type=script&lang=js ***!
@@ -98941,6 +99550,23 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_ContentSave_vue_vue_type_template_id_07813b1a__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
 /* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_ContentSave_vue_vue_type_template_id_07813b1a__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./ContentSave.vue?vue&type=template&id=07813b1a */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSave.vue?vue&type=template&id=07813b1a");
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=template&id=1b73b2f8":
+/*!*****************************************************************************************************!*\
+  !*** ./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=template&id=1b73b2f8 ***!
+  \*****************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_ContentSaveOutline_vue_vue_type_template_id_1b73b2f8__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_ContentSaveOutline_vue_vue_type_template_id_1b73b2f8__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */ });
+/* harmony import */ var _vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_3_vue_loader_lib_index_js_vue_loader_options_ContentSaveOutline_vue_vue_type_template_id_1b73b2f8__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!../vue-loader/lib/index.js??vue-loader-options!./ContentSaveOutline.vue?vue&type=template&id=1b73b2f8 */ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=template&id=1b73b2f8");
 
 
 /***/ }),
@@ -102590,6 +103216,75 @@ var render = function render() {
             {
               attrs: {
                 d: "M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z",
+              },
+            },
+            [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
+          ),
+        ]
+      ),
+    ]
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=template&id=1b73b2f8":
+/*!*********************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./node_modules/vue-material-design-icons/ContentSaveOutline.vue?vue&type=template&id=1b73b2f8 ***!
+  \*********************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   render: () => (/* binding */ render),
+/* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
+/* harmony export */ });
+var render = function render() {
+  var _vm = this,
+    _c = _vm._self._c
+  return _c(
+    "span",
+    _vm._b(
+      {
+        staticClass: "material-design-icon content-save-outline-icon",
+        attrs: {
+          "aria-hidden": _vm.title ? null : true,
+          "aria-label": _vm.title,
+          role: "img",
+        },
+        on: {
+          click: function ($event) {
+            return _vm.$emit("click", $event)
+          },
+        },
+      },
+      "span",
+      _vm.$attrs,
+      false
+    ),
+    [
+      _c(
+        "svg",
+        {
+          staticClass: "material-design-icon__svg",
+          attrs: {
+            fill: _vm.fillColor,
+            width: _vm.size,
+            height: _vm.size,
+            viewBox: "0 0 24 24",
+          },
+        },
+        [
+          _c(
+            "path",
+            {
+              attrs: {
+                d: "M17 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3M19 19H5V5H16.17L19 7.83V19M12 12C10.34 12 9 13.34 9 15S10.34 18 12 18 15 16.66 15 15 13.66 12 12 12M6 6H15V10H6V6Z",
               },
             },
             [_vm.title ? _c("title", [_vm._v(_vm._s(_vm.title))]) : _vm._e()]
@@ -243135,16 +243830,30 @@ vue__WEBPACK_IMPORTED_MODULE_6__["default"].mixin({
 });
 vue__WEBPACK_IMPORTED_MODULE_6__["default"].prototype.OC = window.OC;
 vue__WEBPACK_IMPORTED_MODULE_6__["default"].prototype.OCA = window.OCA;
+const parseDomJson = (id, defaultValue = {}) => {
+  const element = document.getElementById(id);
+  if (!element) {
+    return defaultValue;
+  }
+  try {
+    return JSON.parse(element.getAttribute('data-parameters') || JSON.stringify(defaultValue));
+  } catch (error) {
+    console.error(`No se pudo leer ${id}:`, error);
+    return defaultValue;
+  }
+};
 
 // Obtener configuraciones iniciales desde el DOM
-const dataElement = document.getElementById('data');
-const configuraciones = dataElement ? JSON.parse(dataElement.getAttribute('data-parameters') || '{}') : {};
-const groupElement = document.getElementById('group-user');
-const groups = groupElement ? JSON.parse(groupElement.getAttribute('data-parameters') || '{}') : {};
-const employeeElement = document.getElementById('employee');
-const employee = employeeElement ? JSON.parse(employeeElement.getAttribute('data-parameters') || '{}') : {};
-const subordinatesElement = document.getElementById('subordinates');
-const subordinates = subordinatesElement ? JSON.parse(subordinatesElement.getAttribute('data-parameters') || '{}') : {};
+const configuraciones = parseDomJson('data', {});
+const groups = parseDomJson('group-user', {});
+const employee = parseDomJson('employee', []);
+const subordinates = parseDomJson('subordinates', []);
+const permissionsContext = {
+  uid: null,
+  is_admin: false,
+  groups: [],
+  modules: {}
+};
 const emitter = (0,mitt__WEBPACK_IMPORTED_MODULE_2__["default"])();
 vue__WEBPACK_IMPORTED_MODULE_6__["default"].prototype.$bus = emitter;
 const isTruthy = value => {
@@ -243164,6 +243873,10 @@ const userHasGroup = groupName => {
   }
   return false;
 };
+const getResponsePayload = response => {
+  const payload = response?.data?.ocs?.data ?? response?.data ?? {};
+  return payload?.data ?? payload;
+};
 const loadRuntimeConfigurations = async () => {
   try {
     const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)('/apps/empleados/GetConfigurations'), {
@@ -243172,7 +243885,7 @@ const loadRuntimeConfigurations = async () => {
         'OCS-APIRequest': true
       }
     });
-    const data = response?.data?.ocs?.data ?? response?.data ?? {};
+    const data = getResponsePayload(response);
     Object.assign(configuraciones, data);
   } catch (err) {
     console.error('No se pudo cargar GetConfigurations desde main.js:', err);
@@ -243180,8 +243893,23 @@ const loadRuntimeConfigurations = async () => {
   const adminReportsGroup = configuraciones?.Reportes?.admin_reports_group || configuraciones?.reportes_admin_reports_group || 'recursos_humanos';
   configuraciones.CanAdminReports = isTruthy(configuraciones?.CanAdminReports) || userHasGroup('admin') || userHasGroup(adminReportsGroup);
 };
+const loadPermissionsContext = async () => {
+  try {
+    const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_4__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_5__.generateUrl)('/apps/empleados/permisos/contexto'), {
+      headers: {
+        Accept: 'application/json',
+        'OCS-APIRequest': true
+      }
+    });
+    const data = getResponsePayload(response);
+    Object.assign(permissionsContext, data);
+  } catch (err) {
+    console.error('No se pudo cargar permisos/contexto desde main.js:', err);
+  }
+};
 (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.loadTranslations)('empleados').then(async () => {
   await loadRuntimeConfigurations();
+  await loadPermissionsContext();
   const View = vue__WEBPACK_IMPORTED_MODULE_6__["default"].extend(_views_App_vue__WEBPACK_IMPORTED_MODULE_0__["default"]);
   new View({
     router: _router_index_js__WEBPACK_IMPORTED_MODULE_1__["default"],
@@ -243189,7 +243917,8 @@ const loadRuntimeConfigurations = async () => {
       parameters: configuraciones,
       groupsUser: groups,
       employee,
-      subordinatesGroup: subordinates
+      subordinatesGroup: subordinates,
+      permissionsContext
     }
   }).$mount('#content');
 });

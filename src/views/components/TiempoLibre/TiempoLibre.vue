@@ -28,18 +28,36 @@
 										</NcActionButton>
 									</NcActions>
 								</div>
-								<div>
+
+								<div class="header-content">
 									<h2 class="h2-white">
 										{{ t('empleados', 'Vacation') }}
 									</h2>
-								</div>
-								<div class="vacations">
-									<div class="gl">
-										<div v-if="Ausencias.dias_disponibles">
-											{{ formatearDias(Ausencias.dias_disponibles) }}
-										</div>
-										<div v-else>
-											<NcLoadingIcon />
+
+									<div class="vacations">
+										<div class="vacations-panel">
+											<div
+												v-if="Ausencias.dias_acumulados > 0 && Ausencias.fecha_expiracion_acumulados"
+												class="panel-row panel-row--accum">
+												<AlertOutline :size="16" class="row-icon" />
+												<p class="row-text">
+													{{ t('empleados', 'Accumulated from previous period:') }}
+													<strong>{{ formatearDias(Ausencias.dias_acumulados) }}</strong>
+													{{ t('empleados', '— use before {fecha} or they expire. ⚠️', {
+														fecha: new Date(Ausencias.fecha_expiracion_acumulados).toLocaleDateString('es-MX')
+													}) }}
+												</p>
+											</div>
+
+											<div v-if="Ausencias.dias_acumulados > 0 && Ausencias.fecha_expiracion_acumulados" class="panel-divider" />
+
+											<div class="panel-row1 panel-row--current">
+												<span class="row-label">{{ t('empleados', 'Current period:') }}</span>
+												<span v-if="Ausencias.dias_disponibles !== undefined && Ausencias.dias_disponibles !== null" class="row-value">
+													{{ formatearDias(Ausencias.dias_disponibles) }}
+												</span>
+												<NcLoadingIcon v-else :size="20" />
+											</div>
 										</div>
 									</div>
 								</div>
@@ -244,6 +262,8 @@
 				:date="date"
 				:dias-solicitados="diasSolicitados"
 				:dias-disponibles="Ausencias.dias_disponibles"
+				:dias-acumulados="Ausencias.dias_acumulados"
+				:fecha-expiracion-acumulados="Ausencias.fecha_expiracion_acumulados"
 				:prima="Ausencias.prima_vacacional"
 				:employees="propsEmployees.options"
 				:admin="isAdmin()"
@@ -528,7 +548,7 @@ export default {
 				try {
 					await axios.get(generateUrl('/apps/empleados/GetNotificationsSubordinates'))
 						.then((response) => {
-							if (response.data.length > 0) {
+							if (response?.data?.ocs?.data.length > 0) {
 								this.notificaciones = true
 								this.notifications_counter = response.data.length
 								this.notifications_result = response.data
@@ -630,7 +650,6 @@ export default {
 			}
 		},
 
-		// Convierte a_gerente/a_socio en color: gris si cancelado, color normal si no
 		eventColor(item, fallbackUsername) {
 			const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
 			return isCancelled ? '#9e9e9e' : this.color(fallbackUsername)
@@ -928,18 +947,7 @@ export default {
 	background-color: white;
 	border: 1px solid #cbd5e0;
 }
-.headers {
-	position: relative;
-	background-clip: border-box;
-	margin-top: 1.5rem;
-	margin-left: 1rem;
-	margin-right: 1rem;
-	border-radius: 0.75rem;
-	background-color: rgb(33 150 243);
-	box-shadow: 0 10px 15px -3px rgba(33, 150, 243, .4), 0 4px 6px -4px rgba(33, 150, 243, .4);
-	height: 8rem;
-	text-align: center;
-}
+
 .infos {
 	border: none;
 	padding: 1.5rem;
@@ -959,7 +967,7 @@ export default {
 	justify-content: space-between;
 	background-color: rgba(0, 140, 255, 0.082);
 }
-.h2-white { color: white; }
+
 .btn-top-right {
 	position: absolute;
 	top: 0.5rem;
@@ -1038,4 +1046,155 @@ export default {
 	100% { transform: rotate(0deg); }
 }
 .bell-shake { animation: shake 0.8s ease; }
+
+.h2-white {
+	color: white;
+	margin: 0;
+	font-size: 1.4rem;
+	letter-spacing: 0.3px;
+}
+
+.gl {
+	display: flex;
+	justify-content: center;
+}
+
+.headers {
+	position: relative;
+	margin-top: 1.5rem;
+	margin-left: 1rem;
+	margin-right: 1rem;
+	border-radius: 1rem;
+	background: linear-gradient(135deg, rgb(33 150 243), rgb(25 118 210));
+	background-clip: border-box;
+	box-shadow: 0 10px 25px -5px rgba(33, 150, 243, .45), 0 4px 6px -4px rgba(33, 150, 243, .3);
+	min-height: 8rem;
+	padding: 1.5rem 1.25rem 1.25rem;
+	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.header-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+	width: 100%;
+}
+
+.dias-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	color: white;
+}
+
+.dias-label {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: rgba(255, 255, 255, 0.829);
+}
+
+.dias-solo {
+	font-size: 1.1rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.dias-acumulados {
+	display: inline-block;
+	padding: 2px 8px;
+	margin-left: 4px;
+	border-radius: 999px;
+	background: #2563eb;
+	color: white;
+	font-weight: 800;
+	font-size: .88rem;
+	letter-spacing: .02em;
+	box-shadow: 0 2px 6px rgba(37,99,235,.35);
+}
+
+.vacations {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+}
+
+.vacations-panel {
+	width: 100%;
+	max-width: 320px;
+	background: rgba(255, 255, 255, 0.97);
+	border-radius: 14px;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+	overflow: hidden;
+}
+
+.panel-row {
+	padding: 12px 16px 3px;
+}
+
+.panel-row1 {
+	padding: 3px 16px 12px;
+}
+
+.panel-divider {
+	height: 1px;
+	background: rgba(15, 23, 42, 0.08);
+	margin: 0 16px;
+}
+
+/* — Accumulated (top) — */
+.panel-row--accum {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	text-align: left;
+}
+
+.row-icon {
+	flex-shrink: 0;
+	margin-top: 2px;
+	color: #b45309;
+}
+
+.row-text {
+	margin: 0;
+	font-size: 0.78rem;
+	line-height: 1.55;
+	color: #57534e;
+}
+
+.row-text strong {
+	color: #1c1917;
+	font-weight: 700;
+}
+
+/* — Current period (bottom) — */
+.panel-row--current {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.row-label {
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #78716c;
+}
+
+.row-value {
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: #1c1917;
+	letter-spacing: -0.01em;
+}
 </style>

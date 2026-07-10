@@ -29,6 +29,8 @@ use OCP\Group\ISubAdmin;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
+use OCA\Empleados\Service\PermisosService;
+
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
 
@@ -46,7 +48,8 @@ class equiposController extends BaseController {
     protected $groupManager;
     private IConfig $config;
     private IClientService $clientService;
-    private ISubAdmin $subAdmin;   
+    private ISubAdmin $subAdmin;
+    protected PermisosService $permisosService;
 
     private IURLGenerator $urlGenerator;
 
@@ -63,6 +66,7 @@ class equiposController extends BaseController {
         IURLGenerator $urlGenerator,
         IClientService $clientService,
         ISubAdmin $subAdmin,
+        PermisosService $permisosService,
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -77,6 +81,7 @@ class equiposController extends BaseController {
         $this->urlGenerator = $urlGenerator;
         $this->clientService = $clientService;
         $this->subAdmin = $subAdmin;
+        $this->permisosService = $permisosService;
     }
 
     /**
@@ -110,7 +115,7 @@ class equiposController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEquipoJefe(): DataResponse {
-        $this->checkAccess(['admin', 'empleados']);
+        $this->requireHumanResourcesAccess();
         $id = $this->request->getParam('id');
         return new DataResponse($this->equiposMapper->GetEquipoJefe((string)$id), Http::STATUS_OK);
     }
@@ -390,5 +395,11 @@ class equiposController extends BaseController {
         }
 
         return false;
+    }
+    private function requireHumanResourcesAccess(): void {
+        $this->permisosService->requireCanSeeAny([
+            'empleados.hr',
+            'empleados.admin',
+        ]);
     }
 }

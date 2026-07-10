@@ -1,17 +1,6 @@
 <template>
 	<NcAppContent :name="t('empleados', 'Companies and groups')">
 		<div class="companies-page">
-			<div class="companies-header">
-				<div class="header-title">
-					<p class="section-label">
-						{{ t('empleados', 'Customers module') }}
-					</p>
-					<h2>{{ t('empleados', 'Companies and groups') }}</h2>
-					<p class="section-description">
-						{{ t('empleados', 'Manage customer groups, companies and sub-companies used by the time reportsmodule.') }}
-					</p>
-				</div>
-			</div>
 			<List :loading="loading"
 				:listas="filteredListas"
 				:select="select"
@@ -28,7 +17,8 @@
 									src="../../../../img/crowesito-think.png"
 									alt="Empty area state">
 
-								<h2>{{ t('empleados', 'Select a client for more details') }}</h2>
+								<h2>{{ t('empleados', 'Companies and groups') }}</h2>
+								<h1>{{ t('empleados', 'Select a client for more details') }}</h1>
 
 								<p class="areas-empty-description">
 									{{ t('empleados', 'Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.') }}
@@ -241,7 +231,7 @@
 								</div>
 							</div>
 
-							<div class="acordeon-item btn-top">
+							<div class="acordeon-item separator-top">
 								<button class="acordeon-titulo" @click="toggleAccordeon(1)">
 									{{ t('empleados', 'Group Information') }}
 									<span>{{ accordeon[1].abierto ? '-' : '+' }}</span>
@@ -317,7 +307,7 @@
 								</div>
 							</div>
 
-							<div class="info-section">
+							<div class="info-section separator-top">
 								<div class="section-head">
 									<div>
 										<p class="section-label">
@@ -357,7 +347,7 @@
 							</div>
 
 							<!-- Honorarios -->
-							<div class="info-section">
+							<div class="info-section top">
 								<div class="section-head">
 									<div>
 										<p class="section-label">
@@ -2622,7 +2612,6 @@ export default {
 .companies-page {
 	flex-direction: column;
 	gap: 24px;
-	padding: 24px;
 }
 
 /* ── Header ── */
@@ -2717,6 +2706,7 @@ export default {
 	background: var(--color-primary-element-light);
 	color: var(--color-primary-element);
 	flex-shrink: 0;
+	margin-inline: 38%;
 }
 
 .filter-wrap {
@@ -3392,7 +3382,7 @@ export default {
 }
 
 .details-header--especial {
-	background: linear-gradient(135deg, #6c9cda 20%, #0c254b 100%);
+	background: linear-gradient(135deg, #6c9cda 10%, #f9f9f9 100%);
 	border-radius: 8px;
 	padding: 16px 16px 10px 16px;
 }
@@ -3413,7 +3403,7 @@ export default {
 	padding-right: 4px !important;
 }
 .acordeon-item {
-	margin-bottom: 10px;
+	margin-top: 10px;
 	border-radius: 5px;
 	overflow: hidden;
 }
@@ -3631,5 +3621,11 @@ export default {
 .badge-tipo-eventual {
 	background-color: #fef9c3;
 	color: #92400e;
+}
+.separator-top{
+	margin-bottom: 20px;
+}
+.top{
+	margin-top: 40px;
 }
 </style>

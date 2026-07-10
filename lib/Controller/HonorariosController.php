@@ -12,6 +12,7 @@ use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Service\XlsxTemplateFiller;
 use OCA\Empleados\Service\LogoService;
+use OCA\Empleados\Service\PermisosService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -31,6 +32,7 @@ class HonorariosController extends BaseController {
 	protected clientesMapper $clientesMapper;
 	private LoggerInterface $logger;
 	private LogoService $logoService;
+	private PermisosService $permisosService;
 
 	public function __construct(
 		IRequest $request,
@@ -41,9 +43,9 @@ class HonorariosController extends BaseController {
 		honorariosMapper $honorariosMapper,
 		clientesMapper $clientesMapper,
 		LoggerInterface $logger,
-		LogoService $logoService
+		LogoService $logoService,
+		PermisosService $permisosService
 	) {
-
 		parent::__construct(
 			Application::APP_ID,
 			$request,
@@ -57,12 +59,21 @@ class HonorariosController extends BaseController {
 		$this->clientesMapper = $clientesMapper;
 		$this->logger = $logger;
 		$this->logoService = $logoService;
+		$this->permisosService = $permisosService;
+	}
+
+	private function requireClientesAccess(): void {
+		$this->permisosService->requireCanSee('clientes');
+	}
+
+	private function requireClientesAdminAccess(): void {
+		$this->permisosService->requireCanSee('clientes.admin');
 	}
 
 	#[UseSession]
 	#[NoAdminRequired]
 	public function getHonorarios(): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAccess();
 
 		return new DataResponse(
 			$this->honorariosMapper->findAll(),
@@ -73,7 +84,7 @@ class HonorariosController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function findByCliente(int $id_cliente): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAccess();
 
 		return new DataResponse(
 			$this->honorariosMapper->findByCliente($id_cliente),
@@ -84,7 +95,7 @@ class HonorariosController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function findById(int $id_honorario): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAccess();
 
 		return new DataResponse(
 			$this->honorariosMapper->findById($id_honorario),
@@ -95,7 +106,7 @@ class HonorariosController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function deleteById(int $id_honorario): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
 
 		$this->honorariosMapper->deleteById($id_honorario);
 
@@ -117,24 +128,18 @@ class HonorariosController extends BaseController {
 		bool $especial,
 		string $tipo_honorario = 'parcial'
 	): DataResponse {
-
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
 
 		$honorario = new honorarios();
 
 		$honorario->setId_cliente($id_cliente);
-
 		$honorario->setImporte_total($importe_total);
 		$honorario->setTipo_moneda($tipo_moneda);
-
 		$honorario->setFecha_inicio($fecha_inicio);
 		$honorario->setFecha_fin($fecha_fin);
-
 		$honorario->setTipo_servicio($tipo_servicio);
 		$honorario->setTipo_honorario($tipo_honorario);
-
 		$honorario->setEspecial($especial);
-
 		$honorario->setActivo(true);
 
 		$this->honorariosMapper->crearHonorario($honorario);
@@ -158,8 +163,7 @@ class HonorariosController extends BaseController {
 		bool $especial,
 		string $tipo_honorario = 'parcial'
 	): DataResponse {
-
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
 
 		$this->honorariosMapper->updateHonorario(
 			$id_honorario,
@@ -182,14 +186,14 @@ class HonorariosController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function completarHonorario(): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
 
-		$idHonorario  = (int)$this->request->getParam('id_honorario');
-		$idCliente    = (int)$this->request->getParam('id_cliente');
+		$idHonorario = (int)$this->request->getParam('id_honorario');
+		$idCliente = (int)$this->request->getParam('id_cliente');
 		$importeTotal = (float)$this->request->getParam('importe_total');
-		$tipoMoneda   = (string)$this->request->getParam('tipo_moneda', 'MXN');
-		$fechaInicio  = (string)$this->request->getParam('fecha_inicio');
-		$fechaFin     = (string)$this->request->getParam('fecha_fin');
+		$tipoMoneda = (string)$this->request->getParam('tipo_moneda', 'MXN');
+		$fechaInicio = (string)$this->request->getParam('fecha_inicio');
+		$fechaFin = (string)$this->request->getParam('fecha_fin');
 		$tipoServicio = $this->request->getParam('tipo_servicio');
 		$especial = (bool)$this->request->getParam('especial', false);
 		$tipoHonorario = (string)$this->request->getParam('tipo_honorario', 'parcial');
@@ -219,28 +223,32 @@ class HonorariosController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function finalizarHonorario(int $id_honorario): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
+
 		$this->honorariosMapper->desactivarHonorario($id_honorario);
+
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
 
 	#[UseSession]
 	#[NoAdminRequired]
 	public function reactivarHonorario(int $id_honorario): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
+
 		$this->honorariosMapper->reactivarHonorario($id_honorario);
+
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
 
 	#[UseSession]
 	#[NoAdminRequired]
 	public function actualizarMetadatos(): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
 
-		$idHonorario  = (int)$this->request->getParam('id_honorario');
+		$idHonorario = (int)$this->request->getParam('id_honorario');
 		$tipoServicio = $this->request->getParam('tipo_servicio');
-		$tipoMoneda   = (string)$this->request->getParam('tipo_moneda', 'MXN');
-		$especial     = (bool)$this->request->getParam('especial', false);
+		$tipoMoneda = (string)$this->request->getParam('tipo_moneda', 'MXN');
+		$especial = (bool)$this->request->getParam('especial', false);
 
 		$this->honorariosMapper->actualizarMetadatos(
 			$idHonorario,
@@ -271,11 +279,9 @@ class HonorariosController extends BaseController {
 		?string $nombreGerente = null,
 		?string $nombreSocio = null
 	) {
-
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireClientesAdminAccess();
 
 		try {
-
 			$honorario = $this->honorariosMapper->findById($id_honorario);
 
 			if (!$honorario) {
@@ -291,16 +297,11 @@ class HonorariosController extends BaseController {
 			}
 
 			$templatePath = __DIR__ . '/../../templates/PlantillaReporte.xlsx';
-			/*
-			* DATOS CLIENTE
-			*/
 
 			$grupoNombre = '';
 
 			if (!empty($cliente['cliente_padre'])) {
-
 				try {
-
 					$clientePadre = $this->clientesMapper->findById(
 						(int)$cliente['cliente_padre']
 					);
@@ -308,15 +309,10 @@ class HonorariosController extends BaseController {
 					if ($clientePadre) {
 						$grupoNombre = $clientePadre['nombre'] ?? '';
 					}
-
 				} catch (\Throwable $e) {
 					$grupoNombre = '';
 				}
 			}
-
-			/*
-			* HONORARIO
-			*/
 
 			$importeTotal = (float)$honorario['importe_total'];
 			$tipoHonorario = $honorario['tipo_honorario'] ?? 'parcial';
@@ -333,14 +329,21 @@ class HonorariosController extends BaseController {
 				? $importeTotal / $numParcialidades
 				: $importeTotal;
 
-			/* 
-			* PERIODO (mmm-yy)
-			*/
-
 			$mesesEs = [
-				'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-				'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
+				'ENERO',
+				'FEBRERO',
+				'MARZO',
+				'ABRIL',
+				'MAYO',
+				'JUNIO',
+				'JULIO',
+				'AGOSTO',
+				'SEPTIEMBRE',
+				'OCTUBRE',
+				'NOVIEMBRE',
+				'DICIEMBRE',
 			];
+
 			$periodoTxt = '';
 
 			if (!empty($honorario['fecha_inicio'])) {
@@ -348,21 +351,14 @@ class HonorariosController extends BaseController {
 				$periodoTxt = $mesesEs[(int)$fecha->format('n') - 1] . ' ' . $fecha->format('Y');
 			}
 
-			/*
-			* MONEDA ("FACTURACIÓN EN: PESOS" / "DÓLARES" / etc.)
-			*/
-
 			$monedasTxt = [
 				'MXN' => 'PESOS',
 				'USD' => 'DÓLARES',
 				'EUR' => 'EUROS',
 			];
+
 			$tipoMoneda = strtoupper((string)($honorario['tipo_moneda'] ?? 'MXN'));
 			$monedaTxt = $monedasTxt[$tipoMoneda] ?? $tipoMoneda;
-
-			/*
-			* LÍDER Y COLABORADORES
-			*/
 
 			$liderNombre = '';
 
@@ -384,13 +380,9 @@ class HonorariosController extends BaseController {
 
 			$colaboradoresTxt = implode(', ', $colaboradoresNombres);
 
-			/*
-			* GENERAR ARCHIVO
-			*/
-
 			$replacements = [
 				'{fecha}' => date('d/m/Y'),
-				'{departamento}'  => $departamento ?? '',
+				'{departamento}' => $departamento ?? '',
 
 				'{cliente.nombre}' => $cliente['nombre'] ?? '',
 				'{cliente.grupo}' => $grupoNombre,
@@ -402,9 +394,9 @@ class HonorariosController extends BaseController {
 				'{honorario.importe}' => number_format($importeTotal, 2, '.', ','),
 				'{honorario.moneda}' => $monedaTxt,
 				'{tipo_moneda}' => $tipoMoneda,
-				'{texto_tipo}'                  => $textoTipo,
-				'{honorario.iguala_mark}'       => $esIguala ? 'X' : '',
-				'{honorario.parcialidad_mark}'  => (!$esIguala && !$esEventual) ? 'X' : '',
+				'{texto_tipo}' => $textoTipo,
+				'{honorario.iguala_mark}' => $esIguala ? 'X' : '',
+				'{honorario.parcialidad_mark}' => (!$esIguala && !$esEventual) ? 'X' : '',
 				'{honorario.num_parcialidades}' => $esIguala ? '1' : (($numParcialidades > 0) ? (string)$numParcialidades : ''),
 				'{honorario.monto_parcialidad}' => $esIguala
 					? number_format($importeTotal, 2, '.', ',')
@@ -412,8 +404,8 @@ class HonorariosController extends BaseController {
 				'{honorario.asunto}' => $asunto ?? ($honorario['tipo_servicio'] ?? ''),
 				'{honorario.periodo}' => $periodoTxt,
 
-				'{lider}'        => $liderNombre,
-				'{colaborador}'  => $colaboradoresTxt,
+				'{lider}' => $liderNombre,
+				'{colaborador}' => $colaboradoresTxt,
 
 				'{gerente_junior.clave}' => $claveGerenteJunior ?? '',
 				'{gerente_junior.nombre}' => $nombreGerenteJunior ?? '',
@@ -448,7 +440,6 @@ class HonorariosController extends BaseController {
 			);
 
 		} catch (\Throwable $e) {
-
 			$this->logger->error(
 				$e->getMessage(),
 				[

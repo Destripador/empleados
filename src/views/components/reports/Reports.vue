@@ -564,7 +564,7 @@ export default {
 
 						const esAusencia = Number(idCliente) === 99999
 						const clienteNombre = esAusencia
-							? t('empleados', 'Absence')
+							? t('empleados', 'Absence - Vacation')
 							: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
 						const actividadNombre = esAusencia
 							? t('empleados', 'Cargable')

@@ -33,6 +33,21 @@
 			:text="t('empleados', 'You cannot request more days than available.')" />
 
 		<template v-if="AusenciaSeleccionada && !exceedsAvailableDays">
+			<NcNoteCard
+				v-if="esAusenciaVacacional && diasAcumuladosNum > 0"
+				type="warning"
+				:text="t('empleados', 'You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.', { dias: diasAcumuladosNum, fecha: fechaExpiracionFormateada })" />
+
+			<NcNoteCard
+				v-if="esAusenciaVacacional && diasDelAcumuladoAUsar > 0 && diasDelPeriodoActualAUsar > 0"
+				type="info"
+				:text="t('empleados', 'This request will be split: {acumulado} day(s) will be taken from your accumulated (expiring) balance, and {actual} day(s) from your current period.', { acumulado: diasDelAcumuladoAUsar, actual: diasDelPeriodoActualAUsar })" />
+
+			<NcNoteCard
+				v-if="acumuladoNoAplicaPorFecha"
+				type="info"
+				:text="t('empleados', 'Vacation days will be deducted from the balance of your current period, as accrued vacation days must be used within the corresponding period (before {fecha}).', { fecha: fechaExpiracionFormateada })" />
+
 			<section class="form-section">
 				<h3>{{ t('empleados', 'Absence period') }}</h3>
 				<div class="period-grid">
@@ -81,7 +96,7 @@
 				<template v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
 					<NcCheckboxRadioSwitch
 						v-model="SolicitarPrima"
-						:disabled="primaVacacionalUsada">
+						:disabled="primaDisabled">
 						{{ t('empleados', 'Request vacation bonus') }}
 					</NcCheckboxRadioSwitch>
 					<NcNoteCard
@@ -155,6 +170,8 @@ export default {
 	props: {
 		diasSolicitados: { type: Number, required: true },
 		diasDisponibles: { type: String, required: true },
+		diasAcumulados: { type: [Number, String], default: 0 },
+		fechaExpiracionAcumulados: { type: String, default: null },
 		date: {
 			type: Object,
 			required: true,
@@ -191,6 +208,57 @@ export default {
 	},
 
 	computed: {
+		diasAcumuladosNum() {
+			return parseFloat(this.diasAcumulados) || 0
+		},
+
+		esAusenciaVacacional() {
+			return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
+		},
+
+		fechaExpiracionFormateada() {
+			if (!this.fechaExpiracionAcumulados) return ''
+			return new Date(this.fechaExpiracionAcumulados).toLocaleDateString('es-MX')
+		},
+
+		diasDentroDeVigencia() {
+			if (!this.fechaExpiracionAcumulados || !this.date?.start) return this.diasSolicitados
+
+			const limite = new Date(this.fechaExpiracionAcumulados)
+			limite.setHours(0, 0, 0, 0)
+			const start = new Date(this.date.start)
+			start.setHours(0, 0, 0, 0)
+			const end = this.date.end ? new Date(this.date.end) : start
+			end.setHours(0, 0, 0, 0)
+
+			const cursor = new Date(start)
+			let count = 0
+			// eslint-disable-next-line no-unmodified-loop-condition
+			while (cursor <= end) {
+				if (cursor > limite) break
+				const dia = cursor.getDay()
+				if (dia !== 0 && dia !== 6) count++
+				cursor.setDate(cursor.getDate() + 1)
+			}
+			return count
+		},
+
+		diasDelAcumuladoAUsar() {
+			if (!this.esAusenciaVacacional) return 0
+			return Math.min(this.diasAcumuladosNum, this.diasSolicitados, this.diasDentroDeVigencia)
+		},
+
+		diasDelPeriodoActualAUsar() {
+			if (!this.esAusenciaVacacional) return 0
+			return this.diasSolicitados - this.diasDelAcumuladoAUsar
+		},
+
+		acumuladoNoAplicaPorFecha() {
+			return this.esAusenciaVacacional
+				&& this.diasAcumuladosNum > 0
+				&& this.diasDelAcumuladoAUsar === 0
+		},
+
 		exceedsAvailableDays() {
 			return this.AusenciaSeleccionada
 				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
@@ -226,6 +294,10 @@ export default {
 
 			return items
 		},
+
+		primaDisabled() {
+			return this.primaVacacionalUsada || this.diasSolicitados < 2
+		},
 	},
 
 	watch: {
@@ -236,10 +308,16 @@ export default {
 				await this.checkPrimaVacacional()
 			}
 		},
+
+		diasSolicitados(nuevo) {
+			if (nuevo < 2) {
+				this.SolicitarPrima = false
+			}
+		},
 	},
 
 	mounted() {
-		this.TotalDias = parseInt(this.diasDisponibles, 10)
+		this.TotalDias = parseInt(this.diasDisponibles, 10) + this.diasAcumuladosNum
 		this.RestanteDias = this.TotalDias - this.diasSolicitados
 		this.GetTipoAusencias()
 		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
@@ -330,6 +408,7 @@ export default {
 			try {
 				let url = generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
+					+ `&fecha_de=${encodeURIComponent(this.date.start.toLocaleDateString())}`
 				if (this.admin && this.employees_list?.user) {
 					url += `&id_usuario=${this.employees_list.user}`
 				}

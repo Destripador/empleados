@@ -77,7 +77,7 @@ https://youtu.be/WrfVQT97Mqk
 This project is currently in beta and under active development. It is already functional in internal environments, but some workflows, documentation and administrative tools may continue to change as the module evolves.
     ]]></description>
 
-    <version>2.4.0</version>
+    <version>2.4.1</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="luis.alvarado@crowe.mx" homepage="https://gossler-torreon.com">Luis Angel Alvarado Hernandez</author>

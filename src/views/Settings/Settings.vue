@@ -19,6 +19,17 @@
 					</NcEmptyContent>
 				</VTab>
 
+				<VTab :title="t('empleados', 'Group and permissions')">
+					<GroupSettings v-if="datamanager[0] !== null" />
+					<NcEmptyContent v-else
+						:name="t('empleados', 'Finish the initial setup')"
+						:description="t('empleados', 'Go to global settings and select the data manager.')">
+						<template #icon>
+							<AlertCircleOutline />
+						</template>
+					</NcEmptyContent>
+				</VTab>
+
 				<VTab :title="t('empleados', 'Working time')">
 					<TiempoLaboralSettings v-if="datamanager[0] !== null" />
 					<NcEmptyContent v-else
@@ -45,6 +56,7 @@ import AlertCircleOutline from 'vue-material-design-icons/AlertCircleOutline.vue
 import TiempoLaboralSettings from './TiempoLaboralSettings.vue'
 import EmpleadosSettings from './EmpleadosSettings.vue'
 import ListSettings from './ListSettings.vue'
+import GroupSettings from './GroupSettings.vue'
 
 import { showError /*, showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
@@ -62,6 +74,7 @@ export default {
 		EmpleadosSettings,
 		TiempoLaboralSettings,
 		ListSettings,
+		GroupSettings,
 		VueTabs,
 		VTab,
 		NcEmptyContent,

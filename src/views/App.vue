@@ -1,7 +1,7 @@
 <template id="content">
 	<NcContent app-name="empleados">
-		<navigator v-if="configuraciones.usuario_almacenamiento != null && String(configuraciones.usuario_almacenamiento).trim() !== ''" />
-		<router-view v-if="configuraciones.usuario_almacenamiento != null && String(configuraciones.usuario_almacenamiento).trim() !== ''" />
+		<navigator v-if="hasDataManager" />
+		<router-view v-if="hasDataManager" />
 		<NcEmptyContent v-else
 			:name="t('empleados', 'Finish the initial setup')"
 			:description="t('empleados', 'Go to global settings and select the data manager.')"
@@ -14,15 +14,15 @@
 </template>
 
 <script>
-// Importing necessary components
 import navigator from './navigator/Sidenavigation.vue'
 import { NcContent, NcEmptyContent } from '@nextcloud/vue'
+import { translate as t } from '@nextcloud/l10n'
 
-// icons
 import AlertCircleOutline from 'vue-material-design-icons/AlertCircleOutline.vue'
 
 export default {
 	name: 'App',
+
 	components: {
 		navigator,
 		NcContent,
@@ -34,13 +34,13 @@ export default {
 		return {
 			configuraciones: this.configuraciones,
 			groupuser: this.groupsuser,
-			employee: this.employee,
+			employee: this.employeeUser,
 			subordinates: this.subordinates,
+			permissions: this.permissions,
 		}
 	},
 
 	props: {
-		// Configuration parameters
 		parameters: {
 			type: Object,
 			required: true,
@@ -57,6 +57,15 @@ export default {
 			type: Array,
 			required: true,
 		},
+		permissionsContext: {
+			type: Object,
+			default: () => ({
+				uid: null,
+				is_admin: false,
+				groups: [],
+				modules: {},
+			}),
+		},
 	},
 
 	data() {
@@ -65,25 +74,40 @@ export default {
 			groupsuser: this.groupsUser,
 			employeeUser: this.employee,
 			subordinates: this.subordinatesGroup,
+			permissions: this.permissionsContext,
 		}
+	},
+
+	computed: {
+		hasDataManager() {
+			return this.configuraciones.usuario_almacenamiento !== null
+				&& this.configuraciones.usuario_almacenamiento !== undefined
+				&& String(this.configuraciones.usuario_almacenamiento).trim() !== ''
+		},
+	},
+
+	methods: {
+		t,
 	},
 }
 </script>
 
 <style scoped lang="scss">
-	.container {
-		padding-left: 60px;
+.container {
+	padding-left: 60px;
+}
+
+.board-title {
+	padding-left: 60px;
+	margin-right: 10px;
+	margin-top: 14px;
+	font-size: 25px;
+	display: flex;
+	align-items: center;
+	font-weight: bold;
+
+	.icon {
+		margin-right: 8px;
 	}
-	.board-title {
-		padding-left: 60px;
-		margin-right: 10px;
-		margin-top: 14px;
-		font-size: 25px;
-		display: flex;
-		align-items: center;
-		font-weight: bold;
-		.icon {
-			margin-right: 8px;
-		}
-	}
+}
 </style>

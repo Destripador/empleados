@@ -10,6 +10,7 @@ use OCA\Empleados\Db\InventarioComputoMapper;
 use OCA\Empleados\Db\SoporteHistorialMapper;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\configuracionesMapper;
+use OCA\Empleados\Service\PermisosService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -24,6 +25,7 @@ class InventarioController extends BaseController {
 	private InventarioModeloMapper $modelosMapper;
 	private InventarioComputoMapper $computoMapper;
 	private SoporteHistorialMapper $soporteMapper;
+	private PermisosService $permisosService;
 
 	public function __construct(
 		IRequest $request,
@@ -33,13 +35,31 @@ class InventarioController extends BaseController {
 		configuracionesMapper $configuracionesMapper,
 		InventarioModeloMapper $modelosMapper,
 		InventarioComputoMapper $computoMapper,
-		SoporteHistorialMapper $soporteMapper
+		SoporteHistorialMapper $soporteMapper,
+		PermisosService $permisosService
 	) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
 		$this->modelosMapper = $modelosMapper;
 		$this->computoMapper = $computoMapper;
 		$this->soporteMapper = $soporteMapper;
+		$this->permisosService = $permisosService;
+	}
+
+	private function requireInventarioAccess(): void {
+		$this->permisosService->requireCanSee('inventario');
+	}
+
+	private function requireInventarioAdminAccess(): void {
+		$this->permisosService->requireCanSee('inventario.admin');
+	}
+
+	private function requireSoporteAccess(): void {
+		$this->permisosService->requireCanSee('soporte');
+	}
+
+	private function requireSoporteAdminAccess(): void {
+		$this->permisosService->requireCanSee('soporte.admin');
 	}
 
 	/************************ MODELOS ************************/
@@ -48,7 +68,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioModelos(?string $search = null, ?string $tipo = null): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAccess();
 
 			return new DataResponse([
 				'success' => true,
@@ -63,7 +83,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioModelo(int $id_modelo): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAccess();
 
 			$modelo = $this->modelosMapper->findById($id_modelo);
 
@@ -95,7 +115,7 @@ class InventarioController extends BaseController {
 		$touch = false
 	): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAdminAccess();
 
 			$id = $this->modelosMapper->create([
 				'marca' => $marca,
@@ -129,7 +149,7 @@ class InventarioController extends BaseController {
 		$touch = false
 	): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAdminAccess();
 
 			$this->modelosMapper->updateById($id_modelo, [
 				'marca' => $marca,
@@ -154,7 +174,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function EliminarInventarioModelo(int $id_modelo): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAdminAccess();
 
 			$this->modelosMapper->deleteById($id_modelo);
 
@@ -173,7 +193,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioComputo(?string $search = null, ?string $estado = null, ?int $id_empleado = null): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAccess();
 
 			return new DataResponse([
 				'success' => true,
@@ -188,7 +208,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioEquiposSelect(): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAccess();
 
 			$current = $this->request->getParam('current', null);
 			$onlyAvailable = (string)$this->request->getParam('onlyAvailable', 'true') !== 'false';
@@ -212,7 +232,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioEquipo(int $id_equipo): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAccess();
 
 			$equipo = $this->computoMapper->findById($id_equipo);
 
@@ -236,7 +256,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioEmpleado(int $id_empleado): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAccess();
 
 			return new DataResponse([
 				'success' => true,
@@ -259,7 +279,7 @@ class InventarioController extends BaseController {
 		?string $info = null
 	): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAdminAccess();
 
 			$id = $this->computoMapper->create([
 				'id_empleado' => $id_empleado,
@@ -293,7 +313,7 @@ class InventarioController extends BaseController {
 		?string $info = null
 	): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAdminAccess();
 
 			$this->computoMapper->updateById($id_equipo, [
 				'id_empleado' => $id_empleado,
@@ -318,7 +338,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function EliminarInventarioEquipo(int $id_equipo): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireInventarioAdminAccess();
 
 			$this->computoMapper->deleteById($id_equipo);
 
@@ -337,7 +357,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetSoporteEquipo(int $id_equipo): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireSoporteAccess();
 
 			return new DataResponse([
 				'success' => true,
@@ -359,7 +379,7 @@ class InventarioController extends BaseController {
 		?string $usuario_soporte = null
 	): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireSoporteAdminAccess();
 
 			$id = $this->soporteMapper->create([
 				'id_equipo' => $id_equipo,
@@ -390,7 +410,7 @@ class InventarioController extends BaseController {
 		?string $usuario_soporte = null
 	): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireSoporteAdminAccess();
 
 			$this->soporteMapper->updateById($id_soporte, [
 				'accion' => $accion,
@@ -413,7 +433,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function EliminarSoporteEquipo(int $id_soporte): DataResponse {
 		try {
-			$this->checkAccess(['admin', 'empleados']);
+			$this->requireSoporteAdminAccess();
 
 			$this->soporteMapper->deleteById($id_soporte);
 

@@ -90,9 +90,6 @@
 			</div>
 
 			<!-- ─── Vista: Resumen por empleado ─── -->
-			<!-- Esta vista se evalúa ANTES del check de "sin registros": el selector de
-			     empleados y las tarjetas de resumen deben verse aunque el periodo elegido
-			     no tenga ausencias (antes se ocultaban por completo, que era el bug). -->
 			<div v-else-if="vistaActual === 'resumen'" class="resumen-vista">
 				<div class="resumen-selector">
 					<AccountSearch :size="20" class="resumen-selector-icon" />
@@ -125,17 +122,20 @@
 							<span class="resumen-label">{{ t('empleados', 'Días restantes') }}</span>
 							<span class="resumen-valor">{{ periodoInfo?.dias_restantes ?? '—' }}</span>
 						</div>
+						<div class="resumen-card" :class="{ 'resumen-card--prima-si': resumenEmpleadoStats.primaSolicitada }">
+							<span class="resumen-label">{{ t('empleados', 'Prima vacacional') }}</span>
+							<span class="resumen-valor resumen-valor-prima">
+								<template v-if="resumenEmpleadoStats.primaSolicitada">
+									{{ t('empleados', 'Solicitado en: {fecha}', { fecha: formatFecha(resumenEmpleadoStats.primaFecha) }) }}
+								</template>
+								<template v-else>
+									{{ t('empleados', 'No solicitado aún') }}
+								</template>
+							</span>
+						</div>
 						<div class="resumen-card">
 							<span class="resumen-label">{{ t('empleados', 'Registros') }}</span>
 							<span class="resumen-valor">{{ resumenEmpleadoStats.total }}</span>
-						</div>
-						<div class="resumen-card">
-							<span class="resumen-label">{{ t('empleados', 'Con prima vac.') }}</span>
-							<span class="resumen-valor">{{ resumenEmpleadoStats.conPrima }}</span>
-						</div>
-						<div class="resumen-card">
-							<span class="resumen-label">{{ t('empleados', 'Sin prima vac.') }}</span>
-							<span class="resumen-valor">{{ resumenEmpleadoStats.sinPrima }}</span>
 						</div>
 					</div>
 
@@ -185,9 +185,17 @@
 										</span>
 									</td>
 									<td>
-										<span>{{ formatFecha(item.fecha_de) }}</span>
+										<span
+											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
+											:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+											{{ formatFecha(item.fecha_de) }}
+										</span>
 										<span class="periodo-sep">→</span>
-										<span>{{ formatFecha(item.fecha_hasta) }}</span>
+										<span
+											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
+											:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+											{{ formatFecha(item.fecha_hasta) }}
+										</span>
 									</td>
 									<td class="col-dias cell-center">
 										<strong>{{ item.dias_solicitados ?? '—' }}</strong>
@@ -273,9 +281,17 @@
 								</span>
 							</td>
 							<td>
-								<span>{{ formatFecha(item.fecha_de) }}</span>
+								<span
+									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
+									:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+									{{ formatFecha(item.fecha_de) }}
+								</span>
 								<span class="periodo-sep">→</span>
-								<span>{{ formatFecha(item.fecha_hasta) }}</span>
+								<span
+									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
+									:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+									{{ formatFecha(item.fecha_hasta) }}
+								</span>
 							</td>
 							<td class="col-dias cell-center">
 								<strong>{{ item.dias_solicitados ?? '—' }}</strong>
@@ -465,11 +481,8 @@ export default {
 			periodoSeleccionado: null,
 			cargandoPeriodos: false,
 			haCargadoAlMenos: false,
-			// Catálogo de empleados independiente del periodo/rango consultado.
-			// Antes "opcionesEmpleados" salía de "registros", que se reemplaza en
-			// cada cargarReporte(); si el periodo elegido no tenía registros, el
-			// selector de empleados se quedaba sin opciones (el bug reportado).
 			empleadosCatalogo: [],
+			empleadoIdPorNombre: {},
 		}
 	},
 
@@ -527,12 +540,12 @@ export default {
 		resumenEmpleadoStats() {
 			const registros = this.registrosResumenEmpleado
 			const dias = registros.reduce((acc, r) => acc + (parseInt(r.dias_solicitados) || 0), 0)
-			const conPrima = registros.filter(r => parseInt(r.prima_vacacional) === 1).length
+			const registroPrima = registros.find(r => parseInt(r.prima_vacacional) === 1) || null
 			return {
 				total: registros.length,
 				dias,
-				conPrima,
-				sinPrima: registros.length - conPrima,
+				primaSolicitada: !!registroPrima,
+				primaFecha: registroPrima ? registroPrima.fecha_de : null,
 			}
 		},
 	},
@@ -574,11 +587,20 @@ export default {
 			this.registros = []
 			this.limpiarFiltros()
 			try {
-				const url = generateUrl('/apps/empleados/historial-reporte')
-				const params = (this.vistaActual === 'resumen' && this.periodoInfo)
-					? { desde: this.periodoInfo.periodo_inicio, hasta: this.periodoInfo.periodo_fin }
-					: { desde: this.filtroDesde, hasta: this.filtroHasta }
-				const { data } = await axios.get(url, { params })
+				let data
+				if (this.vistaActual === 'resumen' && this.periodoInfo) {
+					// Filtra por id_aniversario, no por rango de fechas
+					const url = generateUrl('/apps/empleados/historial-reporte-aniversario')
+					const params = {
+						id_empleado: this.periodoInfo.id_empleado,
+						numero_aniversario: this.periodoInfo.numero_aniversario,
+					}
+					;({ data } = await axios.get(url, { params }))
+				} else {
+					const url = generateUrl('/apps/empleados/historial-reporte')
+					const params = { desde: this.filtroDesde, hasta: this.filtroHasta }
+					;({ data } = await axios.get(url, { params }))
+				}
 				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
 				this.registros = Array.isArray(mensaje) ? mensaje : []
 			} catch (e) {
@@ -586,19 +608,20 @@ export default {
 			} finally {
 				this.cargando = false
 				this.haCargadoAlMenos = true
-				// Alimenta el catálogo de empleados con lo que vaya llegando, por si
-				// aún no se cargó con cargarEmpleadosCatalogo() (p. ej. primera carga).
+				// Alimenta el catálogo de empleados con lo que vaya llegando.
 				if (this.empleadosCatalogo.length === 0 && this.registros.length > 0) {
 					this.empleadosCatalogo = [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort()
 				}
+				this.registros.forEach(r => {
+					if (r.nombre_empleado && r.id_empleado) {
+						this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado
+					}
+				})
 			}
 		},
 
 		/**
 		 * Carga, una sola vez, el listado completo de empleados con historial
-		 * (independiente del rango de fechas/periodo que esté activo en el
-		 * reporte), para que el selector de "Resumen por empleado" no dependa
-		 * de si el periodo seleccionado trajo registros o no.
 		 */
 		async cargarEmpleadosCatalogo() {
 			try {
@@ -607,6 +630,11 @@ export default {
 				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
 				const todos = Array.isArray(mensaje) ? mensaje : []
 				this.empleadosCatalogo = [...new Set(todos.map(r => r.nombre_empleado).filter(Boolean))].sort()
+				todos.forEach(r => {
+					if (r.nombre_empleado && r.id_empleado) {
+						this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado
+					}
+				})
 			} catch (e) {
 				console.error('Error cargando catálogo de empleados:', e)
 			}
@@ -637,8 +665,7 @@ export default {
 			this.periodoSeleccionado = null
 			if (!this.empleadoResumen) return
 
-			const item = this.registros.find(r => r.nombre_empleado === this.empleadoResumen)
-			const idEmpleado = item?.id_empleado
+			const idEmpleado = this.empleadoIdPorNombre[this.empleadoResumen]
 			if (!idEmpleado) return
 
 			this.cargandoPeriodos = true
@@ -1102,6 +1129,11 @@ th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
 	font-variant-numeric: tabular-nums;
 }
 
+.fecha-tardia {
+	color: #ac1818;
+	font-weight: 450;
+}
+
 /* ── Responsive ── */
 @media (max-width: 1024px) {
 	.reporte-tabla { font-size: 0.78rem; }
@@ -1232,6 +1264,20 @@ th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
 	font-size: 1.3rem;
 	font-weight: 700;
 	color: var(--color-main-text);
+}
+
+.resumen-valor-prima {
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--color-text-maxcontrast);
+}
+
+.resumen-card--prima-si .resumen-valor-prima {
+	color: #065f46;
+}
+
+.resumen-card--prima-si {
+	background: #d1fae5;
 }
 
 .periodo-vac-tabla {

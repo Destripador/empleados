@@ -24,6 +24,8 @@ use OCP\IGroupManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
+use OCA\Empleados\Service\PermisosService;
+
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
 
@@ -38,6 +40,7 @@ class PuestosController extends BaseController {
     protected $puestosMapper;
     protected $configuracionesMapper;
     protected $l10n;
+    protected PermisosService $permisosService;
 
     public function __construct(
         IRequest $request,
@@ -47,7 +50,9 @@ class PuestosController extends BaseController {
         puestosMapper $puestosMapper,
         configuracionesMapper $configuracionesMapper,
         IL10N $l10n,
-		IGroupManager $groupManager
+		IGroupManager $groupManager,
+        PermisosService $permisosService
+        
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -57,6 +62,7 @@ class PuestosController extends BaseController {
         $this->puestosMapper = $puestosMapper;
         $this->configuracionesMapper = $configuracionesMapper;
         $this->l10n = $l10n;
+        $this->permisosService = $permisosService;
     }
 
     /**
@@ -65,7 +71,7 @@ class PuestosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetPuestosFix(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $result = array_map(fn($puesto) => [
             'value' => $puesto['Id_puestos'],
             'label' => $puesto['Nombre'],
@@ -80,7 +86,7 @@ class PuestosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetPuestosList(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         return new DataResponse($this->puestosMapper->GetPuestosList(), Http::STATUS_OK);
     }
 
@@ -88,7 +94,7 @@ class PuestosController extends BaseController {
      * Exporta la lista de puestos a un archivo XLSX.
      */
     public function ExportListPuestos(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $puestos = $this->puestosMapper->GetPuestosList();
         $books = [['Id_puesto', 'Nombre', 'created_at', 'updated_at']];
 
@@ -109,7 +115,7 @@ class PuestosController extends BaseController {
      * Importa la lista de puestos desde un archivo XLSX.
      */
     public function ImportListPuestos(): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $file = $this->getUploadedFile('puestofileXLSX');
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
@@ -135,7 +141,7 @@ class PuestosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function EliminarPuesto(int $id_puesto): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         try {
             $this->puestosMapper->EliminarPuesto((string) $id_puesto);
             return new DataResponse(Http::STATUS_OK);
@@ -150,7 +156,7 @@ class PuestosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GuardarCambioPuestos(int $id_puestos, string $nombre): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $this->puestosMapper->updatePuestos((string) $id_puestos, $nombre);
         return new DataResponse(Http::STATUS_OK);
     }
@@ -161,7 +167,7 @@ class PuestosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function crearPuesto(string $nombre): DataResponse {
-        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->requireHumanResourcesAccess();
         $timestamp = date('Y-m-d');
         $puesto = new puestos();
         $puesto->setnombre($nombre);
@@ -175,10 +181,18 @@ class PuestosController extends BaseController {
      * Obtiene un archivo subido y maneja posibles errores.
      */
     private function getUploadedFile(string $key): array {
+        $this->requireHumanResourcesAccess();
         $file = $this->request->getUploadedFile($key);
         if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
             throw new UploadException($this->l10n->t('Error en la subida del archivo.'));
         }
         return $file;
+    }
+
+    private function requireHumanResourcesAccess(): void {
+        $this->permisosService->requireCanSeeAny([
+            'empleados.hr',
+            'empleados.admin',
+        ]);
     }
 }
