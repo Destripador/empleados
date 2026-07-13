@@ -100,7 +100,7 @@
 			<template v-if="AusenciaSeleccionada && AusenciaSeleccionada.solicitar_prima_vacacional == 1">
 				<NcCheckboxRadioSwitch
 					v-model="SolicitarPrima"
-					:disabled="primaVacacionalUsada">
+					:disabled="primaDisabled">
 					{{ t('empleados', 'Request vacation bonus') }}
 				</NcCheckboxRadioSwitch>
 				<NcNoteCard
@@ -254,6 +254,10 @@ export default {
 				&& this.diasHabiles > 0
 				&& !this.exceedsAvailableDays
 		},
+
+		primaDisabled() {
+			return this.primaVacacionalUsada || this.diasHabiles < 2
+		},
 	},
 
 	watch: {
@@ -261,6 +265,11 @@ export default {
 			this.primaVacacionalUsada = false
 			if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
 				await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
+			}
+		},
+		fechaDesdeStr() {
+			if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+				this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
 			}
 		},
 	},
@@ -322,6 +331,10 @@ export default {
 				fecha.setDate(fecha.getDate() + 1)
 			}
 			this.diasHabiles = count
+
+			if (this.diasHabiles < 2) {
+				this.SolicitarPrima = false
+			}
 		},
 
 		handleDrop(event) {
@@ -379,6 +392,7 @@ export default {
 				const res = await axios.get(
 					generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
+					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`
 				)
 				this.primaVacacionalUsada = res.data.ocs.data.used === true
 			} catch (e) {

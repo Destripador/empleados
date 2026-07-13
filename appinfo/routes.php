@@ -138,6 +138,14 @@ return [
 		['name' => 'ausencias#EditarAusencia', 'url' => '/EditarAusencia', 'verb' => 'POST'],
 		['name' => 'ausencias#CheckPrimaVacacional', 'url' => '/check-prima-vacacional', 'verb' => 'GET'],
 		['name' => 'ausencias#GetHistorialReporte', 'url' => '/historial-reporte', 'verb' => 'GET'],
+		['name' => 'ausencias#GetHistorialReporteAniversario', 'url' => '/historial-reporte-aniversario', 'verb' => 'GET'],
+		['name' => 'ausencias#getVacacionesEmpleado', 'url' => '/vacaciones-empleado', 'verb' => 'GET'],
+		['name' => 'ausencias#getPeriodosVacaciones', 'url' => '/periodos-vacaciones', 'verb' => 'GET'],
+		['name' => 'ausencias#EditarAcumuladoManual', 'url' => '/edit-acumulado-manual', 'verb' => 'POST'],
+		['name' => 'ausencias#AsignarDiasDerecho', 'url' => '/AsignarDiasDerecho', 'verb' => 'POST'],
+
+		['name' => 'ausencias#AprobarAusencia', 'url' => '/AprobarAusencia', 'verb' => 'POST'],
+		['name' => 'ausencias#RechazarAusencia', 'url' => '/RechazarAusencia', 'verb' => 'POST'],
 
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],

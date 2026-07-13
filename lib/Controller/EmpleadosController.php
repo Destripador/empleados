@@ -17,6 +17,7 @@ use OCP\IL10N;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\departamentosMapper;
 use OCA\Empleados\Db\configuracionesMapper;
+use OCA\Empleados\Db\historialvacacionesMapper;
 use OCA\Empleados\Db\ausenciasMapper;
 use OCA\Empleados\Db\userahorroMapper;
 use OCA\Empleados\Db\ausencias;
@@ -58,6 +59,7 @@ class EmpleadosController extends BaseController {
     protected $session;
     protected $l10n;
     protected $equiposMapper;
+    protected $historialvacacionesMapper;
     protected PermisosService $permisosService;
 
     protected IRootFolder $rootFolder;
@@ -77,6 +79,7 @@ class EmpleadosController extends BaseController {
         IRootFolder $rootFolder,
         IAvatarManager $avatarManager,
         equiposMapper $equiposMapper,
+        historialvacacionesMapper $historialvacacionesMapper,
         PermisosService $permisosService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
@@ -661,5 +664,21 @@ class EmpleadosController extends BaseController {
             $state,
         );
         return new DataResponse("ok", Http::STATUS_OK);
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GuardarDiasDerecho(int $id_empleado, int $anio, float $dias_derecho): DataResponse {
+        $this->checkAccess(['admin', 'recursos_humanos']);
+        $this->historialvacacionesMapper->guardar($id_empleado, $anio, $dias_derecho);
+        return new DataResponse(Http::STATUS_OK);
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetDiasDerecho(int $id_empleado, int $anio): DataResponse {
+        $this->checkAccess(['admin', 'recursos_humanos']);
+        $registro = $this->historialvacacionesMapper->getByEmpleadoYAnio($id_empleado, $anio);
+        return new DataResponse(['dias_derecho' => $registro], Http::STATUS_OK);
     }
 }

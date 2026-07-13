@@ -20,7 +20,8 @@ class historialausenciasMapper extends QBMapper {
 		int $prima_vacacional,
 		string $notas,
 		$id_aniverario,
-		int $dias_solicitados
+		int $dias_solicitados,
+		float $dias_de_acumulado = 0.0
 	): int {
 		$insert = $this->db->getQueryBuilder();
 		$insert->insert($this->getTableName())
@@ -32,7 +33,8 @@ class historialausenciasMapper extends QBMapper {
 				'fecha_hasta'       => $insert->createNamedParameter($fecha_hasta),
 				'prima_vacacional'  => $insert->createNamedParameter($prima_vacacional),
 				'notas'             => $insert->createNamedParameter($notas),
-				'dias_solicitados'  => $insert->createNamedParameter($dias_solicitados), // ← NUEVO
+				'dias_solicitados'  => $insert->createNamedParameter($dias_solicitados),
+				'dias_de_acumulado' => $insert->createNamedParameter($dias_de_acumulado),
 				'timestamp'         => $insert->createNamedParameter((new \DateTime())->format('Y-m-d H:i:s')),
 			]);
 
@@ -43,7 +45,7 @@ class historialausenciasMapper extends QBMapper {
 	public function GetAusenciasEnRango(string $desde, string $hasta, int $id): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('h.*', 't.nombre AS tipo_nombre')
+		$qb->select('h.*', 't.nombre AS tipo_nombre', 't.solicitar_prima_vacacional')
 			->from($this->getTableName(), 'h')
 			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
 			->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
@@ -159,22 +161,16 @@ class historialausenciasMapper extends QBMapper {
 	}
 
 	/**
-	 * Verifica si el empleado ya tiene una prima vacacional activa en el año actual.
-	 * Se ignora el registro con $exclude_id (útil al editar).
+	 * Verifica si el empleado ya tiene una prima vacacional activa en el año
 	 */
-	public function PrimaVacacionalUsadaEsteAnio(int $id_ausencias, int $exclude_id = 0): bool {
+	public function PrimaVacacionalUsadaEsteAnio(int $id_ausencias, int $anio, int $exclude_id = 0): bool {
 		$qb = $this->db->getQueryBuilder();
-
-		$anioActual = (new \DateTime())->format('Y');
-		$inicio = $anioActual . '-01-01';
-		$fin    = $anioActual . '-12-31';
 
 		$qb->select($qb->createFunction('COUNT(*)'))
 			->from($this->getTableName())
 			->where($qb->expr()->eq('id_ausencias', $qb->createNamedParameter($id_ausencias)))
+			->andWhere($qb->expr()->eq($qb->createFunction('YEAR(fecha_de)'), $qb->createNamedParameter($anio, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('prima_vacacional', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
-			->andWhere($qb->expr()->gte('fecha_de', $qb->createNamedParameter($inicio)))
-			->andWhere($qb->expr()->lte('fecha_de', $qb->createNamedParameter($fin)))
 			// Excluir canceladas: está cancelada cuando a_gerente = 3 O a_socio = 3
 			->andWhere(
 				$qb->expr()->andX(
@@ -218,6 +214,35 @@ class historialausenciasMapper extends QBMapper {
 		return $ausencias;
 	}
 
+	/**
+	 * Igual que GetHistorialReporteCompleto pero filtrando por id_aniversario
+	 * en vez de por rango de fechas.
+	 */
+	public function GetHistorialPorAniversario(int $id_ausencias, int $numero_aniversario): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+				'h.*',
+				't.nombre AS tipo_ausencia',
+				't.solicitar_prima_vacacional',
+				'e.Id_user AS nombre_empleado',
+				'e.Id_empleados AS id_empleado'
+			)
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->innerJoin('h', 'ausencias', 'a', $qb->expr()->eq('h.id_ausencias', 'a.id_ausencias'))
+			->innerJoin('a', 'empleados', 'e', $qb->expr()->eq('a.id_empleado', 'e.Id_empleados'))
+			->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id_ausencias, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('h.id_aniversario', $qb->createNamedParameter($numero_aniversario, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->orderBy('h.timestamp', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
 	public function GetHistorialReporteCompleto(string $desde, string $hasta): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -225,7 +250,8 @@ class historialausenciasMapper extends QBMapper {
 				'h.*',
 				't.nombre AS tipo_ausencia',
 				't.solicitar_prima_vacacional',
-				'e.Id_user AS nombre_empleado'
+				'e.Id_user AS nombre_empleado',
+				'e.Id_empleados AS id_empleado'
 			)
 			->from($this->getTableName(), 'h')
 			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
@@ -238,6 +264,82 @@ class historialausenciasMapper extends QBMapper {
 				)
 			)
 			->orderBy('h.timestamp', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	public function SetEstadoGerente(int $id, int $estado): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('a_gerente', $qb->createNamedParameter($estado, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+		$qb->executeStatement();
+	}
+
+	public function SetEstadoSocio(int $id, int $estado): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('a_socio', $qb->createNamedParameter($estado, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+		$qb->executeStatement();
+	}
+
+	public function SetEstadoCapitalHumano(int $id, int $estado): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('a_capital_humano', $qb->createNamedParameter($estado, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Marca los 3 roles como rechazados de una sola vez (se usa cuando cualquiera rechaza).
+	 */
+	public function RechazarTodo(int $id): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->set('a_socio', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->set('a_capital_humano', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Ausencias que capital humano todavía debe vigilar
+	 */
+	public function GetAusenciasHistorialCapitalHumano(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+				'h.*',
+				't.nombre AS tipo_nombre',
+				't.solicitar_prima_vacacional',
+				'e.Id_user AS nombre_empleado',
+				'e.Id_empleados AS id_empleado'
+			)
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->innerJoin('h', 'ausencias', 'a', $qb->expr()->eq('h.id_ausencias', 'a.id_ausencias'))
+			->innerJoin('a', 'empleados', 'e', $qb->expr()->eq('a.id_empleado', 'e.Id_empleados'))
+			->where(
+				// no está 100% aprobada todavía
+				$qb->expr()->orX(
+					$qb->expr()->neq('h.a_gerente', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
+					$qb->expr()->neq('h.a_socio', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
+					$qb->expr()->neq('h.a_capital_humano', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+				)
+			)
+			// y tampoco está rechazada ni cancelada
+			->andWhere($qb->expr()->neq('h.a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('h.a_gerente', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('h.a_socio', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('h.a_socio', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('h.a_capital_humano', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();

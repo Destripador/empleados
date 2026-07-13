@@ -103,10 +103,5 @@ class empleados extends Entity {
 			'Numero_emergencia' => $this->numeroemergencia,
 			'Notas' => $this->notas,
 		];
-
-
-
-
-
 	}
 }

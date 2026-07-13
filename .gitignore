@@ -46,3 +46,5 @@ l10n/*.pot
 docker-compose.override.yml
 .aider*
 AIDER.md
+
+/js/

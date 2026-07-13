@@ -80,6 +80,7 @@ class ActualizarAniversarios extends Job {
 						$update->update('ausencias')
 							->set('id_aniversario', $update->createNamedParameter($anios))
 							->set('dias_disponibles', $update->createNamedParameter($nuevoTotalDias))
+							->set('prima_vacacional', $update->createNamedParameter(0))
 							->set('timestamp', $update->createNamedParameter($hoy->format('Y-m-d H:i:s')))
 							->where($update->expr()->eq('id_ausencias', $update->createNamedParameter($row['id_ausencias'])))
 							->executeStatement();

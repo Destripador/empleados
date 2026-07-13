@@ -67,10 +67,11 @@
 									<PartyPopper :size="20" />
 									{{ t('empleados', 'Anniversary') }}
 								</label>
-								<input id="Aniversario"
-									v-model="Aniversario"
+								<input
+									id="Aniversario"
+									:value="cargandoPeriodo ? '…' : Aniversario"
 									type="text"
-									:disabled="!show"
+									disabled
 									class="inputtype">
 							</div>
 
@@ -80,25 +81,45 @@
 									<BagSuitcase :size="20" />
 									{{ t('empleados', 'Vacation') }}
 								</label>
-								<input id="Vacaciones"
-									v-model="Vacaciones"
-									type="text"
-									:disabled="!show"
-									class="inputtype">
+								<div class="stepper-wrapper">
+									<div v-if="show" class="stepper-arrows">
+										<button type="button"
+											class="stepper-btn"
+											:disabled="cargandoPeriodo"
+											@click="incrementarVacaciones(1)">
+											<ChevronUp :size="11" fill-color="currentColor" />
+										</button>
+										<button type="button"
+											class="stepper-btn"
+											:disabled="cargandoPeriodo"
+											@click="incrementarVacaciones(-1)">
+											<ChevronDown :size="11" fill-color="currentColor" />
+										</button>
+									</div>
+									<input id="Vacaciones"
+										v-model.number="Vacaciones"
+										type="number"
+										step="1"
+										min="0"
+										:disabled="!show || cargandoPeriodo"
+										:placeholder="cargandoPeriodo ? '…' : ''"
+										class="inputtype stepper-input">
+								</div>
 							</div>
 
-							<!-- Calculate vacations -->
+							<!-- Save vacation days -->
 							<div
-								v-if="Ingreso && (Aniversario == 0 || !Aniversario) && (!Vacaciones || Vacaciones == 0.00)"
+								v-if="show"
 								class="topRefresh MarginRight">
 								<NcButton
 									type="primary"
-									:disabled="!show"
-									@click="CalcularVacaciones()">
+									:disabled="guardandoDias || cargandoPeriodo || String(Vacaciones) === String(diasDerechoOriginal)"
+									@click="GuardarDiasDerecho()">
 									<template #icon>
-										<Refresh :size="20" />
+										<NcLoadingIcon v-if="guardandoDias" :size="20" />
+										<ContentSaveOutline v-else :size="20" />
 									</template>
-									{{ t('empleados', 'Calculate') }}
+									{{ t('empleados', 'Save') }}
 								</NcButton>
 							</div>
 						</div>
@@ -343,9 +364,11 @@ import Calendarrange from 'vue-material-design-icons/CalendarRange.vue'
 import Laptopaccount from 'vue-material-design-icons/LaptopAccount.vue'
 import BagSuitcase from 'vue-material-design-icons/BagSuitcase.vue'
 import PartyPopper from 'vue-material-design-icons/PartyPopper.vue'
-import Refresh from 'vue-material-design-icons/Refresh.vue'
 import Bank from 'vue-material-design-icons/Bank.vue'
 import Cash from 'vue-material-design-icons/Cash.vue'
+import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
+import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 
 import {
 	NcAvatar,
@@ -353,6 +376,7 @@ import {
 	NcSelect,
 	NcListItem,
 	NcCheckboxRadioSwitch,
+	NcLoadingIcon,
 } from '@nextcloud/vue'
 
 export default {
@@ -365,10 +389,13 @@ export default {
 		Bank,
 		PartyPopper,
 		BagSuitcase,
-		Refresh,
 		Piggybankoutline,
 		Laptopaccount,
 		Cash,
+		ContentSaveOutline,
+		ChevronUp,
+		ChevronDown,
+		NcLoadingIcon,
 		OrganizationChart,
 		NcButton,
 		NcSelect,
@@ -409,6 +436,9 @@ export default {
 			Vacaciones: '',
 			state: false,
 			inventarioEquipos: [],
+			diasDerechoOriginal: '',
+			guardandoDias: false,
+			cargandoPeriodo: false,
 		}
 	},
 
@@ -440,8 +470,20 @@ export default {
 					news.id_aniversario,
 					news.state)
 
+				await this.cargarPeriodoActual(news.Id_empleados)
 				await this.getInventarioEquipos(news.Equipo_asignado)
 			}
+		},
+
+		Ingreso: {
+			handler(nuevaFecha) {
+				if (!nuevaFecha || !this.show) return
+
+				const años = this.calcularAniversarioDesdeFecha(nuevaFecha)
+				if (años !== null) {
+					this.Aniversario = años
+				}
+			},
 		},
 	},
 
@@ -471,13 +513,14 @@ export default {
 			this.data.id_aniversario,
 			this.data.state)
 
+		await this.cargarPeriodoActual(this.data.Id_empleados)
 		await this.getInventarioEquipos(this.data.Equipo_asignado)
 	},
 
 	methods: {
 		t,
 
-		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, Vacaciones, Aniversario, state) {
+		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state) {
 			this.Numero_empleado = this.checknull(NumeroEmpleado)
 			this.Ingreso = this.checknull(Ingreso)
 			this.area = Area
@@ -490,8 +533,6 @@ export default {
 			this.Equipo = this.checknull(Equipo)
 			this.Equipo_asignado = this.checknull(EquipoAsignado)
 			this.Sueldo = this.checknull(Sueldo)
-			this.Vacaciones = this.checknull(Vacaciones)
-			this.Aniversario = this.checknull(Aniversario)
 
 			// Mapeo de estado: '1' = puede solicitar; '0'/'2' = solo lectura
 			if (state === '0' || state === '2') {
@@ -580,6 +621,23 @@ export default {
 			}
 		},
 
+		calcularAniversarioDesdeFecha(fechaStr) {
+			if (!fechaStr) return null
+
+			const ingreso = new Date(fechaStr)
+			if (Number.isNaN(ingreso.getTime())) return null
+
+			const hoy = new Date()
+			let años = hoy.getFullYear() - ingreso.getFullYear()
+			const diffMeses = hoy.getMonth() - ingreso.getMonth()
+
+			if (diffMeses < 0 || (diffMeses === 0 && hoy.getDate() < ingreso.getDate())) {
+				años--
+			}
+
+			return Math.max(0, años)
+		},
+
 		checknull(value) {
 			return value ?? ''
 		},
@@ -623,18 +681,6 @@ export default {
 				showSuccess(t('empleados', 'Datos actualizados'), { close: true })
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepción [03] [{error}]', { error: String(err), close: true }))
-			}
-		},
-
-		async CalcularVacaciones() {
-			try {
-				const response = await axios.post(generateUrl('/apps/empleados/GetAniversarioByDate'), {
-					ingreso: this.checknull(this.Ingreso),
-				})
-				this.Aniversario = response?.data?.ocs?.data[0]?.numero_aniversario
-				this.Vacaciones = response?.data?.ocs?.data[0]?.dias
-			} catch (err) {
-				showError(t('empleados', 'No se pudo calcular las vacaciones, verifica tabla de aniversarios'), { close: true })
 			}
 		},
 
@@ -781,6 +827,54 @@ export default {
 			]
 				.filter(Boolean)
 				.join(' · ')
+		},
+
+		async GuardarDiasDerecho() {
+			if (String(this.Vacaciones) === String(this.diasDerechoOriginal)) return
+
+			this.guardandoDias = true
+			try {
+				await axios.post(generateUrl('/apps/empleados/AsignarDiasDerecho'), {
+					id_empleado: this.data.Id_empleados,
+					dias_disponibles: this.checknull(this.Vacaciones),
+				})
+				this.diasDerechoOriginal = this.Vacaciones
+				showSuccess(t('empleados', 'Días de vacaciones asignados'), { close: true })
+			} catch (err) {
+				showError(t('empleados', 'No se pudieron asignar los días [{error}]', { error: String(err), close: true }))
+			} finally {
+				this.guardandoDias = false
+			}
+		},
+
+		async cargarPeriodoActual(idEmpleado) {
+			if (!idEmpleado) return
+
+			this.cargandoPeriodo = true
+			this.Aniversario = ''
+			this.Vacaciones = ''
+
+			try {
+				const response = await axios.post(generateUrl('/apps/empleados/GetAusenciasByUser'), {
+					id: idEmpleado,
+				})
+				const periodo = response?.data?.ocs?.data?.[0]
+
+				if (periodo) {
+					this.Aniversario = this.checknull(periodo.id_aniversario)
+					this.Vacaciones = this.checknull(periodo.dias_disponibles)
+					this.diasDerechoOriginal = this.Vacaciones
+				}
+			} catch (err) {
+				showError(t('empleados', 'No se pudo cargar el periodo de vacaciones [{error}]', { error: String(err), close: true }))
+			} finally {
+				this.cargandoPeriodo = false
+			}
+		},
+
+		incrementarVacaciones(delta) {
+			const actual = Number(this.Vacaciones) || 0
+			this.Vacaciones = Math.max(0, actual + delta)
 		},
 	},
 }
@@ -1288,5 +1382,68 @@ export default {
 .equipo-status--inactivo {
 	background: var(--color-background-dark);
 	color: var(--color-text-maxcontrast);
+}
+
+.stepper-wrapper {
+	display: flex;
+	align-items: stretch;
+	gap: 6px;
+}
+
+.stepper-input {
+	padding-right: 12px;
+	-moz-appearance: textfield;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+	margin: 0;
+	-webkit-appearance: none;
+}
+
+.stepper-arrows {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+/* Selector reforzado + !important para ganarle al botón default de Nextcloud */
+.stepper-wrapper .stepper-arrows button.stepper-btn {
+	display: flex !important;
+	width: 20px !important;
+	height: 16px !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	align-items: center;
+	justify-content: center;
+	padding: 0 !important;
+	margin: 0 !important;
+	border: 1px solid var(--color-border) !important;
+	border-radius: 5px !important;
+	background: var(--color-background-hover) !important;
+	box-shadow: none !important;
+	color: var(--color-text-maxcontrast);
+	line-height: 0;
+	cursor: pointer;
+	transition: background-color 100ms ease, color 100ms ease, border-color 100ms ease;
+}
+
+.stepper-wrapper .stepper-arrows button.stepper-btn:disabled {
+	cursor: not-allowed;
+	opacity: 0.35;
+}
+
+.stepper-wrapper .stepper-arrows button.stepper-btn:hover:not(:disabled) {
+	background: var(--color-primary-element-light) !important;
+	border-color: var(--color-primary-element) !important;
+	color: var(--color-primary-element);
+}
+
+.stepper-wrapper .stepper-arrows button.stepper-btn :deep(svg) {
+	width: 11px !important;
+	height: 11px !important;
+	margin: 0 !important;
 }
 </style>
