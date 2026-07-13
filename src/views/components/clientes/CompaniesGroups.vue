@@ -79,7 +79,10 @@
 							type="multiselect"
 							:label-outside="false"
 							:manual-open="true"
-							:options="[{ label: 'A to Z', value: 'az' }, { label: 'Z to A', value: 'za' }]">
+							:options="[
+								{ label: t('empleados', 'A to Z'), value: 'az' },
+								{ label: t('empleados', 'Z to A'), value: 'za' },
+							]">
 							{{ t('empleados', 'Sort') }}
 						</NcActionInput>
 
@@ -227,30 +230,34 @@
 											</div>
 										</div>
 									</div>
-								</VTab>
 
-								<VTab :title="t('empleados', 'Group Information')">
 									<div class="btn-top">
 										<div class="info-section">
-											<div class="">
-												<div class="details-grid">
-													<div class="detail-card">
-														<span>{{ t('empleados', 'Parent group') }}</span>
-														<span class="value-text">{{ parentName }}</span>
-													</div>
+											<div class="section-head">
+												<div>
+													<p class="section-label">
+														{{ t('empleados', 'Group Information') }}
+													</p>
+												</div>
+											</div>
 
-													<div class="detail-card">
-														<span>{{ t('empleados', 'Sub-companies') }}</span>
-														<span class="value-text">{{ childCompanies.length }}</span>
-													</div>
+											<div class="details-grid">
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Parent group') }}</span>
+													<span class="value-text">{{ parentName }}</span>
+												</div>
 
-													<div class="detail-card detail-card-wide">
-														<span>{{ t('empleados', 'Hierarchy') }}</span>
-														<div class="breadcrumb">
-															<span>{{ parentName }}</span>
-															<span class="separator">/</span>
-															<span class="value-text">{{ selectedClient.nombre }}</span>
-														</div>
+												<div class="detail-card">
+													<span>{{ t('empleados', 'Sub-companies') }}</span>
+													<span class="value-text">{{ childCompanies.length }}</span>
+												</div>
+
+												<div class="detail-card detail-card-wide">
+													<span>{{ t('empleados', 'Hierarchy') }}</span>
+													<div class="breadcrumb">
+														<span>{{ parentName }}</span>
+														<span class="separator">/</span>
+														<span class="value-text">{{ selectedClient.nombre }}</span>
 													</div>
 												</div>
 											</div>
@@ -298,316 +305,322 @@
 										</div>
 									</div>
 								</VTab>
-							</VueTabs>
 
-							<div class="info-section separator-top">
-								<div class="section-head">
-									<div>
-										<p class="section-label">
-											{{ t('empleados', 'Team') }}
-										</p>
-										<h3>{{ t('empleados', 'Collaborators') }}</h3>
-									</div>
-								</div>
-
-								<div class="collaborators-block">
-									<!-- Líder de proyecto -->
-									<div class="collaborator-row">
-										<span class="collaborator-role">{{ t('empleados', 'Project Leader') }}</span>
-										<div v-if="projectManager" class="collaborator-item">
-											<img :src="projectManager.avatar"
-												:alt="projectManager.label"
-												class="collaborator-avatar">
-											<span class="value-text">{{ projectManager.label }}</span>
-										</div>
-										<span v-else class="value-text">No one has registered yet</span>
-									</div>
-
-									<!-- Colaboradores -->
-									<div class="collaborator-row">
-										<span class="collaborator-role">{{ t('empleados', 'Collaborators') }}</span>
-										<div v-if="selectedClientCollaborators.length > 0" class="collaborator-list">
-											<div v-for="emp in selectedClientCollaborators"
-												:key="emp.value"
-												class="collaborator-item">
-												<img :src="emp.avatar" :alt="emp.label" class="collaborator-avatar">
-												<span class="value-text">{{ emp.label }}</span>
+								<VTab :title="t('empleados', 'Team, Collaborators and Fees')">
+									<div class="info-section separator-top">
+										<div class="section-head">
+											<div>
+												<p class="section-label">
+													{{ t('empleados', 'Team') }}
+												</p>
+												<h3>{{ t('empleados', 'Collaborators') }}</h3>
 											</div>
 										</div>
-										<span v-else class="value-text">No one has registered yet</span>
-									</div>
-								</div>
-							</div>
 
-							<!-- Honorarios -->
-							<div class="info-section billing-section top">
-								<div class="section-head billing-head">
-									<div class="billing-title">
-										<span class="billing-title__icon">
-											<FileDocumentOutline :size="20" />
-										</span>
-										<div>
-											<p class="section-label">
-												{{ t('empleados', 'Billing') }}
-											</p>
-											<h3>{{ t('empleados', 'Service Fees') }}</h3>
-										</div>
-									</div>
-									<div class="billing-actions">
-										<NcActions>
-											<template #icon>
-												<DotsHorizontal :size="20" />
-											</template>
-
-											<NcActionButton @click="honorarioFilterModal = true">
-												<template #icon>
-													<FilterVariant :size="20" />
-												</template>
-												{{ t('empleados', 'Filters') }}
-											</NcActionButton>
-
-											<NcActionButton @click="toggleSelectMode">
-												<template #icon>
-													<CheckboxMarkedOutline :size="20" />
-												</template>
-												{{ selectMode ? t('empleados', 'Exit selection') : t('empleados', 'Select') }}
-											</NcActionButton>
-										</NcActions>
-
-										<span v-if="honorarioFilterCount > 0" class="filter-badge">
-											{{ honorarioFilterCount }}
-										</span>
-
-										<NcButton type="primary" @click="openHonorarioModal">
-											{{ t('empleados', 'New fee') }}
-										</NcButton>
-									</div>
-								</div>
-
-								<div v-if="selectMode" class="select-bar">
-									<span>{{ selectedHonorarios.length }} {{ t('empleados', 'selected') }}</span>
-									<div class="select-bar__actions">
-										<NcButton @click="toggleSelectMode">
-											{{ t('empleados', 'Cancel') }}
-										</NcButton>
-										<NcButton type="primary"
-											:disabled="selectedHonorarios.length === 0"
-											@click="generarReporteHonorarios">
-											{{ t('empleados', 'Generate report') }}
-										</NcButton>
-									</div>
-								</div>
-
-								<NcEmptyContent v-if="!filteredHonorarios.length"
-									:name="t('empleados', 'No fees registered')"
-									:description="t('empleados', 'Register a service fee for this company.')">
-									<template #icon>
-										<OfficeBuilding />
-									</template>
-								</NcEmptyContent>
-
-								<div v-else class="honorarios-list">
-									<div v-for="honorario in filteredHonorarios"
-										:key="honorario.id_honorario"
-										class="honorario-card"
-										:class="{
-											'honorario-especial': Number(honorario.especial) === 1,
-											'honorario-card--selected': selectedHonorarios.includes(honorario.id_honorario)
-										}">
-										<div class="honorario-header">
-											<input v-if="selectMode"
-												type="checkbox"
-												:checked="selectedHonorarios.includes(honorario.id_honorario)"
-												class="honorario-checkbox"
-												@change="toggleSeleccionHonorario(honorario.id_honorario)">
-
-											<div class="honorario-info">
-												<span class="value-text">{{ honorario.tipo_servicio || t('empleados',
-													'Service') }}</span>
-												<span class="honorario-date">
-													{{ honorario.fecha_inicio }} — {{ honorario.fecha_fin }}
+										<div class="collaborators-block">
+											<!-- Líder de proyecto -->
+											<div class="collaborator-row">
+												<span class="collaborator-role">{{ t('empleados', 'Project Leader') }}</span>
+												<div v-if="projectManager" class="collaborator-item">
+													<img :src="projectManager.avatar"
+														:alt="projectManager.label"
+														class="collaborator-avatar">
+													<span class="value-text">{{ projectManager.label }}</span>
+												</div>
+												<span v-else class="value-text">
+													{{ t('empleados', 'No one has registered yet') }}
 												</span>
 											</div>
-											<div class="honorario-meta">
-												<span class="honorario-amount">
-													{{ formatImporte(montoAcumulado(honorario)) }} {{ honorario.tipo_moneda }}
+
+											<!-- Colaboradores -->
+											<div class="collaborator-row">
+												<span class="collaborator-role">{{ t('empleados', 'Collaborators') }}</span>
+												<div v-if="selectedClientCollaborators.length > 0" class="collaborator-list">
+													<div v-for="emp in selectedClientCollaborators"
+														:key="emp.value"
+														class="collaborator-item">
+														<img :src="emp.avatar" :alt="emp.label" class="collaborator-avatar">
+														<span class="value-text">{{ emp.label }}</span>
+													</div>
+												</div>
+												<span v-else class="value-text">
+													{{ t('empleados', 'No one has registered yet') }}
 												</span>
-												<span class="honorario-badge"
-													:class="Number(honorario.activo) ? 'badge-active' : 'badge-done'">
-													{{ Number(honorario.activo) ? t('empleados', 'Active') : t('empleados', 'Completed') }}
+											</div>
+										</div>
+									</div>
+
+									<!-- Honorarios -->
+									<div class="info-section billing-section top">
+										<div class="section-head billing-head">
+											<div class="billing-title">
+												<span class="billing-title__icon">
+													<FileDocumentOutline :size="20" />
 												</span>
-
-												<!-- badge de tipo -->
-												<span class="honorario-badge badge-tipo"
-													:class="'badge-tipo-' + (honorario.tipo_honorario || 'parcial')">
-													{{ honorario.tipo_honorario || 'parcial' }}
-												</span>
-												<!-- Botón reactivar — solo igualas completadas -->
-												<div class="honorario-right-actions">
-													<NcButton v-if="Number(honorario.numero_parcialidades) === 0"
-														type="secondary"
-														@click="completarHonorarioBorrador(honorario)">
-														{{ t('empleados', 'Complete fee') }}
-													</NcButton>
-
-													<NcButton v-if="Number(honorario.numero_parcialidades) > 0"
-														type="tertiary"
-														@click="toggleParcialidades(honorario.id_honorario)">
-														{{ t('empleados', 'Installments') }}
-													</NcButton>
-
-													<NcActions :force-menu="true">
-														<template #icon>
-															<DotsHorizontal :size="20" />
-														</template>
-
-														<NcActionButton
-															v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 1"
-															@click="agregarParcialidadIguala(honorario.id_honorario)">
-															<template #icon>
-																<CalendarPlus :size="20" />
-															</template>
-															{{ t('empleados', '+ Month') }}
-														</NcActionButton>
-
-														<NcActionButton
-															v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 1"
-															class="action-danger"
-															@click="askFinalizarHonorario(honorario.id_honorario)">
-															<template #icon>
-																<CloseCircleOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Finalize') }}
-														</NcActionButton>
-
-														<NcActionButton
-															v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 0"
-															@click="reactivarHonorario(honorario.id_honorario)">
-															<template #icon>
-																<Restore :size="20" />
-															</template>
-															{{ t('empleados', 'Reactivate') }}
-														</NcActionButton>
-
-														<NcActionSeparator
-															v-if="honorario.tipo_honorario === 'iguala'" />
-
-														<NcActionButton @click="abrirModificarHonorario(honorario)">
-															<template #icon>
-																<PencilOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Modify') }}
-														</NcActionButton>
-
-														<NcActionButton @click="abrirReporteHonorario(honorario)">
-															<template #icon>
-																<FileDocumentOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Report') }}
-														</NcActionButton>
-
-														<NcActionButton @click="askDeleteHonorario(honorario.id_honorario)">
-															<template #icon>
-																<TrashCanOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Delete') }}
-														</NcActionButton>
-													</NcActions>
+												<div>
+													<p class="section-label">
+														{{ t('empleados', 'Billing') }}
+													</p>
+													<h3>{{ t('empleados', 'Service Fees') }}</h3>
 												</div>
 											</div>
+											<div class="billing-actions">
+												<NcActions>
+													<template #icon>
+														<DotsHorizontal :size="20" />
+													</template>
+
+													<NcActionButton @click="honorarioFilterModal = true">
+														<template #icon>
+															<FilterVariant :size="20" />
+														</template>
+														{{ t('empleados', 'Filters') }}
+													</NcActionButton>
+
+													<NcActionButton @click="toggleSelectMode">
+														<template #icon>
+															<CheckboxMarkedOutline :size="20" />
+														</template>
+														{{ selectMode ? t('empleados', 'Exit selection') : t('empleados', 'Select') }}
+													</NcActionButton>
+												</NcActions>
+
+												<span v-if="honorarioFilterCount > 0" class="filter-badge">
+													{{ honorarioFilterCount }}
+												</span>
+
+												<NcButton type="primary" @click="openHonorarioModal">
+													{{ t('empleados', 'New fee') }}
+												</NcButton>
+											</div>
 										</div>
 
-										<div v-if="parcialidadesAbiertas[honorario.id_honorario]"
-											class="parcialidades-list">
-											<div class="parcialidades-head">
-												<span>{{ t('empleados', 'Installments') }}</span>
-												<span>
-													{{ (parcialidades[honorario.id_honorario] || []).length }}
-												</span>
+										<div v-if="selectMode" class="select-bar">
+											<span>{{ selectedHonorarios.length }} {{ t('empleados', 'selected') }}</span>
+											<div class="select-bar__actions">
+												<NcButton @click="toggleSelectMode">
+													{{ t('empleados', 'Cancel') }}
+												</NcButton>
+												<NcButton type="primary"
+													:disabled="selectedHonorarios.length === 0"
+													@click="generarReporteHonorarios">
+													{{ t('empleados', 'Generate report') }}
+												</NcButton>
 											</div>
-											<div v-if="loadingParcialidades[honorario.id_honorario]"
-												class="parcialidades-loading">
-												{{ t('empleados', 'Loading...') }}
-											</div>
-											<template v-else>
-												<div v-for="p in (parcialidades[honorario.id_honorario] || [])"
-													:key="p.id_parcialidad"
-													class="parcialidad-row"
-													:class="{
-														'parcialidad-pagada': Number(p.pagado) === 1,
-														'parcialidad-facturada': Number(p.pagado) === 2
-													}">
-													<div class="parcialidad-main">
-														<div class="parcialidad-num-wrapper">
-															<span class="parcialidad-num">#{{ p.numero_parcialidad
-															}}</span>
+										</div>
 
-															<span
-																v-if="Number(p.pagado) === 1 || Number(p.pagado) === 2"
-																class="parcialidad-toggle"
-																:class="{ open: detalleAbierto[p.id_parcialidad] }"
-																@click="toggleDetalleParcialidad(p.id_parcialidad)">
-																<ChevronDown :size="16" />
-															</span>
-														</div>
-														<span class="parcialidad-fechas">{{ p.pfecha_inicio }} — {{
-															p.pfecha_fin }}</span>
-														<span class="parcialidad-importe">{{
-															formatImporte(p.importe_parcialidad) }} {{
-															honorario.tipo_moneda }}</span>
+										<NcEmptyContent v-if="!filteredHonorarios.length"
+											:name="t('empleados', 'No fees registered')"
+											:description="t('empleados', 'Register a service fee for this company.')">
+											<template #icon>
+												<OfficeBuilding />
+											</template>
+										</NcEmptyContent>
 
-														<div class="parcialidad-actions">
-															<NcButton v-if="Number(p.pagado) === 0"
-																class="btn-pagar"
-																type="primary"
-																@click="abrirDialogPago(p.id_parcialidad, honorario.id_honorario)">
-																{{ t('empleados', 'Mark as paid') }}
-															</NcButton>
+										<div v-else class="honorarios-list">
+											<div v-for="honorario in filteredHonorarios"
+												:key="honorario.id_honorario"
+												class="honorario-card"
+												:class="{
+													'honorario-especial': Number(honorario.especial) === 1,
+													'honorario-card--selected': selectedHonorarios.includes(honorario.id_honorario)
+												}">
+												<div class="honorario-header">
+													<input v-if="selectMode"
+														type="checkbox"
+														:checked="selectedHonorarios.includes(honorario.id_honorario)"
+														class="honorario-checkbox"
+														@change="toggleSeleccionHonorario(honorario.id_honorario)">
 
-															<template v-else-if="Number(p.pagado) === 1">
-																<NcButton class="btn-factura"
-																	type="secondary"
-																	@click="confirmarFactura(p.id_parcialidad, honorario.id_honorario)">
-																	{{ t('empleados', 'Mark as invoiced') }}
-																</NcButton>
-															</template>
-
-															<template v-else-if="Number(p.pagado) === 2">
-																<span class="parcialidad-completada">
-																	{{ t('empleados', 'Completed') }} ✓
-																</span>
-															</template>
-														</div>
+													<div class="honorario-info">
+														<span class="value-text">{{ honorario.tipo_servicio || t('empleados',
+															'Service') }}</span>
+														<span class="honorario-date">
+															{{ honorario.fecha_inicio }} — {{ honorario.fecha_fin }}
+														</span>
 													</div>
-													<div v-if="detalleAbierto[p.id_parcialidad]" class="parcialidad-detalle">
-														<span v-if="p.fecha_pago" class="parcialidad-detail-text">
-															💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
+													<div class="honorario-meta">
+														<span class="honorario-amount">
+															{{ formatImporte(montoAcumulado(honorario)) }} {{ honorario.tipo_moneda }}
+														</span>
+														<span class="honorario-badge"
+															:class="Number(honorario.activo) ? 'badge-active' : 'badge-done'">
+															{{ Number(honorario.activo) ? t('empleados', 'Active') : t('empleados', 'Completed') }}
 														</span>
 
-														<NcActions v-if="Number(p.pagado) === 1" class="parcialidad-detalle-actions">
-															<template #icon>
-																<DotsHorizontal :size="18" />
-															</template>
-															<NcActionButton @click="editarFechaPago(p, honorario.id_honorario)">
+														<!-- badge de tipo -->
+														<span class="honorario-badge badge-tipo"
+															:class="'badge-tipo-' + (honorario.tipo_honorario || 'parcial')">
+															{{ formatTipoHonorario(honorario.tipo_honorario) }}
+														</span>
+														<!-- Botón reactivar — solo igualas completadas -->
+														<div class="honorario-right-actions">
+															<NcButton v-if="Number(honorario.numero_parcialidades) === 0"
+																type="secondary"
+																@click="completarHonorarioBorrador(honorario)">
+																{{ t('empleados', 'Complete fee') }}
+															</NcButton>
+
+															<NcButton v-if="Number(honorario.numero_parcialidades) > 0"
+																type="tertiary"
+																@click="toggleParcialidades(honorario.id_honorario)">
+																{{ t('empleados', 'Installments') }}
+															</NcButton>
+
+															<NcActions :force-menu="true">
 																<template #icon>
-																	<PencilOutline :size="20" />
+																	<DotsHorizontal :size="20" />
 																</template>
-																{{ t('empleados', 'Edit payment date') }}
-															</NcActionButton>
-															<NcActionButton @click="askCancelarPago(p, honorario.id_honorario)">
-																<template #icon>
-																	<CloseCircleOutline :size="20" />
-																</template>
-																{{ t('empleados', 'Cancel payment') }}
-															</NcActionButton>
-														</NcActions>
+
+																<NcActionButton
+																	v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 1"
+																	@click="agregarParcialidadIguala(honorario.id_honorario)">
+																	<template #icon>
+																		<CalendarPlus :size="20" />
+																	</template>
+																	{{ t('empleados', '+ Month') }}
+																</NcActionButton>
+
+																<NcActionButton
+																	v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 1"
+																	class="action-danger"
+																	@click="askFinalizarHonorario(honorario.id_honorario)">
+																	<template #icon>
+																		<CloseCircleOutline :size="20" />
+																	</template>
+																	{{ t('empleados', 'Finalize') }}
+																</NcActionButton>
+
+																<NcActionButton
+																	v-if="honorario.tipo_honorario === 'iguala' && Number(honorario.activo) === 0"
+																	@click="reactivarHonorario(honorario.id_honorario)">
+																	<template #icon>
+																		<Restore :size="20" />
+																	</template>
+																	{{ t('empleados', 'Reactivate') }}
+																</NcActionButton>
+
+																<NcActionSeparator
+																	v-if="honorario.tipo_honorario === 'iguala'" />
+
+																<NcActionButton @click="abrirModificarHonorario(honorario)">
+																	<template #icon>
+																		<PencilOutline :size="20" />
+																	</template>
+																	{{ t('empleados', 'Modify') }}
+																</NcActionButton>
+
+																<NcActionButton @click="abrirReporteHonorario(honorario)">
+																	<template #icon>
+																		<FileDocumentOutline :size="20" />
+																	</template>
+																	{{ t('empleados', 'Report') }}
+																</NcActionButton>
+
+																<NcActionButton @click="askDeleteHonorario(honorario.id_honorario)">
+																	<template #icon>
+																		<TrashCanOutline :size="20" />
+																	</template>
+																	{{ t('empleados', 'Delete') }}
+																</NcActionButton>
+															</NcActions>
+														</div>
 													</div>
 												</div>
-											</template>
+
+												<div v-if="parcialidadesAbiertas[honorario.id_honorario]"
+													class="parcialidades-list">
+													<div class="parcialidades-head">
+														<span>{{ t('empleados', 'Installments') }}</span>
+														<span>
+															{{ (parcialidades[honorario.id_honorario] || []).length }}
+														</span>
+													</div>
+													<div v-if="loadingParcialidades[honorario.id_honorario]"
+														class="parcialidades-loading">
+														{{ t('empleados', 'Loading...') }}
+													</div>
+													<template v-else>
+														<div v-for="p in (parcialidades[honorario.id_honorario] || [])"
+															:key="p.id_parcialidad"
+															class="parcialidad-row"
+															:class="{
+																'parcialidad-pagada': Number(p.pagado) === 1,
+																'parcialidad-facturada': Number(p.pagado) === 2
+															}">
+															<div class="parcialidad-main">
+																<div class="parcialidad-num-wrapper">
+																	<span class="parcialidad-num">#{{ p.numero_parcialidad
+																	}}</span>
+
+																	<span
+																		v-if="Number(p.pagado) === 1 || Number(p.pagado) === 2"
+																		class="parcialidad-toggle"
+																		:class="{ open: detalleAbierto[p.id_parcialidad] }"
+																		@click="toggleDetalleParcialidad(p.id_parcialidad)">
+																		<ChevronDown :size="16" />
+																	</span>
+																</div>
+																<span class="parcialidad-fechas">{{ p.pfecha_inicio }} — {{
+																	p.pfecha_fin }}</span>
+																<span class="parcialidad-importe">{{
+																	formatImporte(p.importe_parcialidad) }} {{
+																	honorario.tipo_moneda }}</span>
+
+																<div class="parcialidad-actions">
+																	<NcButton v-if="Number(p.pagado) === 0"
+																		class="btn-pagar"
+																		type="primary"
+																		@click="abrirDialogPago(p.id_parcialidad, honorario.id_honorario)">
+																		{{ t('empleados', 'Mark as paid') }}
+																	</NcButton>
+
+																	<template v-else-if="Number(p.pagado) === 1">
+																		<NcButton class="btn-factura"
+																			type="secondary"
+																			@click="confirmarFactura(p.id_parcialidad, honorario.id_honorario)">
+																			{{ t('empleados', 'Mark as invoiced') }}
+																		</NcButton>
+																	</template>
+
+																	<template v-else-if="Number(p.pagado) === 2">
+																		<span class="parcialidad-completada">
+																			{{ t('empleados', 'Completed') }} ✓
+																		</span>
+																	</template>
+																</div>
+															</div>
+															<div v-if="detalleAbierto[p.id_parcialidad]" class="parcialidad-detalle">
+																<span v-if="p.fecha_pago" class="parcialidad-detail-text">
+																	💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
+																</span>
+
+																<NcActions v-if="Number(p.pagado) === 1" class="parcialidad-detalle-actions">
+																	<template #icon>
+																		<DotsHorizontal :size="18" />
+																	</template>
+																	<NcActionButton @click="editarFechaPago(p, honorario.id_honorario)">
+																		<template #icon>
+																			<PencilOutline :size="20" />
+																		</template>
+																		{{ t('empleados', 'Edit payment date') }}
+																	</NcActionButton>
+																	<NcActionButton @click="askCancelarPago(p, honorario.id_honorario)">
+																		<template #icon>
+																			<CloseCircleOutline :size="20" />
+																		</template>
+																		{{ t('empleados', 'Cancel payment') }}
+																	</NcActionButton>
+																</NcActions>
+															</div>
+														</div>
+													</template>
+												</div>
+											</div>
 										</div>
 									</div>
-								</div>
-							</div>
+								</VTab>
+							</VueTabs>
 						</div>
 
 						<!-- Modal - Fecha Pago -->
@@ -776,7 +789,7 @@
 						track-by="id" />
 
 					<NcNoteCard type="info" class="span-2">
-						{{ t('empleados', 'Leave parent group empty to create a main group. Select a parent to create asub - company.') }}
+						{{ t('empleados', 'Leave parent group empty to create a main group. Select a parent to create a sub-company.') }}
 					</NcNoteCard>
 				</div>
 
@@ -1247,9 +1260,9 @@ export default {
 			selectedHonorarios: [],
 			h_tipo_honorario: 'parcial', // 'parcial' | 'iguala' | 'eventual'
 			tiposHonorario: [
-				{ label: 'Parcialidades', value: 'parcial' },
-				{ label: 'Iguala mensual', value: 'iguala' },
-				{ label: 'Eventual', value: 'eventual' },
+				{ label: t('empleados', 'Installments'), value: 'parcial' },
+				{ label: t('empleados', 'Retainer fee'), value: 'iguala' },
+				{ label: t('empleados', 'One-time'), value: 'eventual' },
 			],
 			honorarioToFinalizar: null,
 			showFinalizarDialog: false,
@@ -1662,6 +1675,15 @@ export default {
 				minimumFractionDigits: 2,
 				maximumFractionDigits: 2,
 			})
+		},
+		formatTipoHonorario(tipo) {
+			const labels = {
+				parcial: t('empleados', 'Installments'),
+				iguala: t('empleados', 'Retainer fee'),
+				eventual: t('empleados', 'One-time'),
+			}
+
+			return labels[tipo || 'parcial'] || tipo || '-'
 		},
 
 		montoAcumulado(honorario) {
