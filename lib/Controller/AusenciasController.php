@@ -1400,7 +1400,7 @@ class AusenciasController extends BaseController {
                     if ((int) ($item['solicitar_prima_vacacional'] ?? 0) !== 1) {
                         continue;
                     }
-                    $diasDisfrutados += (float) $item['dias_solicitados'] - (float) ($item['dias_de_acumulado'] ?? 0);
+                    $diasDisfrutados += (float) ($item['dias_de_acumulado'] ?? 0);
                 }
             }
 
