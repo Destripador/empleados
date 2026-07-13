@@ -149,10 +149,23 @@
 								</div>
 							</div>
 
-							<div class="acordeon-item btn-top">
-								<button class="acordeon-titulo" @click="toggleAccordeon(0)">
-									{{ t('empleados', 'General Information') }}
-									<span>{{ accordeon[0].abierto ? '-' : '+' }}</span>
+							<div class="acordeon-item acordeon-item--group btn-top"
+								:class="{ 'acordeon-item--open': accordeon[0].abierto }">
+								<button class="acordeon-titulo"
+									type="button"
+									:aria-expanded="String(accordeon[0].abierto)"
+									@click="toggleAccordeon(0)">
+									<span class="acordeon-titulo__icon">
+										<OfficeBuilding :size="21" />
+									</span>
+									<span class="acordeon-titulo__copy">
+										<strong>{{ t('empleados', 'General Information') }}</strong>
+										<small>{{ t('empleados', 'Company details and responsible team') }}</small>
+									</span>
+									<span class="acordeon-titulo__toggle"
+										:class="{ 'acordeon-titulo__toggle--open': accordeon[0].abierto }">
+										<ChevronDown :size="20" />
+									</span>
 								</button>
 								<div :class="['acordeon-contenido', { abierto: accordeon[0].abierto }]">
 									<div class="btn-top">
@@ -231,10 +244,23 @@
 								</div>
 							</div>
 
-							<div class="acordeon-item separator-top">
-								<button class="acordeon-titulo" @click="toggleAccordeon(1)">
-									{{ t('empleados', 'Group Information') }}
-									<span>{{ accordeon[1].abierto ? '-' : '+' }}</span>
+							<div class="acordeon-item acordeon-item--group separator-top"
+								:class="{ 'acordeon-item--open': accordeon[1].abierto }">
+								<button class="acordeon-titulo"
+									type="button"
+									:aria-expanded="String(accordeon[1].abierto)"
+									@click="toggleAccordeon(1)">
+									<span class="acordeon-titulo__icon">
+										<AccountGroup :size="21" />
+									</span>
+									<span class="acordeon-titulo__copy">
+										<strong>{{ t('empleados', 'Group Information') }}</strong>
+										<small>{{ t('empleados', 'Hierarchy and companies within this group') }}</small>
+									</span>
+									<span class="acordeon-titulo__toggle"
+										:class="{ 'acordeon-titulo__toggle--open': accordeon[1].abierto }">
+										<ChevronDown :size="20" />
+									</span>
 								</button>
 								<div :class="['acordeon-contenido', { abierto: accordeon[1].abierto }]">
 									<div class="btn-top">
@@ -347,15 +373,20 @@
 							</div>
 
 							<!-- Honorarios -->
-							<div class="info-section top">
-								<div class="section-head">
-									<div>
-										<p class="section-label">
-											{{ t('empleados', 'Billing') }}
-										</p>
-										<h3>{{ t('empleados', 'Service Fees') }}</h3>
+							<div class="info-section billing-section top">
+								<div class="section-head billing-head">
+									<div class="billing-title">
+										<span class="billing-title__icon">
+											<FileDocumentOutline :size="20" />
+										</span>
+										<div>
+											<p class="section-label">
+												{{ t('empleados', 'Billing') }}
+											</p>
+											<h3>{{ t('empleados', 'Service Fees') }}</h3>
+										</div>
 									</div>
-									<div style="display:flex; align-items:center; gap:8px;">
+									<div class="billing-actions">
 										<NcActions>
 											<template #icon>
 												<DotsHorizontal :size="20" />
@@ -388,7 +419,7 @@
 
 								<div v-if="selectMode" class="select-bar">
 									<span>{{ selectedHonorarios.length }} {{ t('empleados', 'selected') }}</span>
-									<div style="display:flex; gap:8px;">
+									<div class="select-bar__actions">
 										<NcButton @click="toggleSelectMode">
 											{{ t('empleados', 'Cancel') }}
 										</NcButton>
@@ -412,7 +443,10 @@
 									<div v-for="honorario in filteredHonorarios"
 										:key="honorario.id_honorario"
 										class="honorario-card"
-										:class="{ 'honorario-especial': Number(honorario.especial) === 1 }">
+										:class="{
+											'honorario-especial': Number(honorario.especial) === 1,
+											'honorario-card--selected': selectedHonorarios.includes(honorario.id_honorario)
+										}">
 										<div class="honorario-header">
 											<input v-if="selectMode"
 												type="checkbox"
@@ -423,7 +457,9 @@
 											<div class="honorario-info">
 												<span class="value-text">{{ honorario.tipo_servicio || t('empleados',
 													'Service') }}</span>
-												<span>{{ honorario.fecha_inicio }} — {{ honorario.fecha_fin }}</span>
+												<span class="honorario-date">
+													{{ honorario.fecha_inicio }} — {{ honorario.fecha_fin }}
+												</span>
 											</div>
 											<div class="honorario-meta">
 												<span class="honorario-amount">
@@ -516,6 +552,12 @@
 
 										<div v-if="parcialidadesAbiertas[honorario.id_honorario]"
 											class="parcialidades-list">
+											<div class="parcialidades-head">
+												<span>{{ t('empleados', 'Installments') }}</span>
+												<span>
+													{{ (parcialidades[honorario.id_honorario] || []).length }}
+												</span>
+											</div>
 											<div v-if="loadingParcialidades[honorario.id_honorario]"
 												class="parcialidades-loading">
 												{{ t('empleados', 'Loading...') }}
@@ -538,7 +580,7 @@
 																class="parcialidad-toggle"
 																:class="{ open: detalleAbierto[p.id_parcialidad] }"
 																@click="toggleDetalleParcialidad(p.id_parcialidad)">
-																▾
+																<ChevronDown :size="16" />
 															</span>
 														</div>
 														<span class="parcialidad-fechas">{{ p.pfecha_inicio }} — {{
@@ -1065,6 +1107,7 @@ import TrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 import CalendarPlus from 'vue-material-design-icons/CalendarPlus.vue'
 import Restore from 'vue-material-design-icons/Restore.vue'
 import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 // import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
 // import IconTrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 // import IconOpenInNew from 'vue-material-design-icons/OpenInNew.vue'
@@ -1109,6 +1152,7 @@ export default {
 		DatabaseExport,
 		Upload,
 		FileDocumentOutline,
+		ChevronDown,
 		// IconTrashCanOutline,
 		// IconOpenInNew,
 		// IconPencilOutline,
@@ -3010,17 +3054,70 @@ export default {
 }
 
 /* ── Honorarios ── */
+.billing-section {
+	padding: 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.billing-head {
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.billing-title,
+.billing-actions,
+.select-bar__actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.billing-title {
+	gap: 12px;
+	min-width: 0;
+}
+
+.billing-title__icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: var(--color-background-hover);
+	color: var(--color-primary-element);
+}
+
+.billing-actions {
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
 .honorarios-list {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 8px;
 }
 
 .honorario-card {
 	border-radius: var(--border-radius-large);
 	border: 1px solid var(--color-border);
-	background: var(--color-background-soft);
+	background: var(--color-main-background);
 	overflow: hidden;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+
+	&:hover {
+		border-color: color-mix(in srgb, var(--color-primary-element) 35%, var(--color-border));
+		box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
+	}
+}
+
+.honorario-card--selected {
+	border-color: var(--color-primary-element);
+	box-shadow: 0 0 0 1px var(--color-primary-element);
 }
 
 .honorario-header {
@@ -3034,8 +3131,10 @@ export default {
 
 .honorario-info {
 	display: flex;
+	flex: 1 1 240px;
 	flex-direction: column;
 	gap: 2px;
+	min-width: 0;
 
 	.value-text {
 		font-size: 0.9rem;
@@ -3049,14 +3148,23 @@ export default {
 	}
 }
 
+.honorario-date {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .honorario-meta {
 	display: flex;
+	flex: 1 1 420px;
 	align-items: center;
+	justify-content: flex-end;
 	gap: 8px;
 	flex-wrap: wrap;
 }
 
 .honorario-amount {
+	margin-right: 4px;
 	font-size: 0.9rem;
 	font-weight: 700;
 	color: var(--color-main-text);
@@ -3071,13 +3179,13 @@ export default {
 	font-weight: 600;
 
 	&.badge-active {
-		background: #dbeafe;
-		color: #1d4ed8;
+		background: var(--color-primary-element-light);
+		color: var(--color-primary-element);
 	}
 
 	&.badge-done {
-		background: #dcfce7;
-		color: #166534;
+		background: var(--color-background-hover);
+		color: var(--color-text-maxcontrast);
 	}
 }
 
@@ -3086,6 +3194,21 @@ export default {
 	border-top: 1px solid var(--color-border);
 	display: flex;
 	flex-direction: column;
+	background: var(--color-background-soft);
+}
+
+.parcialidades-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 8px 14px;
+	border-bottom: 1px solid var(--color-border);
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
 
 .parcialidades-loading {
@@ -3108,8 +3231,10 @@ export default {
 }
 
 .parcialidad-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	cursor: pointer;
-	font-size: 0.9rem;
 	color: var(--color-text-maxcontrast, #666);
 	transition: transform 0.2s ease;
 	user-select: none;
@@ -3121,7 +3246,7 @@ export default {
 }
 
 .parcialidad-toggle:hover {
-	color: var(--color-primary, #18b13c);
+	color: var(--color-primary-element);
 }
 
 .parcialidad-row {
@@ -3131,14 +3256,14 @@ export default {
 	padding: 10px 14px;
 	border-bottom: 1px solid var(--color-border);
 	flex-wrap: wrap;
+	background: var(--color-main-background);
 
 	&:last-child {
 		border-bottom: none;
 	}
 
 	&.parcialidad-pagada {
-		background: var(--color-background-soft);
-		opacity: 0.7;
+		background: var(--color-background-hover);
 	}
 }
 
@@ -3415,35 +3540,122 @@ export default {
 	align-items: center;
 }
 
+.acordeon-item--group {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+	&:hover,
+	&.acordeon-item--open {
+		border-color: color-mix(in srgb, var(--color-primary-element) 45%, var(--color-border));
+		box-shadow: 0 4px 18px rgb(0 0 0 / 6%);
+	}
+
+	.acordeon-titulo {
+		display: flex;
+		gap: 12px;
+		min-height: 68px;
+		padding: 12px 14px;
+		border-radius: 0;
+		background: var(--color-background-soft);
+		color: var(--color-main-text);
+		text-align: start;
+		transition: background-color 0.2s ease;
+
+		&:hover,
+		&:focus-visible {
+			background: var(--color-background-hover);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--color-primary-element);
+			outline-offset: -2px;
+		}
+	}
+
+	&.acordeon-item--open .acordeon-titulo {
+		border-bottom: 1px solid var(--color-border);
+		background: var(--color-primary-element-light);
+	}
+}
+
+.acordeon-titulo__icon,
+.acordeon-titulo__toggle {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--border-radius-large);
+}
+
+.acordeon-titulo__icon {
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+}
+
+.acordeon-titulo__copy {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+
+	strong {
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+
+	small {
+		color: var(--color-text-maxcontrast);
+		font-size: 0.75rem;
+		line-height: 1.35;
+	}
+}
+
+.acordeon-titulo__toggle {
+	width: 34px;
+	height: 34px;
+	color: var(--color-text-maxcontrast);
+	transition: transform 0.25s ease, color 0.2s ease;
+
+	&--open {
+		color: var(--color-primary-element);
+		transform: rotate(180deg);
+	}
+}
+
 .acordeon-contenido {
-	max-height: 0;
+	display: grid;
+	grid-template-rows: 0fr;
 	opacity: 0;
 	overflow: hidden;
-	transition: all 0.3s ease-in-out;
+	transition: grid-template-rows 0.3s ease-in-out, opacity 0.2s ease-in-out;
+
+	> div {
+		min-height: 0;
+		overflow: hidden;
+	}
 }
 
 .acordeon-contenido.abierto {
-	max-height: 500px;
+	grid-template-rows: 1fr;
 	opacity: 1;
 }
 
+.acordeon-item--group .acordeon-contenido.abierto {
+	padding: 14px;
+}
+
 .honorario-especial {
+	border-left: 3px solid var(--color-primary-element);
 	background: linear-gradient(
-		135deg,
-		rgba(92, 181, 255, 0.2) 0%,
-		rgba(75, 172, 252, 0.1) 20%,
-		rgba(33, 150, 243, 0.03) 40%,
-		rgba(255, 255, 255, 1) 100%
+		90deg,
+		var(--color-primary-element-light) 0%,
+		var(--color-main-background) 34%
 	);
-
-	border: 1px solid rgba(63, 112, 151, 0.3);
-	border-left: 2px solid #08243b;
-
-	box-shadow:
-		0 2px 8px rgba(33,150,243,.08),
-		inset 0 1px 0 rgba(255,255,255,.45);
-
-	transition: all .2s ease;
 }
 
 .payment-modal {
@@ -3513,10 +3725,13 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 5px 30px 5px 14px;
-	background: #ffffff !important;
+	gap: 12px;
+	width: 100%;
+	padding: 8px 14px;
+	border: 1px solid var(--color-border);
 	border-radius: 8px;
 	margin-top: 8px;
+	background: var(--color-main-background);
 }
 
 .parcialidad-detalle-actions {
@@ -3527,12 +3742,15 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: 12px;
 	background: var(--color-primary-element-light);
+	border: 1px solid color-mix(in srgb, var(--color-primary-element) 30%, var(--color-border));
 	border-radius: var(--border-radius-large);
-	padding: 8px 14px;
+	padding: 10px 14px;
 	margin-bottom: 10px;
 	font-size: 0.875rem;
 	font-weight: 600;
+	flex-wrap: wrap;
 }
 
 .honorario-checkbox {
@@ -3622,10 +3840,11 @@ export default {
 	background-color: #fef9c3;
 	color: #92400e;
 }
-.separator-top{
+.separator-top {
 	margin-bottom: 20px;
 }
-.top{
+
+.top {
 	margin-top: 40px;
 }
 </style>
