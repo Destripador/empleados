@@ -81,16 +81,12 @@
 														<NcListItem v-for="(item) in notifications_result"
 															:key="item.id_historial_ausencias"
 															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="employees = []; typePetition = 'employee'; selected_user = item; $refs.fullCalendar.getApi().gotoDate(item.fecha_de); $refs.fullCalendar.getApi().refetchEvents();">
+															@click.prevent="abrirDetalleDesdeNotificacion(item)">
 															<template #icon>
 																<NcAvatar disable-menu
 																	:size="44"
 																	:user="item.Id_user"
 																	:display-name="item.Id_user" />
-															</template>
-															<template #subname>
-																{{ new Date(item.fecha_de).toLocaleDateString('en-US', {
-																	day: 'numeric', month: 'short', year: 'numeric' }) }}
 															</template>
 														</NcListItem>
 													</ul>
@@ -248,6 +244,8 @@
 				:id-historial="selectedEventId"
 				:is-admin="isAdmin()"
 				@cancelled="onAbsenceCancelled"
+				@approved="onAbsenceCancelled"
+				@rejected="onAbsenceCancelled"
 				@edit="onAbsenceEdit" />
 		</NcModal>
 		<!-- END EVENT DETAILS MODAL -->
@@ -543,23 +541,26 @@ export default {
 	methods: {
 		t,
 
+		abrirDetalleDesdeNotificacion(item) {
+			this.selectedEventId = item.id_historial_ausencias
+			this.modalEvento = true
+		},
+
 		async checkNotifications() {
-			if (this.subordinates.length > 0) {
-				try {
-					await axios.get(generateUrl('/apps/empleados/GetNotificationsSubordinates'))
-						.then((response) => {
-							if (response?.data?.ocs?.data.length > 0) {
-								this.notificaciones = true
-								this.notifications_counter = response.data.length
-								this.notifications_result = response.data
-								this.startShaking()
-							} else {
-								this.notificaciones = false
-							}
-						})
-				} catch (err) {
-					showError(t('empleados', 'An exception has occurred [01] [{err}]', { err }))
+			if (this.subordinates.length === 0 && !this.isAdmin()) return
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/GetNotificationsSubordinates'))
+				const data = response?.data?.ocs?.data ?? []
+				if (data.length > 0) {
+					this.notificaciones = true
+					this.notifications_counter = data.length
+					this.notifications_result = data
+					this.startShaking()
+				} else {
+					this.notificaciones = false
 				}
+			} catch (err) {
+				showError(t('empleados', 'An exception has occurred [01] [{err}]', { err }))
 			}
 		},
 
@@ -651,8 +652,28 @@ export default {
 		},
 
 		eventColor(item, fallbackUsername) {
-			const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
-			return isCancelled ? '#9e9e9e' : this.color(fallbackUsername)
+			return this.estiloEventoAusencia(item, fallbackUsername).color
+		},
+
+		/**
+		 * Calcula el color y la clase CSS de un evento del calendario
+		 * según su estado: cancelado (gris), rechazado (rojo) o normal.
+		 */
+		estiloEventoAusencia(item, fallbackUsername) {
+			const g = Number(item.a_gerente)
+			const s = Number(item.a_socio)
+			const ch = Number(item.a_capital_humano ?? 0)
+
+			const isCancelled = g === 3 || s === 3 || ch === 3
+			const isRejected = g === 2 || s === 2 || ch === 2
+
+			if (isCancelled) {
+				return { color: '#9e9e9e', classNames: ['event-cancelled'] }
+			}
+			if (isRejected) {
+				return { color: '#c0392b', classNames: ['event-rejected'] }
+			}
+			return { color: this.color(fallbackUsername), classNames: [] }
 		},
 
 		getMyAusencias(fetchInfo, success, failure) {
@@ -666,15 +687,15 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
+						const estilo = this.estiloEventoAusencia(item, this.employee[0].Id_user)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.tipo_nombre,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: isCancelled ? '#9e9e9e' : this.color(this.employee[0].Id_user),
-							classNames: isCancelled ? ['event-cancelled'] : [],
+							color: estilo.color,
+							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
@@ -694,15 +715,15 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
+						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: isCancelled ? '#9e9e9e' : this.color(item.nombre_empleado),
-							classNames: isCancelled ? ['event-cancelled'] : [],
+							color: estilo.color,
+							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
@@ -722,15 +743,15 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
+						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: isCancelled ? '#9e9e9e' : this.color(item.nombre_empleado),
-							classNames: isCancelled ? ['event-cancelled'] : [],
+							color: estilo.color,
+							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
@@ -755,15 +776,15 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3
+						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
 						return {
 							id: item.id_historial_ausencias,
 							title: `${item.nombre_empleado} - ${item.tipo_nombre}`,
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: isCancelled ? '#9e9e9e' : (this.color?.(item.nombre_empleado) || '#3a87ad'),
-							classNames: isCancelled ? ['event-cancelled'] : [],
+							color: estilo.color,
+							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
@@ -790,6 +811,7 @@ export default {
 		onAbsenceCancelled() {
 			this.closeModalEvento()
 			this.GetAusencias()
+			this.checkNotifications()
 			this.$refs.fullCalendar.getApi().refetchEvents()
 		},
 
@@ -924,6 +946,12 @@ export default {
 <style>
 /* Global: tachado para eventos cancelados en el calendario */
 .event-cancelled .fc-event-title {
+	text-decoration: line-through;
+	opacity: 0.8;
+}
+
+/* Global: tachado para eventos rechazados en el calendario (mismo trato que cancelados, color distinto) */
+.event-rejected .fc-event-title {
 	text-decoration: line-through;
 	opacity: 0.8;
 }

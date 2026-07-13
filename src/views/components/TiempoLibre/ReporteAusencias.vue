@@ -129,7 +129,7 @@
 									{{ t('empleados', 'Solicitado en: {fecha}', { fecha: formatFecha(resumenEmpleadoStats.primaFecha) }) }}
 								</template>
 								<template v-else>
-									{{ t('empleados', 'No solicitado aún') }}
+									{{ t('empleados', 'No solicitado aún.') }}
 								</template>
 							</span>
 						</div>
@@ -145,20 +145,22 @@
 					</div>
 
 					<div v-else class="reporte-tabla-wrap">
-						<table class="reporte-tabla">
+						<table class="reporte-tabla reporte-tabla--resumen">
 							<thead>
 								<tr>
-									<th>{{ t('empleados', 'Empleado') }}</th>
-									<th>{{ t('empleados', 'Tipo de ausencia') }}</th>
-									<th>{{ t('empleados', 'Periodo') }}</th>
+									<th class="col-periodo-resumen">
+										{{ t('empleados', 'Periodo') }}
+									</th>
 									<th class="col-dias cell-center">
 										{{ t('empleados', 'Días') }}
 									</th>
 									<th class="col-prima">
 										{{ t('empleados', 'Prima vac.') }}
 									</th>
-									<th>{{ t('empleados', 'Estado') }}</th>
-									<th class="col-aprobacion">
+									<th class="col-estado-resumen">
+										{{ t('empleados', 'Estado') }}
+									</th>
+									<th class="col-aprobacion-resumen">
 										{{ t('empleados', 'Aprobación') }}
 									</th>
 									<th class="col-solicitud">
@@ -171,20 +173,7 @@
 									v-for="(item, i) in registrosResumenEmpleado"
 									:key="item.id_historial_ausencias || i"
 									:class="rowClass(item)">
-									<td class="cell-empleado">
-										<img
-											class="empleado-avatar"
-											:src="avatarUrl(item.nombre_empleado)"
-											:alt="item.nombre_empleado"
-											@error="onAvatarError($event, item.nombre_empleado)">
-										<span class="empleado-nombre">{{ item.nombre_empleado }}</span>
-									</td>
-									<td>
-										<span class="badge-tipo" :style="colorTipo(item.tipo_ausencia)">
-											{{ item.tipo_ausencia }}
-										</span>
-									</td>
-									<td>
+									<td class="col-periodo-resumen">
 										<span
 											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
 											:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
@@ -209,12 +198,15 @@
 											{{ chipEstado(item).texto }}
 										</span>
 									</td>
-									<td class="col-aprobacion">
+									<td class="col-aprobacion-resumen">
+										<span class="chip-mini" :class="chipAprobacion(item.a_socio).clase" :title="t('empleados', 'Socio')">
+											{{ t('empleados', 'S:') }} {{ chipAprobacion(item.a_socio).texto }}
+										</span>
 										<span class="chip-mini" :class="chipAprobacion(item.a_gerente).clase" :title="t('empleados', 'Gerente')">
 											{{ t('empleados', 'G:') }} {{ chipAprobacion(item.a_gerente).texto }}
 										</span>
-										<span class="chip-mini" :class="chipAprobacion(item.a_socio).clase" :title="t('empleados', 'Socio')">
-											{{ t('empleados', 'S:') }} {{ chipAprobacion(item.a_socio).texto }}
+										<span class="chip-mini" :class="chipAprobacion(item.a_capital_humano).clase" :title="t('empleados', 'Capital Humano')">
+											{{ t('empleados', 'RH:') }} {{ chipAprobacion(item.a_capital_humano).texto }}
 										</span>
 									</td>
 									<td class="cell-fecha">
@@ -709,14 +701,18 @@ export default {
 		},
 
 		rowClass(item) {
-			if (parseInt(item.a_gerente) === 3 || parseInt(item.a_socio) === 3) return 'row-cancelado'
+			const g = parseInt(item.a_gerente)
+			const s = parseInt(item.a_socio)
+			if (g === 3 || s === 3 || g === 2 || s === 2) return 'row-cancelado'
 			const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
 			const hasta = this.parseFecha(item.fecha_hasta)
 			return hasta < hoy ? 'row-pasado' : 'row-futuro'
 		},
 
 		chipEstado(item) {
-			if (parseInt(item.a_gerente) === 3 || parseInt(item.a_socio) === 3) {
+			const g = parseInt(item.a_gerente)
+			const s = parseInt(item.a_socio)
+			if (g === 3 || s === 3 || g === 2 || s === 2) {
 				return { texto: t('empleados', 'Cancelada'), clase: 'chip-cancelado' }
 			}
 			const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
@@ -1006,6 +1002,12 @@ export default {
 	transition: background 0.12s;
 }
 
+.reporte-tabla--resumen thead,
+.reporte-tabla--resumen tbody tr {
+	table-layout: auto;
+	width: auto;
+}
+
 .reporte-tabla tbody tr:hover { background: var(--color-background-hover); }
 
 .reporte-tabla td {
@@ -1282,5 +1284,41 @@ th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
 
 .periodo-vac-tabla {
 	table-layout: auto;
+}
+
+/* ── Tabla del resumen: más compacta */
+.reporte-tabla--resumen {
+	width: auto;
+	max-width: 100%;
+}
+
+.col-periodo-resumen {
+	width: 190px;
+	min-width: 190px;
+}
+
+.col-estado-resumen {
+	width: 110px;
+	min-width: 110px;
+}
+
+.col-aprobacion-resumen {
+	width: 230px;
+	min-width: 230px;
+}
+
+.reporte-tabla--resumen .col-dias {
+	width: 60px;
+	min-width: 60px;
+}
+
+.reporte-tabla--resumen .col-prima {
+	width: 90px;
+	min-width: 90px;
+}
+
+.reporte-tabla--resumen .col-solicitud {
+	width: 160px;
+	min-width: 160px;
 }
 </style>

@@ -43,7 +43,26 @@
 
 				<div v-if="ausencia.notas" class="info-item info-item--full">
 					<span class="info-item__label">{{ t('empleados', 'Comments') }}</span>
-					<p class="info-item__value info-item__notes">{{ ausencia.notas }}</p>
+					<p class="info-item__value info-item__notes">
+						{{ ausencia.notas }}
+					</p>
+				</div>
+			</div>
+
+			<!-- Estatus de aprobación por rol -->
+			<div class="detalle-ausencia__aprobaciones">
+				<button class="aprobaciones__toggle" @click="showAprobaciones = !showAprobaciones">
+					<ChevronDown :size="18" :class="{ 'is-open': showAprobaciones }" />
+					{{ t('empleados', 'Approval status') }}
+				</button>
+
+				<div v-if="showAprobaciones" class="aprobaciones__body">
+					<div v-for="rol in estadosAprobacion" :key="rol.key" class="aprobaciones__row">
+						<span class="aprobaciones__rol">{{ rol.label }}</span>
+						<span :class="['aprobaciones__estado', `aprobaciones__estado--${rol.estado}`]">
+							{{ rol.texto }}
+						</span>
+					</div>
 				</div>
 			</div>
 
@@ -59,25 +78,44 @@
 					{{ t('empleados', 'Edit') }}
 				</NcButton>
 
+				<!-- Botón único: cancelar (dueño/admin) o rechazar (jefe con aprobación pendiente) -->
 				<NcButton
 					v-if="canCancel"
-					:disabled="cancelling"
+					:disabled="cancelling || procesando"
 					class="btn-cancel"
 					@click="confirmCancel">
 					<template #icon>
-						<NcLoadingIcon v-if="cancelling" :size="18" />
+						<NcLoadingIcon v-if="cancelling || procesando" :size="18" />
 						<Cancel v-else :size="18" />
 					</template>
-					{{ t('empleados', 'Cancel absence') }}
+					{{ esRechazoDeJefe ? t('empleados', 'Reject') : t('empleados', 'Cancel absence') }}
+				</NcButton>
+
+				<NcButton v-if="puedeAprobar"
+					type="primary"
+					:disabled="procesando"
+					@click="aprobar(rolPrincipalAprobar)">
+					{{ t('empleados', 'Approve') }}
+				</NcButton>
+
+				<NcButton v-if="puedeAprobarComoSocioRH"
+					type="primary"
+					:disabled="procesando"
+					@click="aprobar('capital_humano_como_socio')">
+					{{ t('empleados', 'Approve on behalf of partner') }}
 				</NcButton>
 			</div>
 
-			<!-- Cancel confirmation inline -->
+			<!-- Cancelar/Rechazar confirmación (mismo diálogo, texto según quién lo ejecuta) -->
 			<div v-if="showConfirm" class="detalle-ausencia__confirm">
-				<NcNoteCard type="warning" :text="t('empleados', 'Are you sure you want to cancel this absence? This action cannot be undone.')" />
+				<NcNoteCard
+					type="warning"
+					:text="esRechazoDeJefe
+						? t('empleados', 'Are you sure you want to reject this absence?')
+						: t('empleados', 'Are you sure you want to cancel this absence? This action cannot be undone.')" />
 				<div class="detalle-ausencia__confirm-actions">
-					<NcButton class="btn-cancel" @click="cancelAbsence">
-						{{ t('empleados', 'Yes, cancel it') }}
+					<NcButton class="btn-cancel" @click="ejecutarCancelacion">
+						{{ esRechazoDeJefe ? t('empleados', 'Yes, reject it') : t('empleados', 'Yes, cancel it') }}
 					</NcButton>
 					<NcButton type="secondary" @click="showConfirm = false">
 						{{ t('empleados', 'Go back') }}
@@ -101,6 +139,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 import Cancel from 'vue-material-design-icons/Cancel.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 
 import {
 	NcButton,
@@ -117,6 +156,7 @@ export default {
 		NcNoteCard,
 		Cancel,
 		Pencil,
+		ChevronDown,
 	},
 
 	props: {
@@ -130,7 +170,7 @@ export default {
 		},
 	},
 
-	emits: ['cancelled', 'edit', 'close'],
+	emits: ['cancelled', 'edit', 'close', 'approved', 'rejected'],
 
 	data() {
 		return {
@@ -138,13 +178,28 @@ export default {
 			loading: true,
 			cancelling: false,
 			showConfirm: false,
+			procesando: false,
+			showAprobaciones: false,
 		}
 	},
 
 	computed: {
+		// true cuando quien está viendo el detalle es un jefe (gerente/socio/RH)
+		// y la solicitud sigue pendiente: el botón único actúa como "rechazar"
+		esRechazoDeJefe() {
+			if (!this.ausencia) return false
+			return this.statusKey === 'pending'
+				&& (this.ausencia.es_gerente || this.ausencia.es_socio || this.ausencia.es_privilegiado)
+		},
+
 		canCancel() {
 			if (!this.ausencia) return false
-			if (Number(this.ausencia.a_gerente) === 3 || Number(this.ausencia.a_socio) === 3) return false
+			if (this.statusKey === 'cancelled' || this.statusKey === 'rejected') return false
+
+			// Jefe con aprobación pendiente: el botón único también sirve para rechazar
+			if (this.esRechazoDeJefe) return true
+
+			// Dueño/admin cancelando su propia solicitud
 			const fechaInicio = new Date(this.ausencia.fecha_de)
 			const hoy = new Date()
 			hoy.setHours(0, 0, 0, 0)
@@ -164,10 +219,39 @@ export default {
 			if (!this.ausencia) return 'pending'
 			const g = Number(this.ausencia.a_gerente)
 			const s = Number(this.ausencia.a_socio)
+			const ch = Number(this.ausencia.a_capital_humano ?? 0)
 			if (g === 3 || s === 3) return 'cancelled'
-			if (g === 2 || s === 2) return 'rejected'
-			if (g === 1 && s === 1) return 'approved'
+			if (g === 2 || s === 2 || ch === 2) return 'rejected'
+			if (g === 1 && s === 1 && ch === 1) return 'approved'
 			return 'pending'
+		},
+
+		puedeAprobar() {
+			return this.puedeAprobarGerente || this.puedeAprobarSocio || this.puedeAprobarCapitalHumano
+		},
+		rolPrincipalAprobar() {
+			if (this.puedeAprobarGerente) return 'gerente'
+			if (this.puedeAprobarSocio) return 'socio'
+			if (this.puedeAprobarCapitalHumano) return 'capital_humano'
+			return null
+		},
+
+		puedeAprobarGerente() {
+			return this.ausencia?.es_gerente && Number(this.ausencia.a_gerente) === 0
+		},
+		puedeAprobarSocio() {
+			return this.ausencia?.es_socio && Number(this.ausencia.a_socio) === 0
+		},
+		puedeAprobarCapitalHumano() {
+			return this.ausencia?.es_privilegiado && Number(this.ausencia.a_capital_humano ?? 0) === 0
+		},
+		puedeAprobarComoSocioRH() {
+			// RH ya aprobó como capital humano y el socio todavía no aprueba:
+			// este botón reemplaza al de "Aprobar" de capital humano
+			return this.ausencia?.es_privilegiado
+				&& !this.ausencia?.es_socio
+				&& Number(this.ausencia.a_capital_humano ?? 0) === 1
+				&& Number(this.ausencia.a_socio) === 0
 		},
 
 		statusLabel() {
@@ -178,6 +262,52 @@ export default {
 				cancelled: t('empleados', 'Cancelled'),
 			}
 			return labels[this.statusKey] ?? t('empleados', 'Unknown')
+		},
+
+		estadosAprobacion() {
+			if (!this.ausencia) return []
+
+			const roles = [
+				{
+					key: 'socio',
+					label: t('empleados', 'Partner'),
+					estado: Number(this.ausencia.a_socio),
+					nombre: this.ausencia.nombre_socio,
+				},
+				{
+					key: 'gerente',
+					label: t('empleados', 'Manager'),
+					estado: Number(this.ausencia.a_gerente),
+					nombre: this.ausencia.nombre_gerente,
+				},
+				{
+					key: 'capital_humano',
+					label: t('empleados', 'Human resources'),
+					estado: Number(this.ausencia.a_capital_humano ?? 0),
+					nombre: this.ausencia.nombre_capital_humano,
+				},
+			]
+
+			return roles.map((rol) => {
+				let texto
+				let estadoKey
+				if (rol.estado === 1) {
+					estadoKey = 'aprobado'
+					texto = rol.nombre
+						? t('empleados', 'Approved by {nombre}', { nombre: rol.nombre })
+						: t('empleados', 'Approved')
+				} else if (rol.estado === 2) {
+					estadoKey = 'rechazado'
+					texto = t('empleados', 'Rejected')
+				} else if (rol.estado === 3) {
+					estadoKey = 'cancelado'
+					texto = t('empleados', 'Cancelled')
+				} else {
+					estadoKey = 'pendiente'
+					texto = t('empleados', 'Not approved yet')
+				}
+				return { key: rol.key, label: rol.label, estado: estadoKey, texto }
+			})
 		},
 	},
 
@@ -216,13 +346,59 @@ export default {
 			this.$emit('edit', this.ausencia)
 		},
 
+		async aprobar(rol) {
+			this.procesando = true
+			try {
+				const response = await axios.post(generateUrl('/apps/empleados/AprobarAusencia'), { id: this.idHistorial, rol })
+				if (response.data?.ocs?.data?.success) {
+					showSuccess(t('empleados', 'Approved successfully'))
+					await this.fetchDetalle()
+					this.$emit('approved')
+				} else {
+					showError(response.data?.ocs?.data?.message || t('empleados', 'Could not approve'))
+				}
+			} catch (err) {
+				showError(t('empleados', 'Error approving: {error}', { error: String(err) }))
+			} finally {
+				this.procesando = false
+			}
+		},
+
+		async rechazar() {
+			const rol = this.ausencia.es_gerente ? 'gerente' : this.ausencia.es_socio ? 'socio' : 'capital_humano'
+
+			this.procesando = true
+			try {
+				const response = await axios.post(generateUrl('/apps/empleados/RechazarAusencia'), { id: this.idHistorial, rol })
+				if (response.data?.ocs?.data?.success) {
+					showSuccess(t('empleados', 'Absence rejected'))
+					this.$emit('rejected')
+				} else {
+					showError(response.data?.ocs?.data?.message || t('empleados', 'Could not reject'))
+				}
+			} catch (err) {
+				showError(t('empleados', 'Error rejecting: {error}', { error: String(err) }))
+			} finally {
+				this.procesando = false
+			}
+		},
+
 		confirmCancel() {
 			this.showConfirm = true
 		},
 
+		// Decide qué endpoint disparar según quién esté ejecutando la acción
+		async ejecutarCancelacion() {
+			this.showConfirm = false
+			if (this.esRechazoDeJefe) {
+				await this.rechazar()
+			} else {
+				await this.cancelAbsence()
+			}
+		},
+
 		async cancelAbsence() {
 			this.cancelling = true
-			this.showConfirm = false
 			try {
 				const response = await axios.post(
 					generateUrl('/apps/empleados/CancelarAusencia'),
@@ -344,4 +520,49 @@ export default {
 	gap: 10px;
 	justify-content: flex-end;
 }
+
+.detalle-ausencia__aprobaciones {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius, 8px);
+	overflow: hidden;
+}
+
+.aprobaciones__toggle {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	background: var(--color-background-hover);
+	border: none;
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 0.9rem;
+	color: var(--color-main-text);
+}
+
+.aprobaciones__toggle svg {
+	transition: transform 0.15s ease;
+}
+.aprobaciones__toggle svg.is-open {
+	transform: rotate(180deg);
+}
+
+.aprobaciones__body {
+	display: flex;
+	flex-direction: column;
+}
+
+.aprobaciones__row {
+	display: flex;
+	justify-content: space-between;
+	padding: 8px 14px;
+	border-top: 1px solid var(--color-border);
+	font-size: 0.88rem;
+}
+
+.aprobaciones__estado--aprobado  { color: #488d48; font-weight: 800; }
+.aprobaciones__estado--rechazado { color: #972c2cfa; font-weight: 800; }
+.aprobaciones__estado--cancelado { color: var(--color-text-maxcontrast); font-weight: 800; }
+.aprobaciones__estado--pendiente { color: #ccad3d; font-weight: 800; }
 </style>

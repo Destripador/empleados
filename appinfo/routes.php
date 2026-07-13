@@ -144,6 +144,9 @@ return [
 		['name' => 'ausencias#EditarAcumuladoManual', 'url' => '/edit-acumulado-manual', 'verb' => 'POST'],
 		['name' => 'ausencias#AsignarDiasDerecho', 'url' => '/AsignarDiasDerecho', 'verb' => 'POST'],
 
+		['name' => 'ausencias#AprobarAusencia', 'url' => '/AprobarAusencia', 'verb' => 'POST'],
+		['name' => 'ausencias#RechazarAusencia', 'url' => '/RechazarAusencia', 'verb' => 'POST'],
+
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],
 		['name' => 'tipoausencias#VaciarTipo', 'url' => '/VaciarTipo', 'verb' => 'GET'],

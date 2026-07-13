@@ -14770,7 +14770,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
 /* harmony import */ var vue_material_design_icons_Cancel_vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! vue-material-design-icons/Cancel.vue */ "./node_modules/vue-material-design-icons/Cancel.vue");
 /* harmony import */ var vue_material_design_icons_Pencil_vue__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! vue-material-design-icons/Pencil.vue */ "./node_modules/vue-material-design-icons/Pencil.vue");
-/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+/* harmony import */ var vue_material_design_icons_ChevronDown_vue__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! vue-material-design-icons/ChevronDown.vue */ "./node_modules/vue-material-design-icons/ChevronDown.vue");
+/* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
+
 
 
 
@@ -14781,11 +14783,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: 'DetalleAusencia',
   components: {
-    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_6__.NcButton,
-    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_6__.NcLoadingIcon,
-    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_6__.NcNoteCard,
+    NcButton: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_7__.NcButton,
+    NcLoadingIcon: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_7__.NcLoadingIcon,
+    NcNoteCard: _nextcloud_vue__WEBPACK_IMPORTED_MODULE_7__.NcNoteCard,
     Cancel: vue_material_design_icons_Cancel_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
-    Pencil: vue_material_design_icons_Pencil_vue__WEBPACK_IMPORTED_MODULE_5__["default"]
+    Pencil: vue_material_design_icons_Pencil_vue__WEBPACK_IMPORTED_MODULE_5__["default"],
+    ChevronDown: vue_material_design_icons_ChevronDown_vue__WEBPACK_IMPORTED_MODULE_6__["default"]
   },
   props: {
     idHistorial: {
@@ -14797,19 +14800,32 @@ __webpack_require__.r(__webpack_exports__);
       default: false
     }
   },
-  emits: ['cancelled', 'edit', 'close'],
+  emits: ['cancelled', 'edit', 'close', 'approved', 'rejected'],
   data() {
     return {
       ausencia: null,
       loading: true,
       cancelling: false,
-      showConfirm: false
+      showConfirm: false,
+      procesando: false,
+      showAprobaciones: false
     };
   },
   computed: {
+    // true cuando quien está viendo el detalle es un jefe (gerente/socio/RH)
+    // y la solicitud sigue pendiente: el botón único actúa como "rechazar"
+    esRechazoDeJefe() {
+      if (!this.ausencia) return false;
+      return this.statusKey === 'pending' && (this.ausencia.es_gerente || this.ausencia.es_socio || this.ausencia.es_privilegiado);
+    },
     canCancel() {
       if (!this.ausencia) return false;
-      if (Number(this.ausencia.a_gerente) === 3 || Number(this.ausencia.a_socio) === 3) return false;
+      if (this.statusKey === 'cancelled' || this.statusKey === 'rejected') return false;
+
+      // Jefe con aprobación pendiente: el botón único también sirve para rechazar
+      if (this.esRechazoDeJefe) return true;
+
+      // Dueño/admin cancelando su propia solicitud
       const fechaInicio = new Date(this.ausencia.fecha_de);
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
@@ -14827,10 +14843,34 @@ __webpack_require__.r(__webpack_exports__);
       if (!this.ausencia) return 'pending';
       const g = Number(this.ausencia.a_gerente);
       const s = Number(this.ausencia.a_socio);
+      const ch = Number(this.ausencia.a_capital_humano ?? 0);
       if (g === 3 || s === 3) return 'cancelled';
-      if (g === 2 || s === 2) return 'rejected';
-      if (g === 1 && s === 1) return 'approved';
+      if (g === 2 || s === 2 || ch === 2) return 'rejected';
+      if (g === 1 && s === 1 && ch === 1) return 'approved';
       return 'pending';
+    },
+    puedeAprobar() {
+      return this.puedeAprobarGerente || this.puedeAprobarSocio || this.puedeAprobarCapitalHumano;
+    },
+    rolPrincipalAprobar() {
+      if (this.puedeAprobarGerente) return 'gerente';
+      if (this.puedeAprobarSocio) return 'socio';
+      if (this.puedeAprobarCapitalHumano) return 'capital_humano';
+      return null;
+    },
+    puedeAprobarGerente() {
+      return this.ausencia?.es_gerente && Number(this.ausencia.a_gerente) === 0;
+    },
+    puedeAprobarSocio() {
+      return this.ausencia?.es_socio && Number(this.ausencia.a_socio) === 0;
+    },
+    puedeAprobarCapitalHumano() {
+      return this.ausencia?.es_privilegiado && Number(this.ausencia.a_capital_humano ?? 0) === 0;
+    },
+    puedeAprobarComoSocioRH() {
+      // RH ya aprobó como capital humano y el socio todavía no aprueba:
+      // este botón reemplaza al de "Aprobar" de capital humano
+      return this.ausencia?.es_privilegiado && !this.ausencia?.es_socio && Number(this.ausencia.a_capital_humano ?? 0) === 1 && Number(this.ausencia.a_socio) === 0;
     },
     statusLabel() {
       const labels = {
@@ -14840,6 +14880,50 @@ __webpack_require__.r(__webpack_exports__);
         cancelled: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Cancelled')
       };
       return labels[this.statusKey] ?? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Unknown');
+    },
+    estadosAprobacion() {
+      if (!this.ausencia) return [];
+      const roles = [{
+        key: 'socio',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Partner'),
+        estado: Number(this.ausencia.a_socio),
+        nombre: this.ausencia.nombre_socio
+      }, {
+        key: 'gerente',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Manager'),
+        estado: Number(this.ausencia.a_gerente),
+        nombre: this.ausencia.nombre_gerente
+      }, {
+        key: 'capital_humano',
+        label: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Human resources'),
+        estado: Number(this.ausencia.a_capital_humano ?? 0),
+        nombre: this.ausencia.nombre_capital_humano
+      }];
+      return roles.map(rol => {
+        let texto;
+        let estadoKey;
+        if (rol.estado === 1) {
+          estadoKey = 'aprobado';
+          texto = rol.nombre ? (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Approved by {nombre}', {
+            nombre: rol.nombre
+          }) : (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Approved');
+        } else if (rol.estado === 2) {
+          estadoKey = 'rechazado';
+          texto = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Rejected');
+        } else if (rol.estado === 3) {
+          estadoKey = 'cancelado';
+          texto = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Cancelled');
+        } else {
+          estadoKey = 'pendiente';
+          texto = (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Not approved yet');
+        }
+        return {
+          key: rol.key,
+          label: rol.label,
+          estado: estadoKey,
+          texto
+        };
+      });
     }
   },
   mounted() {
@@ -14875,12 +14959,64 @@ __webpack_require__.r(__webpack_exports__);
     handleEdit() {
       this.$emit('edit', this.ausencia);
     },
+    async aprobar(rol) {
+      this.procesando = true;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/AprobarAusencia'), {
+          id: this.idHistorial,
+          rol
+        });
+        if (response.data?.ocs?.data?.success) {
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Approved successfully'));
+          await this.fetchDetalle();
+          this.$emit('approved');
+        } else {
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)(response.data?.ocs?.data?.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not approve'));
+        }
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error approving: {error}', {
+          error: String(err)
+        }));
+      } finally {
+        this.procesando = false;
+      }
+    },
+    async rechazar() {
+      const rol = this.ausencia.es_gerente ? 'gerente' : this.ausencia.es_socio ? 'socio' : 'capital_humano';
+      this.procesando = true;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/RechazarAusencia'), {
+          id: this.idHistorial,
+          rol
+        });
+        if (response.data?.ocs?.data?.success) {
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showSuccess)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Absence rejected'));
+          this.$emit('rejected');
+        } else {
+          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)(response.data?.ocs?.data?.message || (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Could not reject'));
+        }
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_0__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_3__.translate)('empleados', 'Error rejecting: {error}', {
+          error: String(err)
+        }));
+      } finally {
+        this.procesando = false;
+      }
+    },
     confirmCancel() {
       this.showConfirm = true;
     },
+    // Decide qué endpoint disparar según quién esté ejecutando la acción
+    async ejecutarCancelacion() {
+      this.showConfirm = false;
+      if (this.esRechazoDeJefe) {
+        await this.rechazar();
+      } else {
+        await this.cancelAbsence();
+      }
+    },
     async cancelAbsence() {
       this.cancelling = true;
-      this.showConfirm = false;
       try {
         const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_2__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_1__.generateUrl)('/apps/empleados/CancelarAusencia'), {
           id: this.idHistorial
@@ -15755,14 +15891,18 @@ function hashStr(str) {
       return new Date(str.replace(' ', 'T'));
     },
     rowClass(item) {
-      if (parseInt(item.a_gerente) === 3 || parseInt(item.a_socio) === 3) return 'row-cancelado';
+      const g = parseInt(item.a_gerente);
+      const s = parseInt(item.a_socio);
+      if (g === 3 || s === 3 || g === 2 || s === 2) return 'row-cancelado';
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
       const hasta = this.parseFecha(item.fecha_hasta);
       return hasta < hoy ? 'row-pasado' : 'row-futuro';
     },
     chipEstado(item) {
-      if (parseInt(item.a_gerente) === 3 || parseInt(item.a_socio) === 3) {
+      const g = parseInt(item.a_gerente);
+      const s = parseInt(item.a_socio);
+      if (g === 3 || s === 3 || g === 2 || s === 2) {
         return {
           texto: (0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_2__.translate)('empleados', 'Cancelada'),
           clase: 'chip-cancelado'
@@ -16046,24 +16186,27 @@ __webpack_require__.r(__webpack_exports__);
   },
   methods: {
     t: _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate,
+    abrirDetalleDesdeNotificacion(item) {
+      this.selectedEventId = item.id_historial_ausencias;
+      this.modalEvento = true;
+    },
     async checkNotifications() {
-      if (this.subordinates.length > 0) {
-        try {
-          await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetNotificationsSubordinates')).then(response => {
-            if (response?.data?.ocs?.data.length > 0) {
-              this.notificaciones = true;
-              this.notifications_counter = response.data.length;
-              this.notifications_result = response.data;
-              this.startShaking();
-            } else {
-              this.notificaciones = false;
-            }
-          });
-        } catch (err) {
-          (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception has occurred [01] [{err}]', {
-            err
-          }));
+      if (this.subordinates.length === 0 && !this.isAdmin()) return;
+      try {
+        const response = await _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].get((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetNotificationsSubordinates'));
+        const data = response?.data?.ocs?.data ?? [];
+        if (data.length > 0) {
+          this.notificaciones = true;
+          this.notifications_counter = data.length;
+          this.notifications_result = data;
+          this.startShaking();
+        } else {
+          this.notificaciones = false;
         }
+      } catch (err) {
+        (0,_nextcloud_dialogs__WEBPACK_IMPORTED_MODULE_7__.showError)((0,_nextcloud_l10n__WEBPACK_IMPORTED_MODULE_10__.translate)('empleados', 'An exception has occurred [01] [{err}]', {
+          err
+        }));
       }
     },
     startShaking() {
@@ -16159,8 +16302,34 @@ __webpack_require__.r(__webpack_exports__);
       }
     },
     eventColor(item, fallbackUsername) {
-      const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3;
-      return isCancelled ? '#9e9e9e' : this.color(fallbackUsername);
+      return this.estiloEventoAusencia(item, fallbackUsername).color;
+    },
+    /**
+     * Calcula el color y la clase CSS de un evento del calendario
+     * según su estado: cancelado (gris), rechazado (rojo) o normal.
+     */
+    estiloEventoAusencia(item, fallbackUsername) {
+      const g = Number(item.a_gerente);
+      const s = Number(item.a_socio);
+      const ch = Number(item.a_capital_humano ?? 0);
+      const isCancelled = g === 3 || s === 3 || ch === 3;
+      const isRejected = g === 2 || s === 2 || ch === 2;
+      if (isCancelled) {
+        return {
+          color: '#9e9e9e',
+          classNames: ['event-cancelled']
+        };
+      }
+      if (isRejected) {
+        return {
+          color: '#c0392b',
+          classNames: ['event-rejected']
+        };
+      }
+      return {
+        color: this.color(fallbackUsername),
+        classNames: []
+      };
     },
     getMyAusencias(fetchInfo, success, failure) {
       _nextcloud_axios__WEBPACK_IMPORTED_MODULE_9__["default"].post((0,_nextcloud_router__WEBPACK_IMPORTED_MODULE_8__.generateUrl)('/apps/empleados/GetAusenciasHistorial'), {
@@ -16172,15 +16341,15 @@ __webpack_require__.r(__webpack_exports__);
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
           fechaHasta.setDate(fechaHasta.getDate() + 1);
-          const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3;
+          const estilo = this.estiloEventoAusencia(item, this.employee[0].Id_user);
           return {
             id: item.id_historial_ausencias,
             title: item.tipo_nombre,
             start: fechaInicio.toISOString(),
             end: fechaHasta.toISOString(),
             allDay: true,
-            color: isCancelled ? '#9e9e9e' : this.color(this.employee[0].Id_user),
-            classNames: isCancelled ? ['event-cancelled'] : [],
+            color: estilo.color,
+            classNames: estilo.classNames,
             nombre_empleado: item.nombre_empleado
           };
         });
@@ -16200,15 +16369,15 @@ __webpack_require__.r(__webpack_exports__);
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
           fechaHasta.setDate(fechaHasta.getDate() + 1);
-          const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3;
+          const estilo = this.estiloEventoAusencia(item, item.nombre_empleado);
           return {
             id: item.id_historial_ausencias,
             title: item.nombre_empleado + ' - ' + item.tipo_nombre,
             start: fechaInicio.toISOString(),
             end: fechaHasta.toISOString(),
             allDay: true,
-            color: isCancelled ? '#9e9e9e' : this.color(item.nombre_empleado),
-            classNames: isCancelled ? ['event-cancelled'] : [],
+            color: estilo.color,
+            classNames: estilo.classNames,
             nombre_empleado: item.nombre_empleado
           };
         });
@@ -16228,15 +16397,15 @@ __webpack_require__.r(__webpack_exports__);
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
           fechaHasta.setDate(fechaHasta.getDate() + 1);
-          const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3;
+          const estilo = this.estiloEventoAusencia(item, item.nombre_empleado);
           return {
             id: item.id_historial_ausencias,
             title: item.nombre_empleado + ' - ' + item.tipo_nombre,
             start: fechaInicio.toISOString(),
             end: fechaHasta.toISOString(),
             allDay: true,
-            color: isCancelled ? '#9e9e9e' : this.color(item.nombre_empleado),
-            classNames: isCancelled ? ['event-cancelled'] : [],
+            color: estilo.color,
+            classNames: estilo.classNames,
             nombre_empleado: item.nombre_empleado
           };
         });
@@ -16258,15 +16427,15 @@ __webpack_require__.r(__webpack_exports__);
           const fechaInicio = new Date(item.fecha_de);
           const fechaHasta = new Date(item.fecha_hasta);
           fechaHasta.setDate(fechaHasta.getDate() + 1);
-          const isCancelled = Number(item.a_gerente) === 3 || Number(item.a_socio) === 3;
+          const estilo = this.estiloEventoAusencia(item, item.nombre_empleado);
           return {
             id: item.id_historial_ausencias,
             title: `${item.nombre_empleado} - ${item.tipo_nombre}`,
             start: fechaInicio.toISOString(),
             end: fechaHasta.toISOString(),
             allDay: true,
-            color: isCancelled ? '#9e9e9e' : this.color?.(item.nombre_empleado) || '#3a87ad',
-            classNames: isCancelled ? ['event-cancelled'] : [],
+            color: estilo.color,
+            classNames: estilo.classNames,
             nombre_empleado: item.nombre_empleado
           };
         });
@@ -16289,6 +16458,7 @@ __webpack_require__.r(__webpack_exports__);
     onAbsenceCancelled() {
       this.closeModalEvento();
       this.GetAusencias();
+      this.checkNotifications();
       this.$refs.fullCalendar.getApi().refetchEvents();
     },
     onAbsenceEdit(ausencia) {
@@ -28213,7 +28383,34 @@ var render = function render() {
     staticClass: "info-item__label"
   }, [_vm._v(_vm._s(_vm.t("empleados", "Comments")))]), _vm._v(" "), _c("p", {
     staticClass: "info-item__value info-item__notes"
-  }, [_vm._v(_vm._s(_vm.ausencia.notas))])]) : _vm._e()]), _vm._v(" "), _c("div", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.ausencia.notas) + "\n\t\t\t\t")])]) : _vm._e()]), _vm._v(" "), _c("div", {
+    staticClass: "detalle-ausencia__aprobaciones"
+  }, [_c("button", {
+    staticClass: "aprobaciones__toggle",
+    on: {
+      click: function ($event) {
+        _vm.showAprobaciones = !_vm.showAprobaciones;
+      }
+    }
+  }, [_c("ChevronDown", {
+    class: {
+      "is-open": _vm.showAprobaciones
+    },
+    attrs: {
+      size: 18
+    }
+  }), _vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Approval status")) + "\n\t\t\t")], 1), _vm._v(" "), _vm.showAprobaciones ? _c("div", {
+    staticClass: "aprobaciones__body"
+  }, _vm._l(_vm.estadosAprobacion, function (rol) {
+    return _c("div", {
+      key: rol.key,
+      staticClass: "aprobaciones__row"
+    }, [_c("span", {
+      staticClass: "aprobaciones__rol"
+    }, [_vm._v(_vm._s(rol.label))]), _vm._v(" "), _c("span", {
+      class: ["aprobaciones__estado", `aprobaciones__estado--${rol.estado}`]
+    }, [_vm._v("\n\t\t\t\t\t\t" + _vm._s(rol.texto) + "\n\t\t\t\t\t")])]);
+  }), 0) : _vm._e()]), _vm._v(" "), _c("div", {
     staticClass: "detalle-ausencia__actions"
   }, [_vm.canEdit ? _c("NcButton", {
     attrs: {
@@ -28236,7 +28433,7 @@ var render = function render() {
   }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Edit")) + "\n\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.canCancel ? _c("NcButton", {
     staticClass: "btn-cancel",
     attrs: {
-      disabled: _vm.cancelling
+      disabled: _vm.cancelling || _vm.procesando
     },
     on: {
       click: _vm.confirmCancel
@@ -28244,7 +28441,7 @@ var render = function render() {
     scopedSlots: _vm._u([{
       key: "icon",
       fn: function () {
-        return [_vm.cancelling ? _c("NcLoadingIcon", {
+        return [_vm.cancelling || _vm.procesando ? _c("NcLoadingIcon", {
           attrs: {
             size: 18
           }
@@ -28255,22 +28452,42 @@ var render = function render() {
         })];
       },
       proxy: true
-    }], null, false, 2283647798)
-  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Cancel absence")) + "\n\t\t\t")]) : _vm._e()], 1), _vm._v(" "), _vm.showConfirm ? _c("div", {
+    }], null, false, 792223242)
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.esRechazoDeJefe ? _vm.t("empleados", "Reject") : _vm.t("empleados", "Cancel absence")) + "\n\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.puedeAprobar ? _c("NcButton", {
+    attrs: {
+      type: "primary",
+      disabled: _vm.procesando
+    },
+    on: {
+      click: function ($event) {
+        return _vm.aprobar(_vm.rolPrincipalAprobar);
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Approve")) + "\n\t\t\t")]) : _vm._e(), _vm._v(" "), _vm.puedeAprobarComoSocioRH ? _c("NcButton", {
+    attrs: {
+      type: "primary",
+      disabled: _vm.procesando
+    },
+    on: {
+      click: function ($event) {
+        return _vm.aprobar("capital_humano_como_socio");
+      }
+    }
+  }, [_vm._v("\n\t\t\t\t" + _vm._s(_vm.t("empleados", "Approve on behalf of partner")) + "\n\t\t\t")]) : _vm._e()], 1), _vm._v(" "), _vm.showConfirm ? _c("div", {
     staticClass: "detalle-ausencia__confirm"
   }, [_c("NcNoteCard", {
     attrs: {
       type: "warning",
-      text: _vm.t("empleados", "Are you sure you want to cancel this absence? This action cannot be undone.")
+      text: _vm.esRechazoDeJefe ? _vm.t("empleados", "Are you sure you want to reject this absence?") : _vm.t("empleados", "Are you sure you want to cancel this absence? This action cannot be undone.")
     }
   }), _vm._v(" "), _c("div", {
     staticClass: "detalle-ausencia__confirm-actions"
   }, [_c("NcButton", {
     staticClass: "btn-cancel",
     on: {
-      click: _vm.cancelAbsence
+      click: _vm.ejecutarCancelacion
     }
-  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Yes, cancel it")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
+  }, [_vm._v("\n\t\t\t\t\t" + _vm._s(_vm.esRechazoDeJefe ? _vm.t("empleados", "Yes, reject it") : _vm.t("empleados", "Yes, cancel it")) + "\n\t\t\t\t")]), _vm._v(" "), _c("NcButton", {
     attrs: {
       type: "secondary"
     },
@@ -29030,7 +29247,7 @@ var render = function render() {
     staticClass: "resumen-valor resumen-valor-prima"
   }, [_vm.resumenEmpleadoStats.primaSolicitada ? [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Solicitado en: {fecha}", {
     fecha: _vm.formatFecha(_vm.resumenEmpleadoStats.primaFecha)
-  })) + "\n\t\t\t\t\t\t\t")] : [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "No solicitado aún")) + "\n\t\t\t\t\t\t\t")]], 2)]), _vm._v(" "), _c("div", {
+  })) + "\n\t\t\t\t\t\t\t")] : [_vm._v("\n\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "No solicitado aún.")) + "\n\t\t\t\t\t\t\t")]], 2)]), _vm._v(" "), _c("div", {
     staticClass: "resumen-card"
   }, [_c("span", {
     staticClass: "resumen-label"
@@ -29043,13 +29260,17 @@ var render = function render() {
   }, [_vm._v("🔍")]), _vm._v(" "), _c("p", [_vm._v(_vm._s(_vm.t("empleados", "Sin registros para este empleado en el año seleccionado.")))])]) : _c("div", {
     staticClass: "reporte-tabla-wrap"
   }, [_c("table", {
-    staticClass: "reporte-tabla"
-  }, [_c("thead", [_c("tr", [_c("th", [_vm._v(_vm._s(_vm.t("empleados", "Empleado")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Tipo de ausencia")))]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Periodo")))]), _vm._v(" "), _c("th", {
+    staticClass: "reporte-tabla reporte-tabla--resumen"
+  }, [_c("thead", [_c("tr", [_c("th", {
+    staticClass: "col-periodo-resumen"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Periodo")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
     staticClass: "col-dias cell-center"
   }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Días")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
     staticClass: "col-prima"
-  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Prima vac.")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", [_vm._v(_vm._s(_vm.t("empleados", "Estado")))]), _vm._v(" "), _c("th", {
-    staticClass: "col-aprobacion"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Prima vac.")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-estado-resumen"
+  }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Estado")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
+    staticClass: "col-aprobacion-resumen"
   }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Aprobación")) + "\n\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("th", {
     staticClass: "col-solicitud"
   }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "Solicitud")) + "\n\t\t\t\t\t\t\t\t")])])]), _vm._v(" "), _c("tbody", _vm._l(_vm.registrosResumenEmpleado, function (item, i) {
@@ -29057,24 +29278,8 @@ var render = function render() {
       key: item.id_historial_ausencias || i,
       class: _vm.rowClass(item)
     }, [_c("td", {
-      staticClass: "cell-empleado"
-    }, [_c("img", {
-      staticClass: "empleado-avatar",
-      attrs: {
-        src: _vm.avatarUrl(item.nombre_empleado),
-        alt: item.nombre_empleado
-      },
-      on: {
-        error: function ($event) {
-          return _vm.onAvatarError($event, item.nombre_empleado);
-        }
-      }
-    }), _vm._v(" "), _c("span", {
-      staticClass: "empleado-nombre"
-    }, [_vm._v(_vm._s(item.nombre_empleado))])]), _vm._v(" "), _c("td", [_c("span", {
-      staticClass: "badge-tipo",
-      style: _vm.colorTipo(item.tipo_ausencia)
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(item.tipo_ausencia) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", [_c("span", {
+      staticClass: "col-periodo-resumen"
+    }, [_c("span", {
       class: {
         "fecha-tardia": parseFloat(item.dias_de_acumulado) > 0
       },
@@ -29102,8 +29307,14 @@ var render = function render() {
       staticClass: "chip",
       class: _vm.chipEstado(item).clase
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.chipEstado(item).texto) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
-      staticClass: "col-aprobacion"
+      staticClass: "col-aprobacion-resumen"
     }, [_c("span", {
+      staticClass: "chip-mini",
+      class: _vm.chipAprobacion(item.a_socio).clase,
+      attrs: {
+        title: _vm.t("empleados", "Socio")
+      }
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "S:")) + " " + _vm._s(_vm.chipAprobacion(item.a_socio).texto) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
       staticClass: "chip-mini",
       class: _vm.chipAprobacion(item.a_gerente).clase,
       attrs: {
@@ -29111,11 +29322,11 @@ var render = function render() {
       }
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "G:")) + " " + _vm._s(_vm.chipAprobacion(item.a_gerente).texto) + "\n\t\t\t\t\t\t\t\t\t")]), _vm._v(" "), _c("span", {
       staticClass: "chip-mini",
-      class: _vm.chipAprobacion(item.a_socio).clase,
+      class: _vm.chipAprobacion(item.a_capital_humano).clase,
       attrs: {
-        title: _vm.t("empleados", "Socio")
+        title: _vm.t("empleados", "Capital Humano")
       }
-    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "S:")) + " " + _vm._s(_vm.chipAprobacion(item.a_socio).texto) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
+    }, [_vm._v("\n\t\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.t("empleados", "RH:")) + " " + _vm._s(_vm.chipAprobacion(item.a_capital_humano).texto) + "\n\t\t\t\t\t\t\t\t\t")])]), _vm._v(" "), _c("td", {
       staticClass: "cell-fecha"
     }, [_vm._v("\n\t\t\t\t\t\t\t\t\t" + _vm._s(_vm.formatTimestamp(item.timestamp)) + "\n\t\t\t\t\t\t\t\t")])]);
   }), 0)])])]], 2) : _vm.registros.length === 0 ? _c("div", {
@@ -29590,11 +29801,7 @@ var render = function render() {
       on: {
         click: function ($event) {
           $event.preventDefault();
-          _vm.employees = [];
-          _vm.typePetition = "employee";
-          _vm.selected_user = item;
-          _vm.$refs.fullCalendar.getApi().gotoDate(item.fecha_de);
-          _vm.$refs.fullCalendar.getApi().refetchEvents();
+          return _vm.abrirDetalleDesdeNotificacion(item);
         }
       },
       scopedSlots: _vm._u([{
@@ -29608,16 +29815,6 @@ var render = function render() {
               "display-name": item.Id_user
             }
           })];
-        },
-        proxy: true
-      }, {
-        key: "subname",
-        fn: function () {
-          return [_vm._v("\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t" + _vm._s(new Date(item.fecha_de).toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric"
-          })) + "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t")];
         },
         proxy: true
       }], null, true)
@@ -29847,6 +30044,8 @@ var render = function render() {
     },
     on: {
       cancelled: _vm.onAbsenceCancelled,
+      approved: _vm.onAbsenceCancelled,
+      rejected: _vm.onAbsenceCancelled,
       edit: _vm.onAbsenceEdit
     }
   }) : _vm._e()], 1) : _vm._e(), _vm._v(" "), _vm.modal ? _c("NcModal", {
@@ -61023,6 +61222,49 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	gap: 10px;
 	justify-content: flex-end;
 }
+.detalle-ausencia__aprobaciones[data-v-2596a7b6] {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius, 8px);
+	overflow: hidden;
+}
+.aprobaciones__toggle[data-v-2596a7b6] {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	background: var(--color-background-hover);
+	border: none;
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 0.9rem;
+	color: var(--color-main-text);
+}
+.aprobaciones__toggle svg[data-v-2596a7b6] {
+	transition: transform 0.15s ease;
+}
+.aprobaciones__toggle svg.is-open[data-v-2596a7b6] {
+	transform: rotate(180deg);
+}
+.aprobaciones__body[data-v-2596a7b6] {
+	display: flex;
+	flex-direction: column;
+}
+.aprobaciones__row[data-v-2596a7b6] {
+	display: flex;
+	justify-content: space-between;
+	padding: 8px 14px;
+	border-top: 1px solid var(--color-border);
+	font-size: 0.88rem;
+}
+.aprobaciones__estado--aprobado[data-v-2596a7b6]  { color: #488d48; font-weight: 800;
+}
+.aprobaciones__estado--rechazado[data-v-2596a7b6] { color: #972c2cfa; font-weight: 800;
+}
+.aprobaciones__estado--cancelado[data-v-2596a7b6] { color: var(--color-text-maxcontrast); font-weight: 800;
+}
+.aprobaciones__estado--pendiente[data-v-2596a7b6] { color: #ccad3d; font-weight: 800;
+}
 `, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -61520,6 +61762,11 @@ ___CSS_LOADER_EXPORT___.push([module.id, `
 	table-layout: fixed;
 	transition: background 0.12s;
 }
+.reporte-tabla--resumen thead[data-v-71a4011e],
+.reporte-tabla--resumen tbody tr[data-v-71a4011e] {
+	table-layout: auto;
+	width: auto;
+}
 .reporte-tabla tbody tr[data-v-71a4011e]:hover { background: var(--color-background-hover);
 }
 .reporte-tabla td[data-v-71a4011e] {
@@ -61798,6 +62045,36 @@ th.col-dias[data-v-71a4011e], td.col-dias[data-v-71a4011e] { text-align: right; 
 .periodo-vac-tabla[data-v-71a4011e] {
 	table-layout: auto;
 }
+
+/* ── Tabla del resumen: más compacta */
+.reporte-tabla--resumen[data-v-71a4011e] {
+	width: auto;
+	max-width: 100%;
+}
+.col-periodo-resumen[data-v-71a4011e] {
+	width: 190px;
+	min-width: 190px;
+}
+.col-estado-resumen[data-v-71a4011e] {
+	width: 110px;
+	min-width: 110px;
+}
+.col-aprobacion-resumen[data-v-71a4011e] {
+	width: 230px;
+	min-width: 230px;
+}
+.reporte-tabla--resumen .col-dias[data-v-71a4011e] {
+	width: 60px;
+	min-width: 60px;
+}
+.reporte-tabla--resumen .col-prima[data-v-71a4011e] {
+	width: 90px;
+	min-width: 90px;
+}
+.reporte-tabla--resumen .col-solicitud[data-v-71a4011e] {
+	width: 160px;
+	min-width: 160px;
+}
 `, ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
@@ -61828,6 +62105,12 @@ var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBP
 ___CSS_LOADER_EXPORT___.push([module.id, `
 /* Global: tachado para eventos cancelados en el calendario */
 .event-cancelled .fc-event-title {
+	text-decoration: line-through;
+	opacity: 0.8;
+}
+
+/* Global: tachado para eventos rechazados en el calendario (mismo trato que cancelados, color distinto) */
+.event-rejected .fc-event-title {
 	text-decoration: line-through;
 	opacity: 0.8;
 }
