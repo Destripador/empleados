@@ -24,6 +24,28 @@ class RepairConfigCommand extends Command {
 		'modulo_ahorro',
 		'modulo_ausencias',
 		'ausencias_readonly',
+		'modulo_clientes' => 'false',
+		'modulo_reporte_tiempos' => 'false',
+		'modulo_inventario' => 'false',
+		'modulo_soporte' => 'false',
+	];
+
+	private const REQUIRED_MIGRATIONS = [
+		'2000Date20260424181244',
+		'2002Date20260504080248',
+		'2007Date20260615120000',
+		'2008Date20260616110000',
+		'2009Date20260618173922',
+		'2010Date20260618234100',
+		'2011Date20260619174314',
+		'2012Date20260624184640',
+		'2013Date20260626164414',
+		'2013Date20260701010000',
+		'2014Date20260626191208',
+		'2014Date20260701020000',
+		'2015Date20260630160248',
+		'2016Date20260630223437',
+		'2017Date20260706183000',
 	];
 
 	/**
@@ -88,6 +110,22 @@ class RepairConfigCommand extends Command {
             'created_at',
             'updated_at',
         ],
+
+		'empleados_clientes' => [
+			'id',
+			'nombre',
+			'detalles',
+			'lider_proyecto',
+			'colaboradores',
+			'razon_social',
+			'nombre_contacto',
+			'telefono',
+			'correo',
+			'ubicacion',
+			'especial',
+			'cliente_padre',
+			'estado',
+		],
     ];
 
 	public function __construct(
@@ -117,6 +155,21 @@ class RepairConfigCommand extends Command {
 	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$checkOnly = (bool)$input->getOption('check-only');
 		$skipSchemaCheck = (bool)$input->getOption('skip-schema-check');
+
+		$migrationErrors = $this->verifyMigrations($output);
+
+		if ($migrationErrors !== []) {
+			$output->writeln('');
+			$output->writeln('<error>Hay migraciones faltantes. No se aplicaron reparaciones.</error>');
+
+			foreach ($migrationErrors as $error) {
+				$output->writeln('<error>- ' . $error . '</error>');
+			}
+
+			$output->writeln('');
+			$output->writeln('Ejecuta primero: php occ upgrade');
+			return Command::FAILURE;
+		}
 
 		if (!$skipSchemaCheck) {
 			$schemaErrors = $this->verifySchema($output);
@@ -294,4 +347,48 @@ class RepairConfigCommand extends Command {
         $prefix = $this->config->getSystemValueString('dbtableprefix', 'oc_');
         return $prefix . $table;
     }
+	private function verifyMigrations(OutputInterface $output): array {
+		$errors = [];
+
+		$output->writeln('<info>Verificando migraciones aplicadas...</info>');
+
+		try {
+			$qb = $this->db->getQueryBuilder();
+
+			$qb->select('version')
+				->from('migrations')
+				->where(
+					$qb->expr()->eq(
+						'app',
+						$qb->createNamedParameter('empleados')
+					)
+				);
+
+			$result = $qb->executeQuery();
+			$rows = $result->fetchAll();
+			$result->closeCursor();
+
+			$executed = [];
+
+			foreach ($rows as $row) {
+				$executed[] = (string)$row['version'];
+			}
+
+			foreach (self::REQUIRED_MIGRATIONS as $migration) {
+				if (!in_array($migration, $executed, true)) {
+					$errors[] = 'Migración faltante: ' . $migration;
+					$output->writeln('<error>FALTA MIGRACIÓN:</error> ' . $migration);
+					continue;
+				}
+
+				$output->writeln('<info>OK migración:</info> ' . $migration);
+			}
+
+			return $errors;
+		} catch (\Throwable $e) {
+			return [
+				'No se pudo verificar oc_migrations: ' . $e->getMessage(),
+			];
+		}
+	}
 }

@@ -181,7 +181,7 @@ export default {
 .input-container {
 	flex: 1;
 	margin-right: 5px;
-	margin-left: 13%;
+	margin-left: 42px;
 }
 .input-container input {
 	width: 100%;
