@@ -305,7 +305,7 @@ class AusenciasController extends BaseController {
 		}
 
 		$fechaIngreso = new DateTime($empleado[0]['Ingreso']);
-		$hoy = new DateTime();
+		$hoy = new DateTime('2028-07-30');
 		$numeroAniversario = $hoy->diff($fechaIngreso)->y;
 
 		$periodoInicio = (clone $fechaIngreso)->modify('+' . $numeroAniversario . ' years');
@@ -514,7 +514,7 @@ class AusenciasController extends BaseController {
     public function GetAniversarioByDate(string $ingreso): DataResponse {
         $this->checkAccess(['admin', 'empleados']);
         $fechaInicio = new DateTime($ingreso);
-        $hoy = new DateTime();
+        $hoy = new DateTime('2028-07-30');
 
         $diferencia = $hoy->diff($fechaInicio);
     
@@ -612,7 +612,7 @@ class AusenciasController extends BaseController {
             
             $fechaDeObj = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_de'));
             $fechaHastaObj = DateTime::createFromFormat('d/m/Y', $this->request->getParam('fecha_hasta'));
-            $hoy = new \DateTime();
+            $hoy = new \DateTime('2028-07-30');
 
             // Normalizamos horas
             $fechaDeObj->setTime(0, 0);
@@ -1325,7 +1325,7 @@ class AusenciasController extends BaseController {
         }
 
         $fechaIngreso = new DateTime($empleado[0]['Ingreso']);
-        $hoy = new DateTime();
+        $hoy = new DateTime('2028-07-30');
         $numeroAniversarioActual = $hoy->diff($fechaIngreso)->y;
 
         $empleadoAusencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado);
@@ -1400,7 +1400,7 @@ class AusenciasController extends BaseController {
                     if ((int) ($item['solicitar_prima_vacacional'] ?? 0) !== 1) {
                         continue;
                     }
-                    $diasDisfrutados += (float) $item['dias_solicitados'] - (float) ($item['dias_de_acumulado'] ?? 0);
+                    $diasDisfrutados += (float) ($item['dias_de_acumulado'] ?? 0);
                 }
             }
 
