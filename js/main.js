@@ -22974,7 +22974,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var vue_material_design_icons_CartOutline_vue__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! vue-material-design-icons/CartOutline.vue */ "./node_modules/vue-material-design-icons/CartOutline.vue");
 /* harmony import */ var _nextcloud_vue__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! @nextcloud/vue */ "./node_modules/@nextcloud/vue/dist/index.mjs");
 /* harmony import */ var _nextcloud_l10n__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! @nextcloud/l10n */ "./node_modules/@nextcloud/l10n/dist/index.mjs");
-/* harmony import */ var _mixins_permissions_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ../../mixins/permissions.js */ "./src/mixins/permissions.js");
+Object(function webpackMissingModule() { var e = new Error("Cannot find module '../../mixins/permissions.js'"); e.code = 'MODULE_NOT_FOUND'; throw e; }());
 
 
 
@@ -23015,7 +23015,7 @@ const STORAGE_KEY = 'empleados.sideNavigationMode';
     Laptop: vue_material_design_icons_Laptop_vue__WEBPACK_IMPORTED_MODULE_12__["default"],
     CartOutline: vue_material_design_icons_CartOutline_vue__WEBPACK_IMPORTED_MODULE_13__["default"]
   },
-  mixins: [_mixins_permissions_js__WEBPACK_IMPORTED_MODULE_16__["default"]],
+  mixins: [Object(function webpackMissingModule() { var e = new Error("Cannot find module '../../mixins/permissions.js'"); e.code = 'MODULE_NOT_FOUND'; throw e; }())],
   inject: ['groupuser', 'configuraciones', 'subordinates'],
   data() {
     return {
@@ -36804,66 +36804,6 @@ var render = function render() {
 var staticRenderFns = [];
 render._withStripped = true;
 
-
-/***/ }),
-
-/***/ "./src/mixins/permissions.js":
-/*!***********************************!*\
-  !*** ./src/mixins/permissions.js ***!
-  \***********************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
-  inject: {
-    permissions: {
-      default: () => ({
-        uid: null,
-        is_admin: false,
-        groups: [],
-        modules: {}
-      })
-    }
-  },
-  methods: {
-    canSee(permissionKey) {
-      if (!permissionKey) {
-        return false;
-      }
-      const key = String(permissionKey).trim();
-      if (key === '') {
-        return false;
-      }
-      if (key.includes('.')) {
-        const [moduleName, permissionName] = key.split('.', 2);
-        return this.canUseModulePermission(moduleName, permissionName);
-      }
-      return this.canViewModule(key);
-    },
-    canSeeAny(permissionKeys) {
-      if (!Array.isArray(permissionKeys)) {
-        return false;
-      }
-      return permissionKeys.some(permissionKey => this.canSee(permissionKey));
-    },
-    canViewModule(moduleName) {
-      return this.isTruthy(this.permissions?.modules?.[moduleName]?.view);
-    },
-    canUseModulePermission(moduleName, permissionName) {
-      return this.isTruthy(this.permissions?.modules?.[moduleName]?.[permissionName]) || this.isTruthy(this.permissions?.modules?.[moduleName]?.permissions?.[permissionName]);
-    },
-    isAdminUser() {
-      return this.isTruthy(this.permissions?.is_admin);
-    },
-    isTruthy(value) {
-      return value === true || value === 'true' || value === 1 || value === '1';
-    }
-  }
-});
 
 /***/ }),
 
