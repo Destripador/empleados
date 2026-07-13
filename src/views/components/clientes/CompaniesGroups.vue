@@ -152,7 +152,8 @@
 								</div>
 							</div>
 
-							<VueTabs class="companies-tabs"
+							<VueTabs v-model="activeCompanyTab"
+								class="companies-tabs"
 								active-tab-color="var(--color-primary-element)"
 								active-text-color="var(--color-primary-element-text)"
 								type="grow">
@@ -306,7 +307,7 @@
 									</div>
 								</VTab>
 
-								<VTab :title="t('empleados', 'Team, Collaborators and Fees')">
+								<VTab :title="t('empleados', 'Team and Collaborators')">
 									<div class="info-section separator-top">
 										<div class="section-head">
 											<div>
@@ -349,9 +350,11 @@
 											</div>
 										</div>
 									</div>
+								</VTab>
 
+								<VTab :title="t('empleados', 'Fees')">
 									<!-- Honorarios -->
-									<div class="info-section billing-section top">
+									<div class="info-section billing-section">
 										<div class="section-head billing-head">
 											<div class="billing-title">
 												<span class="billing-title__icon">
@@ -1159,6 +1162,7 @@ export default {
 
 	data() {
 		return {
+			activeCompanyTab: t('empleados', 'Fees'),
 			projectManagers: [],
 			editing: false,
 			saving: false,
