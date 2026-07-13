@@ -149,25 +149,11 @@
 								</div>
 							</div>
 
-							<div class="acordeon-item acordeon-item--group btn-top"
-								:class="{ 'acordeon-item--open': accordeon[0].abierto }">
-								<button class="acordeon-titulo"
-									type="button"
-									:aria-expanded="String(accordeon[0].abierto)"
-									@click="toggleAccordeon(0)">
-									<span class="acordeon-titulo__icon">
-										<OfficeBuilding :size="21" />
-									</span>
-									<span class="acordeon-titulo__copy">
-										<strong>{{ t('empleados', 'General Information') }}</strong>
-										<small>{{ t('empleados', 'Company details and responsible team') }}</small>
-									</span>
-									<span class="acordeon-titulo__toggle"
-										:class="{ 'acordeon-titulo__toggle--open': accordeon[0].abierto }">
-										<ChevronDown :size="20" />
-									</span>
-								</button>
-								<div :class="['acordeon-contenido', { abierto: accordeon[0].abierto }]">
+							<VueTabs class="companies-tabs"
+								active-tab-color="var(--color-primary-element)"
+								active-text-color="var(--color-primary-element-text)"
+								type="grow">
+								<VTab :title="t('empleados', 'General Information')">
 									<div class="btn-top">
 										<div class="info-section">
 											<div class="section-head">
@@ -241,28 +227,9 @@
 											</div>
 										</div>
 									</div>
-								</div>
-							</div>
+								</VTab>
 
-							<div class="acordeon-item acordeon-item--group separator-top"
-								:class="{ 'acordeon-item--open': accordeon[1].abierto }">
-								<button class="acordeon-titulo"
-									type="button"
-									:aria-expanded="String(accordeon[1].abierto)"
-									@click="toggleAccordeon(1)">
-									<span class="acordeon-titulo__icon">
-										<AccountGroup :size="21" />
-									</span>
-									<span class="acordeon-titulo__copy">
-										<strong>{{ t('empleados', 'Group Information') }}</strong>
-										<small>{{ t('empleados', 'Hierarchy and companies within this group') }}</small>
-									</span>
-									<span class="acordeon-titulo__toggle"
-										:class="{ 'acordeon-titulo__toggle--open': accordeon[1].abierto }">
-										<ChevronDown :size="20" />
-									</span>
-								</button>
-								<div :class="['acordeon-contenido', { abierto: accordeon[1].abierto }]">
+								<VTab :title="t('empleados', 'Group Information')">
 									<div class="btn-top">
 										<div class="info-section">
 											<div class="">
@@ -330,8 +297,8 @@
 											</div>
 										</div>
 									</div>
-								</div>
-							</div>
+								</VTab>
+							</VueTabs>
 
 							<div class="info-section separator-top">
 								<div class="section-head">
@@ -1108,6 +1075,8 @@ import CalendarPlus from 'vue-material-design-icons/CalendarPlus.vue'
 import Restore from 'vue-material-design-icons/Restore.vue'
 import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
+import 'vue-nav-tabs/themes/vue-tabs.css'
 // import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
 // import IconTrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 // import IconOpenInNew from 'vue-material-design-icons/OpenInNew.vue'
@@ -1153,6 +1122,8 @@ export default {
 		Upload,
 		FileDocumentOutline,
 		ChevronDown,
+		VueTabs,
+		VTab,
 		// IconTrashCanOutline,
 		// IconOpenInNew,
 		// IconPencilOutline,
@@ -1257,12 +1228,6 @@ export default {
 			detalleAbierto: {},
 			honorarioBorradorId: null,
 			button: false,
-			accordeon: [
-				{ abierto: false },
-				{ abierto: false },
-				{ abierto: false },
-				{ abierto: false },
-			],
 			h_titulo_mes: null,
 			h_titulo_anio: { label: String(new Date().getFullYear()), value: new Date().getFullYear() },
 			h_especial: false,
@@ -1685,12 +1650,6 @@ export default {
 
 		toggle() {
 			this.button = !this.button
-		},
-		toggleAccordeon(index) {
-			this.accordeon = this.accordeon.map((item, i) => ({
-				...item,
-				abierto: i === index ? !item.abierto : false,
-			}))
 		},
 		onKeyDown(e) {
 			if (e.key === 'Escape') {
@@ -3527,126 +3486,13 @@ export default {
 	padding-left: 4px !important;
 	padding-right: 4px !important;
 }
-.acordeon-item {
-	margin-top: 10px;
-	border-radius: 5px;
-	overflow: hidden;
-}
-.acordeon-titulo {
+.companies-tabs {
 	width: 100%;
-	text-align: center;
-	border: none;
-	justify-content: space-between;
-	align-items: center;
+	margin: 16px 0 24px;
 }
 
-.acordeon-item--group {
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-	&:hover,
-	&.acordeon-item--open {
-		border-color: color-mix(in srgb, var(--color-primary-element) 45%, var(--color-border));
-		box-shadow: 0 4px 18px rgb(0 0 0 / 6%);
-	}
-
-	.acordeon-titulo {
-		display: flex;
-		gap: 12px;
-		min-height: 68px;
-		padding: 12px 14px;
-		border-radius: 0;
-		background: var(--color-background-soft);
-		color: var(--color-main-text);
-		text-align: start;
-		transition: background-color 0.2s ease;
-
-		&:hover,
-		&:focus-visible {
-			background: var(--color-background-hover);
-		}
-
-		&:focus-visible {
-			outline: 2px solid var(--color-primary-element);
-			outline-offset: -2px;
-		}
-	}
-
-	&.acordeon-item--open .acordeon-titulo {
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-primary-element-light);
-	}
-}
-
-.acordeon-titulo__icon,
-.acordeon-titulo__toggle {
-	display: inline-flex;
-	flex: 0 0 auto;
-	align-items: center;
-	justify-content: center;
-	width: 40px;
-	height: 40px;
-	border-radius: var(--border-radius-large);
-}
-
-.acordeon-titulo__icon {
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element);
-}
-
-.acordeon-titulo__copy {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-
-	strong {
-		font-size: 0.95rem;
-		font-weight: 700;
-	}
-
-	small {
-		color: var(--color-text-maxcontrast);
-		font-size: 0.75rem;
-		line-height: 1.35;
-	}
-}
-
-.acordeon-titulo__toggle {
-	width: 34px;
-	height: 34px;
-	color: var(--color-text-maxcontrast);
-	transition: transform 0.25s ease, color 0.2s ease;
-
-	&--open {
-		color: var(--color-primary-element);
-		transform: rotate(180deg);
-	}
-}
-
-.acordeon-contenido {
-	display: grid;
-	grid-template-rows: 0fr;
-	opacity: 0;
-	overflow: hidden;
-	transition: grid-template-rows 0.3s ease-in-out, opacity 0.2s ease-in-out;
-
-	> div {
-		min-height: 0;
-		overflow: hidden;
-	}
-}
-
-.acordeon-contenido.abierto {
-	grid-template-rows: 1fr;
-	opacity: 1;
-}
-
-.acordeon-item--group .acordeon-contenido.abierto {
-	padding: 14px;
+.companies-tabs :deep(.tab-content) {
+	padding-top: 16px;
 }
 
 .honorario-especial {
