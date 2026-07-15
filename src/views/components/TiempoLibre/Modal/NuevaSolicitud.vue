@@ -1,5 +1,13 @@
 <template id="content">
 	<form class="absence-request" @submit.prevent="EnviarAusencia">
+		<NcButton
+			ref="initialFocusButton"
+			class="focus-placeholder"
+			type="tertiary"
+			tabindex="0"
+			@click.prevent>
+			Inicio
+		</NcButton>
 		<NcNoteCard
 			v-if="admin"
 			type="warning"
@@ -427,7 +435,6 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 18px;
-	width: min(760px, calc(100vw - 48px));
 	padding: 24px;
 }
 
@@ -513,5 +520,17 @@ export default {
 .form-actions {
 	display: flex;
 	justify-content: flex-end;
+}
+.focus-placeholder {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip: rect(0, 0, 0, 0) !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+	border: 0 !important;
 }
 </style>
