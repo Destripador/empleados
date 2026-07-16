@@ -11,6 +11,7 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\reportetiempo;
 use OCA\Empleados\Db\reportetiempoMapper;
+use OCA\Empleados\Db\historialausenciasMapper;
 use OCA\Empleados\UploadException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -44,6 +45,7 @@ class reportetiempoController extends BaseController {
     protected $reportetiempoMapper;
     protected $clientesMapper;
     protected $actividaesdMapper;
+	protected $historialausenciasMapper;
     protected $l10n;
     private $config;
     private $clientService;
@@ -61,6 +63,7 @@ class reportetiempoController extends BaseController {
 		configuracionesMapper $configuracionesMapper,
 		clientesMapper $clientesMapper,
 		actividadesMapper $actividadesMapper,
+		historialausenciasMapper $historialausenciasMapper,
 		IL10N $l10n,
 		IConfig $config,
 		IGroupManager $groupManager,
@@ -94,6 +97,7 @@ class reportetiempoController extends BaseController {
 		$this->subAdmin = $subAdmin;
 		$this->mailer = $mailer;
 		$this->notificationManager = $notificationManager;
+		$this->historialausenciasMapper = $historialausenciasMapper;
 	}
 
 	/**

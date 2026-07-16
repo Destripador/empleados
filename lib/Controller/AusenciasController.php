@@ -821,7 +821,7 @@ class AusenciasController extends BaseController {
                         $reporte->setidActividad(99999);
                         $reporte->settiempoRegistrado(480);
                         $reporte->setfechaRegistro($cursor->format('Y-m-d'));
-                        $reporte->setdescripcion('');
+                        $reporte->setdescripcion((string) ($tipo_ausencia[0]['nombre'] ?? ''));
                         $this->reportetiempoMapper->insert($reporte);
                     }
                     $cursor->modify('+1 day');
@@ -1262,7 +1262,7 @@ class AusenciasController extends BaseController {
                             $reporte->setidActividad(99999);
                             $reporte->settiempoRegistrado(480);
                             $reporte->setfechaRegistro($cursor->format('Y-m-d'));
-                            $reporte->setdescripcion('');
+                            $reporte->setdescripcion((string) ($tipo_nuevo[0]['nombre'] ?? ''));
                             $this->reportetiempoMapper->insert($reporte);
                         }
                         $cursor->modify('+1 day');
