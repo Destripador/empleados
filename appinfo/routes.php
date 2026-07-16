@@ -156,6 +156,10 @@ return [
 		['name' => 'Tipoausencias#modificarTipo', 'url' => '/modificarTipo', 'verb' => 'POST'],
 		['name' => 'Tipoausencias#deleteTipo',    'url' => '/deleteTipo',    'verb' => 'POST'],
 
+		/*************************** PRIMA VACACIONAL *************************************/
+		['name' => 'primaVacacionalPago#index', 'url' => '/prima-vacacional-pagos', 'verb' => 'GET'],
+		['name' => 'primaVacacionalPago#guardar', 'url' => '/prima-vacacional-pagos', 'verb' => 'POST'],
+
 		/******************************** AHORRO ******************************************/
 		['name' => 'ahorros#GetInfoAhorro', 'url' => '/GetInfoAhorro', 'verb' => 'POST'],
 		['name' => 'ahorros#EnviarSolicitud', 'url' => '/EnviarSolicitud', 'verb' => 'POST'],
