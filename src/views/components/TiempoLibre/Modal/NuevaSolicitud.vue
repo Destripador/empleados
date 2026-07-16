@@ -1,9 +1,5 @@
 <template id="content">
 	<form class="absence-request" @submit.prevent="EnviarAusencia">
-<<<<<<< HEAD
-		<!-- Atrapa el autofocus del modal para que no abra el select de tipo -->
-		<span ref="focusSink" tabindex="0" class="focus-sink" />
-=======
 		<NcButton
 			ref="initialFocusButton"
 			class="focus-placeholder"
@@ -12,7 +8,6 @@
 			@click.prevent>
 			Inicio
 		</NcButton>
->>>>>>> origin/main
 		<NcNoteCard
 			v-if="admin"
 			type="warning"
@@ -641,16 +636,6 @@ export default {
 	display: flex;
 	justify-content: flex-end;
 }
-<<<<<<< HEAD
-
-.focus-sink {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	opacity: 0;
-	pointer-events: none;
-=======
 .focus-placeholder {
 	position: absolute !important;
 	width: 1px !important;
@@ -662,6 +647,5 @@ export default {
 	clip-path: inset(50%) !important;
 	white-space: nowrap !important;
 	border: 0 !important;
->>>>>>> origin/main
 }
 </style>
