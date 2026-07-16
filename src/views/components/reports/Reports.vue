@@ -567,7 +567,7 @@ export default {
 							? t('empleados', 'Absence - Vacation')
 							: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
 						const actividadNombre = esAusencia
-							? t('empleados', 'Cargable')
+							? t('empleados', 'No Cargable')
 							: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())
 						return {
 							...r,

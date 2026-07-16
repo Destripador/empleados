@@ -497,21 +497,25 @@ export default {
 		},
 
 		proyectosMap() {
-			return new Map(
+			const map = new Map(
 				(this.proyectosList || []).map(p => [
 					Number(p.id),
 					p.label || p.name || p.nombre || `Proyecto ${p.id}`,
 				]),
 			)
+			map.set(99999, t('empleados', 'Módulo de Ausencia'))
+			return map
 		},
 
 		actividadesMap() {
-			return new Map(
+			const map = new Map(
 				(this.actividadesList || []).map(a => [
 					Number(a.id),
 					a.label || a.name || a.nombre || `Actividad ${a.id}`,
 				]),
 			)
+			map.set(99999, t('empleados', 'Ausencia'))
+			return map
 		},
 
 		graficaEmpleados() {

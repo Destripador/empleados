@@ -32,6 +32,7 @@ use OCA\Empleados\Db\historialausenciasMapper;
 use OCA\Empleados\Db\historialvacacionesMapper;
 use OCA\Empleados\Db\aniversarioMapper;
 use OCA\Empleados\Db\ausencias;
+use OCA\Empleados\Db\actividadesMapper;
 
 use OCP\AppFramework\Http;
 use OCP\IURLGenerator;
@@ -66,6 +67,7 @@ class AusenciasController extends BaseController {
     private IManager $activityManager;
 	private IURLGenerator $urlGenerator;
     private MailHelper $mailHelper;
+    private actividadesMapper $actividadesMapper;
 
     public function __construct(
         IRequest $request,
@@ -86,6 +88,7 @@ class AusenciasController extends BaseController {
         MailHelper $mailHelper,
         reportetiempoMapper $reportetiempoMapper,
         aniversarioMapper $aniversarioMapper,
+        actividadesMapper $actividadesMapper
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
         
@@ -106,6 +109,7 @@ class AusenciasController extends BaseController {
         $this->mailHelper = $mailHelper;
         $this->reportetiempoMapper = $reportetiempoMapper; 
         $this->aniversarioMapper = $aniversarioMapper;
+        $this->actividadesMapper = $actividadesMapper;
     }
     /**
      * Obtiene la lista de ausencias.
@@ -692,15 +696,8 @@ class AusenciasController extends BaseController {
                 }
 
                 if ($prima_vacacional === 1) {
-                    // La prima vacacional SIEMPRE se descuenta de los días NUEVOS del periodo
-                    // actual, nunca del colchón acumulado del periodo anterior. Así, aunque la
-                    // fecha caiga dentro de los 6 meses de gracia donde conviven acumulado y
-                    // días nuevos, el registro queda anclado al periodo actual y se garantiza
-                    // que en el reporte solo aparezca 1 prima vacacional por periodo/aniversario.
                     $diasDeAcumulado = 0.0;
                 } else {
-                    // Ausencia normal (no es prima vacacional): se consume primero el colchón
-                    // acumulado vigente del periodo anterior, y lo que sobre sale del periodo actual.
                     $diasAcumuladosDisponibles = (float) ($periodoActual['dias_acumulados_restantes'] ?? 0);
                     $fechaExpiracionAcum = $periodoActual['fecha_expiracion_acumulados'] ?? null;
 
@@ -722,7 +719,6 @@ class AusenciasController extends BaseController {
                     }
                 }
 
-                // Lo que no alcanzó a cubrir el acumulado (o el total, si fue prima vacacional)
                 $diasDelPeriodoActual = $dias_solicitados - $diasDeAcumulado;
                 if ($diasDelPeriodoActual > 0) {
                     $dias_disponibles = $empleado_ausencias[0]['dias_disponibles'] - $diasDelPeriodoActual;
@@ -758,7 +754,6 @@ class AusenciasController extends BaseController {
                 }
 
                 if ($fechaCorte === null) {
-                    // No debería pasar, pero por seguridad caemos al caso simple.
                     $esPartida = false;
                 }
             }
@@ -811,7 +806,9 @@ class AusenciasController extends BaseController {
                 );
             }
 
-            if ($puedeDescontarDias && !empty($tipo_ausencia) && (int) $tipo_ausencia[0]['cargable'] === 1) {
+            if ($puedeDescontarDias && !empty($tipo_ausencia)) {
+                $this->actividadesMapper->ensureActividadAusencia();
+
                 $cursor = new \DateTime($fecha_de);
                 $fin = new \DateTime($fecha_hasta);
 

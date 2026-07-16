@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\AppInfo;
 
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
+use OCA\Empleados\BackgroundJob\RecalcularVacacionesJob;
 use OCA\Empleados\Dashboard\ReportesWidget;
 use OCA\Empleados\Helper\MailHelper;
 use OCA\Empleados\Notification\ComprasNotifier;
@@ -44,6 +45,10 @@ class Application extends App implements IBootstrap {
 		$context->injectFn(function(IJobList $jobList) {
 			if (!$jobList->has(RecordatorioReportesTiempo::class, null)) {
 				$jobList->add(RecordatorioReportesTiempo::class);
+			}
+
+			if (!$jobList->has(RecalcularVacacionesJob::class, null)) {
+				$jobList->add(RecalcularVacacionesJob::class);
 			}
 		});
 	}
