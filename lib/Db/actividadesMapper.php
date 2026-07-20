@@ -75,4 +75,37 @@ class actividadesMapper extends QBMapper {
 
         $query->executeStatement();
     }
+
+    /**
+     * Asegura que exista la actividad con id 99999, usada para reportes de tiempo generados automáticamente 
+     * por ausencias. Si ya existe, no hace nada. Si no existe, la crea con cargable = 0.
+     */
+    public function ensureActividadAusencia(): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('id_actividad')
+            ->from($this->getTableName())
+            ->where(
+                $qb->expr()->eq('id_actividad', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT))
+            );
+
+        $result = $qb->executeQuery();
+        $existe = $result->fetch();
+        $result->closeCursor();
+
+        if ($existe) {
+            return;
+        }
+
+        $insert = $this->db->getQueryBuilder();
+        $insert->insert($this->getTableName())
+            ->values([
+                'id_actividad'    => $insert->createNamedParameter(99999, IQueryBuilder::PARAM_INT),
+                'nombre'          => $insert->createNamedParameter('Ausencia'),
+                'detalles'        => $insert->createNamedParameter('Actividad para reportes generados por ausencias.'),
+                'tiempo_estimado' => $insert->createNamedParameter(0),
+                'cargable'        => $insert->createNamedParameter(0, IQueryBuilder::PARAM_INT),
+            ]);
+
+        $insert->executeStatement();
+    }
 }

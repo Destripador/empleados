@@ -68,6 +68,10 @@
 								<strong class="position-meta-card__value">{{ data.Nombre }}</strong>
 							</div>
 							<div class="position-meta-card">
+								<span class="position-meta-card__label">{{ t('empleados', 'Level') }}</span>
+								<strong class="position-meta-card__value">{{ checknull(data.Nivel) !== '' ? data.Nivel : t('empleados', 'Not set') }}</strong>
+							</div>
+							<div class="position-meta-card">
 								<span class="position-meta-card__label">{{ t('empleados', 'Assigned employees') }}</span>
 								<strong class="position-meta-card__value">{{ employeeCount }}</strong>
 							</div>
@@ -191,6 +195,12 @@
 							:label="t('empleados', 'Position name')" />
 					</div>
 					<div class="form-group">
+						<NcTextField
+							:value.sync="nivel"
+							type="number"
+							:label="t('empleados', 'Level')" />
+					</div>
+					<div class="form-group">
 						<NcButton
 							class="center"
 							:aria-label="t('empleados', 'Save changes')"
@@ -275,6 +285,7 @@ export default {
 				},
 			],
 			area: '',
+			nivel: '',
 			preferencias_puestos: null,
 		}
 	},
@@ -306,6 +317,7 @@ export default {
 			if (this.show === true) {
 				this.getall()
 				this.area = this.data.Nombre
+				this.nivel = this.checknull(this.data.Nivel)
 			}
 		},
 
@@ -350,6 +362,7 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/GuardarCambioPuestos'), {
 					id_puestos: this.data.Id_puestos,
 					nombre: this.area,
+					nivel: this.nivel !== '' && this.nivel !== null ? Number(this.nivel) : null,
 				})
 				showSuccess(this.t('empleados', 'Position updated successfully'))
 				this.$root.$emit('reload')
@@ -433,7 +446,7 @@ export default {
 
 .position-hero__meta {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: 14px;
 	margin-top: 20px;
 }

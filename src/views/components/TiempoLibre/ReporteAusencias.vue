@@ -101,6 +101,14 @@
 							{{ emp }}
 						</option>
 					</select>
+
+					<button
+						v-if="empleadoResumen"
+						type="button"
+						class="btn-prima-vacacional"
+						@click="abrirInformePrima">
+						{{ t('empleados', 'Reporte Prima Vacacional') }}
+					</button>
 				</div>
 
 				<div v-if="!empleadoResumen" class="reporte-estado periodo-vac-vacio">
@@ -175,14 +183,14 @@
 									:class="rowClass(item)">
 									<td class="col-periodo-resumen">
 										<span
-											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
-											:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
+											:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
 											{{ formatFecha(item.fecha_de) }}
 										</span>
 										<span class="periodo-sep">→</span>
 										<span
-											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
-											:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
+											:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
 											{{ formatFecha(item.fecha_hasta) }}
 										</span>
 									</td>
@@ -274,14 +282,14 @@
 							</td>
 							<td>
 								<span
-									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
-									:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
+									:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
 									{{ formatFecha(item.fecha_de) }}
 								</span>
 								<span class="periodo-sep">→</span>
 								<span
-									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 }"
-									:title="parseFloat(item.dias_de_acumulado) > 0 ? t('empleados', 'Usó días del periodo anterior') : ''">
+									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
+									:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
 									{{ formatFecha(item.fecha_hasta) }}
 								</span>
 							</td>
@@ -413,6 +421,18 @@
 				</div>
 			</div>
 		</NcModal>
+		<NcModal
+			v-if="mostrarInformePrima"
+			size="large"
+			class="informe-prima-modal"
+			:name="t('empleados', 'Reporte Prima Vacacional')"
+			@close="mostrarInformePrima = false">
+			<InformePrimaVacacional
+				:id-empleado="empleadoIdPorNombre[empleadoResumen]"
+				:nombre-empleado="empleadoResumen"
+				:historial-completo="historialCompleto"
+				@close="mostrarInformePrima = false" />
+		</NcModal>
 	</div>
 </template>
 
@@ -428,6 +448,7 @@ import Magnify from 'vue-material-design-icons/Magnify.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 import FilterOff from 'vue-material-design-icons/FilterOff.vue'
 import AccountSearch from 'vue-material-design-icons/AccountSearch.vue'
+import InformePrimaVacacional from './InformePrimaVacacional.vue'
 
 const PALETA_TIPOS = [
 	{ bg: '#dbeafe', color: '#1d4ed8' },
@@ -449,7 +470,7 @@ function hashStr(str) {
 export default {
 	name: 'ReporteAusencias',
 
-	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch },
+	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch, InformePrimaVacacional },
 
 	emits: ['close'],
 
@@ -475,6 +496,8 @@ export default {
 			haCargadoAlMenos: false,
 			empleadosCatalogo: [],
 			empleadoIdPorNombre: {},
+			mostrarInformePrima: false,
+			historialCompleto: [],
 		}
 	},
 
@@ -529,10 +552,28 @@ export default {
 			}).sort((a, b) => this.parseFecha(a.fecha_de) - this.parseFecha(b.fecha_de))
 		},
 
+		// Primas del empleado en TODO su historial (no solo en el periodo/aniversario
+		// seleccionado). Es necesario porque una prima queda anclada en la BD al
+		// aniversario vigente cuando se solicitó, aunque por año calendario le
+		// corresponda mostrarse en el periodo siguiente (ej. se pide en ene 2027
+		// pero la BD la guarda bajo el aniversario que arrancó en jun 2026).
+		primasHistoricasEmpleado() {
+			if (!this.empleadoResumen) return []
+			return this.historialCompleto.filter(item => {
+				if (item.nombre_empleado !== this.empleadoResumen) return false
+				if (this.chipEstado(item).texto === t('empleados', 'Cancelada')) return false
+				if (parseInt(item.prima_vacacional) !== 1) return false
+				return true
+			})
+		},
+
 		resumenEmpleadoStats() {
 			const registros = this.registrosResumenEmpleado
 			const dias = registros.reduce((acc, r) => acc + (parseInt(r.dias_solicitados) || 0), 0)
-			const registroPrima = registros.find(r => parseInt(r.prima_vacacional) === 1) || null
+			const anioPeriodo = this.periodoInfo?.periodo_inicio ? this.periodoInfo.periodo_inicio.slice(0, 4) : null
+			const registroPrima = anioPeriodo
+				? (this.primasHistoricasEmpleado.find(r => (r.fecha_de || '').slice(0, 4) === anioPeriodo) || null)
+				: (registros.find(r => parseInt(r.prima_vacacional) === 1) || null)
 			return {
 				total: registros.length,
 				dias,
@@ -565,6 +606,11 @@ export default {
 
 	methods: {
 		t,
+
+		abrirInformePrima() {
+			if (!this.empleadoResumen) return
+			this.mostrarInformePrima = true
+		},
 
 		limpiarFiltros() {
 			this.filtroEmpleado = ''
@@ -622,6 +668,7 @@ export default {
 				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
 				const todos = Array.isArray(mensaje) ? mensaje : []
 				this.empleadosCatalogo = [...new Set(todos.map(r => r.nombre_empleado).filter(Boolean))].sort()
+				this.historialCompleto = todos
 				todos.forEach(r => {
 					if (r.nombre_empleado && r.id_empleado) {
 						this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado
@@ -1320,5 +1367,43 @@ th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
 .reporte-tabla--resumen .col-solicitud {
 	width: 160px;
 	min-width: 160px;
+}
+
+.resumen-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-prima-vacacional {
+    background-color: #000;
+    color: #fff;
+    border: 1px solid #000;
+    border-radius: var(--border-radius, 6px);
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.12s;
+}
+
+.btn-prima-vacacional:hover {
+    background-color: #3a3a3a;
+}
+
+.btn-prima-vacacional:active {
+    background-color: #000;
+}
+
+.informe-prima-modal :deep(.modal-container) {
+	width: min(1300px, calc(100vw - 48px)) !important;
+	max-width: min(1300px, calc(100vw - 48px)) !important;
+	overflow-x: hidden !important;
+}
+
+.informe-prima-modal :deep(.modal-wrapper) {
+	overflow-x: hidden !important;
 }
 </style>

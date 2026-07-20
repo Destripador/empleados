@@ -262,6 +262,7 @@
 				:dias-disponibles="Ausencias.dias_disponibles"
 				:dias-acumulados="Ausencias.dias_acumulados"
 				:fecha-expiracion-acumulados="Ausencias.fecha_expiracion_acumulados"
+				:fecha-limite-periodo-actual="Ausencias.fecha_limite_periodo_actual"
 				:prima="Ausencias.prima_vacacional"
 				:employees="propsEmployees.options"
 				:admin="isAdmin()"
@@ -278,7 +279,9 @@
 			<EditarAusencia
 				v-if="modalEditar && ausenciaEditar"
 				:ausencia="ausenciaEditar"
+				:username-empleado="usuarioAusenciaSeleccionada"
 				:dias-disponibles="Ausencias.dias_disponibles"
+				:fecha-limite-periodo-actual="Ausencias.fecha_limite_periodo_actual"
 				:prima="Ausencias.prima_vacacional"
 				:employees="propsEmployees.options"
 				:admin="isAdmin()"
@@ -486,6 +489,7 @@ export default {
 			selectedEventId: null,
 			ausenciaEditar: null,
 			mostrarReporte: false,
+			usuarioAusenciaSeleccionada: null,
 		}
 	},
 
@@ -543,6 +547,7 @@ export default {
 
 		abrirDetalleDesdeNotificacion(item) {
 			this.selectedEventId = item.id_historial_ausencias
+			this.usuarioAusenciaSeleccionada = item.Id_user || null
 			this.modalEvento = true
 		},
 
@@ -655,10 +660,6 @@ export default {
 			return this.estiloEventoAusencia(item, fallbackUsername).color
 		},
 
-		/**
-		 * Calcula el color y la clase CSS de un evento del calendario
-		 * según su estado: cancelado (gris), rechazado (rojo) o normal.
-		 */
 		estiloEventoAusencia(item, fallbackUsername) {
 			const g = Number(item.a_gerente)
 			const s = Number(item.a_socio)
@@ -805,6 +806,7 @@ export default {
 
 		OnClickEvent(info) {
 			this.selectedEventId = info.event.id
+			this.usuarioAusenciaSeleccionada = info.event.extendedProps.nombre_empleado || null // ← NUEVO
 			this.modalEvento = true
 		},
 

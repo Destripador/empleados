@@ -40,6 +40,11 @@
 			type="info"
 			:text="t('empleados', 'You cannot request more days than available.')" />
 
+		<NcNoteCard
+			v-if="excedeFechaLimite"
+			type="warning"
+			:text="t('empleados', 'You cannot schedule vacation days outside your current period. The limit to use these days is {fecha}.', { fecha: fechaLimiteFormateada })" />
+
 		<template v-if="AusenciaSeleccionada && !exceedsAvailableDays">
 			<NcNoteCard
 				v-if="esAusenciaVacacional && diasAcumuladosNum > 0"
@@ -111,6 +116,10 @@
 						v-if="primaVacacionalUsada"
 						type="warning"
 						:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
+					<NcNoteCard
+						v-if="bloqueaPorDiciembre"
+						type="warning"
+						:text="t('empleados', 'You cannot request the vacation bonus for a period that includes days in December.')" />
 				</template>
 
 				<NcTextArea
@@ -180,6 +189,7 @@ export default {
 		diasDisponibles: { type: String, required: true },
 		diasAcumulados: { type: [Number, String], default: 0 },
 		fechaExpiracionAcumulados: { type: String, default: null },
+		fechaLimitePeriodoActual: { type: String, default: null },
 		date: {
 			type: Object,
 			required: true,
@@ -212,27 +222,78 @@ export default {
 			},
 			employees_list: [],
 			primaVacacionalUsada: false,
+			loadingEmpleado: false,
+			diasDisponiblesActual: null,
+			diasAcumuladosActual: null,
+			diasInfoEmpleado: null,
 		}
 	},
 
 	computed: {
 		diasAcumuladosNum() {
-			return parseFloat(this.diasAcumulados) || 0
+			const val = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
+			return parseFloat(val) || 0
 		},
 
 		esAusenciaVacacional() {
 			return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
 		},
 
+		incluyeDiciembre() {
+			if (!this.date?.start) return false
+			const start = new Date(this.date.start)
+			const end = this.date.end ? new Date(this.date.end) : start
+			let cursor = new Date(start.getFullYear(), start.getMonth(), 1)
+			const finMes = new Date(end.getFullYear(), end.getMonth(), 1)
+			while (cursor <= finMes) {
+				if (cursor.getMonth() === 11) return true
+
+				cursor = new Date(
+					cursor.getFullYear(),
+					cursor.getMonth() + 1,
+					1
+				)
+			}
+			return false
+		},
+
+		bloqueaPorDiciembre() {
+			return this.esAusenciaVacacional && this.incluyeDiciembre
+		},
+
+		fechaExpiracionAcumuladosVigente() {
+			return this.diasInfoEmpleado?.fecha_expiracion_acumulados ?? this.fechaExpiracionAcumulados
+		},
+
+		fechaLimitePeriodoVigente() {
+			return this.diasInfoEmpleado?.fecha_limite_periodo_actual ?? this.fechaLimitePeriodoActual
+		},
+
 		fechaExpiracionFormateada() {
-			if (!this.fechaExpiracionAcumulados) return ''
-			return new Date(this.fechaExpiracionAcumulados).toLocaleDateString('es-MX')
+			if (!this.fechaExpiracionAcumuladosVigente) return ''
+			return new Date(this.fechaExpiracionAcumuladosVigente).toLocaleDateString('es-MX')
+		},
+
+		excedeFechaLimite() {
+			if (!this.esAusenciaVacacional || !this.fechaLimitePeriodoVigente || !this.date?.start) return false
+			const limite = new Date(this.fechaLimitePeriodoVigente)
+			limite.setHours(0, 0, 0, 0)
+			const start = new Date(this.date.start)
+			start.setHours(0, 0, 0, 0)
+			const end = this.date.end ? new Date(this.date.end) : start
+			end.setHours(0, 0, 0, 0)
+			return start > limite || end > limite
+		},
+
+		fechaLimiteFormateada() {
+			if (!this.fechaLimitePeriodoVigente) return ''
+			return new Date(this.fechaLimitePeriodoVigente).toLocaleDateString('es-MX')
 		},
 
 		diasDentroDeVigencia() {
-			if (!this.fechaExpiracionAcumulados || !this.date?.start) return this.diasSolicitados
+			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitados
 
-			const limite = new Date(this.fechaExpiracionAcumulados)
+			const limite = new Date(this.fechaExpiracionAcumuladosVigente)
 			limite.setHours(0, 0, 0, 0)
 			const start = new Date(this.date.start)
 			start.setHours(0, 0, 0, 0)
@@ -304,11 +365,20 @@ export default {
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasSolicitados < 2
+			return this.primaVacacionalUsada || this.diasSolicitados < 2 || this.bloqueaPorDiciembre
 		},
 	},
-
 	watch: {
+		async employees_list(nuevo) {
+			if (nuevo?.user) {
+				this.$emit('empleado-cambiado', nuevo.user)
+				await this.fetchDiasEmpleado(nuevo)
+			} else {
+				this.diasInfoEmpleado = null
+				this.recalcularDias()
+			}
+		},
+
 		async AusenciaSeleccionada(tipo) {
 			this.SolicitarPrima = false
 			this.primaVacacionalUsada = false
@@ -322,6 +392,21 @@ export default {
 				this.SolicitarPrima = false
 			}
 		},
+
+		// Si el padre actualiza estos props
+		diasDisponibles() {
+			this.recalcularDias()
+		},
+
+		diasAcumulados() {
+			this.recalcularDias()
+		},
+
+		incluyeDiciembre() {
+			if (this.SolicitarPrima && this.bloqueaPorDiciembre) {
+				this.SolicitarPrima = false
+			}
+		},
 	},
 
 	mounted() {
@@ -331,10 +416,40 @@ export default {
 		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
 			this.checkPrimaVacacional()
 		}
+
+		this.recalcularDias()
+		this.GetTipoAusencias()
+		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+			this.checkPrimaVacacional()
+		}
 	},
 
 	methods: {
 		t,
+
+		async fetchDiasEmpleado(empleadoSeleccionado) {
+			try {
+				const idEmpleados = empleadoSeleccionado.Id_empleados // ya viene en las options
+				const res = await axios.post(generateUrl('/apps/empleados/GetAusenciasByUser'), {
+					id: idEmpleados,
+				})
+				this.diasInfoEmpleado = res?.data?.ocs?.data?.[0] || null
+				this.recalcularDias()
+				if (this.AusenciaSeleccionada?.solicitar_prima_vacacional === 1) {
+					await this.checkPrimaVacacional()
+				}
+			} catch (err) {
+				showError(t('empleados', 'Error al obtener los días del empleado seleccionado'))
+			}
+		},
+
+		recalcularDias() {
+			const disponibles = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
+			const acumulados = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
+			this.TotalDias = parseInt(disponibles, 10) + (parseFloat(acumulados) || 0)
+			this.RestanteDias = this.TotalDias - this.diasSolicitados
+			this.GetTipoAusencias()
+		},
 
 		async GetTipoAusencias() {
 			try {

@@ -1,6 +1,8 @@
 <!-- eslint-disable no-unmodified-loop-condition -->
 <template>
 	<div class="editar-ausencia">
+		<!-- Atrapa el autofocus del modal para que no abra el select de tipo -->
+		<span ref="focusSink" tabindex="0" class="focus-sink" />
 		<NcNoteCard
 			v-if="admin"
 			type="warning"
@@ -62,9 +64,19 @@
 			</div>
 
 			<NcNoteCard
+				v-if="loadingEmpleado"
+				type="info"
+				:text="t('empleados', 'Loading employee days...')" />
+
+			<NcNoteCard
 				v-if="exceedsAvailableDays"
 				type="warning"
 				:text="t('empleados', 'You cannot request more days than available.')" />
+
+			<NcNoteCard
+				v-if="excedeFechaLimite"
+				type="warning"
+				:text="t('empleados', 'You cannot schedule vacation days outside your current period. The limit to use these days is {fecha}.', { fecha: fechaLimiteFormateada })" />
 		</section>
 
 		<!-- Archivo (si aplica) -->
@@ -107,6 +119,10 @@
 					v-if="primaVacacionalUsada"
 					type="warning"
 					:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
+				<NcNoteCard
+					v-if="bloqueaPorDiciembre"
+					type="warning"
+					:text="t('empleados', 'You cannot request the vacation bonus for a period that includes days in December.')" />
 			</template>
 
 			<NcTextArea
@@ -170,32 +186,14 @@ export default {
 	},
 
 	props: {
-		/** Objeto ausencia completo que viene de GetDetalleAusencia */
-		ausencia: {
-			type: Object,
-			required: true,
-		},
-		diasDisponibles: {
-			type: String,
-			default: '0',
-		},
-		prima: {
-			type: Number,
-			default: 0,
-		},
-		employees: {
-			type: Array,
-			default: () => [],
-		},
-		admin: {
-			type: Boolean,
-			default: false,
-		},
-
-		idHistorial: {
-			type: [Number, String],
-			default: 0,
-		},
+		ausencia: { type: Object, required: true },
+		diasDisponibles: { type: String, default: '0' },
+		fechaLimitePeriodoActual: { type: String, default: null },
+		prima: { type: Number, default: 0 },
+		employees: { type: Array, default: () => [] },
+		admin: { type: Boolean, default: false },
+		idHistorial: { type: [Number, String], default: 0 },
+		usernameEmpleado: { type: String, default: null },
 	},
 
 	emits: ['saved', 'close'],
@@ -218,6 +216,9 @@ export default {
 			selectedFiles: [],
 			loading: false,
 			primaVacacionalUsada: false,
+			// ← NUEVO: datos frescos del empleado dueño de la ausencia (modo admin)
+			loadingEmpleado: false,
+			diasInfoEmpleado: null,
 		}
 	},
 
@@ -225,6 +226,15 @@ export default {
 		// Días que tenía la ausencia original (para devolver y restar correctamente)
 		diasOriginales() {
 			return Number(this.ausencia.dias_solicitados) || 0
+		},
+
+		diasDisponiblesVigente() {
+			const val = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
+			return parseInt(val, 10) || 0
+		},
+
+		fechaLimitePeriodoVigente() {
+			return this.diasInfoEmpleado?.fecha_limite_periodo_actual ?? this.fechaLimitePeriodoActual
 		},
 
 		// Días disponibles ajustados: se devuelven los días originales, luego se restan los nuevos
@@ -247,16 +257,57 @@ export default {
 			return this.diasHabiles > disponiblesReales
 		},
 
+		esAusenciaVacacional() {
+			return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
+		},
+
+		excedeFechaLimite() {
+			if (!this.esAusenciaVacacional || !this.fechaLimitePeriodoVigente || !this.fechaHastaStr) return false
+			const limite = new Date(this.fechaLimitePeriodoVigente + 'T00:00:00')
+			const desde = new Date(this.fechaDesdeStr + 'T00:00:00')
+			const hasta = new Date(this.fechaHastaStr + 'T00:00:00')
+			return desde > limite || hasta > limite
+		},
+
+		fechaLimiteFormateada() {
+			if (!this.fechaLimitePeriodoVigente) return ''
+			return new Date(this.fechaLimitePeriodoVigente + 'T00:00:00').toLocaleDateString('es-MX')
+		},
+
 		canSave() {
 			return this.AusenciaSeleccionada
 				&& this.fechaDesdeStr
 				&& this.fechaHastaStr
 				&& this.diasHabiles > 0
 				&& !this.exceedsAvailableDays
+				&& !this.excedeFechaLimite
+				&& !this.loadingEmpleado
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasHabiles < 2
+			return this.primaVacacionalUsada || this.diasHabiles < 2 || this.bloqueaPorDiciembre
+		},
+
+		incluyeDiciembre() {
+			if (!this.fechaDesdeStr || !this.fechaHastaStr) return false
+			const start = new Date(this.fechaDesdeStr + 'T00:00:00')
+			const end = new Date(this.fechaHastaStr + 'T00:00:00')
+			let cursor = new Date(start.getFullYear(), start.getMonth(), 1)
+			const finMes = new Date(end.getFullYear(), end.getMonth(), 1)
+			while (cursor <= finMes) {
+				if (cursor.getMonth() === 11) return true
+
+				cursor = new Date(
+					cursor.getFullYear(),
+					cursor.getMonth() + 1,
+					1
+				)
+			}
+			return false
+		},
+
+		bloqueaPorDiciembre() {
+			return this.esAusenciaVacacional && this.incluyeDiciembre
 		},
 	},
 
@@ -272,6 +323,12 @@ export default {
 				this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
 			}
 		},
+
+		incluyeDiciembre(nuevo) {
+			if (nuevo && this.SolicitarPrima) {
+				this.SolicitarPrima = false
+			}
+		},
 	},
 
 	mounted() {
@@ -280,10 +337,31 @@ export default {
 		if (this.ausencia?.solicitar_prima_vacacional === 1) {
 			this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
 		}
+		if (this.admin && this.usernameEmpleado) {
+			const empleadoMatch = this.employees.find(e => e.user === this.usernameEmpleado)
+			if (empleadoMatch) {
+				this.fetchDiasEmpleado(empleadoMatch.Id_empleados)
+			}
+		}
 	},
 
 	methods: {
 		t,
+
+		async fetchDiasEmpleado(idEmpleado) {
+			this.loadingEmpleado = true
+			try {
+				const res = await axios.post(generateUrl('/apps/empleados/GetAusenciasByUser'), {
+					id: idEmpleado,
+				})
+				this.diasInfoEmpleado = res?.data?.ocs?.data?.[0] || null
+				this.TotalDias = this.diasDisponiblesVigente
+			} catch (err) {
+				showError(t('empleados', 'Error al obtener los días del empleado'))
+			} finally {
+				this.loadingEmpleado = false
+			}
+		},
 
 		async GetTipoAusencias() {
 			try {
@@ -299,7 +377,6 @@ export default {
 					t => String(t.id) === String(this.ausencia.id_tipo_ausencia),
 				) || null
 
-				// ← NUEVO: verifica prima al precargar el tipo
 				if (this.AusenciaSeleccionada
 					&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
 					await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
@@ -530,5 +607,14 @@ export default {
     gap: 20px;
     max-height: 75vh;
     overflow-y: auto;
+}
+
+.focus-sink {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	opacity: 0;
+	pointer-events: none;
 }
 </style>

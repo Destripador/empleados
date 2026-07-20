@@ -5,40 +5,7 @@
 			<div class="emptycontent">
 				<!-- Empty state -->
 				<div v-if="Object.keys(data).length === 0" class="employee-empty-state">
-					<div class="employee-empty-card">
-						<img class="employee-empty-image"
-							src="../../../../img/crowesito-think.png"
-							alt="Empty employee state">
-
-						<h2>{{ t('empleados', 'Select an employee to start') }}</h2>
-
-						<p class="employee-empty-description">
-							{{ t('empleados', 'Choose an employee from the list to view their profile, notes, personal information and files.') }}
-						</p>
-
-						<div class="employee-empty-stats">
-							<div class="employee-empty-stat">
-								<strong>{{ empleadosProp.length }}</strong>
-								<span>{{ t('empleados', 'Employees') }}</span>
-							</div>
-
-							<div class="employee-empty-stat">
-								<strong>{{ activeEmployees }}</strong>
-								<span>{{ t('empleados', 'Active') }}</span>
-							</div>
-
-							<div class="employee-empty-stat">
-								<strong>{{ inactiveEmployees }}</strong>
-								<span>{{ t('empleados', 'Inactive') }}</span>
-							</div>
-						</div>
-
-						<div class="employee-empty-actions">
-							<NcButton @click="$bus.emit('getall')">
-								{{ t('empleados', 'Refresh list') }}
-							</NcButton>
-						</div>
-					</div>
+					<OrganigramaNetwork />
 				</div>
 			</div>
 		</div>
@@ -154,6 +121,7 @@
 </template>
 
 <script>
+import OrganigramaNetwork from './Organigrama/OrganigramaNetwork.vue'
 import EmpleadoTab from './Tabs/EmpleadoTab.vue'
 import PersonalTab from './Tabs/PersonalTab.vue'
 import NotasTab from './Tabs/NotasTab.vue'
@@ -194,6 +162,7 @@ export default {
 		NcActionSeparator,
 		NcDialog,
 		NcButton,
+		OrganigramaNetwork,
 	},
 	inject: ['configuraciones'],
 	props: {
@@ -345,13 +314,6 @@ export default {
 .card-container { display: flex; justify-content: center; align-items: center; }
 .avatar { padding-right: 10px; }
 .file-input { display: none; }
-.employee-empty-state {
-	min-height: calc(100vh - var(--header-height) - 80px);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 32px;
-}
 
 .employee-empty-card {
 	width: min(720px, 100%);
@@ -431,5 +393,11 @@ export default {
 	.employee-empty-stats {
 		grid-template-columns: 1fr;
 	}
+}
+
+.employee-empty-state {
+	height: calc(100vh - var(--header-height) - 80px);
+	padding: 16px;
+	box-sizing: border-box;
 }
 </style>
