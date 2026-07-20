@@ -20,11 +20,19 @@ class Version2024Date20260717192013 extends SimpleMigrationStep {
 			$schema->dropTable('empleados_organigrama');
 		}
 
+		if ($schema->hasTable('emp_organigrama')) {
+			$schema->dropTable('emp_organigrama');
+		}
+
 		if ($schema->hasTable('empleados_organigrama_pos')) {
 			$schema->dropTable('empleados_organigrama_pos');
 		}
 
-		$table = $schema->createTable('empleados_organigrama');
+		if ($schema->hasTable('emp_org_pos')) {
+			$schema->dropTable('emp_org_pos');
+		}
+
+		$table = $schema->createTable('emp_organigrama');
 
 		$table->addColumn('id', Types::INTEGER, [
 			'autoincrement' => true,
@@ -50,9 +58,9 @@ class Version2024Date20260717192013 extends SimpleMigrationStep {
 		$table->setPrimaryKey(['id']);
 
 		$table->addUniqueIndex(['id_empleado', 'id_dependiente'], 'empl_org_pair_uniq');
-		$table->addIndex(['id_dependiente'], 'empl_org_dependiente_idx');
+		$table->addIndex(['id_dependiente'], 'empl_org_dep_idx');
 
-		$posTable = $schema->createTable('empleados_organigrama_pos');
+		$posTable = $schema->createTable('emp_org_pos');
 
 		$posTable->addColumn('id_empleado', Types::INTEGER, [
 			'notnull' => true,
