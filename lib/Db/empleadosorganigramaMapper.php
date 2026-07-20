@@ -9,7 +9,7 @@ use OCP\IDBConnection;
 
 class empleadosorganigramaMapper extends QBMapper {
     public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'empleados_organigrama', empleadosorganigrama::class);
+        parent::__construct($db, 'emp_organigrama', empleadosorganigrama::class);
     }
 
     /**
