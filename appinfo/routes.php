@@ -49,6 +49,14 @@ return [
 		['name' => 'empleados#ImportListEmpleados', 'url' => '/ImportListEmpleados', 'verb' => 'POST'],
 		['name' => 'empleados#ActualizarEstadoAhorro', 'url' => '/ActualizarEstadoAhorro', 'verb' => 'POST'],
 
+		/***************************** ORGANIGRAMA *****************************************/
+		['name' => 'Organigrama#GetOrganigrama', 'url' => '/GetOrganigrama', 'verb' => 'GET'],
+		['name' => 'Organigrama#CrearRelacionOrganigrama', 'url' => '/CrearRelacionOrganigrama', 'verb' => 'POST'],
+		['name' => 'Organigrama#EliminarRelacionOrganigrama', 'url' => '/EliminarRelacionOrganigrama', 'verb' => 'POST'],
+
+		['name' => 'Organigrama#GuardarPosicionOrganigrama', 'url' => '/GuardarPosicionOrganigrama', 'verb' => 'POST'],
+		['name' => 'Organigrama#GuardarPosicionesOrganigrama', 'url' => '/GuardarPosicionesOrganigrama', 'verb' => 'POST'],
+
 
 		/******************************** AREAS ********************************************/
 		['name' => 'areas#GetAreasFix', 'url' => '/GetAreasFix', 'verb' => 'GET'],

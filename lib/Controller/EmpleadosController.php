@@ -337,6 +337,7 @@ class EmpleadosController extends BaseController {
             
 			$this->empleadosMapper->deleteByIdEmpleado($id_empleados);
             $this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
+            $this->organigramaMapper->EliminarPorEmpleado($id_empleados);
 
 			return new DataResponse(Http::STATUS_OK);
 		}

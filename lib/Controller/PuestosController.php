@@ -96,12 +96,13 @@ class PuestosController extends BaseController {
     public function ExportListPuestos(): DataResponse {
         $this->requireHumanResourcesAccess();
         $puestos = $this->puestosMapper->GetPuestosList();
-        $books = [['Id_puesto', 'Nombre', 'created_at', 'updated_at']];
+        $books = [['Id_puesto', 'Nombre', 'Nivel', 'created_at', 'updated_at']];
 
         foreach ($puestos as $puesto) {
             $books[] = [
                 $puesto['Id_puesto'],
                 $puesto['Nombre'],
+                $puesto['Nivel'],
                 $puesto['created_at'],
                 $puesto['updated_at'],
             ];
@@ -119,12 +120,15 @@ class PuestosController extends BaseController {
         $file = $this->getUploadedFile('puestofileXLSX');
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
+                $nivel = isset($row[2]) && $row[2] !== '' ? (int) $row[2] : null;
+
                 if (!empty($row[0])) {
-                    $this->puestosMapper->updatePuestos((string) $row[0], (string) $row[1]);
+                    $this->puestosMapper->updatePuestos((string) $row[0], (string) $row[1], $nivel);
                 } else {
                     $timestamp = date('Y-m-d');
                     $puesto = new puestos();
                     $puesto->setnombre((string) $row[1]);
+                    $puesto->setnivel($nivel);
                     $puesto->setcreated_at($timestamp);
                     $puesto->setupdated_at($timestamp);
                     $this->puestosMapper->insert($puesto);
@@ -155,9 +159,9 @@ class PuestosController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function GuardarCambioPuestos(int $id_puestos, string $nombre): DataResponse {
+    public function GuardarCambioPuestos(int $id_puestos, string $nombre, ?int $nivel = null): DataResponse {
         $this->requireHumanResourcesAccess();
-        $this->puestosMapper->updatePuestos((string) $id_puestos, $nombre);
+        $this->puestosMapper->updatePuestos((string) $id_puestos, $nombre, $nivel);
         return new DataResponse(Http::STATUS_OK);
     }
 
@@ -166,11 +170,12 @@ class PuestosController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function crearPuesto(string $nombre): DataResponse {
+    public function crearPuesto(string $nombre, ?int $nivel = null): DataResponse {
         $this->requireHumanResourcesAccess();
         $timestamp = date('Y-m-d');
         $puesto = new puestos();
         $puesto->setnombre($nombre);
+        $puesto->setnivel($nivel);
         $puesto->setcreated_at($timestamp);
         $puesto->setupdated_at($timestamp);
         $this->puestosMapper->insert($puesto);

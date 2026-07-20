@@ -91,12 +91,16 @@
 		<NcModal
 			v-if="modal"
 			ref="modalRef"
-			:name="t('empleados', 'Add new area')"
+			:name="t('empleados', 'Add new Position')"
 			@close="closeModal">
 			<div class="modal__content">
 				<div class="form-group center">
 					<NcTextField :value.sync="nombre_area"
-						:label="t('empleados', 'Area name')" />
+						:label="t('empleados', 'Position name')" />
+					<br>
+					<NcTextField :value.sync="nivel_area"
+						type="number"
+						:label="t('empleados', 'Level')" />
 					<br>
 					<NcButton
 						class="center"
@@ -183,6 +187,7 @@ export default {
 			button: false,
 			options: [],
 			nombre_area: '',
+			nivel_area: '',
 			sortOrder: 'asc',
 			hideEmpty: false,
 			showFilters: false,
@@ -318,6 +323,7 @@ export default {
 		},
 		closeModal() {
 			this.modal = false
+			this.nivel_area = ''
 		},
 		toggle() {
 			this.button = !this.button
@@ -330,12 +336,14 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/crearPuesto'),
 					{
 						nombre: this.nombre_area,
+						nivel: this.nivel_area !== '' ? Number(this.nivel_area) : null,
 					})
 					.then(
 						(response) => {
-							showSuccess(t('empleados', 'Area created successfully'))
+							showSuccess(t('empleados', 'Position created successfully'))
 							this.$root.$emit('reload')
 							this.nombre_area = ''
+							this.nivel_area = ''
 							this.modal = false
 						},
 						(err) => {
