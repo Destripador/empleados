@@ -269,14 +269,19 @@ export default {
 			return this.diasInfoEmpleado?.fecha_limite_periodo_actual ?? this.fechaLimitePeriodoActual
 		},
 
+		// FIX: usar parseFechaLocal en vez de `new Date(stringYmd)` para evitar
+		// el desfase de un día causado por la interpretación UTC de JS.
 		fechaExpiracionFormateada() {
-			if (!this.fechaExpiracionAcumuladosVigente) return ''
-			return new Date(this.fechaExpiracionAcumuladosVigente).toLocaleDateString('es-MX')
+			const d = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
+			if (!d) return ''
+			return d.toLocaleDateString('es-MX')
 		},
 
+		// FIX: mismo parseo seguro
 		excedeFechaLimite() {
 			if (!this.esAusenciaVacacional || !this.fechaLimitePeriodoVigente || !this.date?.start) return false
-			const limite = new Date(this.fechaLimitePeriodoVigente)
+			const limite = this.parseFechaLocal(this.fechaLimitePeriodoVigente)
+			if (!limite) return false
 			limite.setHours(0, 0, 0, 0)
 			const start = new Date(this.date.start)
 			start.setHours(0, 0, 0, 0)
@@ -285,15 +290,21 @@ export default {
 			return start > limite || end > limite
 		},
 
+		// FIX: mismo parseo seguro
 		fechaLimiteFormateada() {
-			if (!this.fechaLimitePeriodoVigente) return ''
-			return new Date(this.fechaLimitePeriodoVigente).toLocaleDateString('es-MX')
+			const d = this.parseFechaLocal(this.fechaLimitePeriodoVigente)
+			if (!d) return ''
+			return d.toLocaleDateString('es-MX')
 		},
 
+		// FIX: mismo parseo seguro — este es el que causaba el split incorrecto
+		// (2/2 en vez de 3/1) por estar comparando contra un límite un día antes
+		// del real.
 		diasDentroDeVigencia() {
 			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitados
 
-			const limite = new Date(this.fechaExpiracionAcumuladosVigente)
+			const limite = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
+			if (!limite) return this.diasSolicitados
 			limite.setHours(0, 0, 0, 0)
 			const start = new Date(this.date.start)
 			start.setHours(0, 0, 0, 0)
@@ -427,6 +438,32 @@ export default {
 	methods: {
 		t,
 
+		// FIX: parsea un string "yyyy-mm-dd" como fecha LOCAL, evitando que
+		// `new Date("yyyy-mm-dd")` lo interprete como medianoche UTC (lo cual
+		// en zonas horarias negativas como Torreón/UTC-6 desplaza la fecha
+		// un día hacia atrás).
+		parseFechaLocal(fechaStr) {
+			if (!fechaStr) return null
+			const partes = String(fechaStr).split('-')
+			if (partes.length !== 3) return null
+			const d = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]))
+			return Number.isNaN(d.getTime()) ? null : d
+		},
+
+		// FIX: formatea una fecha a "dd/mm/yyyy" de forma explícita, sin
+		// depender del locale del navegador. `toLocaleDateString()` sin
+		// argumentos usa el idioma configurado en el navegador del usuario:
+		// en es-MX da "dd/mm/yyyy" pero en en-US da "mm/dd/yyyy", lo cual
+		// el backend (que siempre espera 'd/m/Y') puede leer mal o invertir
+		// silenciosamente día y mes.
+		formatFechaParaBackend(fecha) {
+			if (!fecha) return ''
+			const d = String(fecha.getDate()).padStart(2, '0')
+			const m = String(fecha.getMonth() + 1).padStart(2, '0')
+			const y = fecha.getFullYear()
+			return `${d}/${m}/${y}`
+		},
+
 		async fetchDiasEmpleado(empleadoSeleccionado) {
 			try {
 				const idEmpleados = empleadoSeleccionado.Id_empleados // ya viene en las options
@@ -498,8 +535,10 @@ export default {
 				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('dias_solicitados', this.diasSolicitados)
-				formData.append('fecha_de', this.date.start.toLocaleDateString())
-				formData.append('fecha_hasta', this.date.end ? this.date.end.toLocaleDateString() : '')
+				// FIX: formato explícito d/m/Y en vez de toLocaleDateString() sin
+				// argumentos, para no depender del idioma del navegador.
+				formData.append('fecha_de', this.formatFechaParaBackend(this.date.start))
+				formData.append('fecha_hasta', this.date.end ? this.formatFechaParaBackend(this.date.end) : '')
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
 
@@ -531,7 +570,8 @@ export default {
 			try {
 				let url = generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
-					+ `&fecha_de=${encodeURIComponent(this.date.start.toLocaleDateString())}`
+					// FIX: mismo formato explícito d/m/Y para consistencia
+					+ `&fecha_de=${encodeURIComponent(this.formatFechaParaBackend(this.date.start))}`
 				if (this.admin && this.employees_list?.user) {
 					url += `&id_usuario=${this.employees_list.user}`
 				}
