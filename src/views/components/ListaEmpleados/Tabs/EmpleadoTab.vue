@@ -624,7 +624,11 @@ export default {
 		calcularAniversarioDesdeFecha(fechaStr) {
 			if (!fechaStr) return null
 
-			const ingreso = new Date(fechaStr)
+			const partes = String(fechaStr).split('-')
+			if (partes.length !== 3) return null
+
+			// Construir en hora LOCAL (año, mes 0-indexado, día) — evita el shift de UTC
+			const ingreso = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]))
 			if (Number.isNaN(ingreso.getTime())) return null
 
 			const hoy = new Date()
