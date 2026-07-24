@@ -1522,7 +1522,8 @@
     "You do not have permission to access the purchases module.": "No tienes permiso para acceder al módulo de compras.",
     "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.": "Tienes días de vacaciones acumulados de tu periodo anterior: {dias} días, disponibles hasta {fecha}. Después de esa fecha se perderán.",
     "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.": "La prima vacacional de este año ya fue utilizada. Podrás solicitarla nuevamente si se cancela tu ausencia anterior.",
-    "Z to A": "Z a A"
+    "Z to A": "Z a A",
+    "Absence": "Ausencia"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -1523,6 +1523,7 @@
         "You do not have permission to access the purchases module.": "You do not have permission to access the purchases module.",
         "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.": "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.",
         "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.": "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.",
+        "Absence": "Absence",
         "Z to A": "Z to A"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"

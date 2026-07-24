@@ -64,10 +64,24 @@ export default {
 		this.$bus.on('send-data', (data) => {
 			this.data_empleado = data
 		})
+		// deteccion de esc
+		window.addEventListener('keydown', this.onKeyDown)
+	},
+
+	beforeDestroy() {
+		window.removeEventListener('keydown', this.onKeyDown)
 	},
 
 	methods: {
 		t,
+		onKeyDown(e) {
+			if (e.key === 'Escape') this.onEsc()
+		},
+		onEsc() {
+			// eslint-disable-next-line no-console
+			console.log('Esc pressed')
+			this.data_empleado = {}
+		},
 	},
 }
 </script>

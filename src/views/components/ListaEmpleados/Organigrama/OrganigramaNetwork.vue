@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import { Network } from 'vis-network/standalone'
+import { Network } from 'vis-network'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { showError, showSuccess } from '@nextcloud/dialogs'

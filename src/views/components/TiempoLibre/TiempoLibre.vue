@@ -1,7 +1,7 @@
 <template>
 	<NcAppContent name="Loading">
 		<div class="">
-			<div class="text-center section">
+			<div class="text-center section-calendar">
 				<div v-if="configuraciones.modulo_ausencias_readonly === 'true'">
 					<br>
 					<NcNoteCard type="error"
@@ -11,204 +11,385 @@
 				</div>
 				<section class="layout">
 					<div class="grow2">
-						<div class="text-center sectionPicker">
-							<FullCalendar ref="fullCalendar" :options="calendarOptions" class="my-calendar" />
+						<div ref="calendarViewport" class="text-center sectionPicker">
+							<FullCalendar
+								ref="fullCalendar"
+								:options="calendarOptions"
+								class="my-calendar" />
 						</div>
 					</div>
 					<div class="grow1">
-						<div class="cards">
+						<div ref="sidebar" class="cards">
 							<div class="headers">
-								<div class="btn-top-right">
-									<NcActions>
-										<NcActionButton @click="showAniversarioModal">
-											<template #icon>
-												<CalendarQuestionOutline :size="20" />
-											</template>
-											{{ t('empleados', 'My information') }}
-										</NcActionButton>
-									</NcActions>
-								</div>
-
 								<div class="header-content">
 									<h2 class="h2-white">
 										{{ t('empleados', 'Vacation') }}
 									</h2>
-
 									<div class="vacations">
-										<div class="vacations-panel">
-											<div
-												v-if="Ausencias.dias_acumulados > 0 && Ausencias.fecha_expiracion_acumulados"
-												class="panel-row panel-row--accum">
-												<AlertOutline :size="16" class="row-icon" />
-												<p class="row-text">
-													{{ t('empleados', 'Accumulated from previous period:') }}
-													<strong>{{ formatearDias(Ausencias.dias_acumulados) }}</strong>
-													{{ t('empleados', '— use before {fecha} or they expire. ⚠️', {
-														fecha: new Date(Ausencias.fecha_expiracion_acumulados).toLocaleDateString('es-MX')
-													}) }}
-												</p>
+										<div
+											class="vacations-grid"
+											:class="{ 'vacations-grid--single': !tieneVacacionesAcumuladas }">
+											<!-- Periodo actual -->
+											<div class="vacation-card">
+												<span class="vacation-card__title">
+													{{ t('empleados', 'Current period') }}
+												</span>
+
+												<NcLoadingIcon
+													v-if="Ausencias.dias_disponibles === undefined || Ausencias.dias_disponibles === null"
+													:size="22" />
+
+												<template v-else>
+													<strong class="vacation-card__value">
+														{{ Ausencias.dias_disponibles }}
+													</strong>
+
+													<span class="vacation-card__subtitle">
+														{{ t('empleados', 'Days available') }}
+													</span>
+												</template>
 											</div>
 
-											<div v-if="Ausencias.dias_acumulados > 0 && Ausencias.fecha_expiracion_acumulados" class="panel-divider" />
-
-											<div class="panel-row1 panel-row--current">
-												<span class="row-label">{{ t('empleados', 'Current period:') }}</span>
-												<span v-if="Ausencias.dias_disponibles !== undefined && Ausencias.dias_disponibles !== null" class="row-value">
-													{{ formatearDias(Ausencias.dias_disponibles) }}
+											<!-- Periodo anterior acumulado -->
+											<div
+												v-if="tieneVacacionesAcumuladas"
+												class="vacation-card vacation-card--accumulated">
+												<span class="vacation-card__title">
+													{{ t('empleados', 'Previous period') }}
 												</span>
-												<NcLoadingIcon v-else :size="20" />
+
+												<strong class="vacation-card__value">
+													{{ Ausencias.dias_acumulados }}
+												</strong>
+
+												<span class="vacation-card__subtitle">
+													{{ t('empleados', 'Accumulated days') }}
+												</span>
+
+												<div class="vacation-card__warning">
+													<AlertOutline :size="13" />
+
+													<span>
+														{{ t('empleados', 'Use before {fecha} or they expire', {
+															fecha: new Date(
+																Ausencias.fecha_expiracion_acumulados,
+															).toLocaleDateString('es-MX'),
+														}) }}
+													</span>
+												</div>
 											</div>
 										</div>
 									</div>
 								</div>
 							</div>
 							<div class="infos">
-								<!-- Notifications accordion -->
-								<div v-if="notificaciones" class="acordeon-item">
-									<button class="acordeon-notification" @click="toggle(0)">
+								<!-- Notificaciones pendientes -->
+								<div
+									v-if="notificaciones"
+									class="acordeon-item acordeon-item--warning">
+									<button
+										type="button"
+										class="acordeon-notification"
+										@click="toggle(0)">
 										<div class="noti-wrapper">
-											<BellOutline class="bell-icon" :class="{ 'bell-shake': isShaking }" />
-											<NcCounterBubble :count="notifications_counter" class="noti-badge" />
+											<BellOutline
+												class="bell-icon"
+												:class="{ 'bell-shake': isShaking }" />
+
+											<NcCounterBubble
+												:count="notifications_counter"
+												class="noti-badge" />
 										</div>
-										<span class="noti-text">{{ t('empleados', 'Pending') }}</span>
-										<span class="arrow">{{ accordeon[0].abierto ? '-' : '+' }}</span>
+
+										<span class="noti-text">
+											{{ t('empleados', 'Pending') }}
+										</span>
+
+										<span class="arrow">
+											{{ accordeon[0].abierto ? '−' : '+' }}
+										</span>
 									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[0].abierto }]">
-										<div>
-											<div class="rst">
-												<div style="max-height: 300px; overflow-y: auto;">
-													<ul>
-														<NcListItem v-for="(item) in notifications_result"
-															:key="item.id_historial_ausencias"
-															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="abrirDetalleDesdeNotificacion(item)">
-															<template #icon>
-																<NcAvatar disable-menu
-																	:size="44"
-																	:user="item.Id_user"
-																	:display-name="item.Id_user" />
-															</template>
-														</NcListItem>
-													</ul>
-												</div>
-											</div>
-										</div>
+
+									<div
+										:class="[
+											'acordeon-contenido',
+											{ abierto: accordeon[0].abierto },
+										]">
+										<ul class="accordion-user-list">
+											<li
+												v-for="item in notifications_result"
+												:key="item.id_historial_ausencias">
+												<button
+													type="button"
+													class="accordion-option"
+													@click="abrirDetalleDesdeNotificacion(item)">
+													<NcAvatar
+														disable-menu
+														:size="36"
+														:user="item.Id_user"
+														:display-name="item.Id_user" />
+
+													<span class="accordion-option__text">
+														<strong>
+															{{ item.displayname || item.Id_user }}
+														</strong>
+
+														<small>
+															{{ t('empleados', 'Pending request') }}
+														</small>
+													</span>
+												</button>
+											</li>
+										</ul>
 									</div>
 								</div>
-								<NcButton
+
+								<!-- Administración -->
+								<div
 									v-if="isAdmin()"
-									class="btn-top"
-									variant="secondary"
-									wide
-									@click="mostrarReporte = true">
-									{{ t('empleados', 'Show report') }}
-								</NcButton>
+									class="acordeon-item acordeon-item--admin">
+									<button
+										type="button"
+										class="acordeon-titulo"
+										@click="toggle(2)">
+										<span class="accordion-title">
+											<span class="accordion-title__label">
+												{{ t('empleados', 'Administrative') }}
+											</span>
 
-								<!-- Show only my absences -->
-								<NcButton class="btn-top"
-									text="center (default)"
-									variant="secondary"
-									wide
-									@click="typePetition = null; $refs.fullCalendar.getApi().refetchEvents()">
-									{{ t('empleados', 'Show my absences') }}
-								</NcButton>
+											<span class="accordion-title__description">
+												{{ t('empleados', 'Reports and employee filters') }}
+											</span>
+										</span>
 
-								<!-- Team view accordion -->
-								<div v-if="Object.keys(Equipo).length" class="acordeon-item btn-top">
-									<button class="acordeon-titulo" @click="toggle(1)">
-										{{ t('empleados', 'Filter by team') }}
-										<span>{{ accordeon[1].abierto ? '-' : '+' }}</span>
+										<span class="arrow">
+											{{ accordeon[2].abierto ? '−' : '+' }}
+										</span>
 									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[1].abierto }]">
-										<div>
-											<div class="rst-title">
-												<div class="title_flex">
-													<div class="subtitle_flex">
-														<NcAvatar :user="Equipo.Id_jefe_equipo"
-															:display-name="Equipo.Id_jefe_equipo"
-															:size="20" />
-													</div>
-													<div class="btn-top-subtitle">
-														{{ Equipo.Nombre }}
-													</div>
-													<div class="flex-to-right">
-														<AccountGroup class="pointer"
-															@click="typePetition = 'all'; $refs.fullCalendar.getApi().refetchEvents()" />
-													</div>
-												</div>
-											</div>
-											<div class="rst">
-												<div style="max-height: 300px; overflow-y: auto;">
-													<ul>
-														<NcListItem v-for="(item) in peopleEquipo.equipo"
-															:key="item.Id_empleados"
-															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="employees = []; typePetition = 'employee'; selected_user = item; $refs.fullCalendar.getApi().refetchEvents()">
-															<template #icon>
-																<NcAvatar disable-menu
-																	:size="44"
-																	:user="item.Id_user"
-																	:display-name="item.Id_user" />
-															</template>
-														</NcListItem>
-													</ul>
-												</div>
+
+									<div
+										:class="[
+											'acordeon-contenido',
+											{ abierto: accordeon[2].abierto },
+										]">
+										<div class="accordion-menu accordion-menu--select">
+											<NcButton
+												class="accordion-action-button"
+												variant="secondary"
+												wide
+												@click="mostrarReporte = true">
+												{{ t('empleados', 'Show report') }}
+											</NcButton>
+
+											<div class="accordion-field">
+												<span class="accordion-field__label">
+													{{ t('empleados', 'Filter by employee') }}
+												</span>
+
+												<NcSelect
+													v-bind="propsEmployees"
+													v-model="employees"
+													@update:model-value="onEmployeesChange" />
+												<NcButton
+													class="accordion-action-button accordion-action-button--all"
+													variant="secondary"
+													wide
+													@click="mostrarTodosAdministrativo">
+													{{ t('empleados', 'Show all employees') }}
+												</NcButton>
 											</div>
 										</div>
 									</div>
 								</div>
 
-								<!-- Administrative view accordion -->
-								<div v-if="isAdmin()" class="acordeon-item btn-top">
-									<button class="acordeon-titulo" @click="toggle(2)">
-										{{ t('empleados', 'Administrative') }}
-										<span>{{ accordeon[2].abierto ? '-' : '+' }}</span>
+								<!-- Filtrar por equipo -->
+								<div
+									v-if="Object.keys(Equipo).length"
+									class="acordeon-item">
+									<button
+										type="button"
+										class="acordeon-titulo"
+										@click="toggle(1)">
+										<span class="accordion-title">
+											<span class="accordion-title__label">
+												{{ t('empleados', 'Filter by team') }}
+											</span>
+
+											<span class="accordion-title__description">
+												{{ Equipo.Nombre }}
+											</span>
+										</span>
+
+										<span class="arrow">
+											{{ accordeon[1].abierto ? '−' : '+' }}
+										</span>
 									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[2].abierto }]">
-										<div class="btn-top">
-											<NcSelect v-bind="propsEmployees" v-model="employees" @update:model-value="onEmployeesChange" />
+
+									<div
+										:class="[
+											'acordeon-contenido',
+											{ abierto: accordeon[1].abierto },
+										]">
+										<div class="accordion-menu">
+											<button
+												type="button"
+												class="accordion-option accordion-option--group"
+												@click="
+													typePetition = 'all';
+													$refs.fullCalendar.getApi().refetchEvents()
+												">
+												<NcAvatar
+													:user="Equipo.Id_jefe_equipo"
+													:display-name="Equipo.Id_jefe_equipo"
+													:size="34" />
+
+												<span class="accordion-option__text">
+													<strong>{{ Equipo.Nombre }}</strong>
+
+													<small>
+														{{ t('empleados', 'Show the entire team') }}
+													</small>
+												</span>
+
+												<AccountGroup
+													:size="21"
+													class="accordion-option__icon" />
+											</button>
+
+											<ul class="accordion-user-list">
+												<li
+													v-for="item in peopleEquipo.equipo"
+													:key="item.Id_empleados">
+													<button
+														type="button"
+														class="accordion-option"
+														@click="
+															employees = [];
+															typePetition = 'employee';
+															selected_user = item;
+															$refs.fullCalendar.getApi().refetchEvents()
+														">
+														<NcAvatar
+															disable-menu
+															:size="36"
+															:user="item.Id_user"
+															:display-name="item.Id_user" />
+
+														<span class="accordion-option__text">
+															<strong>
+																{{ item.displayname || item.Id_user }}
+															</strong>
+
+															<small>{{ item.Id_user }}</small>
+														</span>
+													</button>
+												</li>
+											</ul>
 										</div>
 									</div>
 								</div>
 
-								<!-- My subordinates -->
-								<div v-if="subordinates.length > 0" class="acordeon-item">
-									<button class="acordeon-titulo" @click="toggle(3)">
-										{{ t('empleados', 'My subordinates') }} <span>{{ accordeon[3].abierto ? '-' :
-											'+' }}</span>
+								<!-- Mis empleados -->
+								<div
+									v-if="subordinates.length > 0"
+									class="acordeon-item">
+									<button
+										type="button"
+										class="acordeon-titulo"
+										@click="toggle(3)">
+										<span class="accordion-title">
+											<span class="accordion-title__label">
+												{{ t('empleados', 'My subordinates') }}
+											</span>
+
+											<span class="accordion-title__description">
+												{{ subordinates.length }}
+												{{ t('empleados', 'employees') }}
+											</span>
+										</span>
+
+										<span class="arrow">
+											{{ accordeon[3].abierto ? '−' : '+' }}
+										</span>
 									</button>
-									<div :class="['acordeon-contenido', { abierto: accordeon[3].abierto }]">
-										<div>
-											<div class="rst-title">
-												<div class="title_flex">
-													<div class="subtitle_flex">
+
+									<div
+										:class="[
+											'acordeon-contenido',
+											{ abierto: accordeon[3].abierto },
+										]">
+										<div class="accordion-menu">
+											<button
+												type="button"
+												class="accordion-option accordion-option--group"
+												@click="
+													typePetition = 'all-employees';
+													$refs.fullCalendar.getApi().refetchEvents()
+												">
+												<AccountGroup :size="34" />
+
+												<span class="accordion-option__text">
+													<strong>
 														{{ t('empleados', 'My subordinates') }}
-													</div>
-													<div class="flex-to-right">
-														<AccountGroup class="pointer"
-															@click="typePetition = 'all-employees'; $refs.fullCalendar.getApi().refetchEvents()" />
-													</div>
-												</div>
-											</div>
-											<div class="rst">
-												<div style="max-height: 300px; overflow-y: auto;">
-													<ul>
-														<NcListItem v-for="(item) in subordinates"
-															:key="item.Id_empleados"
-															:name="item.displayname ? item.displayname : item.Id_user"
-															@click.prevent="employees = []; typePetition = 'employee'; selected_user = item; $refs.fullCalendar.getApi().refetchEvents()">
-															<template #icon>
-																<NcAvatar disable-menu
-																	:size="44"
-																	:user="item.Id_user"
-																	:display-name="item.Id_user" />
-															</template>
-														</NcListItem>
-													</ul>
-												</div>
-											</div>
+													</strong>
+
+													<small>
+														{{ t('empleados', 'Show all my subordinates') }}
+													</small>
+												</span>
+
+												<AccountGroup
+													:size="21"
+													class="accordion-option__icon" />
+											</button>
+
+											<ul class="accordion-user-list">
+												<li
+													v-for="item in subordinates"
+													:key="item.Id_empleados">
+													<button
+														type="button"
+														class="accordion-option"
+														@click="
+															employees = [];
+															typePetition = 'employee';
+															selected_user = item;
+															$refs.fullCalendar.getApi().refetchEvents()
+														">
+														<NcAvatar
+															disable-menu
+															:size="36"
+															:user="item.Id_user"
+															:display-name="item.Id_user" />
+
+														<span class="accordion-option__text">
+															<strong>
+																{{ item.displayname || item.Id_user }}
+															</strong>
+
+															<small>{{ item.Id_user }}</small>
+														</span>
+													</button>
+												</li>
+											</ul>
 										</div>
 									</div>
+								</div>
+
+								<!-- Restablecer vista -->
+								<div class="sidebar-reset">
+									<NcButton
+										class="sidebar-button"
+										variant="secondary"
+										wide
+										@click="
+											typePetition = null;
+											selected_user = null;
+											employees = [];
+											$refs.fullCalendar.getApi().refetchEvents()
+										">
+										{{ t('empleados', 'Show my absences') }}
+									</NcButton>
 								</div>
 							</div>
 							<div class="footers">
@@ -336,6 +517,17 @@
 				</div>
 			</div>
 		</NcModal>
+		<div class="floating-help-button">
+			<NcActions>
+				<NcActionButton @click="showAniversarioModal">
+					<template #icon>
+						<CalendarQuestionOutline :size="24" />
+					</template>
+
+					{{ t('empleados', 'My information') }}
+				</NcActionButton>
+			</NcActions>
+		</div>
 		<!-- END ANNIVERSARIES INFO MODAL -->
 	</NcAppContent>
 </template>
@@ -355,6 +547,7 @@ import multiMonthPlugin from '@fullcalendar/multimonth'
 
 import { ref } from 'vue'
 
+import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -369,7 +562,6 @@ import {
 	NcModal,
 	NcActions,
 	NcActionButton,
-	NcListItem,
 	NcAvatar,
 	NcButton,
 	NcSelect,
@@ -377,22 +569,6 @@ import {
 	NcLoadingIcon,
 	NcNoteCard,
 } from '@nextcloud/vue'
-
-// FIX: paleta de colores por ESTADO de la ausencia, en vez de un color
-// distinto por empleado (usernameToColor). Todos los empleados ahora
-// comparten la misma paleta, en tonos pastel tranquilos:
-//   - pendiente (falta gerente o socio por aprobar): azul pastel con rayas
-//     (el color sólido de aquí es solo el fallback; el patrón de rayas se
-//     aplica vía CSS con la clase 'event-pending')
-//   - aprobado (gerente y socio en 1): verde salvia pastel
-//   - cancelado: gris pastel (ya existía, suavizado)
-//   - rechazado: terracota/coral pastel (ya existía, suavizado)
-const ESTADO_COLORES = {
-	pendiente: '#5C7A9E',
-	aprobado: '#7FAE94',
-	cancelado: '#ABB0B8',
-	rechazado: '#C97B72',
-}
 
 export default {
 	name: 'TiempoLibre',
@@ -410,7 +586,6 @@ export default {
 		AccountGroup,
 		CalendarQuestionOutline,
 		FullCalendar,
-		NcListItem,
 		NcAvatar,
 		NcButton,
 		NcSelect,
@@ -443,12 +618,12 @@ export default {
 			range: null,
 			calendarOptions: {
 				headerToolbar: {
-					left: 'prev,next today',
+					left: '',
 					center: 'title',
-					right: 'dayGridMonth,multiMonthYear',
+					right: 'multiMonthYear,dayGridMonth,today,prev,next',
 				},
 				initialView: 'dayGridMonth',
-				locale: 'en',
+				locale: 'es',
 				plugins: [dayGridPlugin, interactionPlugin, multiMonthPlugin],
 				events: this.fetchEvents,
 				dateClick: this.onDateClick,
@@ -456,12 +631,10 @@ export default {
 				select: this.onDateRangeSelect,
 				selectable: true,
 				fixedWeekCount: false,
-				height: 'auto',
-				contentHeight: 'auto',
-				expandRows: false,
-				aspectRatio: 1.2,
 				dayMaxEvents: true,
-				dayMaxEventRows: 2,
+				dayMaxEventRows: 10,
+				multiMonthMaxColumns: 4,
+				multiMonthMinWidth: 225,
 				moreLinkClick: 'popover',
 				eventContent(arg) {
 					const nombreEmpleado = arg.event.extendedProps.nombre_empleado || 'Unknown employee'
@@ -536,6 +709,10 @@ export default {
 
 			return agrupados
 		},
+		tieneVacacionesAcumuladas() {
+			return Number(this.Ausencias?.dias_acumulados ?? 0) > 0
+				&& Boolean(this.Ausencias?.fecha_expiracion_acumulados)
+		},
 	},
 
 	mounted() {
@@ -555,6 +732,14 @@ export default {
 		this.getEquipos()
 		this.GetAllEquipo()
 		this.checkNotifications()
+		this.$nextTick(() => {
+			this.ajustarAlturaCalendario()
+			window.addEventListener('resize', this.ajustarAlturaCalendario)
+		})
+	},
+
+	beforeDestroy() {
+		window.removeEventListener('resize', this.ajustarAlturaCalendario)
 	},
 
 	methods: {
@@ -655,6 +840,10 @@ export default {
 				this.getAllAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'All my team')
 				break
+			case 'all-admin':
+				this.getEmployeeAusencias(fetchInfo, success, failure)
+				this.vista_actual = t('empleados', 'All employees')
+				break
 			case 'employee':
 				this.getEmployeeAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'Selected employee')
@@ -671,31 +860,25 @@ export default {
 			}
 		},
 
-		/**
-		 * Determina el estado de una ausencia (pendiente/aprobado/cancelado/rechazado)
-		 * y su color/clase correspondiente para pintarla en el calendario.
-		 */
-		estiloEventoAusencia(item) {
-			const g = Number(item.a_gerente ?? 0)
-			const s = Number(item.a_socio ?? 0)
+		eventColor(item, fallbackUsername) {
+			return this.estiloEventoAusencia(item, fallbackUsername).color
+		},
+
+		estiloEventoAusencia(item, fallbackUsername) {
+			const g = Number(item.a_gerente)
+			const s = Number(item.a_socio)
 			const ch = Number(item.a_capital_humano ?? 0)
 
 			const isCancelled = g === 3 || s === 3 || ch === 3
-			const isRejected = !isCancelled && (g === 2 || s === 2 || ch === 2)
+			const isRejected = g === 2 || s === 2 || ch === 2
 
 			if (isCancelled) {
-				return { color: ESTADO_COLORES.cancelado, classNames: ['event-cancelled'] }
+				return { color: '#9e9e9e', classNames: ['event-cancelled'] }
 			}
 			if (isRejected) {
-				return { color: ESTADO_COLORES.rechazado, classNames: ['event-rejected'] }
+				return { color: '#c0392b', classNames: ['event-rejected'] }
 			}
-
-			const isFullyApproved = g === 1 && s === 1
-			if (isFullyApproved) {
-				return { color: ESTADO_COLORES.aprobado, classNames: ['event-approved'] }
-			}
-
-			return { color: ESTADO_COLORES.pendiente, classNames: ['event-pending'] }
+			return { color: this.color(fallbackUsername), classNames: [] }
 		},
 
 		getMyAusencias(fetchInfo, success, failure) {
@@ -709,7 +892,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item)
+						const estilo = this.estiloEventoAusencia(item, this.employee[0].Id_user)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.tipo_nombre,
@@ -737,7 +920,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item)
+						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
@@ -765,7 +948,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item)
+						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
@@ -798,7 +981,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item)
+						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
 						return {
 							id: item.id_historial_ausencias,
 							title: `${item.nombre_empleado} - ${item.tipo_nombre}`,
@@ -850,6 +1033,11 @@ export default {
 			this.closeModalEditar()
 			this.GetAusencias()
 			this.$refs.fullCalendar.getApi().refetchEvents()
+		},
+
+		color(username) {
+			const { r, g, b } = usernameToColor(username)
+			return `rgb(${r}, ${g}, ${b})`
 		},
 
 		isAdmin() {
@@ -957,318 +1145,1122 @@ export default {
 				this.$refs.fullCalendar?.getApi()?.refetchEvents()
 			})
 		},
+		ajustarAlturaCalendario() {
+			this.$nextTick(() => {
+				const calendarContainer = this.$refs.calendarViewport
+				const sidebar = this.$refs.sidebar
+				const calendar = this.$refs.fullCalendar?.getApi()
+
+				if (!calendarContainer || !calendar) return
+
+				const top = calendarContainer.getBoundingClientRect().top
+				const margenInferior = 30
+
+				const alturaDisponible = Math.max(
+					300,
+					Math.floor(window.innerHeight - top - margenInferior),
+				)
+
+				calendar.setOption('height', alturaDisponible)
+				calendar.updateSize()
+
+				if (sidebar) {
+					sidebar.style.height = `${alturaDisponible}px`
+					sidebar.style.maxHeight = `${alturaDisponible}px`
+				}
+			})
+		},
+		mostrarTodosAdministrativo() {
+			const todosLosEmpleados = this.propsEmployees.options ?? []
+
+			if (todosLosEmpleados.length === 0) {
+				showInfo(t('empleados', 'No employees were found'))
+				return
+			}
+
+			/*
+	 * No llenamos `employees` para evitar que NcSelect muestre
+	 * decenas de etiquetas seleccionadas.
+	 */
+			this.employees = []
+			this.selected_user = [...todosLosEmpleados]
+			this.typePetition = 'all-admin'
+
+			this.$nextTick(() => {
+				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+			})
+		},
 	},
 }
 </script>
-
 <style>
-.fc-event.event-pending {
-	background: repeating-linear-gradient(
-		45deg,
-		#6f98c8 0px,
-		#779ecb 11px,
-		#92b8e4 11px,
-		#8cb2de 22px
-	) !important;
-	border-color: #7da4d2 !important;
-}
-
-.fc-event.event-pending,
-.fc-event.event-approved,
-.fc-event.event-rejected,
-.fc-event.event-cancelled {
-	color: #ffffff !important;
-}
-
+/* Eventos cancelados */
 .event-cancelled .fc-event-title {
 	text-decoration: line-through;
-	opacity: 0.85;
+	opacity: 0.8;
 }
 
+/* Eventos rechazados */
 .event-rejected .fc-event-title {
 	text-decoration: line-through;
-	opacity: 0.85;
-}
-
-.fc-event.event-pending .fc-event-title,
-.fc-event.event-approved .fc-event-title,
-.fc-event.event-rejected .fc-event-title,
-.fc-event.event-cancelled .fc-event-title,
-.fc-event.event-pending .fc-event-main,
-.fc-event.event-approved .fc-event-main,
-.fc-event.event-rejected .fc-event-main,
-.fc-event.event-cancelled .fc-event-main {
-	color: #ffffff !important;
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+	opacity: 0.8;
 }
 </style>
 
 <style scoped>
+/* ========================================
+ * ESTRUCTURA GENERAL
+ * ======================================== */
+
 .layout {
-	width: 100%;
 	display: flex;
+	align-items: stretch;
+	width: 100%;
 	gap: 16px;
 }
-.grow1 { flex: 3; }
-.grow2 { flex: 7; }
-.grow3 { flex: 3; }
-.grow4 { flex: 3; }
-.cards {
+
+.grow1 {
 	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-	border-radius: 0.75rem;
-	background-color: white;
-	border: 1px solid #cbd5e0;
+	flex: 3;
+	min-width: 260px;
+	min-height: 0;
 }
 
-.infos {
-	border: none;
-	padding: 1.5rem;
-	text-align: center;
-}
-.titles {
-	color: rgb(38 50 56);
-	font-weight: 600;
-	font-size: 1.25rem;
-	margin-bottom: 0.5rem;
-}
-.footers {
-	padding: 0.75rem;
-	border: 1px solid rgb(236 239 241);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	background-color: rgba(0, 140, 255, 0.082);
+.grow2 {
+	flex: 7;
+	min-width: 0;
 }
 
-.btn-top-right {
-	position: absolute;
-	top: 0.5rem;
-	right: 0.5rem;
-	background-color: white;
-	border: none;
-	border-radius: 50%;
-	padding: 0.5rem;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-	cursor: pointer;
-	font-size: 1rem;
-	transition: transform 0.2s ease;
+.grow3 {
+	flex: 3;
+	min-width: 0;
 }
-.btn-top { margin-top: 10px; }
-.btn-top-right:hover { transform: scale(1.1); }
-.table_component { overflow: auto; width: 100%; }
-.table_component table {
-	border: 1px solid #dededf;
+
+.grow4 {
+	flex: 3;
+	min-width: 0;
+}
+
+.section-calendar {
+	padding-top: 25px;
+	padding-inline: 30px;
+}
+
+.sectionPicker {
 	width: 100%;
-	table-layout: fixed;
-	border-collapse: collapse;
-	text-align: left;
+	min-width: 0;
 }
-.table_component th,
-.table_component td { border: 1px solid #dededf; padding: 5px; }
-.table_component th { background-color: #eceff1; color: black; }
-.table_component td { background-color: white; color: black; }
-.caption-title { font-weight: bold; }
-.modal__content { margin: 50px; }
-.sectionPicker { height: clamp(520px, 70vh, 780px); }
+
 .my-calendar {
-	height: 100%;
+	width: 100%;
+	min-width: 0;
+
 	--color-background-dark: transparent !important;
 }
-.acordeon-item { margin-bottom: 10px; border-radius: 5px; overflow: hidden; }
-.acordeon-titulo {
-	width: 100%;
-	text-align: center;
-	border: none;
-	justify-content: space-between;
-	align-items: center;
-}
-.acordeon-contenido { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease-in-out; }
-.acordeon-contenido.abierto { max-height: 500px; opacity: 1; }
-.flex-to-right { margin-left: auto; margin-right: 5%; cursor: pointer; }
-.subtitle_flex { margin-left: 4%; }
-.btn-top-subtitle { margin-top: 3px; }
-.pointer { cursor: pointer; }
-.acordeon-notification {
-	width: 100%;
-	border: none;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	position: relative;
-}
-.noti-wrapper {
-	position: initial;
-	width: 24px;
-	height: 24px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.noti-badge { position: absolute; top: -5px; right: -5px; }
-.noti-text { text-align: left; }
-.arrow { font-weight: bold; color: #666; }
-@keyframes shake {
-	0%   { transform: rotate(0deg); }
-	15%  { transform: rotate(-15deg); }
-	30%  { transform: rotate(15deg); }
-	45%  { transform: rotate(-10deg); }
-	60%  { transform: rotate(10deg); }
-	75%  { transform: rotate(-5deg); }
-	90%  { transform: rotate(5deg); }
-	100% { transform: rotate(0deg); }
-}
-.bell-shake { animation: shake 0.8s ease; }
 
-.h2-white {
-	color: white;
-	margin: 0;
-	font-size: 1.4rem;
-	letter-spacing: 0.3px;
+/* ========================================
+ * SIDEBAR
+ * ======================================== */
+
+.cards {
+	--sidebar-primary: #2389d7;
+	--sidebar-primary-dark: #1468a8;
+	--sidebar-primary-soft: #e7f3fb;
+	--sidebar-soft: #edf6fc;
+	--sidebar-soft-hover: #dceefa;
+	--sidebar-border: #d4e2ec;
+	--sidebar-border-strong: #b9d5e6;
+	--sidebar-text: #17354d;
+	--sidebar-muted: #66798a;
+	--sidebar-warning: #b45309;
+	--sidebar-warning-soft: #fff7e8;
+
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+
+	width: 100%;
+	height: 100%;
+	max-height: 100%;
+	min-width: 0;
+	min-height: 0;
+
+	overflow: hidden;
+
+	color: var(--sidebar-text);
+	background: #f8fbfd;
+	border: 1px solid var(--sidebar-border);
+	border-radius: 16px;
+
+	box-shadow:
+		0 8px 24px rgba(15, 47, 74, 0.08),
+		0 2px 5px rgba(15, 47, 74, 0.05);
 }
 
-.gl {
-	display: flex;
-	justify-content: center;
-}
+/* ========================================
+ * ENCABEZADO DE VACACIONES
+ * ======================================== */
 
 .headers {
 	position: relative;
-	margin-top: 1.5rem;
-	margin-left: 1rem;
-	margin-right: 1rem;
-	border-radius: 1rem;
-	background: linear-gradient(135deg, rgb(33 150 243), rgb(25 118 210));
-	background-clip: border-box;
-	box-shadow: 0 10px 25px -5px rgba(33, 150, 243, .45), 0 4px 6px -4px rgba(33, 150, 243, .3);
-	min-height: 8rem;
-	padding: 1.5rem 1.25rem 1.25rem;
-	text-align: center;
+
 	display: flex;
+	flex: 0 0 auto;
 	align-items: center;
 	justify-content: center;
+
+	margin: 12px 12px 10px;
+	padding: 18px 14px;
+
+	text-align: center;
+
+	background:
+		linear-gradient(
+			145deg,
+			var(--sidebar-primary),
+			var(--sidebar-primary-dark)
+		);
+
+	border-radius: 14px;
+
+	box-shadow:
+		0 10px 22px rgba(31, 127, 195, 0.25),
+		0 3px 7px rgba(31, 127, 195, 0.14);
 }
 
 .header-content {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 0.9rem;
+
 	width: 100%;
-}
-
-.dias-wrapper {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 4px;
-	color: white;
-}
-
-.dias-label {
-	font-size: 0.7rem;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	color: rgba(255, 255, 255, 0.829);
-}
-
-.dias-solo {
-	font-size: 1.1rem;
-	font-weight: 700;
-	letter-spacing: -0.01em;
-}
-
-.dias-acumulados {
-	display: inline-block;
-	padding: 2px 8px;
-	margin-left: 4px;
-	border-radius: 999px;
-	background: #2563eb;
-	color: white;
-	font-weight: 800;
-	font-size: .88rem;
-	letter-spacing: .02em;
-	box-shadow: 0 2px 6px rgba(37,99,235,.35);
-}
-
-.vacations {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 100%;
-}
-
-.vacations-panel {
-	width: 100%;
-	max-width: 320px;
-	background: rgba(255, 255, 255, 0.97);
-	border-radius: 14px;
-	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
-	overflow: hidden;
-}
-
-.panel-row {
-	padding: 12px 16px 3px;
-}
-
-.panel-row1 {
-	padding: 3px 16px 12px;
-}
-
-.panel-divider {
-	height: 1px;
-	background: rgba(15, 23, 42, 0.08);
-	margin: 0 16px;
-}
-
-/* — Accumulated (top) — */
-.panel-row--accum {
-	display: flex;
-	align-items: flex-start;
-	gap: 10px;
-	text-align: left;
-}
-
-.row-icon {
-	flex-shrink: 0;
-	margin-top: 2px;
-	color: #b45309;
-}
-
-.row-text {
-	margin: 0;
-	font-size: 0.78rem;
-	line-height: 1.55;
-	color: #57534e;
-}
-
-.row-text strong {
-	color: #1c1917;
-	font-weight: 700;
-}
-
-/* — Current period (bottom) — */
-.panel-row--current {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
 	gap: 12px;
 }
 
-.row-label {
-	font-size: 0.7rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: #78716c;
-}
+.h2-white {
+	margin: 0;
 
-.row-value {
+	color: white;
 	font-size: 1.15rem;
 	font-weight: 700;
-	color: #1c1917;
-	letter-spacing: -0.01em;
+	letter-spacing: 0.02em;
+}
+
+/* ========================================
+ * TARJETAS DE VACACIONES
+ * ======================================== */
+
+.vacations {
+	width: 100%;
+}
+
+.vacations-grid {
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+
+	width: 100%;
+	overflow: hidden;
+
+	background: white;
+	border: 1px solid rgba(15, 23, 42, 0.12);
+	border-radius: 10px;
+
+	box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.vacation-card {
+	display: flex;
+	flex: 1 1 50%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+
+	box-sizing: border-box;
+	width: 50%;
+	min-width: 0;
+	min-height: 105px;
+	padding: 10px 6px;
+
+	text-align: center;
+	background: white;
+}
+
+.vacation-card + .vacation-card {
+	border-top: 0;
+	border-left: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.vacations-grid--single .vacation-card {
+	flex-basis: 100%;
+	width: 100%;
+}
+
+.vacation-card__title {
+	max-width: 100%;
+	margin-bottom: 3px;
+	overflow: hidden;
+
+	color: #334155;
+	font-size: 0.62rem;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.vacation-card__value {
+	color: #8b477f;
+	font-size: 1.45rem;
+	font-weight: 800;
+	line-height: 1;
+}
+
+.vacation-card__subtitle {
+	max-width: 100%;
+	margin-top: 4px;
+	overflow: hidden;
+
+	color: #64748b;
+	font-size: 0.54rem;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.vacation-card--accumulated {
+	background: #fffaf0;
+}
+
+.vacation-card__warning {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+
+	width: 100%;
+	margin-top: 7px;
+	padding-top: 6px;
+	gap: 3px;
+
+	color: #92400e;
+	font-size: 0.55rem;
+	line-height: 1.2;
+
+	border-top: 1px solid rgba(146, 64, 14, 0.14);
+}
+
+.vacation-card__warning svg {
+	flex-shrink: 0;
+}
+
+/* ========================================
+ * CONTENIDO DESPLAZABLE DEL SIDEBAR
+ * ======================================== */
+
+.infos {
+	flex: 1 1 auto;
+	min-height: 0;
+	padding: 4px 12px 12px;
+
+	overflow-x: hidden;
+	overflow-y: auto;
+
+	text-align: center;
+	overscroll-behavior: contain;
+
+	scrollbar-width: thin;
+	scrollbar-color: #a9c7da transparent;
+}
+
+.infos::-webkit-scrollbar {
+	width: 6px;
+}
+
+.infos::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.infos::-webkit-scrollbar-thumb {
+	background: #a9c7da;
+	border-radius: 999px;
+}
+
+.infos::-webkit-scrollbar-thumb:hover {
+	background: #82aec9;
+}
+
+/* ========================================
+ * BOTONES PRINCIPALES
+ * ======================================== */
+
+.sidebar-button {
+	width: 100% !important;
+	min-height: 40px !important;
+	margin-top: 8px !important;
+	padding: 7px 12px !important;
+
+	color: var(--sidebar-text) !important;
+	font-size: 0.82rem !important;
+	font-weight: 700 !important;
+
+	background: var(--sidebar-soft) !important;
+	border: 1px solid transparent !important;
+	border-radius: 10px !important;
+
+	box-shadow: none !important;
+
+	transition:
+		background-color 0.18s ease,
+		border-color 0.18s ease,
+		transform 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+.btn-top {
+	margin-top: 8px;
+}
+
+/* ========================================
+ * ACORDEONES
+ * ======================================== */
+
+.acordeon-item {
+	flex: 0 0 auto;
+
+	box-sizing: border-box;
+	width: 100%;
+	margin-top: 8px;
+	margin-bottom: 0;
+
+	overflow: hidden;
+
+	background: white;
+	border: 1px solid var(--sidebar-border);
+	border-radius: 10px;
+
+	transition:
+		border-color 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+:is(.acordeon-titulo, .acordeon-notification) {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 40px;
+	padding: 8px 10px;
+
+	color: var(--sidebar-text);
+	font-family: inherit;
+	font-size: 0.82rem;
+	font-weight: 700;
+	text-align: left;
+
+	background: var(--sidebar-soft);
+	border: none;
+
+	cursor: pointer;
+
+	transition:
+		background-color 0.18s ease,
+		color 0.18s ease;
+}
+
+.acordeon-notification {
+	color: #8a3d08;
+	background: var(--sidebar-warning-soft);
+}
+
+.acordeon-contenido {
+	box-sizing: border-box;
+
+	max-height: 0;
+	padding: 0 8px;
+
+	overflow: hidden;
+	opacity: 0;
+
+	background: white;
+
+	transition:
+		max-height 0.28s ease,
+		padding 0.28s ease,
+		opacity 0.2s ease;
+}
+
+.acordeon-contenido.abierto {
+	max-height: min(44dvh, 390px);
+	padding: 8px;
+
+	overflow: hidden;
+	opacity: 1;
+
+	border-top: 1px solid #e5edf3;
+}
+
+/* ========================================
+ * INDICADOR + / −
+ * ======================================== */
+
+.arrow {
+	display: inline-flex;
+	flex: 0 0 22px;
+	align-items: center;
+	justify-content: center;
+
+	width: 22px;
+	height: 22px;
+	margin-left: 8px;
+
+	color: var(--sidebar-primary-dark);
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1;
+
+	background: rgba(31, 127, 195, 0.11);
+	border-radius: 50%;
+}
+
+/* ========================================
+ * NOTIFICACIONES
+ * ======================================== */
+
+.noti-wrapper {
+	position: relative;
+
+	display: flex;
+	flex: 0 0 24px;
+	align-items: center;
+	justify-content: center;
+
+	width: 24px;
+	height: 24px;
+
+	color: var(--sidebar-warning);
+}
+
+.noti-badge {
+	position: absolute;
+	top: -9px;
+	right: -11px;
+
+	transform: scale(0.82);
+	transform-origin: center;
+}
+
+.noti-text {
+	flex: 1;
+	min-width: 0;
+	margin-left: 9px;
+	overflow: hidden;
+
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ========================================
+ * MENÚ INTERNO DE ACORDEONES
+ * ======================================== */
+
+.accordion-menu {
+	display: flex;
+	flex-direction: column;
+
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	gap: 6px;
+}
+
+.accordion-menu--select {
+	padding: 3px 0;
+}
+
+.accordion-user-list {
+	box-sizing: border-box;
+	width: 100%;
+	max-height: 245px;
+	margin: 0;
+	padding: 0 3px 0 0;
+
+	overflow-x: hidden;
+	overflow-y: auto;
+
+	list-style: none;
+	overscroll-behavior: contain;
+
+	scrollbar-width: thin;
+	scrollbar-color: #b8cede transparent;
+}
+
+.accordion-user-list::-webkit-scrollbar {
+	width: 5px;
+}
+
+.accordion-user-list::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.accordion-user-list::-webkit-scrollbar-thumb {
+	background: #b8cede;
+	border-radius: 999px;
+}
+
+.accordion-user-list > li {
+	margin: 0;
+	padding: 0;
+}
+
+.accordion-user-list > li + li {
+	margin-top: 4px;
+}
+
+/* ========================================
+ * OPCIONES DE EQUIPO Y USUARIOS
+ * ======================================== */
+
+.accordion-option {
+	display: flex;
+	align-items: center;
+
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	min-height: 48px;
+	padding: 6px 9px;
+	gap: 9px;
+
+	color: var(--sidebar-text);
+	font-family: inherit;
+	text-align: left;
+
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 9px;
+
+	cursor: pointer;
+
+	transition:
+		background-color 0.16s ease,
+		border-color 0.16s ease,
+		transform 0.16s ease;
+}
+
+.accordion-option--group {
+	min-height: 55px;
+
+	background: #f3f8fc;
+	border-color: #dde9f1;
+}
+
+.accordion-option__text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+
+	min-width: 0;
+	gap: 2px;
+}
+
+.accordion-option__text strong {
+	max-width: 100%;
+	overflow: hidden;
+
+	color: var(--sidebar-text);
+	font-size: 0.78rem;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.accordion-option__text small {
+	max-width: 100%;
+	overflow: hidden;
+
+	color: var(--sidebar-muted);
+	font-size: 0.67rem;
+	font-weight: 500;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.accordion-option__icon {
+	flex: 0 0 auto;
+	margin-left: auto;
+
+	color: var(--sidebar-primary);
+}
+
+/* ========================================
+ * COMPATIBILIDAD CON LA ESTRUCTURA ANTERIOR
+ * ======================================== */
+
+.rst {
+	width: 100%;
+	min-width: 0;
+}
+
+.rst ul {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+
+	list-style: none;
+}
+
+.rst-title {
+	margin-bottom: 6px;
+	padding: 7px 8px;
+
+	background: #f3f8fc;
+	border: 1px solid #dde9f1;
+	border-radius: 9px;
+}
+
+.title_flex {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	gap: 8px;
+}
+
+.subtitle_flex {
+	display: flex;
+	align-items: center;
+	margin-left: 0;
+}
+
+.btn-top-subtitle {
+	min-width: 0;
+	margin-top: 0;
+
+	overflow: hidden;
+
+	color: var(--sidebar-text);
+	font-size: 0.78rem;
+	font-weight: 700;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.flex-to-right {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+
+	margin-right: 0;
+	margin-left: auto;
+
+	color: var(--sidebar-primary);
+	cursor: pointer;
+
+	transition: transform 0.18s ease;
+}
+
+.pointer {
+	cursor: pointer;
+}
+
+/* ========================================
+ * SELECTOR ADMINISTRATIVO
+ * ======================================== */
+
+::v-deep .accordion-menu--select .v-select {
+	width: 100%;
+}
+
+::v-deep .accordion-menu--select .vs__dropdown-toggle {
+	min-height: 40px;
+
+	background: #f8fbfd;
+	border-color: var(--sidebar-border);
+	border-radius: 9px;
+}
+
+::v-deep .accordion-menu--select .vs__selected-options {
+	min-width: 0;
+}
+
+::v-deep .accordion-menu--select .vs__search {
+	color: var(--sidebar-text);
+	font-size: 0.78rem;
+}
+
+/* ========================================
+ * PIE DEL SIDEBAR
+ * ======================================== */
+
+.footers {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+
+	min-height: 43px;
+	padding: 9px 78px 9px 12px;
+
+	color: #47667d;
+	font-size: 0.76rem;
+	font-weight: 500;
+	text-align: left;
+
+	background: #edf6fc;
+	border-top: 1px solid var(--sidebar-border);
+}
+
+.footers p {
+	width: 100%;
+	margin: 0;
+	overflow: hidden;
+
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ========================================
+ * TABLAS Y MODALES
+ * ======================================== */
+
+.table_component {
+	width: 100%;
+	overflow: auto;
+}
+
+.table_component table {
+	width: 100%;
+
+	border: 1px solid #dededf;
+	border-collapse: collapse;
+
+	table-layout: fixed;
+	text-align: left;
+}
+
+.table_component th,
+.table_component td {
+	padding: 5px;
+	border: 1px solid #dededf;
+}
+
+.table_component th {
+	color: black;
+	background-color: #eceff1;
+}
+
+.table_component td {
+	color: black;
+	background-color: white;
+}
+
+.caption-title {
+	font-weight: 700;
+}
+
+.modal__content {
+	margin: 50px;
+}
+
+/* ========================================
+ * BOTÓN FLOTANTE
+ * ======================================== */
+
+.floating-help-button {
+	position: fixed;
+	right: 24px;
+	bottom: 24px;
+	z-index: 10000;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	width: 64px;
+	height: 64px;
+	padding: 4px;
+
+	background-color: white;
+	border: 1px solid #cbd5e0;
+	border-radius: 50%;
+
+	box-shadow:
+		0 8px 20px rgba(0, 0, 0, 0.22),
+		0 2px 6px rgba(0, 0, 0, 0.15);
+
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+/* ========================================
+ * ANIMACIONES
+ * ======================================== */
+
+@keyframes shake {
+	0% {
+		transform: rotate(0deg);
+	}
+
+	15% {
+		transform: rotate(-15deg);
+	}
+
+	30% {
+		transform: rotate(15deg);
+	}
+
+	45% {
+		transform: rotate(-10deg);
+	}
+
+	60% {
+		transform: rotate(10deg);
+	}
+
+	75% {
+		transform: rotate(-5deg);
+	}
+
+	90% {
+		transform: rotate(5deg);
+	}
+
+	100% {
+		transform: rotate(0deg);
+	}
+}
+
+.bell-shake {
+	animation: shake 0.8s ease;
+}
+
+/* ========================================
+ * RESPONSIVE
+ * ======================================== */
+
+@media screen and (max-width: 1100px) {
+	.layout {
+		gap: 10px;
+	}
+
+	.grow1 {
+		min-width: 235px;
+	}
+
+	.section-calendar {
+		padding-top: 18px;
+		padding-inline: 18px;
+	}
+
+	.headers {
+		margin: 10px;
+		padding: 15px 10px;
+	}
+
+	.infos {
+		padding-inline: 10px;
+	}
+
+	:is(.sidebar-button, .acordeon-titulo, .acordeon-notification) {
+		font-size: 0.76rem !important;
+	}
+
+	.vacation-card {
+		min-height: 95px;
+		padding: 8px 5px;
+	}
+
+	.vacation-card__title {
+		font-size: 0.56rem;
+	}
+
+	.vacation-card__value {
+		font-size: 1.25rem;
+	}
+
+	.vacation-card__subtitle {
+		font-size: 0.48rem;
+	}
+
+	.vacation-card__warning {
+		font-size: 0.5rem;
+	}
+
+	.accordion-option {
+		padding: 6px 7px;
+	}
+
+	.accordion-option__text strong {
+		font-size: 0.73rem;
+	}
+
+	.accordion-option__text small {
+		font-size: 0.63rem;
+	}
+}
+
+@media screen and (max-width: 700px) {
+	.floating-help-button {
+		right: 12px;
+		bottom: 12px;
+
+		width: 56px;
+		height: 56px;
+	}
+
+	.modal__content {
+		margin: 20px;
+	}
+}
+
+/* ========================================
+ * ESTADOS INTERACTIVOS
+ * ======================================== */
+
+.sidebar-button:hover {
+	background: var(--sidebar-soft-hover) !important;
+	border-color: #b9d8eb !important;
+
+	box-shadow: 0 4px 10px rgba(31, 127, 195, 0.12) !important;
+
+	transform: translateY(-1px);
+}
+
+.sidebar-button:active {
+	transform: translateY(0);
+}
+
+.acordeon-item:hover {
+	border-color: #b6d3e5;
+	box-shadow: 0 4px 12px rgba(15, 47, 74, 0.07);
+}
+
+.acordeon-titulo:hover {
+	color: var(--sidebar-primary-dark);
+	background: var(--sidebar-soft-hover);
+}
+
+.acordeon-notification:hover {
+	background: #ffedcc;
+}
+
+.accordion-option:hover {
+	background: var(--sidebar-soft);
+	border-color: #d1e4ef;
+}
+
+.accordion-option--group:hover {
+	background: #e4f1f9;
+	border-color: #bad8e9;
+}
+
+.accordion-option:active {
+	transform: scale(0.99);
+}
+
+.flex-to-right:hover {
+	transform: scale(1.12);
+}
+
+.floating-help-button:hover {
+	transform: scale(1.08);
+
+	box-shadow:
+		0 10px 25px rgba(0, 0, 0, 0.28),
+		0 3px 8px rgba(0, 0, 0, 0.18);
+}
+
+.accordion-title {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+
+	min-width: 0;
+	gap: 2px;
+}
+
+.accordion-title__label {
+	overflow: hidden;
+
+	color: inherit;
+	font-size: 0.8rem;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.accordion-title__description {
+	overflow: hidden;
+
+	color: var(--sidebar-muted);
+	font-size: 0.63rem;
+	font-weight: 500;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.acordeon-item--admin {
+	border-color: rgba(35, 137, 215, 0.25);
+}
+
+.acordeon-item--admin > .acordeon-titulo {
+	background: var(--sidebar-primary-soft);
+}
+
+.accordion-field {
+	display: flex;
+	flex-direction: column;
+
+	width: 100%;
+	gap: 5px;
+}
+
+.accordion-field__label {
+	color: var(--sidebar-muted);
+	font-size: 0.68rem;
+	font-weight: 600;
+	text-align: left;
+}
+
+.accordion-action-button {
+	width: 100% !important;
+	min-height: 38px !important;
+
+	color: white !important;
+	font-size: 0.76rem !important;
+	font-weight: 700 !important;
+
+	background: var(--sidebar-primary) !important;
+	border: none !important;
+	border-radius: 9px !important;
+}
+
+.sidebar-reset {
+	margin-top: 10px;
+	padding-top: 2px;
+}
+
+.accordion-action-button:hover {
+	background: var(--sidebar-primary-dark) !important;
+}
+.accordion-action-button--all {
+	color: var(--sidebar-primary-dark) !important;
+
+	background: var(--sidebar-primary-soft) !important;
+	border: 1px solid var(--sidebar-border-strong) !important;
+}
+
+.accordion-action-button--all:hover {
+	color: white !important;
+
+	background: var(--sidebar-primary) !important;
+	border-color: var(--sidebar-primary) !important;
 }
 </style>
