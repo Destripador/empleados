@@ -36,26 +36,16 @@
 			</button>
 		</div>
 
-		<!-- Filtros de fecha/año + botón filtros -->
-		<div class="reporte-filtros">
-			<template v-if="vistaActual === 'todos'">
-				<div class="filtro-grupo">
-					<label class="filtro-label">{{ t('empleados', 'Desde') }}</label>
-					<input v-model="filtroDesde" type="date" class="filtro-input">
-				</div>
-				<div class="filtro-grupo">
-					<label class="filtro-label">{{ t('empleados', 'Hasta') }}</label>
-					<input v-model="filtroHasta" type="date" class="filtro-input">
-				</div>
-			</template>
+		<!-- Filtros de la vista general -->
+		<div v-if="vistaActual === 'todos'" class="reporte-filtros">
+			<div class="filtro-grupo">
+				<label class="filtro-label">{{ t('empleados', 'Desde') }}</label>
+				<input v-model="filtroDesde" type="date" class="filtro-input">
+			</div>
 
-			<div v-else-if="empleadoResumen" class="filtro-grupo">
-				<label class="filtro-label">{{ t('empleados', 'Periodo') }}</label>
-				<select v-model.number="periodoSeleccionado" class="filtro-input filtro-select">
-					<option v-for="p in periodosEmpleado" :key="p.numero_aniversario" :value="p.numero_aniversario">
-						{{ t('empleados', 'Aniversario') }} {{ p.numero_aniversario }} ({{ formatFecha(p.periodo_inicio) }} → {{ formatFecha(p.periodo_fin) }})
-					</option>
-				</select>
+			<div class="filtro-grupo">
+				<label class="filtro-label">{{ t('empleados', 'Hasta') }}</label>
+				<input v-model="filtroHasta" type="date" class="filtro-input">
 			</div>
 
 			<NcButton type="primary" :disabled="cargando" @click="cargarReporte">
@@ -65,8 +55,7 @@
 				{{ cargando ? t('empleados', 'Cargando…') : t('empleados', 'Buscar') }}
 			</NcButton>
 
-			<!-- Botón filtros de tabla (solo aplica a "Todos los registros") -->
-			<div v-if="!cargando && registros.length > 0 && vistaActual === 'todos'" class="filtros-btn-wrap">
+			<div v-if="!cargando && registros.length > 0" class="filtros-btn-wrap">
 				<NcButton :type="hayFiltrosActivos ? 'primary' : 'secondary'" @click="mostrarFiltros = true">
 					<template #icon>
 						<FilterVariant :size="18" />
@@ -74,6 +63,7 @@
 					{{ t('empleados', 'Filtros') }}
 					<span v-if="contadorFiltros > 0" class="filtros-badge">{{ contadorFiltros }}</span>
 				</NcButton>
+
 				<NcButton v-if="hayFiltrosActivos" type="tertiary" @click="limpiarFiltros">
 					<template #icon>
 						<FilterOff :size="16" />
@@ -91,24 +81,64 @@
 
 			<!-- ─── Vista: Resumen por empleado ─── -->
 			<div v-else-if="vistaActual === 'resumen'" class="resumen-vista">
-				<div class="resumen-selector">
-					<AccountSearch :size="20" class="resumen-selector-icon" />
-					<select v-model="empleadoResumen" class="filtro-input filtro-select resumen-selector-input">
-						<option value="" disabled>
-							{{ t('empleados', 'Selecciona un empleado') }}
-						</option>
-						<option v-for="emp in opcionesEmpleados" :key="emp" :value="emp">
-							{{ emp }}
-						</option>
-					</select>
+				<div class="resumen-toolbar">
+					<div class="resumen-selector">
+						<AccountSearch :size="20" class="resumen-selector-icon" />
 
-					<button
-						v-if="empleadoResumen"
-						type="button"
-						class="btn-prima-vacacional"
-						@click="abrirInformePrima">
-						{{ t('empleados', 'Reporte Prima Vacacional') }}
-					</button>
+						<img
+							v-if="empleadoResumen"
+							class="resumen-empleado-avatar"
+							:src="avatarUrl(empleadoResumenUid, 40)"
+							:alt="empleadoResumen"
+							@error="onAvatarError($event, empleadoResumen, 40)">
+
+						<select v-model="empleadoResumen" class="resumen-selector-input">
+							<option value="" disabled>
+								{{ t('empleados', 'Selecciona un empleado') }}
+							</option>
+							<option v-for="emp in opcionesEmpleados" :key="emp" :value="emp">
+								{{ emp }}
+							</option>
+						</select>
+
+						<button
+							v-if="empleadoResumen"
+							type="button"
+							class="btn-prima-vacacional"
+							@click="abrirInformePrima">
+							{{ t('empleados', 'Reporte Prima Vacacional') }}
+						</button>
+					</div>
+
+					<div class="resumen-periodo-actions">
+						<div class="filtro-grupo resumen-periodo-grupo">
+							<label class="filtro-label">{{ t('empleados', 'Periodo') }}</label>
+							<select
+								v-model.number="periodoSeleccionado"
+								class="filtro-input filtro-select"
+								:disabled="!empleadoResumen || cargandoPeriodos">
+								<option v-if="!empleadoResumen" :value="null">
+									{{ t('empleados', 'Selecciona un empleado') }}
+								</option>
+								<option
+									v-for="p in periodosEmpleado"
+									:key="p.numero_aniversario"
+									:value="p.numero_aniversario">
+									{{ t('empleados', 'Aniversario') }} {{ p.numero_aniversario }} ({{ formatFecha(p.periodo_inicio) }} → {{ formatFecha(p.periodo_fin) }})
+								</option>
+							</select>
+						</div>
+
+						<NcButton
+							type="primary"
+							:disabled="cargando || !empleadoResumen || periodoSeleccionado === null"
+							@click="cargarReporte">
+							<template #icon>
+								<Magnify :size="18" />
+							</template>
+							{{ cargando ? t('empleados', 'Cargando…') : t('empleados', 'Buscar') }}
+						</NcButton>
+					</div>
 				</div>
 
 				<div v-if="!empleadoResumen" class="reporte-estado periodo-vac-vacio">
@@ -207,17 +237,33 @@
 										</span>
 									</td>
 									<td class="col-aprobacion-resumen">
-										<span class="chip-mini" :class="chipAprobacion(item.a_socio).clase" :title="t('empleados', 'Socio')">
-											{{ t('empleados', 'S:') }} {{ chipAprobacion(item.a_socio).texto }}
-										</span>
-										<span class="chip-mini" :class="chipAprobacion(item.a_gerente).clase" :title="t('empleados', 'Gerente')">
-											{{ t('empleados', 'G:') }} {{ chipAprobacion(item.a_gerente).texto }}
-										</span>
-										<span class="chip-mini" :class="chipAprobacion(item.a_capital_humano).clase" :title="t('empleados', 'Capital Humano')">
-											{{ t('empleados', 'RH:') }} {{ chipAprobacion(item.a_capital_humano).texto }}
-										</span>
+										<div class="aprobacion-chips">
+											<span
+												class="chip-mini"
+												:class="chipAprobacion(item.a_socio).clase"
+												:title="t('empleados', 'Socio')">
+												{{ t('empleados', 'S:') }}
+												{{ chipAprobacion(item.a_socio).texto }}
+											</span>
+
+											<span
+												class="chip-mini"
+												:class="chipAprobacion(item.a_gerente).clase"
+												:title="t('empleados', 'Gerente')">
+												{{ t('empleados', 'G:') }}
+												{{ chipAprobacion(item.a_gerente).texto }}
+											</span>
+
+											<span
+												class="chip-mini"
+												:class="chipAprobacion(item.a_capital_humano).clase"
+												:title="t('empleados', 'Capital Humano')">
+												{{ t('empleados', 'RH:') }}
+												{{ chipAprobacion(item.a_capital_humano).texto }}
+											</span>
+										</div>
 									</td>
-									<td class="cell-fecha">
+									<td class="cell-fecha col-solicitud">
 										{{ formatTimestamp(item.timestamp) }}
 									</td>
 								</tr>
@@ -270,9 +316,9 @@
 							<td class="cell-empleado">
 								<img
 									class="empleado-avatar"
-									:src="avatarUrl(item.nombre_empleado)"
+									:src="avatarUrl(getEmpleadoUid(item), 36)"
 									:alt="item.nombre_empleado"
-									@error="onAvatarError($event, item.nombre_empleado)">
+									@error="onAvatarError($event, item.nombre_empleado, 36)">
 								<span class="empleado-nombre">{{ item.nombre_empleado }}</span>
 							</td>
 							<td>
@@ -538,6 +584,17 @@ export default {
 			return this.vistaActual === 'resumen' ? this.registrosResumenEmpleado : this.registrosFiltrados
 		},
 
+		empleadoResumenRegistro() {
+			if (!this.empleadoResumen) return null
+			return this.registros.find(item => item.nombre_empleado === this.empleadoResumen)
+				|| this.historialCompleto.find(item => item.nombre_empleado === this.empleadoResumen)
+				|| null
+		},
+
+		empleadoResumenUid() {
+			return this.getEmpleadoUid(this.empleadoResumenRegistro) || this.empleadoResumen
+		},
+
 		periodoInfo() {
 			return this.periodosEmpleado.find(p => p.numero_aniversario === this.periodoSeleccionado) || null
 		},
@@ -722,16 +779,33 @@ export default {
 			}
 		},
 
-		avatarUrl(uid) {
-			return generateUrl('/avatar/{uid}/32', { uid })
+		getEmpleadoUid(item) {
+			return item?.Id_user
+				|| item?.id_user
+				|| item?.uid
+				|| item?.user
+				|| item?.username
+				|| item?.nombre_empleado
+				|| ''
 		},
 
-		onAvatarError(event, nombre) {
+		avatarUrl(uid, size = 36) {
+			const safeUid = uid || 'unknown-user'
+			return generateUrl('/avatar/{uid}/{size}', {
+				uid: safeUid,
+				size,
+			})
+		},
+
+		onAvatarError(event, nombre, size = 36) {
 			const iniciales = this.iniciales(nombre)
-			const paleta = PALETA_TIPOS[hashStr(nombre) % PALETA_TIPOS.length]
-			const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
-				<circle cx="16" cy="16" r="16" fill="${paleta.bg}"/>
-				<text x="16" y="21" text-anchor="middle" font-size="13" font-weight="700" font-family="sans-serif" fill="${paleta.color}">${iniciales}</text>
+			const paleta = PALETA_TIPOS[hashStr(nombre || '') % PALETA_TIPOS.length]
+			const center = size / 2
+			const fontSize = Math.max(12, Math.round(size * 0.36))
+			const textY = Math.round(center + fontSize * 0.35)
+			const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+				<circle cx="${center}" cy="${center}" r="${center}" fill="${paleta.bg}"/>
+				<text x="${center}" y="${textY}" text-anchor="middle" font-size="${fontSize}" font-weight="700" font-family="sans-serif" fill="${paleta.color}">${iniciales}</text>
 			</svg>`
 			event.target.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
 		},
@@ -806,604 +880,1100 @@ export default {
 </script>
 
 <style scoped>
-.col-aprobacion {
-	min-width: 170px;
-	width: 170px;
-}
+/* ========================================
+ * CONTENEDOR GENERAL
+ * ======================================== */
 
 .reporte-contenido {
+	--reporte-radius: 12px;
+	--reporte-radius-small: 8px;
+	--reporte-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.08),
+		0 2px 6px rgba(0, 0, 0, 0.04);
+
 	display: flex;
 	flex-direction: column;
-	height: 80vh;
+
+	box-sizing: border-box;
+	width: 100%;
+	height: calc(100dvh - 100px);
+	max-height: calc(100dvh - 100px);
+	min-height: 520px;
+
 	overflow: hidden;
+
+	color: var(--color-main-text);
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: var(--reporte-radius);
+	box-shadow: var(--reporte-shadow);
 }
 
-/* ── Header ── */
+.reporte-contenido,
+.reporte-contenido * {
+	box-sizing: border-box;
+}
+
+/* ========================================
+ * ENCABEZADO
+ * ======================================== */
+
 .reporte-header {
 	display: flex;
+	flex: 0 0 auto;
 	align-items: center;
 	justify-content: space-between;
-	padding: 16px 24px;
+
+	min-height: 48px;
+	padding: 8px 16px;
+	gap: 10px;
+
+	background: var(--color-main-background);
 	border-bottom: 1px solid var(--color-border);
-	flex-shrink: 0;
 }
 
 .reporte-header-left {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
+
+	min-width: 0;
 	gap: 12px;
 }
 
 .reporte-titulo {
-	font-size: 1.15rem;
-	font-weight: 700;
 	margin: 0;
+
+	overflow: hidden;
+
 	color: var(--color-main-text);
+	font-size: 1.22rem;
+	font-weight: 700;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .reporte-count {
-	font-size: 0.8rem;
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+
+	min-height: 24px;
+	padding: 3px 9px;
+
 	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+	font-weight: 600;
+
 	background: var(--color-background-dark);
-	padding: 2px 8px;
-	border-radius: 20px;
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
 }
 
-/* ── Pestañas de vista ── */
+/* ========================================
+ * PESTAÑAS
+ * ======================================== */
+
 .vista-switch {
 	display: flex;
-	gap: 4px;
-	padding: 10px 24px 0;
-	flex-shrink: 0;
+	flex: 0 0 auto;
+	align-items: center;
+
+	padding: 10px 14px 0;
+	gap: 6px;
+
+	background: var(--color-main-background);
 }
 
 .vista-switch-btn {
-	border: 1px solid var(--color-border-dark);
-	background: var(--color-main-background);
+	min-height: 30px;
+	padding: 5px 12px;
+
 	color: var(--color-text-maxcontrast);
-	border-radius: 20px;
-	padding: 7px 16px;
-	font-size: 0.85rem;
+	font-family: inherit;
+	font-size: 0.82rem;
 	font-weight: 600;
+
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border-dark);
+	border-radius: 999px;
+
 	cursor: pointer;
-	transition: background 0.12s, color 0.12s, border-color 0.12s;
+
+	transition:
+		background-color 0.16s ease,
+		border-color 0.16s ease,
+		color 0.16s ease,
+		transform 0.16s ease;
 }
 
-.vista-switch-btn:hover { background: var(--color-background-hover); }
-
 .vista-switch-btn--activo {
-	background: var(--color-main-text);
 	color: var(--color-main-background);
+	background: var(--color-main-text);
 	border-color: var(--color-main-text);
 }
 
-/* ── Filtros de fecha ── */
+/* ========================================
+ * BARRA DE FILTROS PRINCIPAL
+ * ======================================== */
+
 .reporte-filtros {
 	display: flex;
+	flex: 0 0 auto;
 	align-items: flex-end;
-	gap: 16px;
-	padding: 14px 24px;
-	border-bottom: 1px solid var(--color-border);
-	flex-shrink: 0;
 	flex-wrap: wrap;
+
+	padding: 10px 14px;
+	gap: 10px;
+
+	background: var(--color-main-background);
+	border-bottom: 1px solid var(--color-border);
+}
+
+.filtro-grupo {
+	display: flex;
+	flex-direction: column;
+
+	min-width: 150px;
+	gap: 5px;
+}
+
+.filtro-label {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.68rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.045em;
+}
+
+.filtro-input {
+	width: 100%;
+	height: 38px;
+	padding: 6px 10px;
+
+	color: var(--color-main-text);
+	font-family: inherit;
+	font-size: 0.84rem;
+
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--reporte-radius-small);
+
+	outline: none;
+
+	transition:
+		border-color 0.16s ease,
+		box-shadow 0.16s ease,
+		background-color 0.16s ease;
+}
+
+.filtro-select {
+	min-width: 190px;
+	cursor: pointer;
 }
 
 .filtros-btn-wrap {
 	display: flex;
 	align-items: center;
-	gap: 4px;
+
 	margin-left: auto;
+	gap: 5px;
 }
 
 .filtros-badge {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	background: white;
-	color: var(--color-primary);
-	border-radius: 20px;
-	font-size: 0.7rem;
-	font-weight: 700;
+
 	min-width: 18px;
 	height: 18px;
-	padding: 0 4px;
-	margin-left: 4px;
+	margin-left: 5px;
+	padding: 0 5px;
+
+	color: var(--color-primary);
+	font-size: 0.68rem;
+	font-weight: 700;
+
+	background: white;
+	border-radius: 999px;
 }
 
-.filtro-grupo {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
+/* ========================================
+ * CUERPO Y SCROLL
+ * ======================================== */
 
-.filtro-label {
-	font-size: 0.75rem;
-	color: var(--color-text-maxcontrast);
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.filtro-input {
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius);
-	padding: 6px 10px;
-	background: var(--color-main-background);
-	color: var(--color-main-text);
-	font-size: 0.875rem;
-	height: 36px;
-}
-
-.filtro-select {
-	min-width: 160px;
-	cursor: pointer;
-}
-
-.filtro-check-label {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 0.875rem;
-	color: var(--color-main-text);
-	cursor: pointer;
-}
-
-.filtro-check { cursor: pointer; }
-
-/* ── Modal de filtros ── */
-.filtros-modal {
-	padding: 24px;
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-	min-width: 300px;
-}
-
-.filtro-modal-grupo {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.filtro-modal-grupo .filtro-select {
-	width: 100%;
-}
-
-.filtros-modal-acciones {
-	display: flex;
-	justify-content: flex-end;
-	gap: 8px;
-	padding-top: 8px;
-	border-top: 1px solid var(--color-border);
-}
-
-/* ── Body ── */
 .reporte-body {
-	flex: 1;
-	overflow-y: auto;
-	overflow-x: auto;
-	padding: 20px 24px;
 	position: relative;
+
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+
+	min-height: 0;
+	padding: 10px 12px 14px;
+
+	overflow-x: hidden;
+	overflow-y: auto;
+
+	background: var(--color-main-background);
+
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-border-dark) transparent;
 }
+
+.reporte-body::-webkit-scrollbar {
+	width: 7px;
+	height: 7px;
+}
+
+.reporte-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.reporte-body::-webkit-scrollbar-thumb {
+	background: var(--color-border-dark);
+	border-radius: 999px;
+}
+
+/* ========================================
+ * ESTADOS VACÍOS Y CARGANDO
+ * ======================================== */
 
 .reporte-estado {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	height: 100%;
+
+	min-height: 260px;
+	padding: 32px;
 	gap: 12px;
+
 	color: var(--color-text-maxcontrast);
-	font-size: 0.9rem;
+	font-size: 0.88rem;
+	text-align: center;
+
+	background: var(--color-background-hover);
+	border: 1px dashed var(--color-border-dark);
+	border-radius: var(--reporte-radius);
 }
 
-.reporte-estado-icon { font-size: 2rem; }
+.reporte-estado p {
+	max-width: 480px;
+	margin: 0;
+}
 
-.reporte-tabla-wrap { overflow-x: unset; }
+.reporte-estado-icon {
+	font-size: 2.2rem;
+	line-height: 1;
+}
 
-/* ── Tabla ── */
+/* ========================================
+ * CONTENEDOR DE TABLAS
+ * ======================================== */
+
+.reporte-tabla-wrap {
+	width: 100%;
+
+	overflow-x: auto;
+	overflow-y: visible;
+
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: var(--reporte-radius);
+
+	box-shadow:
+		0 3px 10px rgba(0, 0, 0, 0.04);
+
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-border-dark) transparent;
+}
+
+.reporte-tabla-wrap::-webkit-scrollbar {
+	width: 7px;
+	height: 7px;
+}
+
+.reporte-tabla-wrap::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.reporte-tabla-wrap::-webkit-scrollbar-thumb {
+	background: var(--color-border-dark);
+	border-radius: 999px;
+}
+
+/* ========================================
+ * TABLA PRINCIPAL
+ * ======================================== */
+
 .reporte-tabla {
 	width: 100%;
-	border-collapse: collapse;
-	font-size: 0.875rem;
-	table-layout: fixed;
-}
+	min-width: 1050px;
 
-.reporte-tabla th {
-	text-align: left;
-	padding: 10px 12px;
-	font-size: 0.72rem;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	color: var(--color-text-maxcontrast);
-	white-space: nowrap;
+	color: var(--color-main-text);
+	font-size: 0.82rem;
+
+	background: var(--color-main-background);
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: auto;
 }
 
 .reporte-tabla thead {
-	display: table;
-	width: 100%;
-	table-layout: fixed;
+	background: var(--color-main-background);
 }
-
-.reporte-tabla thead tr { border-bottom: 2px solid var(--color-border-dark); }
 
 .reporte-tabla thead th {
 	position: sticky;
 	top: 0;
 	z-index: 5;
+
+	padding: 8px 10px;
+
+	color: var(--color-text-maxcontrast);
+	font-size: 0.68rem;
+	font-weight: 700;
+	text-align: left;
+	text-transform: uppercase;
+	letter-spacing: 0.055em;
+	white-space: nowrap;
+
 	background: var(--color-main-background);
+	border-bottom: 2px solid var(--color-border-dark);
+
 	box-shadow: 0 2px 0 var(--color-border);
 }
 
-.reporte-tabla tbody {
-	display: block;
-	overflow-y: auto;
-	max-height: calc(80vh - 220px);
-}
-
 .reporte-tabla tbody tr {
-	display: table;
-	width: 100%;
-	table-layout: fixed;
-	transition: background 0.12s;
-}
+	background: var(--color-main-background);
 
-.reporte-tabla--resumen thead,
-.reporte-tabla--resumen tbody tr {
-	table-layout: auto;
-	width: auto;
+	transition:
+		background-color 0.14s ease,
+		box-shadow 0.14s ease;
 }
-
-.reporte-tabla tbody tr:hover { background: var(--color-background-hover); }
 
 .reporte-tabla td {
-	padding: 8px 12px;
+	padding: 7px 10px;
+
 	vertical-align: middle;
+
 	border-bottom: 1px solid var(--color-border);
 }
+/* ========================================
+ * FILAS POR ESTADO
+ * ======================================== */
 
-/* ── Filas por estado ── */
-.row-cancelado td:first-child { border-left: 3px solid var(--color-error); }
-.row-pasado td:first-child    { border-left: 3px solid var(--color-success); }
-.row-futuro td:first-child    { border-left: 3px solid #f0a500; }
+.row-cancelado td:first-child {
+	border-left: 3px solid var(--color-error);
+}
 
-/* ── Celda empleado ── */
+.row-pasado td:first-child {
+	border-left: 3px solid var(--color-success);
+}
+
+.row-futuro td:first-child {
+	border-left: 3px solid #f0a500;
+}
+
+.reporte-tabla tbody tr:last-child td {
+	border-bottom: none;
+}
+
+/* ========================================
+ * EMPLEADO
+ * ======================================== */
+
 .cell-empleado {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	min-width: 160px;
+
+	min-width: 190px;
+	gap: 9px;
 }
 
 .empleado-avatar {
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
+	flex: 0 0 auto;
+
+	width: 34px;
+	height: 34px;
+
 	object-fit: cover;
-	flex-shrink: 0;
+
 	background: var(--color-background-dark);
+	border: 1px solid var(--color-border);
+	border-radius: 50%;
 }
 
-.empleado-nombre { font-weight: 500; white-space: nowrap; }
+.empleado-nombre {
+	max-width: 210px;
+	overflow: hidden;
 
-/* ── Badge tipo ── */
-.badge-tipo {
-	display: inline-block;
-	padding: 3px 10px;
-	border-radius: 20px;
-	font-size: 0.78rem;
-	font-weight: 700;
-	white-space: nowrap;
-}
-
-/* ── Celda periodo ── */
-.cell-periodo {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	white-space: nowrap;
-	font-variant-numeric: tabular-nums;
-}
-
-.periodo-sep { color: var(--color-text-maxcontrast); font-size: 0.8rem; }
-
-/* ── Utilidades ── */
-.cell-center { text-align: center; }
-.col-dias, .col-prima, col-aprobacion { min-width: 70px; width: 70px; }
-
-th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
-
-/* ── Badge prima ── */
-.badge-prima {
-	background: #d1fae5;
-	color: #065f46;
-	padding: 2px 8px;
-	border-radius: 20px;
-	font-size: 0.75rem;
-	font-weight: 700;
-}
-
-.badge-prima-no {
-	background: var(--color-background-dark);
-	color: var(--color-text-maxcontrast);
-	padding: 2px 8px;
-	border-radius: 20px;
-	font-size: 0.75rem;
-}
-
-/* ── Chips de estado ── */
-.chip {
-	display: inline-block;
-	padding: 3px 10px;
-	border-radius: 20px;
-	font-size: 0.75rem;
-	font-weight: 700;
-	white-space: nowrap;
-}
-
-.chip-cancelado  { background: #fee2e2; color: #b91c1c; }
-.chip-completado { background: #d1fae5; color: #065f46; }
-.chip-encurso    { background: #dbeafe; color: #1d4ed8; }
-.chip-pendiente  { background: #fef3c7; color: #b45309; }
-
-/* ── Chips de aprobación ── */
-.cell-aprobacion {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	align-items: flex-start;
-	justify-content: center;
-}
-
-.chip-mini {
-	display: inline-block;
-	padding: 2px 6px;
-	border-radius: 12px;
-	font-size: 0.68rem;
 	font-weight: 600;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.chip-a-aprobado  { background: #d1fae5; color: #065f46; }
-.chip-a-rechazado { background: #fee2e2; color: #b91c1c; }
-.chip-a-cancelado { background: #fce7f3; color: #9d174d; }
-.chip-a-pendiente { background: var(--color-background-dark); color: var(--color-text-maxcontrast); }
+/* ========================================
+ * TIPOS Y PERIODOS
+ * ======================================== */
 
-/* ── Celda fecha ── */
-.cell-fecha {
-	font-size: 0.78rem;
-	color: var(--color-text-maxcontrast);
+.badge-tipo {
+	display: inline-flex;
+	align-items: center;
+
+	max-width: 190px;
+	padding: 4px 9px;
+
+	overflow: hidden;
+
+	font-size: 0.73rem;
+	font-weight: 700;
+	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-variant-numeric: tabular-nums;
+
+	border-radius: 999px;
+}
+
+.periodo-sep {
+	margin: 0 4px;
+
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
 }
 
 .fecha-tardia {
 	color: #ac1818;
-	font-weight: 450;
+	font-weight: 600;
 }
 
-/* ── Responsive ── */
-@media (max-width: 1024px) {
-	.reporte-tabla { font-size: 0.78rem; }
-	.reporte-tabla th,
-	.reporte-tabla td { padding: 6px 8px; }
-	.cell-empleado { min-width: 120px; }
-	.empleado-avatar { width: 24px; height: 24px; }
+/* ========================================
+ * COLUMNAS
+ * ======================================== */
+
+.cell-center {
+	text-align: center;
 }
 
-@media (max-width: 768px) {
-	.reporte-tabla { font-size: 0.72rem; }
-	.reporte-tabla th,
-	.reporte-tabla td { padding: 5px 6px; }
-	.reporte-tabla th:nth-child(5),
-	.reporte-tabla td:nth-child(5),
-	.reporte-tabla th:nth-child(8),
-	.reporte-tabla td:nth-child(8) { display: none; }
-	.reporte-filtros { padding: 10px 12px; gap: 10px; }
-	.reporte-body { padding: 12px; }
+.col-dias {
+	width: 70px;
+	min-width: 70px;
+	text-align: center;
 }
 
-@media (max-width: 540px) {
-	.reporte-tabla th:nth-child(3),
-	.reporte-tabla td:nth-child(3),
-	.reporte-tabla th:nth-child(4),
-	.reporte-tabla td:nth-child(4),
-	.reporte-tabla th:nth-child(7),
-	.reporte-tabla td:nth-child(7) { display: none; }
-	.cell-empleado { min-width: 90px; }
-	.empleado-nombre { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+.col-prima {
+	width: 95px;
+	min-width: 95px;
+	text-align: center;
 }
 
-.periodo-vac-modal {
-	padding: 24px;
+.col-aprobacion {
+	width: 180px;
+	min-width: 180px;
+}
+
+.col-solicitud {
+	width: 145px;
+	min-width: 145px;
+}
+
+/* ========================================
+ * PRIMA VACACIONAL
+ * ======================================== */
+
+.badge-prima,
+.badge-prima-no {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+
+	min-width: 38px;
+	padding: 3px 8px;
+
+	font-size: 0.7rem;
+	font-weight: 700;
+
+	border-radius: 999px;
+}
+
+.badge-prima {
+	color: #065f46;
+	background: #d1fae5;
+}
+
+.badge-prima-no {
+	color: var(--color-text-maxcontrast);
+	background: var(--color-background-dark);
+}
+
+/* ========================================
+ * ESTADOS
+ * ======================================== */
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+
+	padding: 4px 9px;
+
+	font-size: 0.7rem;
+	font-weight: 700;
+	white-space: nowrap;
+
+	border-radius: 999px;
+}
+
+.chip-cancelado {
+	color: #b91c1c;
+	background: #fee2e2;
+}
+
+.chip-completado {
+	color: #065f46;
+	background: #d1fae5;
+}
+
+.chip-encurso {
+	color: #1d4ed8;
+	background: #dbeafe;
+}
+
+.chip-pendiente {
+	color: #b45309;
+	background: #fef3c7;
+}
+
+/* ========================================
+ * APROBACIONES
+ * ======================================== */
+
+ .aprobacion-chips {
 	display: flex;
-	flex-direction: column;
-	gap: 20px;
-	min-width: 420px;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
 }
 
-.periodo-vac-vacio {
-	height: auto;
-	padding: 32px 0;
+.chip-mini {
+	display: inline-flex;
+	align-items: center;
+
+	padding: 3px 6px;
+
+	font-size: 0.63rem;
+	font-weight: 650;
+	white-space: nowrap;
+
+	border-radius: 999px;
 }
 
-.periodo-vac-resumen {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-	gap: 12px;
+.chip-a-aprobado {
+	color: #065f46;
+	background: #d1fae5;
 }
 
-/* ── Vista resumen inline ── */
+.chip-a-rechazado {
+	color: #b91c1c;
+	background: #fee2e2;
+}
+
+.chip-a-cancelado {
+	color: #9d174d;
+	background: #fce7f3;
+}
+
+.chip-a-pendiente {
+	color: var(--color-text-maxcontrast);
+	background: var(--color-background-dark);
+}
+
+/* ========================================
+ * FECHA DE SOLICITUD
+ * ======================================== */
+
+.cell-fecha {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* ========================================
+ * VISTA RESUMEN
+ * ======================================== */
+
 .resumen-vista {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
+
 	width: 100%;
+	min-height: 0;
+	gap: 10px;
+}
+
+.resumen-toolbar {
+	display: grid;
+	grid-template-columns: minmax(340px, 1fr) auto;
+	align-items: end;
+
+	width: 100%;
+	gap: 14px;
 }
 
 .resumen-selector {
 	display: flex;
 	align-items: center;
-	max-width: 480px;
-	gap: 10px;
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius-large);
-	padding: 4px 14px;
-	background: var(--color-main-background);
+
+	min-width: 0;
+	min-height: 44px;
+	padding: 5px 8px;
+	gap: 8px;
+
+	background: var(--color-background-hover);
+	border: 1px solid var(--color-border);
+	border-radius: 9px;
 }
 
-.resumen-selector-icon { color: var(--color-text-maxcontrast); flex-shrink: 0; }
+.resumen-selector-icon {
+	flex: 0 0 auto;
+	color: var(--color-text-maxcontrast);
+}
+
+.resumen-empleado-avatar {
+	flex: 0 0 auto;
+
+	width: 40px;
+	height: 40px;
+
+	object-fit: cover;
+
+	background: var(--color-background-dark);
+	border: 1px solid var(--color-border-dark);
+	border-radius: 50%;
+}
 
 .resumen-selector-input {
-	border: none !important;
-	height: 40px;
-	flex: 1;
-	padding: 0 !important;
+	flex: 1 1 auto;
+
+	width: 100%;
+	min-width: 120px;
+	height: 38px;
+	padding: 5px 8px;
+
+	color: var(--color-main-text);
+	font-family: inherit;
+	font-size: 0.82rem;
+
 	background: transparent;
+	border: 0;
+	border-radius: 7px;
+	outline: none;
+	cursor: pointer;
 }
 
-.resumen-lista {
+.resumen-periodo-actions {
 	display: flex;
-	flex-direction: column;
+	align-items: end;
+
 	gap: 8px;
 }
 
-.resumen-item {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 12px 16px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-hover);
+.resumen-periodo-grupo {
+	width: min(360px, 32vw);
+	min-width: 260px;
 }
 
-.resumen-item-info {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
+.btn-prima-vacacional {
+	flex: 0 0 auto;
+
+	min-height: 36px;
+	padding: 7px 13px;
+
+	color: white;
+	font-family: inherit;
+	font-size: 0.74rem;
+	font-weight: 700;
+	white-space: nowrap;
+
+	background: #000;
+	border: 1px solid #000;
+	border-radius: var(--reporte-radius-small);
+
+	cursor: pointer;
+
+	transition:
+		background-color 0.14s ease,
+		transform 0.14s ease;
 }
 
-.resumen-item-periodo {
-	font-size: 0.8rem;
-	color: var(--color-text-maxcontrast);
-	font-variant-numeric: tabular-nums;
+.periodo-vac-vacio {
+	flex: 0 0 auto;
+	min-height: 220px;
+	height: auto;
+}
+
+.periodo-vac-resumen {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(130px, 1fr));
+
+	width: 100%;
+	gap: 10px;
 }
 
 .resumen-card {
+	position: relative;
+
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
+
+	min-height: 62px;
+	padding: 9px 12px;
 	gap: 4px;
+
 	background: var(--color-background-dark);
-	border-radius: var(--border-radius);
-	padding: 10px 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--reporte-radius);
+
+	transition:
+		transform 0.16s ease,
+		box-shadow 0.16s ease;
 }
 
 .resumen-label {
-	font-size: 0.7rem;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 	color: var(--color-text-maxcontrast);
-	font-weight: 600;
+	font-size: 0.66rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.045em;
 }
 
 .resumen-valor {
-	font-size: 1.3rem;
-	font-weight: 700;
 	color: var(--color-main-text);
+	font-size: 1.2rem;
+	font-weight: 750;
+	line-height: 1.15;
 }
 
 .resumen-valor-prima {
-	font-size: 0.95rem;
-	font-weight: 700;
-	color: var(--color-text-maxcontrast);
+	font-size: 0.7rem;
+	line-height: 1.3;
+}
+
+.resumen-card--prima-si {
+	background: #d1fae5;
+	border-color: rgba(6, 95, 70, 0.18);
 }
 
 .resumen-card--prima-si .resumen-valor-prima {
 	color: #065f46;
 }
 
-.resumen-card--prima-si {
-	background: #d1fae5;
-}
+/* ========================================
+ * TABLA DEL RESUMEN
+ * ======================================== */
 
-.periodo-vac-tabla {
-	table-layout: auto;
-}
-
-/* ── Tabla del resumen: más compacta */
 .reporte-tabla--resumen {
-	width: auto;
-	max-width: 100%;
+	width: 100%;
+	min-width: 850px;
+	table-layout: fixed;
 }
 
-.col-periodo-resumen {
-	width: 190px;
-	min-width: 190px;
-}
-
-.col-estado-resumen {
-	width: 110px;
-	min-width: 110px;
-}
-
-.col-aprobacion-resumen {
-	width: 230px;
-	min-width: 230px;
+.reporte-tabla--resumen .col-periodo-resumen {
+	width: 22%;
 }
 
 .reporte-tabla--resumen .col-dias {
-	width: 60px;
+	width: 7%;
 	min-width: 60px;
 }
 
 .reporte-tabla--resumen .col-prima {
-	width: 90px;
-	min-width: 90px;
+	width: 10%;
+	min-width: 85px;
+	text-align: center;
+}
+
+.reporte-tabla--resumen .col-estado-resumen {
+	width: 12%;
+}
+
+.reporte-tabla--resumen .col-aprobacion-resumen {
+	width: 31%;
 }
 
 .reporte-tabla--resumen .col-solicitud {
-	width: 160px;
-	min-width: 160px;
+	width: 18%;
+	text-align: right;
 }
 
-.resumen-selector-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+.reporte-tabla--resumen td.col-solicitud {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	white-space: nowrap;
 }
 
-.btn-prima-vacacional {
-    background-color: #000;
-    color: #fff;
-    border: 1px solid #000;
-    border-radius: var(--border-radius, 6px);
-    padding: 8px 16px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 0.12s;
+/* ========================================
+ * MODAL DE FILTROS
+ * ======================================== */
+
+.filtros-modal {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+
+	min-width: 320px;
+	padding: 22px;
+	gap: 16px;
 }
 
-.btn-prima-vacacional:hover {
-    background-color: #3a3a3a;
+.filtro-modal-grupo {
+	display: flex;
+	flex-direction: column;
+
+	min-width: 0;
+	gap: 6px;
 }
 
-.btn-prima-vacacional:active {
-    background-color: #000;
+.filtro-modal-grupo .filtro-select {
+	width: 100%;
+	min-width: 0;
 }
+
+.filtro-check-label {
+	display: flex;
+	align-items: center;
+
+	min-height: 38px;
+	gap: 8px;
+
+	color: var(--color-main-text);
+	font-size: 0.82rem;
+
+	cursor: pointer;
+}
+
+.filtro-check {
+	cursor: pointer;
+}
+
+.filtros-modal-acciones {
+	display: flex;
+	grid-column: 1 / -1;
+	align-items: center;
+	justify-content: flex-end;
+
+	margin-top: 4px;
+	padding-top: 14px;
+	gap: 8px;
+
+	border-top: 1px solid var(--color-border);
+}
+
+/* ========================================
+ * MODAL DE PRIMA
+ * ======================================== */
 
 .informe-prima-modal :deep(.modal-container) {
 	width: min(1300px, calc(100vw - 48px)) !important;
 	max-width: min(1300px, calc(100vw - 48px)) !important;
+
 	overflow-x: hidden !important;
 }
 
 .informe-prima-modal :deep(.modal-wrapper) {
 	overflow-x: hidden !important;
+}
+
+/* ========================================
+ * RESPONSIVE
+ * ======================================== */
+
+@media screen and (max-width: 1200px) {
+	.periodo-vac-resumen {
+		grid-template-columns: repeat(3, minmax(130px, 1fr));
+	}
+}
+
+@media screen and (max-width: 900px) {
+	.reporte-contenido {
+		height: calc(100dvh - 70px);
+		max-height: calc(100dvh - 70px);
+		min-height: 0;
+
+		border-radius: 8px;
+	}
+
+	.reporte-header {
+		padding-inline: 14px;
+	}
+
+	.vista-switch {
+		padding-inline: 14px;
+	}
+
+	.reporte-filtros {
+		padding: 12px 14px;
+	}
+
+	.reporte-body {
+		padding: 14px;
+	}
+
+	.filtros-btn-wrap {
+		margin-left: 0;
+	}
+
+	.resumen-toolbar {
+		grid-template-columns: 1fr;
+	}
+
+	.resumen-periodo-actions {
+		justify-content: flex-end;
+	}
+
+	.resumen-periodo-grupo {
+		width: min(420px, 100%);
+	}
+
+	.periodo-vac-resumen {
+		grid-template-columns: repeat(2, minmax(120px, 1fr));
+	}
+}
+
+@media screen and (max-width: 600px) {
+	.reporte-header {
+		align-items: flex-start;
+	}
+
+	.reporte-header-left {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 5px;
+	}
+
+	.reporte-titulo {
+		font-size: 1.05rem;
+	}
+
+	.vista-switch {
+		overflow-x: auto;
+		padding-bottom: 4px;
+	}
+
+	.vista-switch-btn {
+		flex: 0 0 auto;
+	}
+
+	.reporte-filtros {
+		align-items: stretch;
+	}
+
+	.filtro-grupo {
+		flex: 1 1 100%;
+	}
+
+	.filtro-select {
+		min-width: 0;
+	}
+
+	.filtros-btn-wrap {
+		width: 100%;
+	}
+
+	.resumen-toolbar {
+		grid-template-columns: 1fr;
+	}
+
+	.resumen-selector {
+		flex-wrap: wrap;
+	}
+
+	.resumen-selector-input {
+		flex: 1 1 calc(100% - 76px);
+		min-width: 160px;
+	}
+
+	.resumen-periodo-actions {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.resumen-periodo-grupo {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.btn-prima-vacacional {
+		width: 100%;
+	}
+
+	.periodo-vac-resumen {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.filtros-modal {
+		grid-template-columns: 1fr;
+		min-width: 0;
+		padding: 18px;
+	}
+
+	.filtros-modal-acciones {
+		grid-column: 1;
+	}
+
+	.empleado-avatar {
+		width: 28px;
+		height: 28px;
+	}
+}
+
+/* ========================================
+ * ESTADOS INTERACTIVOS
+ * ======================================== */
+
+.vista-switch-btn:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+	border-color: var(--color-main-text);
+}
+
+.vista-switch-btn--activo:hover {
+	color: var(--color-main-background);
+	background: var(--color-main-text);
+}
+
+.vista-switch-btn:active {
+	transform: scale(0.98);
+}
+
+.filtro-input:hover {
+	border-color: var(--color-main-text);
+}
+
+.filtro-input:focus {
+	border-color: var(--color-primary);
+
+	box-shadow:
+		0 0 0 2px rgba(0, 130, 201, 0.14);
+}
+
+.reporte-tabla tbody tr:hover {
+	background: var(--color-background-hover);
+}
+
+.resumen-card:hover {
+	box-shadow: 0 5px 14px rgba(0, 0, 0, 0.07);
+	transform: translateY(-1px);
+}
+
+.btn-prima-vacacional:hover {
+	background: #3a3a3a;
+}
+
+.btn-prima-vacacional:active {
+	background: #000;
+	transform: scale(0.98);
 }
 </style>

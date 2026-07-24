@@ -78,11 +78,6 @@ export default {
 						: t('empleados', 'If you do not take your vacation, it is lost. It is important to use it to take care of your health and wellbeing.'),
 					abierto: false,
 				},
-				{
-					titulo: t('empleados', 'Can I ask for more vacation days?'),
-					contenido: t('empleados', 'Yes, although the legal amount is the minimum, the company may offer more days as an additional benefit. Check your contract or talk to HR.'),
-					abierto: false,
-				},
 			],
 		}
 	},
