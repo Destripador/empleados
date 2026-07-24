@@ -860,25 +860,26 @@ export default {
 			}
 		},
 
-		eventColor(item, fallbackUsername) {
-			return this.estiloEventoAusencia(item, fallbackUsername).color
-		},
-
 		estiloEventoAusencia(item, fallbackUsername) {
-			const g = Number(item.a_gerente)
-			const s = Number(item.a_socio)
-			const ch = Number(item.a_capital_humano ?? 0)
+			const roles = [item.a_gerente, item.a_socio, item.a_capital_humano]
+				.filter(v => v !== undefined && v !== null)
+				.map(Number)
 
-			const isCancelled = g === 3 || s === 3 || ch === 3
-			const isRejected = g === 2 || s === 2 || ch === 2
+			const isCancelled = roles.includes(3)
+			const isRejected = roles.includes(2)
+			const isApproved = roles.length > 0 && roles.every(v => v === 1)
 
 			if (isCancelled) {
-				return { color: '#9e9e9e', classNames: ['event-cancelled'] }
+				return { classNames: ['event-cancelled'] }
 			}
 			if (isRejected) {
-				return { color: '#c0392b', classNames: ['event-rejected'] }
+				return { classNames: ['event-rejected'] }
 			}
-			return { color: this.color(fallbackUsername), classNames: [] }
+			if (isApproved) {
+				return { classNames: ['event-approved'] }
+			}
+			// Pendiente / recién creada
+			return { classNames: ['event-pending'] }
 		},
 
 		getMyAusencias(fetchInfo, success, failure) {
@@ -899,7 +900,6 @@ export default {
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: estilo.color,
 							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
@@ -927,7 +927,6 @@ export default {
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: estilo.color,
 							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
@@ -955,7 +954,6 @@ export default {
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: estilo.color,
 							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
@@ -988,7 +986,6 @@ export default {
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							color: estilo.color,
 							classNames: estilo.classNames,
 							nombre_empleado: item.nombre_empleado,
 						}
@@ -1194,14 +1191,44 @@ export default {
 }
 </script>
 <style>
-/* Eventos cancelados */
-.event-cancelled .fc-event-title {
-	text-decoration: line-through;
-	opacity: 0.8;
+/* ========================================
+ * COLORES FIJOS DE EVENTOS
+ * ======================================== */
+
+.fc-event.event-pending {
+	background: repeating-linear-gradient(
+		135deg,
+		#73a0cf 0px,
+		#739bc7 8px,
+		#8fb4d9 8px,
+		#8fb4d9 16px
+	) !important;
+	border-color: #86b7ef !important;
+	color: #ffffff !important;
 }
 
-/* Eventos rechazados */
+.fc-event.event-approved {
+	background: #6fbf8b !important;
+	border-color: #4f9e6c !important;
+	color: #ffffff !important;
+}
+
+.fc-event.event-rejected {
+	background: #d98484 !important;
+	border-color: #bf5f5f !important;
+	color: #ffffff !important;
+}
 .event-rejected .fc-event-title {
+	text-decoration: line-through;
+	opacity: 0.85;
+}
+
+.fc-event.event-cancelled {
+	background: #9e9e9e !important;
+	border-color: #7d7d7d !important;
+	color: #ffffff !important;
+}
+.event-cancelled .fc-event-title {
 	text-decoration: line-through;
 	opacity: 0.8;
 }
