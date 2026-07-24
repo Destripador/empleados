@@ -1697,6 +1697,14 @@ class AusenciasController extends BaseController {
             $this->historialausenciasMapper->SetEstadoSocio($id, 1);
         }
 
+        $gerenteFinal = $esGerente ? 1 : (int) $ausencia['a_gerente'];
+        $socioFinal = ($esSocio || $rol === 'capital_humano_como_socio') ? 1 : (int) $ausencia['a_socio'];
+        $capitalHumanoFinal = $isPrivileged ? 1 : (int) ($ausencia['a_capital_humano'] ?? 0);
+
+        if ($gerenteFinal === 1 && $socioFinal === 1 && $capitalHumanoFinal === 1) {
+            $this->notificarAusenciaAprobada($ausencia);
+        }
+
         return new DataResponse([
             'success' => true
         ], Http::STATUS_OK);
@@ -1821,5 +1829,60 @@ class AusenciasController extends BaseController {
                 );
             }
         }
+    }
+
+    /**
+     * Envía un correo al empleado informando que su ausencia fue aprobada.
+     */
+    private function notificarAusenciaAprobada(array $ausencia): void {
+        $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+        if (empty($reg)) {
+            return;
+        }
+
+        $idEmpleado = (int) $reg[0]['id_empleado'];
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $idEmpleado);
+        if (empty($empleadoInfo) || empty($empleadoInfo[0]['Id_user'])) {
+            return;
+        }
+
+        $uidEmpleado = $empleadoInfo[0]['Id_user'];
+        $userEmpleado = $this->userManager->get($uidEmpleado);
+        if (!$userEmpleado) {
+            return;
+        }
+
+        $mail = $userEmpleado->getEMailAddress();
+        if (!$mail) {
+            return;
+        }
+
+        $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+
+        $this->mailHelper->enviarCorreo(
+            $mail,
+            'Solicitud aprobada',
+            [
+                'Hola ' . $userEmpleado->getDisplayName() . '',
+                'Tu solicitud de "' . $nombreTipo . '" ha sido aprobada por completo.',
+                'Fecha de inicio: ' . $ausencia['fecha_de'] . '  - Fecha de finalización: ' . $ausencia['fecha_hasta'] . '',
+                '',
+            ]
+        );
+
+        $event = $this->activityManager->generateEvent();
+        $event->setApp('empleados');
+        $event->setType('empleados');
+        $event->setObject('empleados', (int) $ausencia['id_historial_ausencias'] ?? 0, 'Ausencia aprobada');
+        $event->setAffectedUser($uidEmpleado);
+        $event->setSubject(
+            'ausencia_aprobada',
+            [
+                'nombre' => (string) $uidEmpleado,
+                'tipo_ausencia' => (string) $nombreTipo
+            ]
+        );
+        $this->activityManager->publish($event);
     }
 }

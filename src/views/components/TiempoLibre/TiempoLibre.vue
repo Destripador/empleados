@@ -355,7 +355,6 @@ import multiMonthPlugin from '@fullcalendar/multimonth'
 
 import { ref } from 'vue'
 
-import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -378,6 +377,22 @@ import {
 	NcLoadingIcon,
 	NcNoteCard,
 } from '@nextcloud/vue'
+
+// FIX: paleta de colores por ESTADO de la ausencia, en vez de un color
+// distinto por empleado (usernameToColor). Todos los empleados ahora
+// comparten la misma paleta, en tonos pastel tranquilos:
+//   - pendiente (falta gerente o socio por aprobar): azul pastel con rayas
+//     (el color sólido de aquí es solo el fallback; el patrón de rayas se
+//     aplica vía CSS con la clase 'event-pending')
+//   - aprobado (gerente y socio en 1): verde salvia pastel
+//   - cancelado: gris pastel (ya existía, suavizado)
+//   - rechazado: terracota/coral pastel (ya existía, suavizado)
+const ESTADO_COLORES = {
+	pendiente: '#5C7A9E',
+	aprobado: '#7FAE94',
+	cancelado: '#ABB0B8',
+	rechazado: '#C97B72',
+}
 
 export default {
 	name: 'TiempoLibre',
@@ -656,25 +671,31 @@ export default {
 			}
 		},
 
-		eventColor(item, fallbackUsername) {
-			return this.estiloEventoAusencia(item, fallbackUsername).color
-		},
-
-		estiloEventoAusencia(item, fallbackUsername) {
-			const g = Number(item.a_gerente)
-			const s = Number(item.a_socio)
+		/**
+		 * Determina el estado de una ausencia (pendiente/aprobado/cancelado/rechazado)
+		 * y su color/clase correspondiente para pintarla en el calendario.
+		 */
+		estiloEventoAusencia(item) {
+			const g = Number(item.a_gerente ?? 0)
+			const s = Number(item.a_socio ?? 0)
 			const ch = Number(item.a_capital_humano ?? 0)
 
 			const isCancelled = g === 3 || s === 3 || ch === 3
-			const isRejected = g === 2 || s === 2 || ch === 2
+			const isRejected = !isCancelled && (g === 2 || s === 2 || ch === 2)
 
 			if (isCancelled) {
-				return { color: '#9e9e9e', classNames: ['event-cancelled'] }
+				return { color: ESTADO_COLORES.cancelado, classNames: ['event-cancelled'] }
 			}
 			if (isRejected) {
-				return { color: '#c0392b', classNames: ['event-rejected'] }
+				return { color: ESTADO_COLORES.rechazado, classNames: ['event-rejected'] }
 			}
-			return { color: this.color(fallbackUsername), classNames: [] }
+
+			const isFullyApproved = g === 1 && s === 1
+			if (isFullyApproved) {
+				return { color: ESTADO_COLORES.aprobado, classNames: ['event-approved'] }
+			}
+
+			return { color: ESTADO_COLORES.pendiente, classNames: ['event-pending'] }
 		},
 
 		getMyAusencias(fetchInfo, success, failure) {
@@ -688,7 +709,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item, this.employee[0].Id_user)
+						const estilo = this.estiloEventoAusencia(item)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.tipo_nombre,
@@ -716,7 +737,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
+						const estilo = this.estiloEventoAusencia(item)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
@@ -744,7 +765,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
+						const estilo = this.estiloEventoAusencia(item)
 						return {
 							id: item.id_historial_ausencias,
 							title: item.nombre_empleado + ' - ' + item.tipo_nombre,
@@ -777,7 +798,7 @@ export default {
 						const fechaInicio = new Date(item.fecha_de)
 						const fechaHasta = new Date(item.fecha_hasta)
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
-						const estilo = this.estiloEventoAusencia(item, item.nombre_empleado)
+						const estilo = this.estiloEventoAusencia(item)
 						return {
 							id: item.id_historial_ausencias,
 							title: `${item.nombre_empleado} - ${item.tipo_nombre}`,
@@ -829,11 +850,6 @@ export default {
 			this.closeModalEditar()
 			this.GetAusencias()
 			this.$refs.fullCalendar.getApi().refetchEvents()
-		},
-
-		color(username) {
-			const { r, g, b } = usernameToColor(username)
-			return `rgb(${r}, ${g}, ${b})`
 		},
 
 		isAdmin() {
@@ -946,16 +962,44 @@ export default {
 </script>
 
 <style>
-/* Global: tachado para eventos cancelados en el calendario */
-.event-cancelled .fc-event-title {
-	text-decoration: line-through;
-	opacity: 0.8;
+.fc-event.event-pending {
+	background: repeating-linear-gradient(
+		45deg,
+		#6f98c8 0px,
+		#779ecb 11px,
+		#92b8e4 11px,
+		#8cb2de 22px
+	) !important;
+	border-color: #7da4d2 !important;
 }
 
-/* Global: tachado para eventos rechazados en el calendario (mismo trato que cancelados, color distinto) */
+.fc-event.event-pending,
+.fc-event.event-approved,
+.fc-event.event-rejected,
+.fc-event.event-cancelled {
+	color: #ffffff !important;
+}
+
+.event-cancelled .fc-event-title {
+	text-decoration: line-through;
+	opacity: 0.85;
+}
+
 .event-rejected .fc-event-title {
 	text-decoration: line-through;
-	opacity: 0.8;
+	opacity: 0.85;
+}
+
+.fc-event.event-pending .fc-event-title,
+.fc-event.event-approved .fc-event-title,
+.fc-event.event-rejected .fc-event-title,
+.fc-event.event-cancelled .fc-event-title,
+.fc-event.event-pending .fc-event-main,
+.fc-event.event-approved .fc-event-main,
+.fc-event.event-rejected .fc-event-main,
+.fc-event.event-cancelled .fc-event-main {
+	color: #ffffff !important;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 </style>
 
