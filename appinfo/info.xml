@@ -77,7 +77,7 @@ https://youtu.be/WrfVQT97Mqk
 This project is currently in beta and under active development. It is already functional in internal environments, but some workflows, documentation and administrative tools may continue to change as the module evolves.
     ]]></description>
 
-    <version>2.4.6</version>
+    <version>2.5.0</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="luis.alvarado@crowe.mx" homepage="https://gossler-torreon.com">Luis Angel Alvarado Hernandez</author>
@@ -100,7 +100,7 @@ This project is currently in beta and under active development. It is already fu
     <screenshot>https://raw.githubusercontent.com/Destripador/employees/refs/heads/main/docs/screenshots/configuraciones.png</screenshot>
 
     <dependencies>
-        <nextcloud min-version="27" max-version="33"/>
+        <nextcloud min-version="27" max-version="34"/>
     </dependencies>
 
     <activity>
@@ -124,6 +124,7 @@ This project is currently in beta and under active development. It is already fu
 
     <commands>
         <command>OCA\Empleados\Command\RepairConfigCommand</command>
+        <command>OCA\Empleados\Command\ResetBetaSchemaCommand</command>
     </commands>
 
     <settings>
