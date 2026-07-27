@@ -307,7 +307,7 @@ export default {
 .contacts-list__header { min-height: 48px; }
 .margin-left-icon { margin-right: 20px; }
 .button-container-profile { margin-top: -30px; position: absolute; right: 30px; z-index: 9999; }
-.well { margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.well { margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
 .user-card { display: flex; align-items: center; padding: 0 10px 10px; }
 .info { display: flex; flex-direction: column; }
 .info h2 { margin: 0; width: 100%; }

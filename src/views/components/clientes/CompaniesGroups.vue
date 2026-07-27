@@ -307,7 +307,7 @@
 									</div>
 								</VTab>
 
-								<VTab :title="t('empleados', 'Team and Collaborators')">
+								<VTab :title="t('empleados', 'Fees')">
 									<div class="info-section separator-top">
 										<div class="section-head">
 											<div>
@@ -350,9 +350,6 @@
 											</div>
 										</div>
 									</div>
-								</VTab>
-
-								<VTab :title="t('empleados', 'Fees')">
 									<!-- Honorarios -->
 									<div class="info-section billing-section">
 										<div class="section-head billing-head">

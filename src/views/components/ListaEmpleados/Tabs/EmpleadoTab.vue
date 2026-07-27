@@ -885,10 +885,9 @@ export default {
 </script>
 
 <style>
-.well {
-	background: var(--color-main-background);
+.orgchart td {
+	background-color: transparent;
 }
-
 .top {
 	margin-top: 14px;
 }
@@ -1055,7 +1054,7 @@ export default {
 	max-width: 150px;
 	margin-top: 6px;
 	overflow: hidden;
-	color: var(--color-main-text);
+	color: #474747;
 	font-size: 13px;
 	font-weight: 600;
 	text-overflow: ellipsis;
