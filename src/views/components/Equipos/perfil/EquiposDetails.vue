@@ -383,9 +383,7 @@ export default {
 	padding: 24px;
 	border: 1px solid var(--color-border);
 	border-radius: 22px;
-	background:
-		radial-gradient(circle at top right, rgba(52, 120, 246, 0.14), transparent 26%),
-		linear-gradient(135deg, var(--color-main-background), var(--color-background-dark));
+	background: var(--color-main-background);
 	box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
 }
 
@@ -447,10 +445,9 @@ export default {
 
 .team-meta-card {
 	padding: 14px 16px;
-	border: 1px solid rgba(255, 255, 255, 0.65);
+	border: 1px solid var(--color-border);
 	border-radius: 16px;
-	background: rgba(255, 255, 255, 0.72);
-	backdrop-filter: blur(8px);
+	background: var(--color-background-hover);
 }
 
 .team-meta-card__label {
@@ -482,7 +479,7 @@ export default {
 	padding: 20px;
 	border: 1px solid var(--color-border);
 	border-radius: 22px;
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), var(--color-main-background));
+	background: var(--color-main-background);
 	box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
@@ -522,7 +519,7 @@ export default {
 .members-list-panel {
 	padding: 8px;
 	border-radius: 18px;
-	background: rgba(148, 163, 184, 0.08);
+	background: var(--color-background-hover);
 }
 
 .members-grid {
@@ -544,9 +541,9 @@ export default {
 	gap: 14px;
 	height: 100%;
 	padding: 16px;
-	border: 1px solid rgba(148, 163, 184, 0.2);
+	border: 1px solid var(--color-border);
 	border-radius: 18px;
-	background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.96));
+	background: var(--color-main-background);
 	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 	transition: transform 0.18s ease, box-shadow 0.18s ease;
 }

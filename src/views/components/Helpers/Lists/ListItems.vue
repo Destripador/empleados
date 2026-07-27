@@ -96,22 +96,22 @@ export default {
 }
 
 .item--especial {
-    background: linear-gradient(135deg, #3b82f622 0%, #ffffffef 30%);
-    border-radius: 8px;
-    border-left: 1px solid #8db5f5;
+	background: linear-gradient(135deg, #3b82f622 0%, var(--color-main-background) 30%);
+	border-radius: 8px;
+	border-left: 3px solid #8db5f5;
 }
 
 .item--billable {
-    background: linear-gradient(135deg, #22c55e22 0%, #ffffffef 30%);
-    border-radius: 8px;
-    border-left: 1px solid #6ee09a;
+	background: linear-gradient(135deg, #22c55e22 0%, var(--color-main-background) 30%);
+	border-radius: 8px;
+	border-left: 3px solid #6ee09a;
 }
 
 .item--disabled {
-	background: linear-gradient(135deg, #00020122 0%, #ffffffef 30%);
-    opacity: 0.5;
-    border-radius: 8px;
-    border-left: 1.5px solid var(--color-border-dark);
-    filter: grayscale(40%);
+	background: linear-gradient(135deg, rgba(0, 2, 1, 0.13) 0%, var(--color-main-background) 30%);
+	opacity: 0.5;
+	border-radius: 8px;
+	border-left: 3px solid var(--color-border-dark);
+	filter: grayscale(40%);
 }
 </style>
