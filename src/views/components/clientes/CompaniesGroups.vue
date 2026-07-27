@@ -3489,7 +3489,7 @@ export default {
 }
 
 .details-header--especial {
-	background: linear-gradient(135deg, #6c9cda 10%, #f9f9f9 100%);
+	background: linear-gradient(135deg, #6c9cda 10%, var(--color-main-background) 100%);
 	border-radius: 8px;
 	padding: 16px 16px 10px 16px;
 }
