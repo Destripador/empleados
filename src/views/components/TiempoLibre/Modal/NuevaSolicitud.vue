@@ -186,7 +186,7 @@ export default {
 
 	props: {
 		diasSolicitados: { type: Number, required: true },
-		diasDisponibles: { type: String, required: true },
+		diasDisponibles: { type: [String, Number], required: true },
 		diasAcumulados: { type: [Number, String], default: 0 },
 		fechaExpiracionAcumulados: { type: String, default: null },
 		fechaLimitePeriodoActual: { type: String, default: null },

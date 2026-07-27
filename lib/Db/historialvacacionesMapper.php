@@ -223,4 +223,13 @@ class historialvacacionesMapper extends QBMapper {
 			->andWhere($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($numero_aniversario, IQueryBuilder::PARAM_INT)));
 		$qb->executeStatement();
 	}
+
+	public function invalidarAcumulado(int $idEmpleado, int $numeroAniversario): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('acumulado_calculado', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('id_empleado', $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+	}
 }
