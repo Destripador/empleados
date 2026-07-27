@@ -942,7 +942,7 @@ export default {
 							end: fechaHasta.toISOString(),
 							allDay: true,
 							classNames: estilo.classNames,
-							nombre_empleado: item.nombre_empleado,
+							nombre_empleado: this.employee[0].Id_user,
 						}
 					})
 					success(events)
