@@ -90,7 +90,7 @@
 									<button
 										type="button"
 										class="acordeon-notification"
-										@click="toggle(0)">
+										@click="togglePendingNotifications">
 										<div class="noti-wrapper">
 											<BellOutline
 												class="bell-icon"
@@ -115,28 +115,38 @@
 											'acordeon-contenido',
 											{ abierto: accordeon[0].abierto },
 										]">
-										<ul class="accordion-user-list">
+										<ul class="pending-list">
 											<li
 												v-for="item in notifications_result"
-												:key="item.id_historial_ausencias">
+												:key="item.id_historial_ausencias"
+												class="pending-list__item">
 												<button
 													type="button"
-													class="accordion-option"
+													class="pending-card"
 													@click="abrirDetalleDesdeNotificacion(item)">
 													<NcAvatar
 														disable-menu
-														:size="36"
+														class="pending-card__avatar"
+														:size="38"
 														:user="item.Id_user"
-														:display-name="item.Id_user" />
+														:display-name="notificationEmployeeName(item)" />
 
-													<span class="accordion-option__text">
-														<strong>
-															{{ item.displayname || item.Id_user }}
+													<span class="pending-card__content">
+														<strong class="pending-card__name">
+															{{ notificationEmployeeName(item) }}
 														</strong>
 
-														<small>
-															{{ t('empleados', 'Pending request') }}
-														</small>
+														<span class="pending-card__type">
+															{{ notificationAbsenceType(item) }}
+														</span>
+													</span>
+
+													<span
+														v-if="notificationRequestedDays(item) !== null"
+														class="pending-card__days"
+														:title="formatearDias(notificationRequestedDays(item))">
+
+														{{ notificationRequestedDays(item) }}
 													</span>
 												</button>
 											</li>
@@ -392,6 +402,7 @@
 									</NcButton>
 								</div>
 							</div>
+
 							<div class="footers">
 								<p>
 									🔎 {{ vista_actual }}
@@ -752,20 +763,37 @@ export default {
 		},
 
 		async checkNotifications() {
-			if (this.subordinates.length === 0 && !this.isAdmin()) return
+			if (this.subordinates.length === 0 && !this.isAdmin()) {
+				return
+			}
+
 			try {
-				const response = await axios.get(generateUrl('/apps/empleados/GetNotificationsSubordinates'))
+				const response = await axios.get(
+					generateUrl(
+						'/apps/empleados/GetNotificationsSubordinates',
+					),
+				)
+
 				const data = response?.data?.ocs?.data ?? []
-				if (data.length > 0) {
+
+				if (Array.isArray(data) && data.length > 0) {
 					this.notificaciones = true
 					this.notifications_counter = data.length
 					this.notifications_result = data
 					this.startShaking()
 				} else {
 					this.notificaciones = false
+					this.notifications_counter = 0
+					this.notifications_result = []
 				}
 			} catch (err) {
-				showError(t('empleados', 'An exception has occurred [01] [{err}]', { err }))
+				showError(
+					t(
+						'empleados',
+						'An exception has occurred [01] [{err}]',
+						{ err },
+					),
+				)
 			}
 		},
 
@@ -836,24 +864,37 @@ export default {
 
 		fetchEvents(fetchInfo, success, failure) {
 			switch (this.typePetition) {
+			case 'pending':
+				this.getPendingAusencias(fetchInfo, success, failure)
+				this.vista_actual = t('empleados', 'Pending absences')
+				break
+
 			case 'all':
 				this.getAllAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'All my team')
 				break
+
 			case 'all-admin':
 				this.getEmployeeAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'All employees')
 				break
+
 			case 'employee':
 				this.getEmployeeAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'Selected employee')
 				break
+
 			case 'all-employees':
 				this.GetAusenciasMyWorkers(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'All my subordinates')
 				break
+
 			default:
-				this.accordeon = this.accordeon.map(item => ({ ...item, abierto: false }))
+				this.accordeon = this.accordeon.map(item => ({
+					...item,
+					abierto: false,
+				}))
+
 				this.employees = []
 				this.getMyAusencias(fetchInfo, success, failure)
 				this.vista_actual = t('empleados', 'My absences')
@@ -1011,11 +1052,33 @@ export default {
 			this.modalEvento = true
 		},
 
-		onAbsenceCancelled() {
+		async onAbsenceCancelled() {
 			this.closeModalEvento()
-			this.GetAusencias()
-			this.checkNotifications()
-			this.$refs.fullCalendar.getApi().refetchEvents()
+
+			await this.GetAusencias()
+			await this.checkNotifications()
+
+			/*
+	 * Si estamos viendo pendientes y ya no queda ninguna,
+	 * regresar a la vista personal.
+	 */
+			if (
+				this.typePetition === 'pending'
+		&& this.notifications_result.length === 0
+			) {
+				this.typePetition = null
+
+				this.accordeon = this.accordeon.map((item, index) => ({
+					...item,
+					abierto: index === 0 ? false : item.abierto,
+				}))
+			}
+
+			this.$nextTick(() => {
+				this.$refs.fullCalendar
+					?.getApi()
+					?.refetchEvents()
+			})
 		},
 
 		onAbsenceEdit(ausencia) {
@@ -1026,10 +1089,29 @@ export default {
 			})
 		},
 
-		onAbsenceEditSaved() {
+		async onAbsenceEditSaved() {
 			this.closeModalEditar()
-			this.GetAusencias()
-			this.$refs.fullCalendar.getApi().refetchEvents()
+
+			await this.GetAusencias()
+			await this.checkNotifications()
+
+			if (
+				this.typePetition === 'pending'
+		&& this.notifications_result.length === 0
+			) {
+				this.typePetition = null
+
+				this.accordeon = this.accordeon.map((item, index) => ({
+					...item,
+					abierto: index === 0 ? false : item.abierto,
+				}))
+			}
+
+			this.$nextTick(() => {
+				this.$refs.fullCalendar
+					?.getApi()
+					?.refetchEvents()
+			})
 		},
 
 		color(username) {
@@ -1186,6 +1268,139 @@ export default {
 			this.$nextTick(() => {
 				this.$refs.fullCalendar?.getApi()?.refetchEvents()
 			})
+		},
+		notificationEmployeeName(item) {
+			return item.displayname
+		|| item.nombre_empleado
+		|| item.Nombre
+		|| item.Id_user
+		|| t('empleados', 'Unknown employee')
+		},
+
+		notificationAbsenceType(item) {
+			return item.tipo_nombre
+		|| item.tipo_ausencia
+		|| item.nombre_tipo
+		|| item.Tipo
+		|| t('empleados', 'Absence request')
+		},
+
+		notificationRequestedDays(item) {
+			const days = item.dias_solicitados
+		?? item.total_dias
+		?? item.dias
+		?? null
+
+			if (days === null || days === '') {
+				return null
+			}
+
+			const parsedDays = Number(days)
+
+			return Number.isFinite(parsedDays)
+				? parsedDays
+				: null
+		},
+		togglePendingNotifications() {
+			const abrirPendientes = !this.accordeon[0].abierto
+
+			this.toggle(0)
+
+			if (abrirPendientes) {
+				/*
+		 * Limpiamos cualquier filtro anterior para que el calendario
+		 * muestre exclusivamente las solicitudes pendientes.
+		 */
+				this.employees = []
+				this.selected_user = null
+				this.typePetition = 'pending'
+			} else {
+				/*
+		 * Al cerrar Pendientes regresamos a la vista personal.
+		 */
+				this.employees = []
+				this.selected_user = null
+				this.typePetition = null
+			}
+
+			this.$nextTick(() => {
+				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+			})
+		},
+		getPendingAusencias(fetchInfo, success, failure) {
+			try {
+				const events = (this.notifications_result || [])
+					.map(item => {
+						const fechaInicialRaw = item.fecha_de
+					?? item.fecha_inicio
+					?? item.desde
+					?? null
+
+						const fechaFinalRaw = item.fecha_hasta
+					?? item.fecha_fin
+					?? item.hasta
+					?? fechaInicialRaw
+
+						if (!fechaInicialRaw) {
+							return null
+						}
+
+						const fechaInicioTexto = String(fechaInicialRaw).slice(0, 10)
+						const fechaFinalTexto = String(fechaFinalRaw).slice(0, 10)
+
+						const fechaInicio = new Date(
+							`${fechaInicioTexto}T00:00:00`,
+						)
+
+						const fechaHasta = new Date(
+							`${fechaFinalTexto}T00:00:00`,
+						)
+
+						if (
+							Number.isNaN(fechaInicio.getTime())
+					|| Number.isNaN(fechaHasta.getTime())
+						) {
+							return null
+						}
+
+						/*
+				 * FullCalendar utiliza una fecha final exclusiva
+				 * para eventos de día completo.
+				 */
+						fechaHasta.setDate(fechaHasta.getDate() + 1)
+
+						const nombre = this.notificationEmployeeName(item)
+						const tipo = this.notificationAbsenceType(item)
+
+						return {
+							id: item.id_historial_ausencias,
+							title: `${nombre} - ${tipo}`,
+							start: fechaInicio.toISOString(),
+							end: fechaHasta.toISOString(),
+							allDay: true,
+							classNames: ['event-pending'],
+
+							/*
+					 * Se conserva el UID para el avatar y para abrir
+					 * correctamente el detalle de la solicitud.
+					 */
+							nombre_empleado: item.Id_user || nombre,
+
+							extendedProps: {
+								Id_user: item.Id_user || null,
+								dias_solicitados:
+							this.notificationRequestedDays(item),
+								tipo_ausencia: tipo,
+							},
+						}
+					})
+					.filter(Boolean)
+
+				success(events)
+			} catch (error) {
+				console.error('Error mostrando ausencias pendientes:', error)
+				failure(error)
+			}
 		},
 	},
 }
@@ -2289,5 +2504,149 @@ export default {
 
 	background: var(--sidebar-primary) !important;
 	border-color: var(--sidebar-primary) !important;
+}
+/* ========================================
+ * NOTIFICACIONES PENDIENTES
+ * ======================================== */
+
+.pending-list {
+	width: 100%;
+	max-height: 280px;
+	margin: 0;
+	padding: 0 3px 0 0;
+
+	overflow-x: hidden;
+	overflow-y: auto;
+
+	list-style: none;
+	overscroll-behavior: contain;
+
+	scrollbar-width: thin;
+	scrollbar-color: #dca75e transparent;
+}
+
+.pending-list::-webkit-scrollbar {
+	width: 5px;
+}
+
+.pending-list::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.pending-list::-webkit-scrollbar-thumb {
+	background: #dca75e;
+	border-radius: 999px;
+}
+
+.pending-list__item {
+	margin: 0;
+	padding: 0;
+}
+
+.pending-list__item + .pending-list__item {
+	margin-top: 5px;
+}
+
+.pending-card {
+	display: flex;
+	align-items: center;
+
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	min-height: 56px;
+	padding: 7px 8px;
+	gap: 9px;
+
+	color: var(--sidebar-text);
+	font-family: inherit;
+	text-align: left;
+
+	background: #fffaf1;
+	border: 1px solid #f0ddbd;
+	border-radius: 10px;
+
+	cursor: pointer;
+
+	transition:
+		background-color 0.18s ease,
+		border-color 0.18s ease,
+		box-shadow 0.18s ease,
+		transform 0.18s ease;
+}
+
+.pending-card__avatar {
+	flex: 0 0 auto;
+}
+
+.pending-card__content {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+
+	min-width: 0;
+	gap: 3px;
+}
+
+.pending-card__name {
+	width: 100%;
+	overflow: hidden;
+
+	color: #243746;
+	font-size: 0.76rem;
+	font-weight: 700;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pending-card__type {
+	width: 100%;
+	overflow: hidden;
+
+	color: #9a5a16;
+	font-size: 0.66rem;
+	font-weight: 600;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pending-card__days {
+	display: inline-flex;
+	flex: 0 0 34px;
+	align-items: center;
+	justify-content: center;
+
+	width: 34px;
+	height: 34px;
+
+	color: white;
+	font-size: 0.78rem;
+	font-weight: 800;
+	line-height: 1;
+
+	background: #b45309;
+	border: 3px solid #ffedd5;
+	border-radius: 50%;
+
+	box-shadow: 0 2px 6px rgba(180, 83, 9, 0.22);
+}
+
+.pending-card:hover {
+	background: #fff3dc;
+	border-color: #dfb877;
+
+	box-shadow: 0 4px 10px rgba(146, 64, 14, 0.1);
+
+	transform: translateY(-1px);
+}
+
+.pending-card:hover .pending-card__days {
+	background: #92400e;
+}
+
+.pending-card:active {
+	transform: translateY(0);
 }
 </style>

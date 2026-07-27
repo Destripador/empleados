@@ -266,6 +266,7 @@ class EmpleadosController extends BaseController {
                 // y asociarlo al empleado recién creado
                 $ausencias = new ausencias();
                 $ausencias->setid_empleado((int)$idEmpleado);
+                $ausencias->setTimestamp(new \DateTime());
                 $this->ausenciasMapper->insert($ausencias);
 
                 // Generar un nuevo registro de ahorro

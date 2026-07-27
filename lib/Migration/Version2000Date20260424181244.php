@@ -264,7 +264,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 			'default' => 0.00,
 		]);
 		$table->addColumn('prima_vacacional', 'boolean', ['notnull' => false, 'default' => false]);
-		$table->addColumn('timestamp', 'datetime', ['notnull' => true]);
+		$table->addColumn('timestamp', 'datetime', [
+			'notnull' => true,
+			'default' => 'CURRENT_TIMESTAMP',
+		]);
 
 		$table->setPrimaryKey(['id_ausencias']);
 		$table->addUniqueIndex(['id_empleado'], 'uniq_aus_empleado');
@@ -290,7 +293,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 		$table->addColumn('fecha_hasta', 'datetime', ['notnull' => true]);
 		$table->addColumn('prima_vacacional', 'boolean', ['notnull' => false, 'default' => false]);
 		$table->addColumn('archivo', 'string', ['length' => 255, 'notnull' => false]);
-		$table->addColumn('timestamp', 'datetime', ['notnull' => true]);
+		$table->addColumn('timestamp', 'datetime', [
+			'notnull' => true,
+			'default' => 'CURRENT_TIMESTAMP',
+		]);
 		$table->addColumn('a_socio', 'boolean', ['notnull' => false, 'default' => false]);
 		$table->addColumn('a_gerente', 'boolean', ['notnull' => false, 'default' => false]);
 		$table->addColumn('a_capital_humano', 'boolean', ['notnull' => false, 'default' => false]);

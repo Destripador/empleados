@@ -251,7 +251,7 @@ export default {
 				cursor = new Date(
 					cursor.getFullYear(),
 					cursor.getMonth() + 1,
-					1
+					1,
 				)
 			}
 			return false
