@@ -90,7 +90,9 @@ class actividadesController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetActividades(): DataResponse {
-		$this->requireClientesAccess();
+		$this->permisosService->requireCanSeeAny([
+            'empleados',
+        ]);
 
 		return new DataResponse($this->actividadesMapper->findAll(), Http::STATUS_OK);
 	}
