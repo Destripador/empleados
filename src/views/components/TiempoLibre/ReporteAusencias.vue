@@ -109,6 +109,15 @@
 						@click="abrirInformePrima">
 						{{ t('empleados', 'Reporte Prima Vacacional') }}
 					</button>
+
+					<button
+						v-if="empleadoResumen && empleadoIdPorNombre[empleadoResumen]"
+						type="button"
+						class="btn-prima-vacacional btn-excel-periodos"
+						@click="descargarExcelPeriodos">
+						<FileExcelOutline :size="16" />
+						{{ t('empleados', 'Descargar Excel') }}
+					</button>
 				</div>
 
 				<div v-if="!empleadoResumen" class="reporte-estado periodo-vac-vacio">
@@ -449,6 +458,7 @@ import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 import FilterOff from 'vue-material-design-icons/FilterOff.vue'
 import AccountSearch from 'vue-material-design-icons/AccountSearch.vue'
 import InformePrimaVacacional from './InformePrimaVacacional.vue'
+import FileExcelOutline from 'vue-material-design-icons/FileExcelOutline.vue'
 
 const PALETA_TIPOS = [
 	{ bg: '#dbeafe', color: '#1d4ed8' },
@@ -470,7 +480,7 @@ function hashStr(str) {
 export default {
 	name: 'ReporteAusencias',
 
-	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch, InformePrimaVacacional },
+	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch, FileExcelOutline, InformePrimaVacacional },
 
 	emits: ['close'],
 
@@ -610,6 +620,12 @@ export default {
 		abrirInformePrima() {
 			if (!this.empleadoResumen) return
 			this.mostrarInformePrima = true
+		},
+
+		descargarExcelPeriodos() {
+			const idEmpleado = this.empleadoIdPorNombre[this.empleadoResumen]
+			if (!idEmpleado) return
+			window.location.href = generateUrl('/apps/empleados/reporte-periodos-excel') + '?id_empleado=' + idEmpleado
 		},
 
 		limpiarFiltros() {
@@ -1406,4 +1422,13 @@ th.col-dias, td.col-dias { text-align: right; padding-right: 24px; }
 .informe-prima-modal :deep(.modal-wrapper) {
 	overflow-x: hidden !important;
 }
+
+.btn-excel-periodos {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #1F4E79;
+    border-color: #1F4E79;
+}
+.btn-excel-periodos:hover { background-color: #2b6aa3; }
 </style>

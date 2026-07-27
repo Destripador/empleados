@@ -33,6 +33,7 @@ use OCA\Empleados\Db\historialvacacionesMapper;
 use OCA\Empleados\Db\aniversarioMapper;
 use OCA\Empleados\Db\ausencias;
 use OCA\Empleados\Db\actividadesMapper;
+use OCA\Empleados\Db\primavacacionalpagoMapper;
 
 use OCP\AppFramework\Http;
 use OCP\IURLGenerator;
@@ -59,6 +60,7 @@ class AusenciasController extends BaseController {
     protected $reportetiempoMapper;
     protected $aniversarioMapper;
     protected $historialvacacionesMapper;
+    protected $primavacacionalpagoMapper;
 
     protected $userManager;
 
@@ -80,6 +82,7 @@ class AusenciasController extends BaseController {
         historialausenciasMapper $historialausenciasMapper,
         tipoausenciaMapper $tipoausenciaMapper,
         historialvacacionesMapper $historialvacacionesMapper,
+        primavacacionalpagoMapper $primavacacionalpagoMapper,
         empleadosMapper $empleadosMapper,
         IRootFolder $rootFolder,
         IUserManager $userManager,
@@ -110,6 +113,7 @@ class AusenciasController extends BaseController {
         $this->reportetiempoMapper = $reportetiempoMapper; 
         $this->aniversarioMapper = $aniversarioMapper;
         $this->actividadesMapper = $actividadesMapper;
+        $this->primavacacionalpagoMapper = $primavacacionalpagoMapper;
     }
     /**
      * Obtiene la lista de ausencias.
@@ -1582,6 +1586,11 @@ class AusenciasController extends BaseController {
             $nuevoDerecho
         );
 
+        $this->historialvacacionesMapper->invalidarAcumulado(
+            $id_empleado,
+            $periodo['numero_aniversario'] + 1
+        );
+
         return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
@@ -1884,5 +1893,247 @@ class AusenciasController extends BaseController {
             ]
         );
         $this->activityManager->publish($event);
+    }
+
+
+    /**
+     * Exportar Reporte.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function DescargarReportePeriodosExcel(int $id_empleado) {
+        $this->checkAccess(['admin', 'empleados']);
+    
+        $user = $this->userSession->getUser();
+        $uid = $user->getUID();
+        $isPrivileged = $this->groupManager->isInGroup($uid, 'admin')
+            || $this->groupManager->isInGroup($uid, 'recursos_humanos');
+    
+        if (!$isPrivileged) {
+            return new DataResponse(['success' => false, 'message' => 'Sin permiso'], Http::STATUS_FORBIDDEN);
+        }
+    
+        $empleado = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $id_empleado);
+        if (empty($empleado) || empty($empleado[0]['Ingreso'])) {
+            return new DataResponse(['success' => false, 'message' => 'Empleado sin fecha de ingreso'], Http::STATUS_BAD_REQUEST);
+        }
+    
+        $nombreEmpleado = $empleado[0]['Nombre'] ?? $empleado[0]['Id_user'];
+        $fechaIngreso = new DateTime($empleado[0]['Ingreso']);
+    
+        $empleadoAusencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado);
+        $idAusencias = $empleadoAusencias[0]['id_ausencias'] ?? null;
+    
+        $hoy = new DateTime();
+        $numeroAniversarioActual = $hoy->diff($fechaIngreso)->y;
+    
+        $pagos = $this->primavacacionalpagoMapper->getByEmpleado($id_empleado);
+        $pagosPorAniversario = [];
+        foreach ($pagos as $p) {
+            $pagosPorAniversario[(int) $p['numero_aniversario']] = $p;
+        }
+    
+        $meses = ['', 'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+            'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+    
+        $filas = [];
+    
+        $filas[] = [
+            'esIngreso' => true,
+            'fecha' => $fechaIngreso->format('d/m/Y'),
+            'evento' => 'Ingreso',
+            'derecho' => '0',
+        ];
+    
+        for ($n = 0; $n <= $numeroAniversarioActual; $n++) {
+            $periodoInicio = (clone $fechaIngreso)->modify('+' . $n . ' years');
+            $periodoFin = (clone $fechaIngreso)->modify('+' . ($n + 1) . ' years');
+            $periodoInicioStr = $periodoInicio->format('Y-m-d');
+            $periodoFinConGraciaStr = (clone $periodoFin)->modify('+6 months')->format('Y-m-d');
+    
+            $existente = $this->historialvacacionesMapper->getByEmpleadoYAniversario($id_empleado, $n);
+            $diasDerecho = $existente ? (float) $existente['dias_derecho'] : 0.0;
+    
+            $diasDisfrutados = 0.0;
+            $eventosTexto = [];
+            $registroPrima = null;
+    
+            if ($idAusencias) {
+                $historial = $this->historialausenciasMapper->GetAusenciasEnRango(
+                    $periodoInicioStr,
+                    $periodoFinConGraciaStr,
+                    $idAusencias
+                );
+    
+                foreach ($historial as $item) {
+                    if ((int) ($item['id_aniversario'] ?? -1) !== $n) {
+                        continue;
+                    }
+                    // cancelada o rechazada
+                    if ((int) $item['a_gerente'] === 3 || (int) $item['a_socio'] === 3) continue;
+                    if ((int) $item['a_gerente'] === 2 || (int) $item['a_socio'] === 2) continue;
+    
+                    if ((int) ($item['prima_vacacional'] ?? 0) === 1 && $registroPrima === null) {
+                        $registroPrima = $item;
+                    }
+    
+                    if ((int) ($item['solicitar_prima_vacacional'] ?? 0) !== 1) {
+                        continue;
+                    }
+    
+                    $dias = (float) $item['dias_solicitados'] - (float) ($item['dias_de_acumulado'] ?? 0);
+                    if ($dias <= 0) {
+                        continue;
+                    }
+    
+                    $diasDisfrutados += $dias;
+                    $eventosTexto[] = $this->formatearRangoFechas($item['fecha_de'], $item['fecha_hasta'], $dias, $meses);
+                }
+            }
+    
+            $diasRestantes = $diasDerecho - $diasDisfrutados;
+            $pago = $pagosPorAniversario[$n] ?? null;
+    
+            $filas[] = [
+                'esIngreso' => false,
+                'fecha' => $periodoInicio->format('d/m/Y'),
+                'evento' => $n . '° Aniversario',
+                'derecho' => $this->formatNumeroReporte($diasDerecho),
+                'disfrutados' => $this->formatNumeroReporte($diasDisfrutados),
+                'fechas' => implode(', ', $eventosTexto),
+                'disponibles' => $this->formatNumeroReporte($diasRestantes),
+                'prescripcion' => $periodoFin->format('d/m/Y'),
+                'pv' => $registroPrima ? (new DateTime($registroPrima['fecha_de']))->format('d/m/Y') : '',
+                'nota' => $pago
+                    ? ('Pagado en ' . (new DateTime($pago['fecha_pago']))->format('d/m/Y')
+                        . ' sobre ' . $this->formatNumeroReporte((float) $pago['dias_pagados']) . ' días.')
+                    : '',
+            ];
+        }
+    
+        $xlsx = $this->construirExcelReportePeriodos($nombreEmpleado, $empleado[0]['Ingreso'] ?? '', $filas);
+    
+        $nombreArchivo = 'Detalle_Periodos_Vacacionales_'
+            . preg_replace('/[^A-Za-z0-9_]+/', '_', $nombreEmpleado)
+            . '.xlsx';
+    
+        $xlsx->downloadAs($nombreArchivo);
+        exit;
+    }
+    
+    /**
+     * Arma el objeto SimpleXLSXGen con el layout/colores del reporte.
+     */
+    private function construirExcelReportePeriodos(string $nombreEmpleado, string $fechaIngresoRaw, array $filas) {
+        $azul = '#1F4E79';
+        $amarillo = '#FFC000';
+        $cyan = '#29ABE2';
+        $verde = '#C6E0B4';
+        $blanco = '#FFFFFF';
+    
+        $ingresoFmt = $fechaIngresoRaw ? (new DateTime($fechaIngresoRaw))->format('d/m/Y') : '';
+    
+        $mesesL = ['', 'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+            'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        $hoy = new DateTime();
+        $hoyTxt = $hoy->format('d') . ' DE ' . $mesesL[(int) $hoy->format('n')] . ' ' . $hoy->format('Y');
+    
+        $cols = 9;
+        $blank = array_fill(0, $cols, '');
+        $rows = [];
+    
+        // Fila 1: título empresa + ingreso a nómina
+        $r1 = $blank;
+        $r1[0] = '<b><style font-size="14" color="' . $azul . '">GOSSLER, S.C. Oficina Torreón</style></b>';
+        $r1[7] = 'Ingreso a nómina Gossler: ' . $ingresoFmt;
+        $rows[] = $r1;
+    
+        // Fila 2: subtítulo
+        $r2 = $blank;
+        $r2[0] = '<b><i><style color="' . $azul . '">Detalle Periodos Vacacionales</style></i></b>';
+        $rows[] = $r2;
+    
+        // Fila 3: fecha de generación
+        $r3 = $blank;
+        $r3[0] = $hoyTxt;
+        $rows[] = $r3;
+    
+        $rows[] = $blank; // espacio
+    
+        // Fila 5: barra amarilla con nombre
+        $r5 = [];
+        for ($i = 0; $i < $cols; $i++) {
+            $texto = $i === 0 ? ('Nombre: ' . mb_strtoupper($nombreEmpleado)) : '';
+            $r5[] = '<b><style bgcolor="' . $amarillo . '">' . $texto . '</style></b>';
+        }
+        $rows[] = $r5;
+    
+        $rows[] = $blank; // espacio
+    
+        // Fila 7: encabezados de tabla
+        $headers = ['Fecha', 'Evento', 'Dias con derecho', 'Dias disfrutados', 'Fechas',
+            'Dias Disponibles', 'Prescripción', 'PV', ''];
+        $r7 = [];
+        foreach ($headers as $h) {
+            $r7[] = '<b><style bgcolor="' . $azul . '" color="' . $blanco . '">' . $h . '</style></b>';
+        }
+        $rows[] = $r7;
+    
+        // Filas de datos
+        foreach ($filas as $fila) {
+            if (!empty($fila['esIngreso'])) {
+                $valores = [$fila['fecha'], $fila['evento'], $fila['derecho'], '', '', '', '', '', ''];
+                $row = [];
+                foreach ($valores as $v) {
+                    $row[] = '<b><style bgcolor="' . $cyan . '">' . $v . '</style></b>';
+                }
+                $rows[] = $row;
+                continue;
+            }
+    
+            $rows[] = [
+                $fila['fecha'],
+                '<b><style color="' . $azul . '">' . $fila['evento'] . '</style></b>',
+                $fila['derecho'],
+                $fila['disfrutados'],
+                $fila['fechas'],
+                $fila['disponibles'],
+                $fila['prescripcion'],
+                $fila['pv'],
+                $fila['nota'] !== '' ? ('<b><style bgcolor="' . $verde . '">' . $fila['nota'] . '</style></b>') : '',
+            ];
+        }
+    
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($rows);
+        $xlsx->mergeCells('A1:D1');
+        $xlsx->mergeCells('H1:I1');
+        $xlsx->mergeCells('A2:D2');
+        $xlsx->mergeCells('A3:D3');
+        $xlsx->mergeCells('A5:I5');
+    
+        return $xlsx;
+    }
+    
+    private function formatearRangoFechas(string $fechaDeStr, string $fechaHastaStr, float $dias, array $meses): string {
+        $de = new DateTime($fechaDeStr);
+        $hasta = new DateTime($fechaHastaStr);
+        $diasTxt = $this->formatNumeroReporte($dias) . ' ' . ($dias == 1 ? 'DÍA' : 'DÍAS');
+    
+        if ($de->format('Y-m-d') === $hasta->format('Y-m-d')) {
+            return $diasTxt . ' (' . $de->format('d') . ' DE ' . $meses[(int) $de->format('n')] . ' ' . $de->format('Y') . ')';
+        }
+    
+        if ($de->format('Y-m') === $hasta->format('Y-m')) {
+            return $diasTxt . ' (DEL ' . $de->format('d') . ' AL ' . $hasta->format('d')
+                . ' DE ' . $meses[(int) $de->format('n')] . ' ' . $de->format('Y') . ')';
+        }
+    
+        return $diasTxt . ' (DEL ' . $de->format('d') . ' DE ' . $meses[(int) $de->format('n')]
+            . ' AL ' . $hasta->format('d') . ' DE ' . $meses[(int) $hasta->format('n')] . ' ' . $hasta->format('Y') . ')';
+    }
+    
+    private function formatNumeroReporte(float $n): string {
+        return floor($n) == $n ? (string) (int) $n : rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
     }
 }

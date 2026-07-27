@@ -187,7 +187,7 @@ export default {
 
 	props: {
 		ausencia: { type: Object, required: true },
-		diasDisponibles: { type: String, default: '0' },
+		diasDisponibles: { type: [String, Number], required: true },
 		fechaLimitePeriodoActual: { type: String, default: null },
 		prima: { type: Number, default: 0 },
 		employees: { type: Array, default: () => [] },

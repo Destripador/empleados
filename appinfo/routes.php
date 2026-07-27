@@ -155,6 +155,8 @@ return [
 		['name' => 'ausencias#AprobarAusencia', 'url' => '/AprobarAusencia', 'verb' => 'POST'],
 		['name' => 'ausencias#RechazarAusencia', 'url' => '/RechazarAusencia', 'verb' => 'POST'],
 
+		['name' => 'ausencias#DescargarReportePeriodosExcel', 'url' => '/reporte-periodos-excel', 'verb' => 'GET'],
+
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],
 		['name' => 'tipoausencias#VaciarTipo', 'url' => '/VaciarTipo', 'verb' => 'GET'],
