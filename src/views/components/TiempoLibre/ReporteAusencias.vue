@@ -84,6 +84,7 @@
 				<div class="resumen-toolbar">
 					<div class="resumen-selector">
 						<AccountSearch :size="20" class="resumen-selector-icon" />
+
 						<img
 							v-if="empleadoResumen"
 							class="resumen-empleado-avatar"
@@ -106,6 +107,14 @@
 							class="btn-prima-vacacional"
 							@click="abrirInformePrima">
 							{{ t('empleados', 'Reporte Prima Vacacional') }}
+						</button>
+						<button
+							v-if="empleadoResumen && empleadoIdPorNombre[empleadoResumen]"
+							type="button"
+							class="btn-prima-vacacional btn-excel-periodos"
+							@click="descargarExcelPeriodos">
+							<FileExcelOutline :size="16" />
+							{{ t('empleados', 'Descargar Excel') }}
 						</button>
 					</div>
 
