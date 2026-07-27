@@ -1523,7 +1523,20 @@
     "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.": "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.",
     "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.": "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.",
     "Z to A": "Z to A",
-    "Absence": "Absence"
+    "Absence": "Absence",
+    "Current period": "Current period",
+    "Days available": "Days available",
+    "Previous period": "Previous period",
+    "Accumulated days": "Accumulated days",
+    "Use before {fecha} or they expire": "Use before {fecha} or they expire",
+    "Reports and employee filters": "Reports and employee filters",
+    "Filter by employee": "Filter by employee",
+    "Show all employees": "Show all employees",
+    "Show the entire team": "Show the entire team",
+    "Show all my subordinates": "Show all my subordinates",
+    "Pending absences": "Pending absences",
+    "No employees were found": "No employees were found",
+    "Absence request": "Absence request"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

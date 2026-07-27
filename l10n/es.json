@@ -1524,7 +1524,20 @@
     "You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.": "Tienes días de vacaciones acumulados de tu periodo anterior: {dias} días, disponibles hasta {fecha}. Después de esa fecha se perderán.",
     "Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.": "La prima vacacional de este año ya fue utilizada. Podrás solicitarla nuevamente si se cancela tu ausencia anterior.",
     "Absence": "Ausencia",
-    "Z to A": "Z a A"
+    "Z to A": "Z a A",
+    "Current period": "Periodo actual",
+    "Days available": "Días disponibles",
+    "Previous period": "Periodo anterior",
+    "Accumulated days": "Días acumulados",
+    "Use before {fecha} or they expire": "Úsalos antes de {fecha} o vencerán",
+    "Reports and employee filters": "Reportes y filtros de empleados",
+    "Filter by employee": "Filtrar por empleado",
+    "Show all employees": "Mostrar todos los empleados",
+    "Show the entire team": "Mostrar todo el equipo",
+    "Show all my subordinates": "Mostrar todos mis empleados",
+    "Pending absences": "Ausencias pendientes",
+    "No employees were found": "No se encontraron empleados",
+    "Absence request": "Solicitud de ausencia"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -115,7 +115,9 @@ class equiposController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEquipoJefe(): DataResponse {
-        $this->requireHumanResourcesAccess();
+         $this->permisosService->requireCanSeeAny([
+            'empleados',
+        ]);
         $id = $this->request->getParam('id');
         return new DataResponse($this->equiposMapper->GetEquipoJefe((string)$id), Http::STATUS_OK);
     }

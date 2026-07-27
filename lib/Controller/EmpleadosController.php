@@ -200,7 +200,9 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetMyEquipo(): DataResponse {
-        $this->requireHumanResourcesAccess();
+        $this->permisosService->requireCanSeeAny([
+            'empleados',
+        ]);
         $empleado = $this->empleadosMapper->GetMyEmployeeInfo($this->userSession->getUser()->getUID());
 
         if (empty($empleado) || empty($empleado[0]['Id_equipo'])) {
