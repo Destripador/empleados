@@ -8,13 +8,16 @@
 
 		<template v-else>
 			<p class="organigrama-hint">
-				{{ viewMode === 'network'
-					? t('empleados', 'Hold and drag an avatar to move it. Double-click an avatar to start a connection, then drop it on another avatar. Double-click a connection to remove it.')
-					: t('empleados', 'Expand a manager to see all their direct and indirect reports.') }}
+				{{ viewHint }}
 			</p>
 
 			<div class="organigrama-content">
 				<div v-show="viewMode === 'network'" ref="networkContainer" class="organigrama-network" />
+				<OrganigramaTraditional
+					v-if="viewMode === 'traditional'"
+					class="organigrama-network"
+					:empleados="empleados"
+					:relaciones="relaciones" />
 				<OrganigramaTable
 					v-if="viewMode === 'table'"
 					class="organigrama-network"
@@ -23,15 +26,27 @@
 
 				<div class="organigrama-view-switch">
 					<button
+						type="button"
 						class="view-switch-btn"
 						:class="{ active: viewMode === 'network' }"
-						@click="viewMode = 'network'">
+						:aria-pressed="viewMode === 'network' ? 'true' : 'false'"
+						@click="setViewMode('network')">
 						{{ t('empleados', 'Network') }}
 					</button>
 					<button
+						type="button"
+						class="view-switch-btn"
+						:class="{ active: viewMode === 'traditional' }"
+						:aria-pressed="viewMode === 'traditional' ? 'true' : 'false'"
+						@click="setViewMode('traditional')">
+						{{ t('empleados', 'Organization chart') }}
+					</button>
+					<button
+						type="button"
 						class="view-switch-btn"
 						:class="{ active: viewMode === 'table' }"
-						@click="viewMode = 'table'">
+						:aria-pressed="viewMode === 'table' ? 'true' : 'false'"
+						@click="setViewMode('table')">
 						{{ t('empleados', 'Table') }}
 					</button>
 				</div>
@@ -47,6 +62,7 @@ import axios from '@nextcloud/axios'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import OrganigramaTable from './OrganigramaTable.vue'
+import OrganigramaTraditional from './OrganigramaTraditional.vue'
 
 import {
 	NcEmptyContent,
@@ -60,6 +76,7 @@ export default {
 		NcEmptyContent,
 		NcLoadingIcon,
 		OrganigramaTable,
+		OrganigramaTraditional,
 	},
 
 	data() {
@@ -72,6 +89,18 @@ export default {
 			connectMode: false,
 			viewMode: 'network',
 		}
+	},
+
+	computed: {
+		viewHint() {
+			if (this.viewMode === 'traditional') {
+				return t('empleados', 'This view shows the complete hierarchical structure. Edit relationships from the Network view.')
+			}
+			if (this.viewMode === 'table') {
+				return t('empleados', 'Expand a manager to see all their direct and indirect reports.')
+			}
+			return t('empleados', 'Hold and drag an avatar to move it. Double-click an avatar to start a connection, then drop it on another avatar. Double-click a connection to remove it.')
+		},
 	},
 
 	async mounted() {
@@ -88,6 +117,19 @@ export default {
 
 	methods: {
 		t,
+
+		setViewMode(viewMode) {
+			const previousViewMode = this.viewMode
+			this.viewMode = viewMode
+
+			if (viewMode === 'network' && previousViewMode !== 'network') {
+				this.$nextTick(() => {
+					if (!this.network) return
+					this.network.redraw()
+					this.network.fit()
+				})
+			}
+		},
 
 		async cargarDatos() {
 			try {
@@ -367,6 +409,20 @@ export default {
 		background: var(--color-primary-element);
 		color: var(--color-primary-element-text, #fff);
 		box-shadow: 0 2px 10px rgba(52, 120, 246, 0.35);
+	}
+}
+
+@media (max-width: 600px) {
+	.organigrama-view-switch {
+		right: 8px;
+		bottom: 8px;
+		left: 8px;
+		justify-content: center;
+	}
+
+	.view-switch-btn {
+		flex: 1;
+		padding: 7px 8px;
 	}
 }
 </style>
