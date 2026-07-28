@@ -434,7 +434,7 @@ export default {
 		},
 		async loadActivities() {
 			try {
-				const response = await axios.get(generateUrl('/apps/empleados/GetActividades'))
+				const response = await axios.get(generateUrl('/apps/empleados/GetCostosActividades'))
 
 				if (response?.data?.ocs?.meta?.status !== 'ok') {
 					throw new Error(response?.data?.ocs?.meta?.message || t('empleados', 'Could not load activities'))

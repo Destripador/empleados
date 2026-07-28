@@ -11,6 +11,7 @@
 			:aria-label="accessibleLabel"
 			:aria-expanded="String(open)"
 			:aria-controls="tooltipId"
+			:aria-describedby="open ? tooltipId : null"
 			@click="togglePinned"
 			@focus="onFocus"
 			@blur="onBlur"

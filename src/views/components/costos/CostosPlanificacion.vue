@@ -17,10 +17,30 @@
 			</div>
 		</header>
 
-		<section class="planning__panel" :aria-labelledby="`${componentId}-project-title`">
-			<h3 :id="`${componentId}-project-title`">
-				{{ t('empleados', 'Project analysis') }}
-			</h3>
+		<ol class="planning__steps" :aria-label="t('empleados', 'Project planning')">
+			<li
+				v-for="(step, index) in planningSteps"
+				:key="step.id"
+				:class="{
+					'planning__step--current': currentPlanningStep === index + 1,
+					'planning__step--complete': currentPlanningStep > index + 1,
+				}"
+				:aria-current="currentPlanningStep === index + 1 ? 'step' : null">
+				<span class="planning__step-index" aria-hidden="true">{{ index + 1 }}</span>
+				<strong>{{ step.label }}</strong>
+			</li>
+		</ol>
+
+		<section class="planning__panel planning__panel--configuration" :aria-labelledby="`${componentId}-project-title`">
+			<div class="planning__panel-heading">
+				<span class="planning__step-number" aria-hidden="true">1</span>
+				<div>
+					<h3 :id="`${componentId}-project-title`">
+						{{ t('empleados', 'Project analysis') }}
+					</h3>
+					<p>{{ t('empleados', 'Select an active company, valid dates and at least one activity to continue.') }}</p>
+				</div>
+			</div>
 
 			<div class="planning__form-grid">
 				<div class="planning__field planning__field--wide">
@@ -54,7 +74,7 @@
 						:value="scenario.startDate || ''"
 						type="date"
 						:max="scenario.endDate || undefined"
-						@input="setScenarioField('startDate', $event.target.value)">
+						@input="setRequirementField('startDate', $event.target.value)">
 				</label>
 
 				<label class="planning__field">
@@ -63,7 +83,7 @@
 						:value="scenario.endDate || ''"
 						type="date"
 						:min="scenario.startDate || undefined"
-						@input="setScenarioField('endDate', $event.target.value)">
+						@input="setRequirementField('endDate', $event.target.value)">
 				</label>
 
 				<label class="planning__field">
@@ -177,13 +197,16 @@
 			</div>
 		</section>
 
-		<section class="planning__panel" :aria-labelledby="`${componentId}-candidates-title`">
+		<section class="planning__panel planning__panel--candidates" :aria-labelledby="`${componentId}-candidates-title`">
 			<div class="planning__section-heading">
-				<div>
-					<h3 :id="`${componentId}-candidates-title`">
-						{{ t('empleados', 'Visible candidates') }}
-					</h3>
-					<p>{{ candidateSummary }}</p>
+				<div class="planning__panel-heading">
+					<span class="planning__step-number" aria-hidden="true">2</span>
+					<div>
+						<h3 :id="`${componentId}-candidates-title`">
+							{{ t('empleados', 'Visible candidates') }}
+						</h3>
+						<p>{{ candidateSummary }}</p>
+					</div>
 				</div>
 				<span class="planning__label-with-help">
 					{{ t('empleados', 'Estimated availability') }}
@@ -202,59 +225,64 @@
 						:placeholder="t('empleados', 'Name, UID, area or position')">
 				</label>
 
-				<label class="planning__field">
-					<span>{{ t('empleados', 'Availability filter') }}</span>
-					<select v-model="availabilityFilter">
-						<option value="all">
-							{{ t('empleados', 'All availability levels') }}
-						</option>
-						<option value="sufficient">
-							{{ t('empleados', 'Enough for required hours') }}
-						</option>
-						<option value="positive">
-							{{ t('empleados', 'With estimated availability') }}
-						</option>
-						<option value="low">
-							{{ t('empleados', 'Low availability') }}
-						</option>
-						<option value="unknown">
-							{{ t('empleados', 'Availability not calculable') }}
-						</option>
-					</select>
-				</label>
+				<details class="planning__advanced-filters">
+					<summary>{{ t('empleados', 'Filters') }}</summary>
+					<div class="planning__filter-grid">
+						<label class="planning__field">
+							<span>{{ t('empleados', 'Availability filter') }}</span>
+							<select v-model="availabilityFilter">
+								<option value="all">
+									{{ t('empleados', 'All availability levels') }}
+								</option>
+								<option value="sufficient">
+									{{ t('empleados', 'Enough for required hours') }}
+								</option>
+								<option value="positive">
+									{{ t('empleados', 'With estimated availability') }}
+								</option>
+								<option value="low">
+									{{ t('empleados', 'Low availability') }}
+								</option>
+								<option value="unknown">
+									{{ t('empleados', 'Availability not calculable') }}
+								</option>
+							</select>
+						</label>
 
-				<label class="planning__field">
-					<span>{{ t('empleados', 'Experience filter') }}</span>
-					<select v-model="experienceFilter">
-						<option value="all">
-							{{ t('empleados', 'All experience levels') }}
-						</option>
-						<option value="activities">
-							{{ t('empleados', 'Experience in selected activities') }}
-						</option>
-						<option value="company">
-							{{ t('empleados', 'Previous experience with company') }}
-						</option>
-						<option value="none">
-							{{ t('empleados', 'Without related experience') }}
-						</option>
-					</select>
-				</label>
+						<label class="planning__field">
+							<span>{{ t('empleados', 'Experience filter') }}</span>
+							<select v-model="experienceFilter">
+								<option value="all">
+									{{ t('empleados', 'All experience levels') }}
+								</option>
+								<option value="activities">
+									{{ t('empleados', 'Experience in selected activities') }}
+								</option>
+								<option value="company">
+									{{ t('empleados', 'Previous experience with company') }}
+								</option>
+								<option value="none">
+									{{ t('empleados', 'Without related experience') }}
+								</option>
+							</select>
+						</label>
 
-				<label class="planning__field">
-					<span>{{ t('empleados', 'Activity experience filter') }}</span>
-					<select v-model="activityFilter">
-						<option value="all">
-							{{ t('empleados', 'All selected activities') }}
-						</option>
-						<option
-							v-for="activity in scenarioActivities"
-							:key="activity.id_actividad"
-							:value="String(activity.id_actividad)">
-							{{ activity.nombre }}
-						</option>
-					</select>
-				</label>
+						<label class="planning__field">
+							<span>{{ t('empleados', 'Activity experience filter') }}</span>
+							<select v-model="activityFilter">
+								<option value="all">
+									{{ t('empleados', 'All selected activities') }}
+								</option>
+								<option
+									v-for="activity in scenarioActivities"
+									:key="activity.id_actividad"
+									:value="String(activity.id_actividad)">
+									{{ activity.nombre }}
+								</option>
+							</select>
+						</label>
+					</div>
+				</details>
 			</div>
 
 			<div v-if="candidateError" class="planning__alert planning__alert--error" role="alert">
@@ -276,7 +304,7 @@
 
 			<NcEmptyContent
 				v-else-if="!candidates.length"
-				:name="t('empleados', 'No employees are available in your scope.')"
+				:name="t('empleados', 'No candidates match the selected project requirements.')"
 				:description="t('empleados', 'The analysis did not return visible candidates for this project.')" />
 
 			<NcEmptyContent
@@ -296,13 +324,16 @@
 			</div>
 		</section>
 
-		<section class="planning__panel" :aria-labelledby="`${componentId}-team-title`">
+		<section class="planning__panel planning__panel--team" :aria-labelledby="`${componentId}-team-title`">
 			<div class="planning__section-heading">
-				<div>
-					<h3 :id="`${componentId}-team-title`">
-						{{ t('empleados', 'Tentative team') }}
-					</h3>
-					<p>{{ t('empleados', 'Assignments in this table are temporary and do not modify employee or company records.') }}</p>
+				<div class="planning__panel-heading">
+					<span class="planning__step-number" aria-hidden="true">3</span>
+					<div>
+						<h3 :id="`${componentId}-team-title`">
+							{{ t('empleados', 'Tentative team') }}
+						</h3>
+						<p>{{ t('empleados', 'Assignments in this table are temporary and do not modify employee or company records.') }}</p>
+					</div>
 				</div>
 				<div class="planning__team-total">
 					<span>{{ t('empleados', 'Assigned hours') }}</span>
@@ -315,18 +346,39 @@
 				:name="t('empleados', 'No employees have been added to this scenario')"
 				:description="t('empleados', 'Analyze candidates and add employees to build a tentative team.')" />
 
-			<div v-else class="planning__table-scroll">
+			<div
+				v-else
+				class="planning__table-scroll"
+				role="region"
+				tabindex="0"
+				:aria-label="t('empleados', 'Tentative team')">
 				<table>
 					<thead>
 						<tr>
-							<th>{{ t('empleados', 'Employee') }}</th>
-							<th>{{ t('empleados', 'Role') }}</th>
-							<th>{{ t('empleados', 'Activities') }}</th>
-							<th>{{ t('empleados', 'Assigned hours') }}</th>
-							<th>{{ t('empleados', 'Estimated availability') }}</th>
-							<th>{{ t('empleados', 'Estimated cost') }}</th>
-							<th>{{ t('empleados', 'Alerts') }}</th>
-							<th>{{ t('empleados', 'Actions') }}</th>
+							<th scope="col">
+								{{ t('empleados', 'Employee') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Role') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Activities') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Assigned hours') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Estimated availability') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Estimated cost') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Alerts') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Actions') }}
+							</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -341,7 +393,10 @@
 							<td>{{ nullableHours(member.disponibilidad_estimada) }}</td>
 							<td>{{ memberCost(member) }}</td>
 							<td>
-								<span v-if="memberExceedsAvailability(member)" class="planning__warning-text">
+								<span v-if="member.snapshot_stale" class="planning__warning-text">
+									{{ t('empleados', 'Some information needed for the analysis is incomplete.') }}
+								</span>
+								<span v-else-if="memberExceedsAvailability(member)" class="planning__warning-text">
 									{{ t('empleados', 'Exceeds estimated availability') }}
 								</span>
 								<span v-else>—</span>
@@ -521,6 +576,20 @@ export default {
 		}
 	},
 	computed: {
+		planningSteps() {
+			return [
+				{ id: 'project', label: t('empleados', 'Project analysis') },
+				{ id: 'candidates', label: t('empleados', 'Visible candidates') },
+				{ id: 'team', label: t('empleados', 'Tentative team') },
+			]
+		},
+		currentPlanningStep() {
+			if (!this.hasAnalyzed) {
+				return 1
+			}
+
+			return this.team.length ? 3 : 2
+		},
 		companyOptions() {
 			return this.companies
 				.map(company => this.normalizeCompany(company))
@@ -747,12 +816,15 @@ export default {
 		setScenarioField(field, value) {
 			this.emitChanges({ [field]: value })
 		},
+		setRequirementField(field, value) {
+			this.emitRequirementChanges({ [field]: value })
+		},
 		setNonNegativeField(field, value) {
 			const normalized = value === '' ? null : this.nonNegativeNumber(value)
 			this.emitChanges({ [field]: normalized })
 		},
 		setCompany(company) {
-			this.emitChanges({
+			this.emitRequirementChanges({
 				companyId: company ? company.id : null,
 				company: company
 					? { id: company.id, nombre: company.label }
@@ -786,14 +858,14 @@ export default {
 				}
 			})
 
-			this.emitChanges({ activities: next })
+			const allowedIds = new Set(next.map(activity => activity.id_actividad))
+			this.emitRequirementChanges({ activities: next }, allowedIds)
 			if (
 				this.activityFilter !== 'all'
-				&& !next.some(activity => String(activity.id_actividad) === this.activityFilter)
+					&& !next.some(activity => String(activity.id_actividad) === this.activityFilter)
 			) {
 				this.activityFilter = 'all'
 			}
-			this.removeUnselectedMemberActivities(new Set(next.map(activity => activity.id_actividad)))
 		},
 		setActivityHours(id, value) {
 			const hours = this.nonNegativeNumber(value)
@@ -803,29 +875,46 @@ export default {
 					? hours
 					: activity.horas_estimadas,
 			}))
-			this.emitChanges({ activities: next })
+			this.emitRequirementChanges({ activities: next })
 		},
 		removeActivity(id) {
 			const next = this.scenarioActivities.filter(
 				activity => activity.id_actividad !== Number(id),
 			)
-			this.emitChanges({ activities: next })
+			const allowedIds = new Set(next.map(activity => activity.id_actividad))
+			this.emitRequirementChanges({ activities: next }, allowedIds)
 			if (String(id) === this.activityFilter) {
 				this.activityFilter = 'all'
 			}
-			this.removeUnselectedMemberActivities(new Set(next.map(activity => activity.id_actividad)))
 		},
-		removeUnselectedMemberActivities(allowedIds) {
-			if (!this.team.length) {
-				return
-			}
+		emitRequirementChanges(changes, allowedActivityIds = null) {
+			this.emitChanges({
+				...changes,
+				analysis: null,
+				team: this.team.map(member => this.staleMemberSnapshot(
+					member,
+					allowedActivityIds,
+				)),
+			})
+		},
+		staleMemberSnapshot(member, allowedActivityIds = null) {
+			const activities = Array.isArray(member.actividades) ? member.actividades : []
 
-			const nextTeam = this.team.map(member => ({
+			return {
 				...member,
-				actividades: (Array.isArray(member.actividades) ? member.actividades : [])
-					.filter(activity => allowedIds.has(this.activityId(activity))),
-			}))
-			this.emitChanges({ team: nextTeam })
+				actividades: allowedActivityIds
+					? activities.filter(activity => allowedActivityIds.has(this.activityId(activity)))
+					: activities,
+				capacidad_calculable: null,
+				capacidad_efectiva: null,
+				horas_reportadas_periodo: null,
+				disponibilidad_estimada: null,
+				experiencia: {},
+				ajuste_estimado: null,
+				calidad_datos: 'baja',
+				riesgos: [{ key: 'datos_incompletos' }],
+				snapshot_stale: true,
+			}
 		},
 		async analyzeCandidates() {
 			if (!this.canAnalyze) {
@@ -885,6 +974,7 @@ export default {
 							0,
 						),
 					},
+					team: this.refreshTeamSnapshots(this.candidates),
 				})
 			} catch (error) {
 				if (this.isCanceledRequest(error) || serial !== this.requestSerial) {
@@ -900,6 +990,29 @@ export default {
 					this.requestController = null
 				}
 			}
+		},
+		refreshTeamSnapshots(candidates) {
+			const snapshots = new Map((Array.isArray(candidates) ? candidates : [])
+				.map(candidate => [
+					Number(candidate.id_empleado),
+					this.safeCandidateSnapshot(candidate),
+				]))
+
+			return this.team.map(member => {
+				const snapshot = snapshots.get(Number(member.id_empleado))
+				if (!snapshot) {
+					return this.staleMemberSnapshot(member)
+				}
+
+				return {
+					...member,
+					...snapshot,
+					rol: member.rol,
+					horas_estimadas: member.horas_estimadas,
+					actividades: member.actividades,
+					snapshot_stale: false,
+				}
+			})
 		},
 		cancelCandidateRequest() {
 			if (this.requestController) {
@@ -1090,6 +1203,7 @@ export default {
 					? candidate.calidad_datos
 					: 'baja',
 				riesgos: this.safeRiskSnapshot(candidate.riesgos),
+				snapshot_stale: false,
 			}
 		},
 		safeRiskSnapshot(risks) {
@@ -1294,8 +1408,8 @@ export default {
 .planning {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
-	padding: 24px;
+	gap: 28px;
+	padding: 4px 0 24px;
 	color: var(--color-main-text);
 }
 
@@ -1312,11 +1426,60 @@ export default {
 
 .planning__header {
 	align-items: flex-end;
+	padding: 8px 4px 0;
 
 	h2,
 	p {
 		margin: 0;
 	}
+}
+
+.planning__steps {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+
+	li {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 10px;
+		padding: 12px 14px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius-large);
+		color: var(--color-text-maxcontrast);
+	}
+
+	.planning__step-index {
+		display: inline-flex;
+		width: 28px;
+		height: 28px;
+		flex: 0 0 28px;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--color-border);
+		border-radius: 50%;
+		font-weight: 700;
+	}
+}
+
+.planning__step--current {
+	border-color: var(--color-primary-element) !important;
+	color: var(--color-main-text) !important;
+
+	.planning__step-index {
+		border-color: var(--color-primary-element) !important;
+		background: var(--color-primary-element);
+		color: var(--color-primary-element-text);
+	}
+}
+
+.planning__step--complete .planning__step-index {
+	border-color: var(--color-success) !important;
+	color: var(--color-success);
 }
 
 .planning__header .planning__intro {
@@ -1347,7 +1510,7 @@ export default {
 }
 
 .planning__panel {
-	padding: 20px;
+	padding: 24px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
@@ -1355,6 +1518,39 @@ export default {
 	> h3 {
 		margin: 0 0 18px;
 	}
+}
+
+.planning__panel-heading {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+
+	h3,
+	p {
+		margin: 0;
+	}
+
+	p {
+		margin-top: 4px;
+		color: var(--color-text-maxcontrast);
+	}
+}
+
+.planning__step-number {
+	display: inline-flex;
+	width: 32px;
+	height: 32px;
+	flex: 0 0 32px;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-weight: 700;
+}
+
+.planning__panel--configuration > .planning__panel-heading {
+	margin-bottom: 22px;
 }
 
 .planning__form-grid {
@@ -1528,15 +1724,31 @@ export default {
 }
 
 .planning__filters {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: flex-end;
-	gap: 12px;
+	display: grid;
+	grid-template-columns: minmax(260px, 1fr) minmax(220px, auto);
+	align-items: end;
+	gap: 16px;
 	margin: 18px 0;
+}
 
-	.planning__field:not(.planning__field--search) {
-		flex: 1 1 220px;
+.planning__advanced-filters {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+
+	summary {
+		min-height: 44px;
+		padding: 11px 14px;
+		cursor: pointer;
+		font-weight: 600;
 	}
+}
+
+.planning__filter-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(190px, 1fr));
+	gap: 12px;
+	padding: 0 14px 14px;
 }
 
 .planning__alert {
@@ -1581,6 +1793,7 @@ export default {
 
 .planning__candidate-list {
 	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
 	gap: 16px;
 	margin-top: 18px;
 }
@@ -1674,7 +1887,7 @@ td:first-child {
 
 @media (max-width: 700px) {
 	.planning {
-		padding: 14px;
+		padding: 0 0 16px;
 	}
 
 	.planning__header,
@@ -1693,12 +1906,22 @@ td:first-child {
 		padding: 14px;
 	}
 
+	.planning__steps {
+		grid-template-columns: 1fr;
+		gap: 8px;
+	}
+
 	.planning__form-grid {
 		grid-template-columns: 1fr;
 	}
 
 	.planning__field--wide {
 		grid-column: auto;
+	}
+
+	.planning__filters,
+	.planning__filter-grid {
+		grid-template-columns: 1fr;
 	}
 
 	.planning__activity-row {

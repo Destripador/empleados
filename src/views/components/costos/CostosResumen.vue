@@ -10,8 +10,8 @@
 			<p>{{ periodLabel }}</p>
 		</div>
 
-		<div class="kpi-grid">
-			<div v-for="card in cards" :key="card.key" class="kpi-card">
+		<div class="kpi-grid kpi-grid--primary">
+			<div v-for="card in primaryCards" :key="card.key" class="kpi-card kpi-card--primary">
 				<div class="metric-label">
 					<span>{{ card.label }}</span>
 					<HelpHint
@@ -23,6 +23,22 @@
 			</div>
 		</div>
 
+		<details class="secondary-indicators">
+			<summary>{{ t('empleados', 'More indicators') }}</summary>
+			<div class="kpi-grid kpi-grid--secondary">
+				<div v-for="card in secondaryCards" :key="card.key" class="kpi-card">
+					<div class="metric-label">
+						<span>{{ card.label }}</span>
+						<HelpHint
+							v-if="card.hint"
+							:label="card.hintLabel"
+							:text="card.hint" />
+					</div>
+					<strong>{{ card.value }}</strong>
+				</div>
+			</div>
+		</details>
+
 		<p class="cost-note">
 			{{ t('empleados', 'Estimated costs are calculated using the hourly cost configured for each employee.') }}
 		</p>
@@ -33,7 +49,7 @@
 			:name="t('empleados', 'No employees are available in your scope.')"
 			:description="t('empleados', 'There is no cost or availability information to display for the selected period.')" />
 
-		<div class="charts-grid">
+		<div v-else class="charts-grid">
 			<article class="chart-card chart-card--wide">
 				<div class="chart-heading">
 					<div>
@@ -228,6 +244,20 @@ export default {
 					value: this.integer(this.insufficientInformationCount),
 				},
 			]
+		},
+		primaryCards() {
+			const primaryKeys = new Set([
+				'leaders',
+				'companies',
+				'total-hours',
+				'total-cost',
+			])
+
+			return this.cards.filter(card => primaryKeys.has(card.key))
+		},
+		secondaryCards() {
+			const primaryKeys = new Set(this.primaryCards.map(card => card.key))
+			return this.cards.filter(card => !primaryKeys.has(card.key))
 		},
 		leaderChartRows() {
 			const rows = this.leaders
@@ -606,6 +636,10 @@ export default {
 	gap: 16px;
 }
 
+.kpi-grid--primary {
+	grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
 .kpi-card {
 	display: flex;
 	min-height: 92px;
@@ -618,6 +652,43 @@ export default {
 
 	strong {
 		font-size: 1.45rem;
+	}
+}
+
+.kpi-card--primary {
+	min-height: 108px;
+
+	strong {
+		font-size: 1.65rem;
+	}
+}
+
+.secondary-indicators {
+	margin-top: 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+
+	> summary {
+		min-height: 46px;
+		padding: 12px 16px;
+		cursor: pointer;
+		font-weight: 600;
+	}
+
+	&[open] > summary {
+		border-bottom: 1px solid var(--color-border);
+	}
+}
+
+.kpi-grid--secondary {
+	grid-template-columns: repeat(3, minmax(170px, 1fr));
+	padding: 16px;
+
+	.kpi-card {
+		min-height: 82px;
+		padding: 14px;
+		background: var(--color-background-hover);
 	}
 }
 
@@ -700,6 +771,11 @@ export default {
 
 	.charts-grid {
 		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.kpi-grid--primary,
+	.kpi-grid--secondary {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.chart-card--wide {

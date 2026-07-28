@@ -91,6 +91,10 @@ class reportetiempoMapper extends QBMapper {
 			->leftJoin('c', 'empleados_rep_tiempos', 'r', $reportJoin)
 			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
 			->where($qb->expr()->isNotNull('c.lider_proyecto'))
+			->andWhere($qb->expr()->neq(
+				'c.id',
+				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
+			))
 			->andWhere($qb->expr()->gt(
 				'c.lider_proyecto',
 				$qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)
@@ -291,6 +295,32 @@ class reportetiempoMapper extends QBMapper {
 			->where($qb->expr()->in(
 				'id_actividad',
 				$qb->createNamedParameter($idActividades, IQueryBuilder::PARAM_INT_ARRAY)
+			))
+			->orderBy('nombre', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static function (array $row): array {
+			return [
+				'id_actividad' => (int)($row['id_actividad'] ?? 0),
+				'nombre' => (string)($row['nombre'] ?? ''),
+				'cargable' => (int)($row['cargable'] ?? 0),
+			];
+		}, $rows);
+	}
+
+	/**
+	 * Catálogo mínimo de actividades para el módulo de Costos.
+	 */
+	public function getCostosActividadesDisponibles(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id_actividad', 'nombre', 'cargable')
+			->from('empleados_actividades')
+			->where($qb->expr()->neq(
+				'id_actividad',
+				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
 			))
 			->orderBy('nombre', 'ASC');
 

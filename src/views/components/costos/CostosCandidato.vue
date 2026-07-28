@@ -49,7 +49,12 @@
 
 			<div class="candidate-card__score">
 				<div class="candidate-card__metric-heading">
-					<span>{{ t('empleados', 'Estimated occupation') }}</span>
+					<span class="candidate-card__label-with-help">
+						{{ t('empleados', 'Estimated occupation') }}
+						<HelpHint
+							:label="t('empleados', 'About estimated occupancy')"
+							:text="t('empleados', 'Percentage of effective capacity already used by reported hours during the selected period.')" />
+					</span>
 					<strong>{{ occupationLabel }}</strong>
 				</div>
 				<div
@@ -64,147 +69,154 @@
 			</div>
 		</section>
 
-		<div class="candidate-card__groups">
-			<section class="candidate-card__group">
-				<h4>
-					<span class="candidate-card__label-with-help">
-						{{ t('empleados', 'Estimated availability') }}
-						<HelpHint
-							:label="t('empleados', 'About estimated availability')"
-							:text="t('empleados', 'Calculated from working days, configured daily hours, approved absences and reported hours. It does not include future project commitments.')" />
-					</span>
-				</h4>
+		<details class="candidate-card__details">
+			<summary>{{ t('empleados', 'Capacity and experience details') }}</summary>
+			<div class="candidate-card__groups">
+				<section class="candidate-card__group">
+					<h4>
+						<span class="candidate-card__label-with-help">
+							{{ t('empleados', 'Estimated availability') }}
+							<HelpHint
+								:label="t('empleados', 'About estimated availability')"
+								:text="t('empleados', 'Calculated from working days, configured daily hours, approved absences and reported hours. It does not include future project commitments.')" />
+						</span>
+					</h4>
 
-				<p v-if="!capacityCalculable" class="candidate-card__notice">
-					{{ t('empleados', 'Daily reference hours are not configured, so availability cannot be calculated.') }}
-				</p>
+					<p v-if="!capacityCalculable" class="candidate-card__notice">
+						{{ t('empleados', 'Daily reference hours are not configured, so availability cannot be calculated.') }}
+					</p>
 
-				<dl class="candidate-card__facts">
-					<div>
-						<dt>{{ t('empleados', 'Working hours in period') }}</dt>
-						<dd>{{ hoursValue(periodHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Effective capacity') }}</dt>
-						<dd>{{ hoursValue(effectiveCapacity) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Reported hours in period') }}</dt>
-						<dd>{{ hoursValue(reportedHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Approved absence hours') }}</dt>
-						<dd>{{ hoursValue(absenceHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Estimated availability') }}</dt>
-						<dd>{{ hoursValue(estimatedAvailability) }}</dd>
-					</div>
-					<div v-if="requiredHours > 0">
-						<dt>{{ t('empleados', 'Required hours') }}</dt>
-						<dd>{{ hoursValue(requiredHours) }}</dd>
+					<dl class="candidate-card__facts">
+						<div>
+							<dt>{{ t('empleados', 'Working hours in period') }}</dt>
+							<dd>{{ hoursValue(periodHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Effective capacity') }}</dt>
+							<dd>{{ hoursValue(effectiveCapacity) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Reported hours in period') }}</dt>
+							<dd>{{ hoursValue(reportedHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Approved absence hours') }}</dt>
+							<dd>{{ hoursValue(absenceHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Estimated availability') }}</dt>
+							<dd>{{ hoursValue(estimatedAvailability) }}</dd>
+						</div>
+						<div v-if="requiredHours > 0">
+							<dt>{{ t('empleados', 'Required hours') }}</dt>
+							<dd>{{ hoursValue(requiredHours) }}</dd>
+						</div>
+					</dl>
+
+					<p v-if="requirementExceedsAvailability" class="candidate-card__warning">
+						{{ t('empleados', 'Required hours exceed this employee’s estimated availability.') }}
+					</p>
+				</section>
+
+				<section class="candidate-card__group">
+					<h4>{{ t('empleados', 'Related experience') }}</h4>
+					<p class="candidate-card__context">
+						{{ selectedActivitiesLabel }}
+					</p>
+
+					<p v-if="!hasRelatedExperience" class="candidate-card__missing">
+						{{ t('empleados', 'No related time report history was found for this employee.') }}
+					</p>
+
+					<dl class="candidate-card__facts">
+						<div>
+							<dt>{{ t('empleados', 'Historical hours in selected activities') }}</dt>
+							<dd>{{ hoursValue(experienceHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Hours in selected activities over the last 12 months') }}</dt>
+							<dd>{{ hoursValue(recentExperienceHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Related time reports') }}</dt>
+							<dd>{{ integerValue(experienceReports) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Companies with related activity experience') }}</dt>
+							<dd>{{ integerValue(activityCompanies) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Previous hours with company') }}</dt>
+							<dd>{{ hoursValue(companyHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Previous billable hours with company') }}</dt>
+							<dd>{{ hoursValue(companyBillableHours) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Last report with company') }}</dt>
+							<dd>{{ dateValue(lastCompanyReport) }}</dd>
+						</div>
+					</dl>
+				</section>
+
+				<section class="candidate-card__group">
+					<h4>{{ t('empleados', 'Cost and work history') }}</h4>
+					<dl class="candidate-card__facts">
+						<div>
+							<dt>{{ t('empleados', 'Hourly cost') }}</dt>
+							<dd>{{ moneyValue(hourlyCost) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Historical billable percentage') }}</dt>
+							<dd>{{ percentValue(historicalBillablePercentage) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Companies served') }}</dt>
+							<dd>{{ integerValue(companiesServed) }}</dd>
+						</div>
+						<div>
+							<dt>{{ t('empleados', 'Activities performed with company') }}</dt>
+							<dd>{{ integerValue(companyActivities) }}</dd>
+						</div>
+					</dl>
+				</section>
+			</div>
+		</details>
+
+		<details class="candidate-card__details">
+			<summary>{{ t('empleados', 'Estimated fit breakdown') }}</summary>
+			<section class="candidate-card__breakdown">
+				<dl class="candidate-card__breakdown-grid">
+					<div v-for="factor in adjustmentBreakdown" :key="factor.key">
+						<dt>{{ factor.label }}</dt>
+						<dd>{{ factor.value }}</dd>
 					</div>
 				</dl>
-
-				<p v-if="requirementExceedsAvailability" class="candidate-card__warning">
-					{{ t('empleados', 'Required hours exceed this employee’s estimated availability.') }}
-				</p>
 			</section>
+		</details>
 
-			<section class="candidate-card__group">
-				<h4>{{ t('empleados', 'Related experience') }}</h4>
-				<p class="candidate-card__context">
-					{{ selectedActivitiesLabel }}
-				</p>
-
-				<p v-if="!hasRelatedExperience" class="candidate-card__missing">
-					{{ t('empleados', 'No related time report history was found for this employee.') }}
-				</p>
-
-				<dl class="candidate-card__facts">
-					<div>
-						<dt>{{ t('empleados', 'Historical hours in selected activities') }}</dt>
-						<dd>{{ hoursValue(experienceHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Hours in selected activities over the last 12 months') }}</dt>
-						<dd>{{ hoursValue(recentExperienceHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Related time reports') }}</dt>
-						<dd>{{ integerValue(experienceReports) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Companies with related activity experience') }}</dt>
-						<dd>{{ integerValue(activityCompanies) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Previous hours with company') }}</dt>
-						<dd>{{ hoursValue(companyHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Previous billable hours with company') }}</dt>
-						<dd>{{ hoursValue(companyBillableHours) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Last report with company') }}</dt>
-						<dd>{{ dateValue(lastCompanyReport) }}</dd>
-					</div>
-				</dl>
-			</section>
-
-			<section class="candidate-card__group">
-				<h4>{{ t('empleados', 'Cost and work history') }}</h4>
-				<dl class="candidate-card__facts">
-					<div>
-						<dt>{{ t('empleados', 'Hourly cost') }}</dt>
-						<dd>{{ moneyValue(hourlyCost) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Historical billable percentage') }}</dt>
-						<dd>{{ percentValue(historicalBillablePercentage) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Companies served') }}</dt>
-						<dd>{{ integerValue(companiesServed) }}</dd>
-					</div>
-					<div>
-						<dt>{{ t('empleados', 'Activities performed with company') }}</dt>
-						<dd>{{ integerValue(companyActivities) }}</dd>
-					</div>
-				</dl>
-			</section>
-		</div>
-
-		<section class="candidate-card__breakdown">
-			<h4>{{ t('empleados', 'Estimated fit breakdown') }}</h4>
-			<dl class="candidate-card__breakdown-grid">
-				<div v-for="factor in adjustmentBreakdown" :key="factor.key">
-					<dt>{{ factor.label }}</dt>
-					<dd>{{ factor.value }}</dd>
-				</div>
-			</dl>
-		</section>
-
-		<div v-if="translatedStrengths.length || translatedRisks.length" class="candidate-card__signals">
-			<section v-if="translatedStrengths.length" class="candidate-card__signal candidate-card__signal--strength">
-				<h4>{{ t('empleados', 'Supporting factors') }}</h4>
+		<details v-if="translatedStrengths.length" class="candidate-card__details">
+			<summary>{{ t('empleados', 'Supporting factors') }}</summary>
+			<section class="candidate-card__signal candidate-card__signal--strength">
 				<ul>
 					<li v-for="strength in translatedStrengths" :key="strength">
 						{{ strength }}
 					</li>
 				</ul>
 			</section>
+		</details>
 
-			<section v-if="translatedRisks.length" class="candidate-card__signal candidate-card__signal--risk">
-				<h4>{{ t('empleados', 'Planning alerts') }}</h4>
+		<details v-if="translatedRisks.length" class="candidate-card__details" open>
+			<summary>{{ t('empleados', 'Planning alerts') }}</summary>
+			<section class="candidate-card__signal candidate-card__signal--risk">
 				<ul>
 					<li v-for="risk in translatedRisks" :key="risk">
 						{{ risk }}
 					</li>
 				</ul>
 			</section>
-		</div>
+		</details>
 
 		<footer class="candidate-card__footer">
 			<p>{{ t('empleados', 'This analysis supports planning and does not make the final staffing decision.') }}</p>
@@ -758,6 +770,33 @@ export default {
 
 .candidate-card__signal--risk {
 	border-inline-start-color: var(--color-warning);
+}
+
+.candidate-card__details {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+
+	> summary {
+		min-height: 44px;
+		padding: 11px 14px;
+		cursor: pointer;
+		font-weight: 600;
+	}
+
+	&[open] > summary {
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	> .candidate-card__groups {
+		padding: 14px;
+	}
+
+	> .candidate-card__breakdown,
+	> .candidate-card__signal {
+		border: 0;
+		border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
+	}
 }
 
 .candidate-card__footer {

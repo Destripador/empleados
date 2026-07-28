@@ -43,6 +43,10 @@ class reportetiempoController extends BaseController {
 	private const ID_CLIENTE_AUSENCIA   = 99999;
     private const ID_ACTIVIDAD_CARGABLE = 99999;
 	private const MAX_HORAS_PLANIFICACION = 10000000.0;
+	private const MAX_DIAS_PLANIFICACION = 366;
+	private const MAX_ACTIVIDADES_PLANIFICACION = 100;
+	private const MIN_ANIO_COSTOS = 1;
+	private const MAX_ANIO_COSTOS = 9999;
 	protected $userManager;
     protected $reportetiempoMapper;
     protected $clientesMapper;
@@ -424,6 +428,23 @@ class reportetiempoController extends BaseController {
 			return $denied;
 		}
 
+		if ($anio !== null) {
+			$anioValidado = filter_var($anio, FILTER_VALIDATE_INT, [
+				'options' => [
+					'min_range' => self::MIN_ANIO_COSTOS,
+					'max_range' => self::MAX_ANIO_COSTOS,
+				],
+			]);
+
+			if ($anioValidado === false) {
+				return new DataResponse([
+					'error' => 'El año seleccionado no es válido.',
+				], Http::STATUS_BAD_REQUEST);
+			}
+
+			$anio = (int)$anioValidado;
+		}
+
 		$empleadosVisibles = $this->getEmpleadosVisiblesBasico();
 		$idEmpleadosVisibles = array_values(array_unique(array_filter(array_map(
 			static function ($empleado) {
@@ -500,6 +521,26 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
+	 * Catálogo mínimo de actividades disponible para el módulo de Costos.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetCostosActividades(): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		$denied = $this->denyIfNoAdminReportsAccess();
+
+		if ($denied !== null) {
+			return $denied;
+		}
+
+		return new DataResponse(
+			$this->reportetiempoMapper->getCostosActividadesDisponibles(),
+			Http::STATUS_OK
+		);
+	}
+
+	/**
 	 * Analiza candidatos visibles para un proyecto tentativo.
 	 */
 	#[UseSession]
@@ -527,9 +568,19 @@ class reportetiempoController extends BaseController {
 			], Http::STATUS_BAD_REQUEST);
 		}
 
+		$diasCalendario = $inicio->diff($fin)->days;
+
+		if (
+			$diasCalendario === false
+			|| $diasCalendario + 1 > self::MAX_DIAS_PLANIFICACION
+		) {
+			return new DataResponse([
+				'error' => 'El periodo de planificación no puede exceder 366 días.',
+			], Http::STATUS_BAD_REQUEST);
+		}
+
 		$fechaInicio = $inicio->format('Y-m-d');
 		$fechaFin = $fin->format('Y-m-d');
-		$diasLaborales = $this->contarDiasLaboralesCostos($fechaInicio, $fechaFin);
 		$horasDiarias = $this->getCostosHorasDiarias();
 		$idEmpleadosVisibles = $this->getIdsEmpleadosVisiblesCostos();
 
@@ -538,7 +589,7 @@ class reportetiempoController extends BaseController {
 				'periodo' => [
 					'fecha_inicio' => $fechaInicio,
 					'fecha_fin' => $fechaFin,
-					'dias_laborales' => $diasLaborales,
+					'dias_laborales' => 0,
 					'horas_diarias' => $horasDiarias,
 				],
 				'empresa' => null,
@@ -550,6 +601,7 @@ class reportetiempoController extends BaseController {
 			], Http::STATUS_OK);
 		}
 
+		$diasLaborales = $this->contarDiasLaboralesCostos($fechaInicio, $fechaFin);
 		$idCliente = filter_var($id_cliente, FILTER_VALIDATE_INT);
 
 		if ($idCliente === false || (int)$idCliente <= 0 || (int)$idCliente === self::ID_CLIENTE_AUSENCIA) {
@@ -579,7 +631,14 @@ class reportetiempoController extends BaseController {
 			], Http::STATUS_BAD_REQUEST);
 		}
 
+		if (count($actividades) > self::MAX_ACTIVIDADES_PLANIFICACION) {
+			return new DataResponse([
+				'error' => 'No se pueden analizar más de 100 actividades por proyecto.',
+			], Http::STATUS_BAD_REQUEST);
+		}
+
 		$horasPorActividad = [];
+		$totalHorasEstimadas = 0.0;
 
 		foreach ($actividades as $actividad) {
 			if (!is_array($actividad)) {
@@ -607,18 +666,22 @@ class reportetiempoController extends BaseController {
 			}
 
 			$idActividad = (int)$idActividadRaw;
-			$horasPorActividad[$idActividad] = ($horasPorActividad[$idActividad] ?? 0.0)
+			$horasActividad = ($horasPorActividad[$idActividad] ?? 0.0)
 				+ (float)$horasRaw;
+			$totalHorasEstimadas += (float)$horasRaw;
 
 			if (
-				!is_finite($horasPorActividad[$idActividad])
-				|| $horasPorActividad[$idActividad] > self::MAX_HORAS_PLANIFICACION
-				|| array_sum($horasPorActividad) > self::MAX_HORAS_PLANIFICACION
+				!is_finite($horasActividad)
+				|| $horasActividad > self::MAX_HORAS_PLANIFICACION
+				|| !is_finite($totalHorasEstimadas)
+				|| $totalHorasEstimadas > self::MAX_HORAS_PLANIFICACION
 			) {
 				return new DataResponse([
 					'error' => 'El total de horas estimadas no es válido.',
 				], Http::STATUS_BAD_REQUEST);
 			}
+
+			$horasPorActividad[$idActividad] = $horasActividad;
 		}
 
 		$actividadesValidas = $this->reportetiempoMapper->getCostosActividades(
@@ -644,7 +707,7 @@ class reportetiempoController extends BaseController {
 			},
 			$actividadesValidas
 		);
-		$horasEstimadas = array_sum($horasPorActividad);
+		$horasEstimadas = $totalHorasEstimadas;
 		$candidatos = $this->construirCostosCandidatos(
 			$idEmpleadosVisibles,
 			$fechaInicio,
@@ -1224,6 +1287,35 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
+	 * Cuenta lunes a viernes en tiempo constante para rangos persistidos que
+	 * podrían contener fechas anómalamente distantes.
+	 */
+	private function contarDiasLaboralesPersistidosCostos(
+		\DateTimeImmutable $inicio,
+		\DateTimeImmutable $fin
+	): int {
+		if ($inicio > $fin) {
+			return 0;
+		}
+
+		$diasCalendario = (int)$inicio->diff($fin)->days + 1;
+		$semanasCompletas = intdiv($diasCalendario, 7);
+		$diasLaborales = $semanasCompletas * 5;
+		$diasRestantes = $diasCalendario % 7;
+		$diaSemanaInicial = (int)$inicio->format('N');
+
+		for ($offset = 0; $offset < $diasRestantes; $offset++) {
+			$diaSemana = (($diaSemanaInicial - 1 + $offset) % 7) + 1;
+
+			if ($diaSemana <= 5) {
+				$diasLaborales++;
+			}
+		}
+
+		return $diasLaborales;
+	}
+
+	/**
 	 * Construye el análisis completo con un número fijo de consultas agregadas.
 	 */
 	private function construirCostosCandidatos(
@@ -1367,9 +1459,9 @@ class reportetiempoController extends BaseController {
 				continue;
 			}
 
-			$diasCompletos = $this->contarDiasLaboralesCostos(
-				$inicioAusencia->format('Y-m-d'),
-				$finAusencia->format('Y-m-d')
+			$diasCompletos = $this->contarDiasLaboralesPersistidosCostos(
+				$inicioAusencia,
+				$finAusencia
 			);
 			$diasSolicitados = (float)($ausencia['dias_solicitados'] ?? 0);
 			$fraccionDiaria = 1.0;
@@ -1388,7 +1480,7 @@ class reportetiempoController extends BaseController {
 			while ($cursor <= $finSolapado) {
 				$fecha = $cursor->format('Y-m-d');
 
-				if ($this->contarDiasLaboralesCostos($fecha, $fecha) === 1) {
+				if ((int)$cursor->format('N') <= 5) {
 					$fraccionExistente = $fraccionesAusenciaPorEmpleado[$idEmpleado][$fecha]
 						?? 0.0;
 					$fraccionesAusenciaPorEmpleado[$idEmpleado][$fecha] = min(

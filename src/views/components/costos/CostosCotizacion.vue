@@ -18,14 +18,17 @@
 					<button
 						v-for="item in scenarioSummaries"
 						:id="`cost-scenario-tab-${item.key}`"
+						ref="scenarioTabs"
 						:key="item.key"
 						type="button"
 						role="tab"
 						class="scenario-tab"
 						:class="{ 'scenario-tab--active': item.isActive }"
 						:aria-selected="item.isActive ? 'true' : 'false'"
-						:aria-controls="item.isActive ? 'cost-scenario-panel' : null"
-						@click="$emit('select-scenario', item.scenario.id)">
+						aria-controls="cost-scenario-panel"
+						:tabindex="item.isActive ? 0 : -1"
+						@click="selectScenario(item.scenario.id)"
+						@keydown="onScenarioTabKeydown($event, item.scenario.id)">
 						{{ item.name }}
 					</button>
 				</div>
@@ -37,90 +40,97 @@
 				class="scenario-panel"
 				role="tabpanel"
 				:aria-labelledby="`cost-scenario-tab-${activeSummary.key}`">
-				<div class="scenario-actions">
-					<label class="rename-field">
-						<span>{{ t('empleados', 'Scenario name') }}</span>
-						<input
-							type="text"
-							:value="activeSummary.name"
-							:aria-label="t('empleados', 'Scenario name')"
-							@change="renameScenario(activeScenario, $event.target.value)">
-					</label>
+				<section
+					class="quotation-section quotation-section--configuration"
+					:aria-labelledby="`scenario-configuration-title-${activeSummary.key}`">
+					<h3 :id="`scenario-configuration-title-${activeSummary.key}`">
+						{{ t('empleados', 'Scenario configuration') }}
+					</h3>
+					<div class="scenario-actions">
+						<label class="rename-field">
+							<span>{{ t('empleados', 'Scenario name') }}</span>
+							<input
+								type="text"
+								:value="activeSummary.name"
+								:aria-label="t('empleados', 'Scenario name')"
+								@change="renameScenario(activeScenario, $event.target.value)">
+						</label>
 
-					<div class="scenario-action-buttons">
-						<NcButton
-							:disabled="scenarioSummaries.length >= 3"
-							:aria-label="t('empleados', 'Duplicate scenario')"
-							@click="$emit('duplicate-scenario', activeScenario.id)">
-							<template #icon>
-								<ContentCopy :size="20" />
-							</template>
-							{{ t('empleados', 'Duplicate') }}
-						</NcButton>
-						<NcButton
-							type="error"
-							:disabled="scenarioSummaries.length <= 1"
-							:aria-label="t('empleados', 'Delete scenario')"
-							@click="$emit('delete-scenario', activeScenario.id)">
-							<template #icon>
-								<DeleteOutline :size="20" />
-							</template>
-							{{ t('empleados', 'Delete') }}
-						</NcButton>
+						<div class="scenario-action-buttons">
+							<NcButton
+								:disabled="scenarioSummaries.length >= 3"
+								:aria-label="t('empleados', 'Duplicate scenario')"
+								@click="$emit('duplicate-scenario', activeScenario.id)">
+								<template #icon>
+									<ContentCopy :size="20" />
+								</template>
+								{{ t('empleados', 'Duplicate') }}
+							</NcButton>
+							<NcButton
+								type="error"
+								:disabled="scenarioSummaries.length <= 1"
+								:aria-label="t('empleados', 'Delete scenario')"
+								@click="$emit('delete-scenario', activeScenario.id)">
+								<template #icon>
+									<DeleteOutline :size="20" />
+								</template>
+								{{ t('empleados', 'Delete') }}
+							</NcButton>
+						</div>
 					</div>
-				</div>
 
-				<div class="scenario-heading">
-					<div class="heading-item">
-						<span>{{ t('empleados', 'Company or group') }}</span>
-						<strong>{{ companyName(activeScenario) }}</strong>
-					</div>
-					<div class="heading-item">
-						<span>{{ t('empleados', 'Period') }}</span>
-						<strong>{{ scenarioPeriod(activeScenario) }}</strong>
-					</div>
-					<div class="heading-item">
-						<span>{{ t('empleados', 'Project leader') }}</span>
-						<strong>{{ leaderName(activeScenario) }}</strong>
-					</div>
-					<div class="heading-item">
-						<span>{{ t('empleados', 'Required hours') }}</span>
-						<strong>{{ formatHours(activeSummary.requiredHours) }}</strong>
-					</div>
-					<div class="heading-item">
-						<span>{{ t('empleados', 'Assigned hours') }}</span>
-						<strong>{{ formatHours(activeSummary.assignedHours) }}</strong>
-					</div>
-				</div>
+					<dl class="scenario-heading">
+						<div class="heading-item">
+							<dt>{{ t('empleados', 'Company or group') }}</dt>
+							<dd>{{ companyName(activeScenario) }}</dd>
+						</div>
+						<div class="heading-item">
+							<dt>{{ t('empleados', 'Period') }}</dt>
+							<dd>{{ scenarioPeriod(activeScenario) }}</dd>
+						</div>
+						<div class="heading-item">
+							<dt>{{ t('empleados', 'Project leader') }}</dt>
+							<dd>{{ leaderName(activeScenario) }}</dd>
+						</div>
+						<div class="heading-item">
+							<dt>{{ t('empleados', 'Required hours') }}</dt>
+							<dd>{{ formatHours(activeSummary.requiredHours) }}</dd>
+						</div>
+						<div class="heading-item">
+							<dt>{{ t('empleados', 'Assigned hours') }}</dt>
+							<dd>{{ formatHours(activeSummary.assignedHours) }}</dd>
+						</div>
+					</dl>
 
-				<div class="financial-inputs">
-					<label>
-						<span>{{ t('empleados', 'Proposed price') }}</span>
-						<input
-							type="number"
-							min="0"
-							step="0.01"
-							:value="activeSummary.price"
-							@input="updateFinancialField('price', $event.target.value)">
-					</label>
-					<label>
-						<span class="label-with-help">
-							{{ t('empleados', 'Contingency') }}
-							<HelpHint
-								:label="t('empleados', 'About contingency')"
-								:text="t('empleados', 'Additional percentage added to estimated personnel cost to account for uncertainty.')" />
-						</span>
-						<span class="percentage-input">
+					<div class="financial-inputs">
+						<label>
+							<span>{{ t('empleados', 'Proposed price') }}</span>
 							<input
 								type="number"
 								min="0"
 								step="0.01"
-								:value="activeSummary.contingencyPercentage"
-								@input="updateFinancialField('contingency', $event.target.value)">
-							<span aria-hidden="true">%</span>
-						</span>
-					</label>
-				</div>
+								:value="activeSummary.price"
+								@input="updateFinancialField('price', $event.target.value)">
+						</label>
+						<label>
+							<span class="label-with-help">
+								{{ t('empleados', 'Contingency') }}
+								<HelpHint
+									:label="t('empleados', 'About contingency')"
+									:text="t('empleados', 'Additional percentage added to estimated personnel cost to account for uncertainty.')" />
+							</span>
+							<span class="percentage-input">
+								<input
+									type="number"
+									min="0"
+									step="0.01"
+									:value="activeSummary.contingencyPercentage"
+									@input="updateFinancialField('contingency', $event.target.value)">
+								<span aria-hidden="true">%</span>
+							</span>
+						</label>
+					</div>
+				</section>
 
 				<section class="team-section" :aria-labelledby="`team-title-${activeSummary.key}`">
 					<div class="section-title">
@@ -132,7 +142,12 @@
 						</div>
 					</div>
 
-					<div v-if="activeSummary.team.length > 0" class="table-scroll">
+					<div
+						v-if="activeSummary.team.length > 0"
+						class="table-scroll"
+						role="region"
+						tabindex="0"
+						:aria-label="t('empleados', 'Tentative team')">
 						<table class="team-table">
 							<thead>
 								<tr>
@@ -185,13 +200,13 @@
 							</thead>
 							<tbody>
 								<tr v-for="(member, memberIndex) in activeSummary.team" :key="memberKey(member, memberIndex)">
-									<td>
+									<td :data-label="t('empleados', 'Employee')">
 										<div class="employee-cell">
 											<strong>{{ memberName(member) }}</strong>
 											<span class="employee-cell__uid">{{ memberUid(member) }}</span>
 										</div>
 									</td>
-									<td>
+									<td :data-label="t('empleados', 'Role')">
 										<label class="visually-hidden" :for="`member-role-${memberKey(member, memberIndex)}`">
 											{{ t('empleados', 'Role for {employee}', { employee: memberName(member) }) }}
 										</label>
@@ -202,7 +217,7 @@
 											:value="memberRole(member)"
 											@input="updateMember(memberIndex, 'rol', $event.target.value)">
 									</td>
-									<td>
+									<td :data-label="t('empleados', 'Activities')">
 										<details v-if="scenarioActivities(activeScenario).length > 0" class="activity-picker">
 											<summary>
 												{{ t('empleados', '{count} selected', { count: memberActivityCount(member) }) }}
@@ -221,7 +236,7 @@
 										</details>
 										<span v-else>—</span>
 									</td>
-									<td>
+									<td :data-label="t('empleados', 'Assigned hours')">
 										<label class="visually-hidden" :for="`member-hours-${memberKey(member, memberIndex)}`">
 											{{ t('empleados', 'Assigned hours for {employee}', { employee: memberName(member) }) }}
 										</label>
@@ -234,11 +249,19 @@
 											:value="memberAssignedHours(member)"
 											@input="updateMember(memberIndex, 'horas_estimadas', normalizedNonNegative($event.target.value))">
 									</td>
-									<td>{{ formatNullableHours(memberAvailability(member)) }}</td>
-									<td>{{ formatNullableMoney(memberHourlyCost(member)) }}</td>
-									<td>{{ formatNullableMoney(memberEstimatedCost(member)) }}</td>
-									<td>{{ formatNullablePercentage(memberResultingOccupancy(member)) }}</td>
-									<td>
+									<td :data-label="t('empleados', 'Estimated availability')">
+										{{ formatNullableHours(memberAvailability(member)) }}
+									</td>
+									<td :data-label="t('empleados', 'Cost per hour')">
+										{{ formatNullableMoney(memberHourlyCost(member)) }}
+									</td>
+									<td :data-label="t('empleados', 'Estimated cost')">
+										{{ formatNullableMoney(memberEstimatedCost(member)) }}
+									</td>
+									<td :data-label="t('empleados', 'Resulting occupancy')">
+										{{ formatNullablePercentage(memberResultingOccupancy(member)) }}
+									</td>
+									<td :data-label="t('empleados', 'Alerts')">
 										<ul v-if="memberAlertKeys(member).length > 0" class="alert-list">
 											<li v-for="(alert, alertIndex) in memberAlertKeys(member)" :key="`${alert}-${alertIndex}`">
 												<AlertOutline :size="16" aria-hidden="true" />
@@ -250,7 +273,7 @@
 											{{ t('empleados', 'No alerts') }}
 										</span>
 									</td>
-									<td>
+									<td :data-label="t('empleados', 'Remove')">
 										<NcButton
 											type="tertiary-no-background"
 											:aria-label="t('empleados', 'Remove {employee} from scenario', { employee: memberName(member) })"
@@ -296,10 +319,24 @@
 						</div>
 					</div>
 
+					<div
+						v-if="activeSummary.hasUnknownCosts"
+						class="financial-notice"
+						role="status">
+						<AlertOutline :size="20" aria-hidden="true" />
+						<div>
+							<strong>{{ t('empleados', 'Cost calculation incomplete') }}</strong>
+							<p>{{ t('empleados', 'Complete the missing hourly costs to calculate reliable totals, profit and margin.') }}</p>
+						</div>
+					</div>
+					<p v-else-if="activeSummary.price <= 0" class="financial-guidance">
+						{{ t('empleados', 'Enter a proposed price to calculate estimated profit and margin.') }}
+					</p>
+
 					<div class="financial-grid">
 						<article class="metric-card">
 							<span>{{ t('empleados', 'Personnel cost') }}</span>
-							<strong>{{ formatMoney(activeSummary.personnelCost) }}</strong>
+							<strong>{{ formatNullableMoney(activeSummary.personnelCost) }}</strong>
 						</article>
 						<article class="metric-card">
 							<span class="label-with-help">
@@ -308,7 +345,7 @@
 									:label="t('empleados', 'About contingency')"
 									:text="t('empleados', 'Additional percentage added to estimated personnel cost to account for uncertainty.')" />
 							</span>
-							<strong>{{ formatMoney(activeSummary.contingencyAmount) }}</strong>
+							<strong>{{ formatNullableMoney(activeSummary.contingencyAmount) }}</strong>
 						</article>
 						<article class="metric-card">
 							<span class="label-with-help">
@@ -317,7 +354,7 @@
 									:label="t('empleados', 'About estimated cost')"
 									:text="t('empleados', 'Calculated from estimated personnel cost plus contingency.')" />
 							</span>
-							<strong>{{ formatMoney(activeSummary.totalCost) }}</strong>
+							<strong>{{ formatNullableMoney(activeSummary.totalCost) }}</strong>
 						</article>
 						<article class="metric-card">
 							<span class="label-with-help">
@@ -372,7 +409,11 @@
 						</div>
 					</div>
 
-					<div class="table-scroll">
+					<div
+						class="table-scroll"
+						role="region"
+						tabindex="0"
+						:aria-label="t('empleados', 'Scenario comparison')">
 						<table class="comparison-table">
 							<thead>
 								<tr>
@@ -392,7 +433,7 @@
 										{{ t('empleados', 'Total estimated cost') }}
 									</th>
 									<td v-for="item in scenarioSummaries" :key="item.key">
-										{{ formatMoney(item.totalCost) }}
+										{{ formatNullableMoney(item.totalCost) }}
 									</td>
 								</tr>
 								<tr>
@@ -558,6 +599,44 @@ export default {
 		sameId(first, second) {
 			return String(first) === String(second)
 		},
+		selectScenario(id) {
+			this.$emit('select-scenario', id)
+		},
+		onScenarioTabKeydown(event, currentId) {
+			const currentIndex = this.scenarioSummaries.findIndex(item => (
+				this.sameId(item.scenario.id, currentId)
+			))
+			const lastIndex = this.scenarioSummaries.length - 1
+			let nextIndex = currentIndex
+
+			switch (event.key) {
+			case 'ArrowRight':
+				nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1
+				break
+			case 'ArrowLeft':
+				nextIndex = currentIndex <= 0 ? lastIndex : currentIndex - 1
+				break
+			case 'Home':
+				nextIndex = 0
+				break
+			case 'End':
+				nextIndex = lastIndex
+				break
+			default:
+				return
+			}
+
+			event.preventDefault()
+			const nextScenario = this.scenarioSummaries[nextIndex]
+			if (!nextScenario) {
+				return
+			}
+
+			this.selectScenario(nextScenario.scenario.id)
+			this.$nextTick(() => {
+				this.$refs.scenarioTabs?.[nextIndex]?.focus()
+			})
+		},
 		toNumber(value, fallback = 0) {
 			const number = Number(value)
 			return Number.isFinite(number) ? number : fallback
@@ -625,17 +704,25 @@ export default {
 		},
 		buildScenarioSummary(scenario, index) {
 			const team = this.scenarioTeam(scenario)
-			const personnelCost = team.reduce(
-				(total, member) => total + (this.memberEstimatedCost(member) ?? 0),
-				0,
-			)
+			const memberCosts = team.map(member => this.memberEstimatedCost(member))
+			const hasUnknownCosts = team.some((member, memberIndex) => (
+				this.memberAssignedHours(member) > 0
+						&& memberCosts[memberIndex] === null
+			))
+			const personnelCost = hasUnknownCosts
+				? null
+				: memberCosts.reduce((total, cost) => total + (cost ?? 0), 0)
 			const assignedHours = team.reduce((total, member) => total + this.memberAssignedHours(member), 0)
 			const contingencyPercentage = this.scenarioContingency(scenario)
-			const contingencyAmount = personnelCost * contingencyPercentage / 100
-			const totalCost = personnelCost + contingencyAmount
+			const contingencyAmount = personnelCost === null
+				? null
+				: personnelCost * contingencyPercentage / 100
+			const totalCost = personnelCost === null
+				? null
+				: personnelCost + contingencyAmount
 			const price = this.scenarioPrice(scenario)
-			const profit = price > 0 ? price - totalCost : null
-			const margin = price > 0 ? profit / price * 100 : null
+			const profit = price > 0 && totalCost !== null ? price - totalCost : null
+			const margin = price > 0 && profit !== null ? profit / price * 100 : null
 			const planningAlerts = this.scenarioPlanningAlertKeys(
 				scenario,
 				team,
@@ -652,19 +739,23 @@ export default {
 				assignedHours,
 				price,
 				contingencyPercentage,
+				hasUnknownCosts,
 				personnelCost,
 				contingencyAmount,
 				totalCost,
 				profit,
 				margin,
 				planningAlerts,
-				marginState: this.marginState(margin),
+				marginState: this.marginState(margin, hasUnknownCosts),
 				remainingAvailability: this.scenarioRemainingAvailability(scenario, team),
 				alertCount: this.scenarioAlertCount(team, planningAlerts),
 				averageExperience: this.scenarioAverageExperience(scenario, team),
 			}
 		},
-		marginState(margin) {
+		marginState(margin, hasUnknownCosts = false) {
+			if (hasUnknownCosts) {
+				return 'incomplete'
+			}
 			if (margin === null) {
 				return 'none'
 			}
@@ -684,6 +775,8 @@ export default {
 				return t('empleados', 'Low margin')
 			case 'negative':
 				return t('empleados', 'Negative margin')
+			case 'incomplete':
+				return t('empleados', 'Incomplete cost information')
 			default:
 				return t('empleados', 'No proposed price')
 			}
@@ -797,7 +890,20 @@ export default {
 			})
 		},
 		memberAlertKeys(member) {
+			const dynamicCandidateAlerts = new Set([
+				'horas_superan_disponibilidad',
+				'assigned_hours_exceed_availability',
+				'availability_exceeded',
+				'ocupacion_supera_100',
+				'occupation_above_100',
+				'occupation_over_100',
+				'ocupacion_supera_90',
+				'occupation_above_90',
+				'occupation_over_90',
+			])
 			const alerts = this.memberRawAlerts(member)
+				.filter(alert => !dynamicCandidateAlerts.has(alert))
+				.map(alert => this.normalizedAlertKey(alert))
 			const availability = this.memberAvailability(member)
 			const assignedHours = this.memberAssignedHours(member)
 			const occupancy = this.memberResultingOccupancy(member)
@@ -819,7 +925,23 @@ export default {
 				alerts.push('capacity_unavailable')
 			}
 
-			return [...new Set(alerts)]
+			return [...new Set(alerts.map(alert => this.normalizedAlertKey(alert)))]
+		},
+		normalizedAlertKey(alert) {
+			const aliases = {
+				assigned_hours_exceed_availability: 'availability_exceeded',
+				horas_superan_disponibilidad: 'availability_exceeded',
+				occupation_above_100: 'occupation_over_100',
+				ocupacion_supera_100: 'occupation_over_100',
+				occupation_above_90: 'occupation_over_90',
+				ocupacion_supera_90: 'occupation_over_90',
+				no_activity_experience: 'sin_experiencia_actividades',
+				missing_hourly_cost: 'missing_hourly_cost',
+				sin_costo_hora: 'missing_hourly_cost',
+				capacidad_no_calculable: 'capacity_unavailable',
+			}
+
+			return aliases[alert] || alert
 		},
 		alertLabel(alert) {
 			switch (alert) {
@@ -1056,7 +1178,7 @@ export default {
 
 <style scoped lang="scss">
 .cost-quotation {
-	padding: 32px;
+	padding: 4px 0 24px;
 	color: var(--color-main-text);
 }
 
@@ -1074,6 +1196,10 @@ export default {
 .section-title h3,
 .section-title p {
 	margin: 0;
+}
+
+.quotation-toolbar {
+	padding: 8px 4px 0;
 }
 
 .eyebrow {
@@ -1100,6 +1226,8 @@ export default {
 .scenario-tab:hover,
 .scenario-tab:focus-visible {
 	background: var(--color-background-hover);
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .scenario-tab--active {
@@ -1110,6 +1238,20 @@ export default {
 
 .scenario-panel {
 	margin-top: 24px;
+}
+
+.quotation-section,
+.team-section,
+.financial-summary,
+.comparison-section {
+	padding: 24px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.quotation-section--configuration > h3 {
+	margin: 0 0 18px;
 }
 
 .scenario-actions {
@@ -1151,9 +1293,10 @@ export default {
 	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 	gap: 12px;
 	margin-top: 20px;
+	margin-bottom: 0;
+	padding: 0;
 }
 
-.heading-item,
 .metric-card {
 	display: flex;
 	min-height: 92px;
@@ -1166,7 +1309,25 @@ export default {
 	background: var(--color-main-background);
 }
 
-.heading-item span,
+.heading-item {
+	min-width: 0;
+	padding: 12px 14px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+
+	dt {
+		color: var(--color-text-maxcontrast);
+		font-size: 0.85rem;
+	}
+
+	dd {
+		margin: 4px 0 0;
+		overflow: hidden;
+		font-weight: 600;
+		text-overflow: ellipsis;
+	}
+}
+
 .metric-card > span:first-child {
 	color: var(--color-text-maxcontrast);
 }
@@ -1192,7 +1353,7 @@ export default {
 .scenario-alerts,
 .financial-summary,
 .comparison-section {
-	margin-top: 32px;
+	margin-top: 24px;
 }
 
 .section-title {
@@ -1214,6 +1375,11 @@ export default {
 	overflow-x: auto;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
+}
+
+.table-scroll:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .team-table,
@@ -1330,6 +1496,30 @@ export default {
 	}
 }
 
+.financial-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	margin-bottom: 16px;
+	padding: 12px 14px;
+	border: 1px solid var(--color-warning);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+
+	p {
+		margin: 2px 0 0;
+		color: var(--color-text-maxcontrast);
+	}
+}
+
+.financial-guidance {
+	margin: 0 0 16px;
+	padding: 11px 14px;
+	border-inline-start: 4px solid var(--color-primary-element);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
 .alert-list li,
 .scenario-alerts li,
 .status-inline,
@@ -1380,6 +1570,7 @@ export default {
 }
 
 .margin-state--none,
+.margin-state--incomplete,
 .status-inline--none {
 	color: var(--color-text-maxcontrast);
 }
@@ -1405,9 +1596,64 @@ export default {
 	border: 0;
 }
 
+@media (max-width: 900px) {
+	.team-section .table-scroll {
+		overflow: visible;
+		border: 0;
+	}
+
+	.team-table {
+		min-width: 0;
+
+		thead {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+		}
+
+		tbody {
+			display: grid;
+			gap: 14px;
+		}
+
+		tr {
+			display: block;
+			overflow: hidden;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-large);
+		}
+
+		td {
+			display: grid;
+			grid-template-columns: minmax(130px, 38%) minmax(0, 1fr);
+			align-items: start;
+			gap: 12px;
+			border-bottom: 1px solid var(--color-border);
+		}
+
+		td::before {
+			content: attr(data-label);
+			color: var(--color-text-maxcontrast);
+			font-size: 0.85rem;
+			font-weight: 600;
+		}
+
+		td:last-child {
+			border-bottom: 0;
+		}
+	}
+
+	.table-input--role,
+	.table-input--number {
+		width: 100%;
+	}
+}
+
 @media (max-width: 800px) {
 	.cost-quotation {
-		padding: 20px;
+		padding: 0 0 16px;
 	}
 
 	.quotation-toolbar,
@@ -1418,6 +1664,20 @@ export default {
 
 	.financial-inputs {
 		grid-template-columns: 1fr;
+	}
+
+	.quotation-section,
+	.team-section,
+	.financial-summary,
+	.comparison-section {
+		padding: 16px;
+	}
+}
+
+@media (max-width: 520px) {
+	.team-table td {
+		grid-template-columns: 1fr;
+		gap: 5px;
 	}
 }
 </style>

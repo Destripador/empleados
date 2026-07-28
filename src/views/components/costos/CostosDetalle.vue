@@ -25,34 +25,50 @@
 
 		<div class="table-section">
 			<h3>{{ t('empleados', 'Companies and groups') }}</h3>
-			<div class="table-scroll">
+			<div
+				class="table-scroll"
+				role="region"
+				tabindex="0"
+				:aria-label="t('empleados', 'Companies and groups')">
 				<table>
 					<thead>
 						<tr>
-							<th>
+							<th scope="col" :aria-sort="ariaSort('nombre_cliente')">
 								<button type="button" @click="sortBy('nombre_cliente')">
-									{{ t('empleados', 'Company') }} {{ sortIndicator('nombre_cliente') }}
+									{{ t('empleados', 'Company') }}
+									<span aria-hidden="true">{{ sortIndicator('nombre_cliente') }}</span>
 								</button>
 							</th>
-							<th>{{ t('empleados', 'Parent group') }}</th>
-							<th>{{ t('empleados', 'Total hours') }}</th>
-							<th>
+							<th scope="col">
+								{{ t('empleados', 'Parent group') }}
+							</th>
+							<th scope="col">
+								{{ t('empleados', 'Total hours') }}
+							</th>
+							<th scope="col" :aria-sort="ariaSort('horas_cargables')">
 								<button type="button" @click="sortBy('horas_cargables')">
-									{{ t('empleados', 'Billable hours') }} {{ sortIndicator('horas_cargables') }}
+									{{ t('empleados', 'Billable hours') }}
+									<span aria-hidden="true">{{ sortIndicator('horas_cargables') }}</span>
 								</button>
 							</th>
-							<th>{{ t('empleados', 'Non-billable hours') }}</th>
-							<th>
+							<th scope="col">
+								{{ t('empleados', 'Non-billable hours') }}
+							</th>
+							<th scope="col" :aria-sort="ariaSort('porcentaje_cargable')">
 								<button type="button" @click="sortBy('porcentaje_cargable')">
-									{{ t('empleados', 'Billable percentage') }} {{ sortIndicator('porcentaje_cargable') }}
+									{{ t('empleados', 'Billable percentage') }}
+									<span aria-hidden="true">{{ sortIndicator('porcentaje_cargable') }}</span>
 								</button>
 							</th>
-							<th>
+							<th scope="col" :aria-sort="ariaSort('costo_cargable_estimado')">
 								<button type="button" @click="sortBy('costo_cargable_estimado')">
-									{{ t('empleados', 'Estimated billable cost') }} {{ sortIndicator('costo_cargable_estimado') }}
+									{{ t('empleados', 'Estimated billable cost') }}
+									<span aria-hidden="true">{{ sortIndicator('costo_cargable_estimado') }}</span>
 								</button>
 							</th>
-							<th>{{ t('empleados', 'Status') }}</th>
+							<th scope="col">
+								{{ t('empleados', 'Status') }}
+							</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -157,6 +173,13 @@ export default {
 			}
 
 			return this.sortDirection === 'asc' ? '↑' : '↓'
+		},
+		ariaSort(key) {
+			if (this.sortKey !== key) {
+				return 'none'
+			}
+
+			return this.sortDirection === 'asc' ? 'ascending' : 'descending'
 		},
 	},
 }
