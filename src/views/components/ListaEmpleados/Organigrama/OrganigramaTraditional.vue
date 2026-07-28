@@ -54,7 +54,6 @@ import { NcEmptyContent } from '@nextcloud/vue'
 import AccountGroupOutline from 'vue-material-design-icons/AccountGroupOutline.vue'
 import OfficeBuildingOutline from 'vue-material-design-icons/OfficeBuildingOutline.vue'
 import OrganizationChart from 'vue-organization-chart'
-import 'vue-organization-chart/dist/orgchart.css'
 
 export default {
 	name: 'OrganigramaTraditional',

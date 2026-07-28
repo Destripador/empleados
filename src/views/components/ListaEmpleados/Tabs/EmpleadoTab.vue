@@ -1022,23 +1022,50 @@ export default {
 	background: var(--color-background-hover);
 }
 
-.box-chart .orgchart {
-	min-height: 10px;
+.box-chart .orgchart-container {
+	display: block;
+	width: 100%;
+	height: auto;
+	overflow: visible;
+	border: 0;
 	background: transparent;
 }
 
-.box-chart .title {
+.box-chart .orgchart {
+	min-height: 10px;
+	background: transparent;
+	background-image: none;
+}
+
+.box-chart .orgchart .node .title {
+	box-sizing: border-box;
+	width: 100%;
+	height: auto;
+	min-height: 32px;
 	padding: 6px 10px;
+	overflow: hidden;
 	border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
 	background: var(--color-primary-element);
 	color: var(--color-primary-element-text);
 	font-size: 12px;
 	font-weight: 700;
+	line-height: 20px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.box-chart .content {
+.box-chart .orgchart .node .content {
+	box-sizing: border-box;
+	width: 100%;
+	height: auto;
+	min-height: 82px;
 	padding: 10px 12px;
+	overflow: visible;
+	border-color: var(--color-border);
 	background: var(--color-main-background);
+	color: var(--color-main-text);
+	line-height: normal;
+	white-space: normal;
 }
 
 .center {
@@ -1054,7 +1081,7 @@ export default {
 	max-width: 150px;
 	margin-top: 6px;
 	overflow: hidden;
-	color: #474747;
+	color: var(--color-main-text);
 	font-size: 13px;
 	font-weight: 600;
 	text-overflow: ellipsis;
