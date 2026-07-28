@@ -10,8 +10,8 @@
 						<NcButton
 							class="filter-icon-button"
 							type="tertiary"
-							@click.stop="toggleFilters"
-							:title="t('empleados', 'Filters')">
+							:title="t('empleados', 'Filters')"
+							@click.stop="toggleFilters">
 							<template #icon>
 								<FilterVariant :size="20" />
 							</template>
@@ -21,10 +21,16 @@
 
 						<div v-if="showFilters" class="filter-dropdown" @click.stop>
 							<div class="filter-section">
-								<p class="filter-section-label">{{ t('empleados', 'Sort') }}</p>
+								<p class="filter-section-label">
+									{{ t('empleados', 'Sort') }}
+								</p>
 								<select v-model="sortOrder">
-									<option value="asc">A-Z</option>
-									<option value="desc">Z-A</option>
+									<option value="asc">
+										A-Z
+									</option>
+									<option value="desc">
+										Z-A
+									</option>
 								</select>
 							</div>
 
@@ -201,7 +207,7 @@ export default {
 
 			if (this.hideEmpty) {
 				puestos = puestos.filter(
-					item => Number(item.cantidad_empleados) > 0
+					item => Number(item.cantidad_empleados) > 0,
 				)
 			}
 

@@ -300,7 +300,7 @@ export default {
 				cursor = new Date(
 					cursor.getFullYear(),
 					cursor.getMonth() + 1,
-					1
+					1,
 				)
 			}
 			return false
@@ -469,7 +469,7 @@ export default {
 				const res = await axios.get(
 					generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
-					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`
+					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`,
 				)
 				this.primaVacacionalUsada = res.data.ocs.data.used === true
 			} catch (e) {
