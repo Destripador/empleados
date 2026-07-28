@@ -240,6 +240,8 @@ return [
 		['name' => 'reportetiempo#GetEmpleadosReports', 'url' => '/GetEmpleadosReports', 'verb' => 'POST'],
 		['name' => 'reportetiempo#ExportarReportes', 'url' => '/ExportarReportes', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetAdminReportsSummary', 'url' => '/GetAdminReportsSummary', 'verb' => 'POST',],
+		['name' => 'reportetiempo#GetCostosLideres', 'url' => '/GetCostosLideres', 'verb' => 'POST'],
+		['name' => 'reportetiempo#GetCostosCandidatos', 'url' => '/GetCostosCandidatos', 'verb' => 'POST'],
 		['name' => 'reportetiempo#estadoReporteHoy', 'url' => '/estadoReporteHoy', 'verb' => 'GET',],
 		['name' => 'reportetiempo#GetCumplimientoReportesHoy', 'url' => '/GetCumplimientoReportesHoy', 'verb' => 'GET',],
 		['name' => 'reportetiempo#EnviarRecordatoriosPendientesHoy', 'url' => '/EnviarRecordatoriosPendientesHoy', 'verb' => 'POST',],

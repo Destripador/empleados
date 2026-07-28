@@ -12,6 +12,7 @@ use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\reportetiempo;
 use OCA\Empleados\Db\reportetiempoMapper;
 use OCA\Empleados\Db\historialausenciasMapper;
+use OCA\Empleados\Service\VacacionesCalculoService;
 use OCA\Empleados\UploadException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -41,6 +42,7 @@ class reportetiempoController extends BaseController {
 
 	private const ID_CLIENTE_AUSENCIA   = 99999;
     private const ID_ACTIVIDAD_CARGABLE = 99999;
+	private const MAX_HORAS_PLANIFICACION = 10000000.0;
 	protected $userManager;
     protected $reportetiempoMapper;
     protected $clientesMapper;
@@ -53,6 +55,7 @@ class reportetiempoController extends BaseController {
     private $urlGenerator;
 	private $mailer;
 	private INotificationManager $notificationManager;
+	private VacacionesCalculoService $vacacionesCalculoService;
 
 	public function __construct(
 		IRequest $request,
@@ -72,6 +75,7 @@ class reportetiempoController extends BaseController {
 		IMailer $mailer,
 		ISubAdmin $subAdmin,
 		INotificationManager $notificationManager,
+		VacacionesCalculoService $vacacionesCalculoService,
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -98,6 +102,7 @@ class reportetiempoController extends BaseController {
 		$this->mailer = $mailer;
 		$this->notificationManager = $notificationManager;
 		$this->historialausenciasMapper = $historialausenciasMapper;
+		$this->vacacionesCalculoService = $vacacionesCalculoService;
 	}
 
 	/**
@@ -398,6 +403,271 @@ class reportetiempoController extends BaseController {
 					$idEmpleadosVisibles
 				),
 			],
+		], Http::STATUS_OK);
+	}
+
+	/**
+	 * Resumen de costos estimados y horas propias de los líderes de proyecto.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetCostosLideres(
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null
+	): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		$denied = $this->denyIfNoAdminReportsAccess();
+
+		if ($denied !== null) {
+			return $denied;
+		}
+
+		$empleadosVisibles = $this->getEmpleadosVisiblesBasico();
+		$idEmpleadosVisibles = array_values(array_unique(array_filter(array_map(
+			static function ($empleado) {
+				return (int)(
+					$empleado['Id_empleados']
+					?? $empleado['id_empleados']
+					?? 0
+				);
+			},
+			$empleadosVisibles
+		))));
+
+		$costos = $this->reportetiempoMapper->getCostosPorLider(
+			$periodo_inicio,
+			$periodo_fin,
+			$anio,
+			$idEmpleadosVisibles
+		);
+		$periodo = $costos['periodo'];
+		$fechaInicio = sprintf(
+			'%04d-%02d-01',
+			(int)$periodo['anio'],
+			(int)$periodo['periodo_inicio']
+		);
+		$fechaFin = (new \DateTimeImmutable(sprintf(
+			'%04d-%02d-01',
+			(int)$periodo['anio'],
+			(int)$periodo['periodo_fin']
+		)))->modify('last day of this month')->format('Y-m-d');
+		$horasDiarias = $this->getCostosHorasDiarias();
+		$empleados = $this->construirCostosCandidatos(
+			$idEmpleadosVisibles,
+			$fechaInicio,
+			$fechaFin,
+			[],
+			0,
+			0.0,
+			$horasDiarias
+		);
+
+		$costos['empleados_disponibilidad'] = array_map(
+			static function (array $empleado): array {
+				return [
+					'id_empleado' => $empleado['id_empleado'],
+					'uid' => $empleado['uid'],
+					'displayname' => $empleado['displayname'],
+					'capacidad_calculable' => $empleado['capacidad_calculable'],
+					'horas_periodo' => $empleado['horas_periodo'],
+					'horas_ausencia' => $empleado['horas_ausencia'],
+					'horas_reportadas_periodo' => $empleado['horas_reportadas_periodo'],
+					'disponibilidad_estimada' => $empleado['disponibilidad_estimada'],
+					'ocupacion_estimada' => $empleado['ocupacion_estimada'],
+					'calidad_datos' => $empleado['calidad_datos'],
+				];
+			},
+			$empleados
+		);
+		$costos['kpis']['empleados_disponibilidad_baja'] = count(array_filter(
+			$empleados,
+			static function (array $empleado): bool {
+				return $empleado['capacidad_calculable']
+					&& (
+						(float)$empleado['disponibilidad_estimada'] <= 0
+						|| (float)$empleado['ocupacion_estimada'] >= 90
+					);
+			}
+		));
+		$costos['kpis']['empleados_informacion_insuficiente'] = count(array_filter(
+			$empleados,
+			static fn (array $empleado): bool => $empleado['calidad_datos'] === 'baja'
+		));
+
+		return new DataResponse($costos, Http::STATUS_OK);
+	}
+
+	/**
+	 * Analiza candidatos visibles para un proyecto tentativo.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetCostosCandidatos(
+		$id_cliente = null,
+		$fecha_inicio = null,
+		$fecha_fin = null,
+		$actividades = []
+	): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		$denied = $this->denyIfNoAdminReportsAccess();
+
+		if ($denied !== null) {
+			return $denied;
+		}
+
+		$inicio = $this->normalizarFechaCostos($fecha_inicio);
+		$fin = $this->normalizarFechaCostos($fecha_fin);
+
+		if ($inicio === null || $fin === null || $inicio > $fin) {
+			return new DataResponse([
+				'error' => 'El periodo de planificación no es válido.',
+			], Http::STATUS_BAD_REQUEST);
+		}
+
+		$fechaInicio = $inicio->format('Y-m-d');
+		$fechaFin = $fin->format('Y-m-d');
+		$diasLaborales = $this->contarDiasLaboralesCostos($fechaInicio, $fechaFin);
+		$horasDiarias = $this->getCostosHorasDiarias();
+		$idEmpleadosVisibles = $this->getIdsEmpleadosVisiblesCostos();
+
+		if (empty($idEmpleadosVisibles)) {
+			return new DataResponse([
+				'periodo' => [
+					'fecha_inicio' => $fechaInicio,
+					'fecha_fin' => $fechaFin,
+					'dias_laborales' => $diasLaborales,
+					'horas_diarias' => $horasDiarias,
+				],
+				'empresa' => null,
+				'requerimiento' => [
+					'horas_estimadas' => 0.0,
+					'actividades' => [],
+				],
+				'candidatos' => [],
+			], Http::STATUS_OK);
+		}
+
+		$idCliente = filter_var($id_cliente, FILTER_VALIDATE_INT);
+
+		if ($idCliente === false || (int)$idCliente <= 0 || (int)$idCliente === self::ID_CLIENTE_AUSENCIA) {
+			return new DataResponse([
+				'error' => 'La empresa seleccionada no está disponible.',
+			], Http::STATUS_BAD_REQUEST);
+		}
+
+		$empresa = $this->reportetiempoMapper->getCostosEmpresaVisible(
+			(int)$idCliente,
+			$idEmpleadosVisibles
+		);
+
+		if (empty($empresa)) {
+			return new DataResponse([
+				'error' => 'La empresa seleccionada no está disponible.',
+			], Http::STATUS_NOT_FOUND);
+		}
+
+		if (is_string($actividades)) {
+			$actividades = json_decode($actividades, true);
+		}
+
+		if (!is_array($actividades) || empty($actividades)) {
+			return new DataResponse([
+				'error' => 'Selecciona al menos una actividad válida.',
+			], Http::STATUS_BAD_REQUEST);
+		}
+
+		$horasPorActividad = [];
+
+		foreach ($actividades as $actividad) {
+			if (!is_array($actividad)) {
+				return new DataResponse([
+					'error' => 'Las actividades seleccionadas no son válidas.',
+				], Http::STATUS_BAD_REQUEST);
+			}
+
+			$idActividadRaw = $actividad['id_actividad'] ?? null;
+			$horasRaw = $actividad['horas_estimadas'] ?? 0;
+
+			if (
+				!is_numeric($idActividadRaw)
+				|| (float)$idActividadRaw !== floor((float)$idActividadRaw)
+				|| (int)$idActividadRaw <= 0
+				|| (int)$idActividadRaw === self::ID_ACTIVIDAD_CARGABLE
+				|| !is_numeric($horasRaw)
+				|| !is_finite((float)$horasRaw)
+				|| (float)$horasRaw < 0
+				|| (float)$horasRaw > self::MAX_HORAS_PLANIFICACION
+			) {
+				return new DataResponse([
+					'error' => 'Las actividades y sus horas estimadas no son válidas.',
+				], Http::STATUS_BAD_REQUEST);
+			}
+
+			$idActividad = (int)$idActividadRaw;
+			$horasPorActividad[$idActividad] = ($horasPorActividad[$idActividad] ?? 0.0)
+				+ (float)$horasRaw;
+
+			if (
+				!is_finite($horasPorActividad[$idActividad])
+				|| $horasPorActividad[$idActividad] > self::MAX_HORAS_PLANIFICACION
+				|| array_sum($horasPorActividad) > self::MAX_HORAS_PLANIFICACION
+			) {
+				return new DataResponse([
+					'error' => 'El total de horas estimadas no es válido.',
+				], Http::STATUS_BAD_REQUEST);
+			}
+		}
+
+		$actividadesValidas = $this->reportetiempoMapper->getCostosActividades(
+			array_keys($horasPorActividad)
+		);
+
+		if (count($actividadesValidas) !== count($horasPorActividad)) {
+			return new DataResponse([
+				'error' => 'Una o más actividades seleccionadas no están disponibles.',
+			], Http::STATUS_BAD_REQUEST);
+		}
+
+		$actividadesNormalizadas = array_map(
+			static function (array $actividad) use ($horasPorActividad): array {
+				$id = (int)$actividad['id_actividad'];
+
+				return [
+					'id_actividad' => $id,
+					'nombre' => $actividad['nombre'],
+					'cargable' => (int)$actividad['cargable'],
+					'horas_estimadas' => (float)$horasPorActividad[$id],
+				];
+			},
+			$actividadesValidas
+		);
+		$horasEstimadas = array_sum($horasPorActividad);
+		$candidatos = $this->construirCostosCandidatos(
+			$idEmpleadosVisibles,
+			$fechaInicio,
+			$fechaFin,
+			array_keys($horasPorActividad),
+			(int)$idCliente,
+			(float)$horasEstimadas,
+			$horasDiarias
+		);
+
+		return new DataResponse([
+			'periodo' => [
+				'fecha_inicio' => $fechaInicio,
+				'fecha_fin' => $fechaFin,
+				'dias_laborales' => $diasLaborales,
+				'horas_diarias' => $horasDiarias,
+			],
+			'empresa' => $empresa,
+			'requerimiento' => [
+				'horas_estimadas' => (float)$horasEstimadas,
+				'actividades' => $actividadesNormalizadas,
+			],
+			'candidatos' => $candidatos,
 		], Http::STATUS_OK);
 	}
 
@@ -855,6 +1125,608 @@ class reportetiempoController extends BaseController {
 		}
 
 		return $equipoEmpleado;
+	}
+
+	/**
+	 * Extrae únicamente identificadores válidos del alcance calculado desde la sesión.
+	 */
+	private function getIdsEmpleadosVisiblesCostos(): array {
+		$ids = array_map(
+			static function (array $empleado): int {
+				return (int)(
+					$empleado['Id_empleados']
+					?? $empleado['id_empleados']
+					?? 0
+				);
+			},
+			$this->getEmpleadosVisiblesBasico()
+		);
+
+		return array_values(array_unique(array_filter(
+			$ids,
+			static fn (int $id): bool => $id > 0
+		)));
+	}
+
+	/**
+	 * Acepta exclusivamente fechas ISO completas para evitar normalizaciones ambiguas.
+	 */
+	private function normalizarFechaCostos($valor): ?\DateTimeImmutable {
+		if (!is_string($valor)) {
+			return null;
+		}
+
+		$valor = trim($valor);
+		$fecha = \DateTimeImmutable::createFromFormat('!Y-m-d', $valor);
+		$errores = \DateTimeImmutable::getLastErrors();
+
+		if (
+			$fecha === false
+			|| $fecha->format('Y-m-d') !== $valor
+			|| (
+				is_array($errores)
+				&& (
+					(int)$errores['warning_count'] > 0
+					|| (int)$errores['error_count'] > 0
+				)
+			)
+		) {
+			return null;
+		}
+
+		return $fecha;
+	}
+
+	/**
+	 * Normaliza fechas provenientes de columnas DATE/DATETIME sin relajar la entrada pública.
+	 */
+	private function normalizarFechaPersistidaCostos($valor): ?\DateTimeImmutable {
+		if ($valor instanceof \DateTimeInterface) {
+			return new \DateTimeImmutable($valor->format('Y-m-d'));
+		}
+
+		if (!is_string($valor) || strlen($valor) < 10) {
+			return null;
+		}
+
+		return $this->normalizarFechaCostos(substr($valor, 0, 10));
+	}
+
+	/**
+	 * Usa la misma jornada de referencia configurada para los reportes.
+	 */
+	private function getCostosHorasDiarias(): float {
+		$horas = (float)$this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_horas_minimas',
+			'0'
+		);
+
+		if (!is_finite($horas) || $horas <= 0) {
+			return 0.0;
+		}
+
+		return $horas;
+	}
+
+	/**
+	 * Reutiliza la utilidad de vacaciones para contar días de lunes a viernes.
+	 */
+	private function contarDiasLaboralesCostos(string $fechaInicio, string $fechaFin): int {
+		$inicio = new \DateTime($fechaInicio);
+		$fin = new \DateTime($fechaFin);
+
+		return $this->vacacionesCalculoService->contarDiasHabilesHastaFecha(
+			$inicio,
+			$fin,
+			clone $fin
+		);
+	}
+
+	/**
+	 * Construye el análisis completo con un número fijo de consultas agregadas.
+	 */
+	private function construirCostosCandidatos(
+		array $idEmpleadosVisibles,
+		string $fechaInicio,
+		string $fechaFin,
+		array $idActividades,
+		int $idCliente,
+		float $horasRequeridas,
+		float $horasDiarias
+	): array {
+		$idEmpleadosVisibles = array_values(array_unique(array_filter(
+			array_map('intval', $idEmpleadosVisibles),
+			static fn (int $id): bool => $id > 0
+		)));
+		$idActividades = array_values(array_unique(array_filter(
+			array_map('intval', $idActividades),
+			static fn (int $id): bool => $id > 0 && $id !== self::ID_ACTIVIDAD_CARGABLE
+		)));
+
+		if (empty($idEmpleadosVisibles)) {
+			return [];
+		}
+
+		$empleadosBase = $this->reportetiempoMapper->getCostosEmpleadosBase(
+			$idEmpleadosVisibles
+		);
+
+		if (empty($empleadosBase)) {
+			return [];
+		}
+
+		$horasPeriodoRows = $this->reportetiempoMapper->getCostosHorasPeriodo(
+			$idEmpleadosVisibles,
+			$fechaInicio,
+			$fechaFin
+		);
+		$fechaReferenciaBase = (!empty($idActividades) || $idCliente > 0)
+			? new \DateTimeImmutable($fechaInicio)
+			: new \DateTimeImmutable($fechaFin);
+		$hoy = new \DateTimeImmutable('today');
+		$fechaReferenciaExperiencia = $fechaReferenciaBase > $hoy
+			? $hoy
+			: $fechaReferenciaBase;
+		$fechaCorteDoceMeses = $fechaReferenciaExperiencia
+			->modify('-12 months')
+			->format('Y-m-d');
+		$experienciaRows = $this->reportetiempoMapper->getCostosExperiencia(
+			$idEmpleadosVisibles,
+			$idActividades,
+			$idCliente,
+			$fechaCorteDoceMeses,
+			$fechaReferenciaExperiencia->format('Y-m-d')
+		);
+		$experienciaActividadRows = $this->reportetiempoMapper
+			->getCostosExperienciaPorActividad(
+				$idEmpleadosVisibles,
+				$idActividades,
+				$fechaCorteDoceMeses,
+				$fechaReferenciaExperiencia->format('Y-m-d')
+			);
+		$ausenciasRows = $this->reportetiempoMapper->getCostosAusenciasAprobadas(
+			$idEmpleadosVisibles,
+			$fechaInicio,
+			$fechaFin
+		);
+
+		$horasPeriodoPorEmpleado = [];
+
+		foreach ($horasPeriodoRows as $row) {
+			$idEmpleado = (int)($row['id_empleado'] ?? 0);
+
+			if ($idEmpleado > 0) {
+				$horasPeriodoPorEmpleado[$idEmpleado] = $row;
+			}
+		}
+
+		$experienciaPorEmpleado = [];
+
+		foreach ($experienciaRows as $row) {
+			$idEmpleado = (int)($row['id_empleado'] ?? 0);
+
+			if ($idEmpleado > 0) {
+				$experienciaPorEmpleado[$idEmpleado] = $row;
+			}
+		}
+
+		$experienciaActividadesPorEmpleado = [];
+
+		foreach ($experienciaActividadRows as $row) {
+			$idEmpleado = (int)($row['id_empleado'] ?? 0);
+			$idActividad = (int)($row['id_actividad'] ?? 0);
+
+			if ($idEmpleado <= 0 || $idActividad <= 0) {
+				continue;
+			}
+
+			$experienciaActividadesPorEmpleado[$idEmpleado][] = [
+				'id_actividad' => $idActividad,
+				'horas' => round(max(0.0, (float)($row['minutos_actividad'] ?? 0)) / 60, 2),
+				'horas_12_meses' => round(
+					max(0.0, (float)($row['minutos_actividad_12_meses'] ?? 0)) / 60,
+					2
+				),
+				'registros' => (int)($row['registros_actividad'] ?? 0),
+				'ultimo_reporte' => $row['ultimo_reporte_actividad'] ?? null,
+			];
+		}
+
+		$diasLaborales = $this->contarDiasLaboralesCostos($fechaInicio, $fechaFin);
+		$fraccionesAusenciaPorEmpleado = [];
+		$inicioPeriodo = new \DateTimeImmutable($fechaInicio);
+		$finPeriodo = new \DateTimeImmutable($fechaFin);
+
+		foreach ($ausenciasRows as $ausencia) {
+			$idEmpleado = (int)($ausencia['id_empleado'] ?? 0);
+			$inicioAusencia = $this->normalizarFechaPersistidaCostos(
+				$ausencia['fecha_de'] ?? null
+			);
+			$finAusencia = $this->normalizarFechaPersistidaCostos(
+				$ausencia['fecha_hasta'] ?? null
+			);
+
+			if (
+				$idEmpleado <= 0
+				|| $inicioAusencia === null
+				|| $finAusencia === null
+				|| $inicioAusencia > $finAusencia
+			) {
+				continue;
+			}
+
+			$inicioSolapado = $inicioAusencia > $inicioPeriodo
+				? $inicioAusencia
+				: $inicioPeriodo;
+			$finSolapado = $finAusencia < $finPeriodo
+				? $finAusencia
+				: $finPeriodo;
+
+			if ($inicioSolapado > $finSolapado) {
+				continue;
+			}
+
+			$diasCompletos = $this->contarDiasLaboralesCostos(
+				$inicioAusencia->format('Y-m-d'),
+				$finAusencia->format('Y-m-d')
+			);
+			$diasSolicitados = (float)($ausencia['dias_solicitados'] ?? 0);
+			$fraccionDiaria = 1.0;
+
+			/*
+			 * Si la fuente contiene una fracción, se conserva proporcionalmente.
+			 * El esquema actual declara dias_solicitados como entero, por lo que
+			 * nuevas fracciones requerirían una migración independiente.
+			 */
+			if ($diasSolicitados > 0 && $diasCompletos > 0) {
+				$fraccionDiaria = min(1.0, $diasSolicitados / $diasCompletos);
+			}
+
+			$cursor = $inicioSolapado;
+
+			while ($cursor <= $finSolapado) {
+				$fecha = $cursor->format('Y-m-d');
+
+				if ($this->contarDiasLaboralesCostos($fecha, $fecha) === 1) {
+					$fraccionExistente = $fraccionesAusenciaPorEmpleado[$idEmpleado][$fecha]
+						?? 0.0;
+					$fraccionesAusenciaPorEmpleado[$idEmpleado][$fecha] = min(
+						1.0,
+						max(0.0, (float)$fraccionExistente)
+							+ max(0.0, $fraccionDiaria)
+					);
+				}
+
+				$cursor = $cursor->modify('+1 day');
+			}
+		}
+
+		$diasAusenciaPorEmpleado = [];
+
+		foreach ($fraccionesAusenciaPorEmpleado as $idEmpleado => $fracciones) {
+			$diasAusenciaPorEmpleado[(int)$idEmpleado] = array_sum($fracciones);
+		}
+
+		$candidatos = [];
+		$capacidadCalculable = $horasDiarias > 0
+			&& is_finite($horasDiarias)
+			&& (
+				$diasLaborales === 0
+				|| $horasDiarias <= PHP_FLOAT_MAX / $diasLaborales
+			);
+		$horasPeriodo = $capacidadCalculable
+			? $diasLaborales * $horasDiarias
+			: null;
+
+		foreach ($empleadosBase as $empleado) {
+			$idEmpleado = (int)($empleado['id_empleado'] ?? 0);
+
+			if ($idEmpleado <= 0) {
+				continue;
+			}
+
+			$periodo = $horasPeriodoPorEmpleado[$idEmpleado] ?? [];
+			$experiencia = $experienciaPorEmpleado[$idEmpleado] ?? [];
+			$minutosReportados = max(0.0, (float)($periodo['minutos_reportados'] ?? 0));
+			$horasReportadas = $minutosReportados / 60;
+			$diasAusencia = min(
+				(float)$diasLaborales,
+				max(0.0, (float)($diasAusenciaPorEmpleado[$idEmpleado] ?? 0))
+			);
+			$horasAusencia = $capacidadCalculable
+				? $diasAusencia * $horasDiarias
+				: null;
+			$capacidadEfectiva = $capacidadCalculable
+				? max(0.0, (float)$horasPeriodo - (float)$horasAusencia)
+				: null;
+			$disponibilidad = $capacidadCalculable
+				? max(0.0, (float)$capacidadEfectiva - $horasReportadas)
+				: null;
+			$ocupacion = $capacidadCalculable && (float)$capacidadEfectiva > 0
+				? ($horasReportadas / (float)$capacidadEfectiva) * 100
+				: null;
+			$ocupacionResultante = $capacidadCalculable && (float)$capacidadEfectiva > 0
+				? (($horasReportadas + max(0.0, $horasRequeridas)) / (float)$capacidadEfectiva) * 100
+				: null;
+
+			if ($ocupacion !== null && !is_finite($ocupacion)) {
+				$ocupacion = null;
+			}
+
+			if ($ocupacionResultante !== null && !is_finite($ocupacionResultante)) {
+				$ocupacionResultante = null;
+			}
+
+			$minutosHistoricos = max(0.0, (float)($experiencia['minutos_historicos'] ?? 0));
+			$minutosCargablesHistoricos = max(
+				0.0,
+				(float)($experiencia['minutos_cargables_historicos'] ?? 0)
+			);
+			$minutosActividades = max(0.0, (float)($experiencia['minutos_actividades'] ?? 0));
+			$minutosActividadesRecientes = max(
+				0.0,
+				(float)($experiencia['minutos_actividades_12_meses'] ?? 0)
+			);
+			$minutosEmpresa = max(0.0, (float)($experiencia['minutos_empresa'] ?? 0));
+			$minutosCargablesEmpresa = max(
+				0.0,
+				(float)($experiencia['minutos_cargables_empresa'] ?? 0)
+			);
+			$porcentajeCargable = $minutosHistoricos > 0
+				? min(100.0, max(0.0, ($minutosCargablesHistoricos / $minutosHistoricos) * 100))
+				: null;
+			$costoHora = $empleado['costo_hora'] ?? null;
+			$costoHora = $costoHora === null || !is_numeric($costoHora)
+				? null
+				: round(max(0.0, (float)$costoHora), 2);
+
+			$candidatos[] = [
+				'id_empleado' => $idEmpleado,
+				'uid' => (string)($empleado['uid'] ?? ''),
+				'displayname' => (string)($empleado['displayname'] ?? ''),
+				'area' => $empleado['area'] ?? null,
+				'puesto' => $empleado['puesto'] ?? null,
+				'nivel_puesto' => $empleado['nivel_puesto'] ?? null,
+				'costo_hora' => $costoHora,
+				'capacidad_calculable' => $capacidadCalculable,
+				'horas_periodo' => $horasPeriodo === null ? null : round($horasPeriodo, 2),
+				'horas_ausencia' => $horasAusencia === null ? null : round($horasAusencia, 2),
+				'capacidad_efectiva' => $capacidadEfectiva === null ? null : round($capacidadEfectiva, 2),
+				'horas_reportadas_periodo' => round($horasReportadas, 2),
+				'disponibilidad_estimada' => $disponibilidad === null ? null : round($disponibilidad, 2),
+				'ocupacion_estimada' => $ocupacion === null ? null : round($ocupacion, 2),
+				'ocupacion_resultante_estimada' => $ocupacionResultante === null
+					? null
+					: round($ocupacionResultante, 2),
+				'experiencia' => [
+					'horas_actividades' => round($minutosActividades / 60, 2),
+					'horas_actividades_12_meses' => round($minutosActividadesRecientes / 60, 2),
+					'registros_actividades' => (int)($experiencia['registros_actividades'] ?? 0),
+					'empresas_actividades' => (int)($experiencia['empresas_actividades'] ?? 0),
+					'horas_empresa' => round($minutosEmpresa / 60, 2),
+					'horas_cargables_empresa' => round($minutosCargablesEmpresa / 60, 2),
+					'empresas_atendidas' => (int)($experiencia['empresas_atendidas'] ?? 0),
+					'ultimo_reporte_empresa' => $experiencia['ultimo_reporte_empresa'] ?? null,
+					'actividades_empresa' => (int)($experiencia['actividades_empresa'] ?? 0),
+					'actividades' => $experienciaActividadesPorEmpleado[$idEmpleado] ?? [],
+				],
+				'porcentaje_cargable_historico' => $porcentajeCargable === null
+					? null
+					: round($porcentajeCargable, 2),
+				'_analisis' => [
+					'disponibilidad' => $disponibilidad,
+					'minutos_actividades' => $minutosActividades,
+					'minutos_actividades_recientes' => $minutosActividadesRecientes,
+					'minutos_empresa' => $minutosEmpresa,
+					'registros_historicos' => (int)($experiencia['registros_historicos'] ?? 0),
+					'registros_recientes' => (int)($experiencia['registros_12_meses'] ?? 0),
+					'porcentaje_cargable' => $porcentajeCargable,
+					'costo_hora' => $costoHora,
+					'ocupacion_resultante' => $ocupacionResultante,
+				],
+			];
+		}
+
+		$maxDisponibilidad = 0.0;
+		$maxMinutosActividades = 0.0;
+		$maxMinutosEmpresa = 0.0;
+		$costosConfigurados = [];
+
+		foreach ($candidatos as $candidato) {
+			$analisis = $candidato['_analisis'];
+			$maxDisponibilidad = max(
+				$maxDisponibilidad,
+				(float)($analisis['disponibilidad'] ?? 0)
+			);
+			$maxMinutosActividades = max(
+				$maxMinutosActividades,
+				(float)$analisis['minutos_actividades']
+			);
+			$maxMinutosEmpresa = max(
+				$maxMinutosEmpresa,
+				(float)$analisis['minutos_empresa']
+			);
+
+			if ($analisis['costo_hora'] !== null) {
+				$costosConfigurados[] = (float)$analisis['costo_hora'];
+			}
+		}
+
+		$costoMinimo = empty($costosConfigurados) ? null : min($costosConfigurados);
+		$costoMaximo = empty($costosConfigurados) ? null : max($costosConfigurados);
+
+		foreach ($candidatos as &$candidato) {
+			$analisis = $candidato['_analisis'];
+			$desglose = [
+				'disponibilidad' => null,
+				'experiencia_actividades' => null,
+				'experiencia_empresa' => null,
+				'cargabilidad' => null,
+				'costo' => null,
+			];
+			$puntos = 0.0;
+			$puntosPosibles = 0.0;
+
+			if ($capacidadCalculable) {
+				$desglose['disponibilidad'] = $maxDisponibilidad > 0
+					? ((float)$analisis['disponibilidad'] / $maxDisponibilidad) * 35
+					: 0.0;
+				$puntos += $desglose['disponibilidad'];
+				$puntosPosibles += 35;
+			}
+
+			$tieneHistorial = (int)$analisis['registros_historicos'] > 0;
+
+			if (!empty($idActividades) && $tieneHistorial) {
+				$desglose['experiencia_actividades'] = $maxMinutosActividades > 0
+					? ((float)$analisis['minutos_actividades'] / $maxMinutosActividades) * 30
+					: 0.0;
+				$puntos += $desglose['experiencia_actividades'];
+				$puntosPosibles += 30;
+			}
+
+			if ($idCliente > 0 && $tieneHistorial) {
+				$desglose['experiencia_empresa'] = $maxMinutosEmpresa > 0
+					? ((float)$analisis['minutos_empresa'] / $maxMinutosEmpresa) * 15
+					: 0.0;
+				$puntos += $desglose['experiencia_empresa'];
+				$puntosPosibles += 15;
+			}
+
+			if ($analisis['porcentaje_cargable'] !== null) {
+				$desglose['cargabilidad'] =
+					min(100.0, max(0.0, (float)$analisis['porcentaje_cargable']))
+					/ 100
+					* 10;
+				$puntos += $desglose['cargabilidad'];
+				$puntosPosibles += 10;
+			}
+
+			if ($analisis['costo_hora'] !== null) {
+				$desglose['costo'] = $costoMinimo !== null && $costoMaximo !== null
+					&& $costoMaximo > $costoMinimo
+					? (($costoMaximo - (float)$analisis['costo_hora'])
+						/ ($costoMaximo - $costoMinimo)) * 10
+					: 10.0;
+				$puntos += $desglose['costo'];
+				$puntosPosibles += 10;
+			}
+
+			foreach ($desglose as &$valor) {
+				if ($valor !== null) {
+					$valor = round(min(100.0, max(0.0, (float)$valor)), 2);
+				}
+			}
+			unset($valor);
+
+			$candidato['ajuste_estimado'] = $puntosPosibles > 0
+				? round(min(100.0, max(0.0, ($puntos / $puntosPosibles) * 100)), 2)
+				: null;
+			$candidato['desglose_ajuste'] = $desglose;
+
+			$fuentesFaltantes = 0;
+			$fuentesFaltantes += $capacidadCalculable ? 0 : 1;
+			$fuentesFaltantes += $analisis['costo_hora'] === null ? 1 : 0;
+			$fuentesFaltantes += (int)$analisis['registros_recientes'] > 0 ? 0 : 1;
+			$tieneExperienciaRelacionada = !empty($idActividades) || $idCliente > 0
+				? (
+					(float)$analisis['minutos_actividades'] > 0
+					|| (float)$analisis['minutos_empresa'] > 0
+				)
+				: $tieneHistorial;
+			$fuentesFaltantes += $tieneExperienciaRelacionada ? 0 : 1;
+			$candidato['calidad_datos'] = $fuentesFaltantes === 0
+				? 'alta'
+				: ($fuentesFaltantes === 1 ? 'media' : 'baja');
+
+			$fortalezas = [];
+			$riesgos = [];
+
+			if ((float)$analisis['minutos_actividades_recientes'] > 0) {
+				$fortalezas[] = ['key' => 'experiencia_reciente_actividades'];
+			} elseif ((float)$analisis['minutos_actividades'] > 0) {
+				$fortalezas[] = ['key' => 'experiencia_actividades'];
+			} elseif (!empty($idActividades)) {
+				$riesgos[] = ['key' => 'sin_experiencia_actividades'];
+			}
+
+			if ((float)$analisis['minutos_empresa'] > 0) {
+				$fortalezas[] = ['key' => 'experiencia_empresa'];
+			} elseif ($idCliente > 0) {
+				$riesgos[] = ['key' => 'sin_experiencia_empresa'];
+			}
+
+			if (
+				$capacidadCalculable
+				&& $horasRequeridas > 0
+				&& (float)$analisis['disponibilidad'] >= $horasRequeridas
+			) {
+				$fortalezas[] = ['key' => 'disponibilidad_suficiente'];
+			} elseif (
+				$capacidadCalculable
+				&& $horasRequeridas > (float)$analisis['disponibilidad']
+			) {
+				$riesgos[] = ['key' => 'horas_superan_disponibilidad'];
+			}
+
+			if ((float)($analisis['porcentaje_cargable'] ?? 0) >= 70) {
+				$fortalezas[] = ['key' => 'cargabilidad_alta'];
+			}
+
+			if (
+				$desglose['costo'] !== null
+				&& (float)$desglose['costo'] >= 7.5
+			) {
+				$fortalezas[] = ['key' => 'costo_relativo_favorable'];
+			}
+
+			if ($analisis['costo_hora'] === null) {
+				$riesgos[] = ['key' => 'sin_costo_hora'];
+			}
+
+			if (!$capacidadCalculable) {
+				$riesgos[] = ['key' => 'capacidad_no_calculable'];
+			} elseif ($horasRequeridas > 0 && $analisis['ocupacion_resultante'] !== null) {
+				if ((float)$analisis['ocupacion_resultante'] > 100) {
+					$riesgos[] = ['key' => 'ocupacion_supera_100'];
+				} elseif ((float)$analisis['ocupacion_resultante'] > 90) {
+					$riesgos[] = ['key' => 'ocupacion_supera_90'];
+				}
+			}
+
+			if ($candidato['calidad_datos'] !== 'alta') {
+				$riesgos[] = ['key' => 'datos_incompletos'];
+			}
+
+			$candidato['fortalezas'] = $fortalezas;
+			$candidato['riesgos'] = $riesgos;
+			unset($candidato['_analisis']);
+		}
+		unset($candidato);
+
+		usort($candidatos, static function (array $a, array $b): int {
+			$ajusteA = $a['ajuste_estimado'] ?? -1;
+			$ajusteB = $b['ajuste_estimado'] ?? -1;
+
+			if ((float)$ajusteA !== (float)$ajusteB) {
+				return (float)$ajusteB <=> (float)$ajusteA;
+			}
+
+			$disponibilidadA = $a['disponibilidad_estimada'] ?? -1;
+			$disponibilidadB = $b['disponibilidad_estimada'] ?? -1;
+
+			if ((float)$disponibilidadA !== (float)$disponibilidadB) {
+				return (float)$disponibilidadB <=> (float)$disponibilidadA;
+			}
+
+			return strcasecmp(
+				(string)($a['displayname'] ?? ''),
+				(string)($b['displayname'] ?? '')
+			);
+		});
+
+		return $candidatos;
 	}
 
 	/**

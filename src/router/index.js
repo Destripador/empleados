@@ -12,6 +12,7 @@ import PanelAhorros from '../views/components/ahorros/PanelAhorros.vue'
 import Dashboard from '../views/components/Dashboard/Dashboard.vue'
 import CompaniesGroups from '../views/components/clientes/CompaniesGroups.vue'
 import Actividades from '../views/components/clientes/Actividades.vue'
+import Costos from '../views/components/costos/Costos.vue'
 import Reports from '../views/components/reports/Reports.vue'
 import Adminreports from '../views/components/reports/admin/Adminreports.vue'
 import Ejemplo from '../views/components/ejemplo/Ejemplo.vue'
@@ -78,6 +79,11 @@ export default new Router({
 			path: '/CompaniesGroups',
 			component: CompaniesGroups,
 			name: 'CompaniesGroups',
+		},
+		{
+			path: '/Costs',
+			component: Costos,
+			name: 'Costs',
 		},
 		{
 			path: '/Reports',
