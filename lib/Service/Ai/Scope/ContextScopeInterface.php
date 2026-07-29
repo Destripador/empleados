@@ -11,5 +11,10 @@ interface ContextScopeInterface {
 
 	public function getInstructions(): string;
 
+	/**
+	 * @return list<string>
+	 */
+	public function getRequiredPermissions(): array;
+
 	public function sanitize(array $context): array;
 }

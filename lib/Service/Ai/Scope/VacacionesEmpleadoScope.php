@@ -15,6 +15,16 @@ final class VacacionesEmpleadoScope extends AbstractContextScope {
 		return 'Resumen de vacaciones de un único empleado y un periodo vacacional.';
 	}
 
+	/**
+	 * @return list<string>
+	 */
+	public function getRequiredPermissions(): array {
+		return [
+			'empleados.hr',
+			'empleados.admin',
+		];
+	}
+
 	public function getInstructions(): string {
 		return <<<'INSTRUCTIONS'
 La vista muestra el resumen de vacaciones de un único empleado.

@@ -10,6 +10,7 @@ final class ContextScopeRegistry {
 	private const SCOPES = [
 		'vacaciones-empleado' => VacacionesEmpleadoScope::class,
 		'empleado-laboral' => EmpleadoLaboralScope::class,
+		'empleados-listado' => EmpleadosListadoScope::class,
 	];
 
 	public function __construct(

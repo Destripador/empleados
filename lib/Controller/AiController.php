@@ -8,6 +8,7 @@ use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Service\Ai\ContextAiService;
 use OCA\Empleados\Service\Ai\ContextValidator;
 use OCA\Empleados\Service\Ai\Scope\ContextScopeRegistry;
+use OCA\Empleados\Service\PermisosService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -23,6 +24,7 @@ class AiController extends Controller {
 		private ContextValidator $validator,
 		private ContextAiService $aiService,
 		private ContextScopeRegistry $scopeRegistry,
+		private PermisosService $permisosService,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -38,7 +40,7 @@ class AiController extends Controller {
 		$available = $this->aiService->isAvailable($user->getUID());
 		return new DataResponse([
 			'available' => $available,
-			'scopes' => $available ? $this->scopeRegistry->getAvailableScopeIds() : [],
+			'scopes' => $available ? $this->getAuthorizedScopeIds($user->getUID()) : [],
 		]);
 	}
 
@@ -63,6 +65,17 @@ class AiController extends Controller {
 			return new DataResponse(['message' => $message], Http::STATUS_BAD_REQUEST);
 		}
 
+		try {
+			$this->permisosService->requireCanSeeAny(
+				$validated['scope']->getRequiredPermissions(),
+			);
+		} catch (\Throwable) {
+			return new DataResponse(
+				['message' => 'No tienes permiso para usar este asistente.'],
+				Http::STATUS_FORBIDDEN
+			);
+		}
+
 		if (!$this->aiService->isAvailable($user->getUID())) {
 			return new DataResponse(
 				['message' => 'La IA no está disponible en esta instancia.'],
@@ -84,5 +97,21 @@ class AiController extends Controller {
 				Http::STATUS_INTERNAL_SERVER_ERROR
 			);
 		}
+	}
+
+	private function getAuthorizedScopeIds(string $userId): array {
+		$scopeIds = [];
+
+		foreach ($this->scopeRegistry->getAvailableScopeIds() as $scopeId) {
+			$scope = $this->scopeRegistry->get($scopeId);
+			if ($this->permisosService->canSeeAny(
+				$scope->getRequiredPermissions(),
+				$userId,
+			)) {
+				$scopeIds[] = $scopeId;
+			}
+		}
+
+		return $scopeIds;
 	}
 }

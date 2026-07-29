@@ -52,6 +52,39 @@ Los scopes iniciales son:
   vacacional.
 - `empleado-laboral`: información laboral, organizacional, vacacional y del
   equipo asignado del empleado mostrado.
+- `empleados-listado`: directorio laboral de los empleados cargados en el
+  módulo.
+
+### Un empleado frente al directorio
+
+`empleado-laboral` y `empleados-listado` representan contextos distintos y no
+deben usarse como si fueran equivalentes:
+
+| Scope | Contexto |
+| --- | --- |
+| `empleado-laboral` | Un empleado seleccionado. |
+| `empleados-listado` | Múltiples empleados cargados en el directorio. |
+
+El chat de `empleados-listado` vive en
+`src/views/components/ListaEmpleados/EmployeeList.vue`. No depende de
+`EmployeeDetails` ni de que exista un empleado seleccionado. Abrir el detalle
+de otro empleado no cambia el contexto del chat: el contexto depende de la
+lista cargada y su versión, no de la selección activa.
+
+`EmployeeList.vue` reconstruye cada entrada mediante una lista blanca antes de
+enviarla. El backend vuelve a reconstruir la lista campo por campo en
+`EmpleadosListadoScope::sanitize()`; no acepta el array original ni objetos
+completos de empleados.
+
+El scope `empleados-listado` requiere que el usuario tenga permisos de RH o de
+administrador. La autorización se declara en el scope y se comprueba en el
+backend tanto al anunciarlo en `capabilities` como antes de consultar al
+proveedor de IA. Una sesión iniciada por sí sola no concede acceso al scope.
+
+Los datos financieros y personales no forman parte del directorio de IA. Si un
+caso de uso necesita datos financieros, debe implementarse otro scope
+explícito, restringido y sometido a una revisión de permisos específica; no se
+debe ampliar la lista blanca de `empleados-listado`.
 
 ## Cómo agregar un scope
 

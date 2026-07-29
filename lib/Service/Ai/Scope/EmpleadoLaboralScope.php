@@ -15,6 +15,16 @@ final class EmpleadoLaboralScope extends AbstractContextScope {
 		return 'Información laboral, organizacional, vacacional y de equipo asignado del empleado mostrado en la pestaña Empleado.';
 	}
 
+	/**
+	 * @return list<string>
+	 */
+	public function getRequiredPermissions(): array {
+		return [
+			'empleados.hr',
+			'empleados.admin',
+		];
+	}
+
 	public function getInstructions(): string {
 		return <<<'INSTRUCTIONS'
 La vista muestra la información laboral de un único empleado.

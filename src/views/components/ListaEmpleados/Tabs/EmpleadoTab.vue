@@ -346,13 +346,6 @@
 				</NcButton>
 			</div>
 		</div>
-		<ContextAssistant
-			v-if="mostrarAsistenteIa"
-			scope="empleado-laboral"
-			:context="aiContext"
-			:context-key="aiContextKey"
-			:title="t('empleados', 'Asistente del empleado')"
-			:suggestions="aiSuggestions" />
 	</div>
 </template>
 
@@ -376,7 +369,6 @@ import Cash from 'vue-material-design-icons/Cash.vue'
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
 import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
-import ContextAssistant from '../../../../components/Ai/ContextAssistant.vue'
 
 import {
 	NcAvatar,
@@ -409,7 +401,6 @@ export default {
 		NcSelect,
 		NcListItem,
 		NcCheckboxRadioSwitch,
-		ContextAssistant,
 	},
 
 	props: {
@@ -443,7 +434,6 @@ export default {
 			EmpleadosList: [],
 			Aniversario: '',
 			Vacaciones: '',
-			diasDerechoActual: null,
 			state: false,
 			inventarioEquipos: [],
 			diasDerechoOriginal: '',
@@ -451,118 +441,6 @@ export default {
 			cargandoPeriodo: false,
 			empleadoLoadSequence: 0,
 		}
-	},
-
-	computed: {
-		mostrarAsistenteIa() {
-			return Boolean(
-				this.data?.Id_empleados
-				|| this.data?.uid,
-			)
-				&& !this.show
-				&& !this.cargandoPeriodo
-		},
-
-		aiContextKey() {
-			return String(
-				this.data?.Id_empleados
-				?? this.data?.uid
-				?? '',
-			)
-		},
-
-		aiSuggestions() {
-			return [
-				t('empleados', '¿En qué área y puesto trabaja?'),
-				t('empleados', '¿Quién es su gerente?'),
-				t('empleados', '¿Cuánto tiempo lleva en la empresa?'),
-				t('empleados', '¿Qué equipo de cómputo tiene asignado?'),
-				t('empleados', '¿A qué equipo de trabajo pertenece?'),
-				t('empleados', '¿Cuántos días de vacaciones tiene asignados?'),
-			]
-		},
-
-		aiContext() {
-			const equipoAsignado = (
-				this.Equipo_asignado
-				&& typeof this.Equipo_asignado === 'object'
-			)
-				? this.Equipo_asignado
-				: {}
-
-			const equipoTrabajo = (
-				this.Equipo
-				&& typeof this.Equipo === 'object'
-			)
-				? this.Equipo
-				: {}
-
-			return {
-				empleado: {
-					nombre:
-						this.data?.displayname
-							?? this.data?.uid
-							?? null,
-					correo:
-						this.data?.mail
-							?? null,
-					numero_empleado:
-						this.Numero_empleado || null,
-					fecha_ingreso:
-						this.Ingreso || null,
-					antiguedad_anios:
-						this.calcularAniversarioDesdeFecha(this.Ingreso),
-				},
-				estructura: {
-					area:
-						this.aiDisplayValue(this.area),
-					puesto:
-						this.aiDisplayValue(this.puesto),
-					gerente:
-						this.aiDisplayValue(this.gerente),
-					socio:
-						this.aiDisplayValue(this.socio),
-					equipo:
-						this.aiDisplayValue(this.Equipo),
-					jefe_equipo:
-						this.aiDisplayValue(
-							equipoTrabajo.jefe
-								?? equipoTrabajo.Id_jefe_equipo
-								?? null,
-						),
-					miembros_visibles:
-						this.aiTeamMembers(),
-				},
-				vacaciones: {
-					aniversario_actual:
-						this.aiNumberOrNull(this.Aniversario),
-					dias_derecho:
-						this.aiNumberOrNull(this.diasDerechoActual),
-				},
-				sistemas: {
-					equipo_asignado: {
-						nombre_dispositivo:
-							equipoAsignado.nombre_dispositivo
-								?? null,
-						nombre_sistema:
-							equipoAsignado.nombre_sistema
-								?? null,
-						numero_serie:
-							equipoAsignado.numero_serie
-								?? null,
-						marca:
-							equipoAsignado.marca
-								?? null,
-						modelo:
-							equipoAsignado.modelo
-								?? null,
-						estado:
-							equipoAsignado.estado
-								?? null,
-					},
-				},
-			}
-		},
 	},
 
 	watch: {
@@ -643,67 +521,6 @@ export default {
 					this.cargandoPeriodo = false
 				}
 			}
-		},
-
-		aiDisplayValue(value) {
-			if (value === null || value === undefined || value === '') {
-				return null
-			}
-
-			if (typeof value === 'string' || typeof value === 'number') {
-				return String(value)
-			}
-
-			if (typeof value === 'object') {
-				return value.displayName
-					?? value.displayname
-					?? value.label
-					?? value.name
-					?? value.nombre
-					?? value.user
-					?? null
-			}
-
-			return null
-		},
-
-		aiNumberOrNull(value) {
-			if (
-				value === null
-				|| value === undefined
-				|| value === ''
-				|| (typeof value === 'string' && value.trim() === '')
-			) {
-				return null
-			}
-
-			if (typeof value !== 'number' && typeof value !== 'string') {
-				return null
-			}
-
-			const number = Number(value)
-			return Number.isFinite(number) ? number : null
-		},
-
-		aiTeamMembers() {
-			const miembros = Array.isArray(this.peopleEquipo?.equipo)
-				? this.peopleEquipo.equipo
-				: []
-
-			return miembros
-				.slice(0, 50)
-				.map(item => ({
-					nombre:
-						item.displayname
-							?? item.displayName
-							?? item.nombre
-							?? item.Id_user
-							?? null,
-					puesto:
-						item.puesto
-							?? item.Nombre_puesto
-							?? null,
-				}))
 		},
 
 		async setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state, requestSequence = this.empleadoLoadSequence) {
@@ -1075,7 +892,6 @@ export default {
 
 			this.Aniversario = ''
 			this.Vacaciones = ''
-			this.diasDerechoActual = null
 			this.diasDerechoOriginal = ''
 
 			if (!idEmpleado) return
@@ -1091,7 +907,6 @@ export default {
 				if (periodo) {
 					this.Aniversario = this.checknull(periodo.id_aniversario)
 					this.Vacaciones = this.checknull(periodo.dias_disponibles)
-					this.diasDerechoActual = this.aiNumberOrNull(periodo.dias_derecho)
 					this.diasDerechoOriginal = this.Vacaciones
 				}
 			} catch (err) {
