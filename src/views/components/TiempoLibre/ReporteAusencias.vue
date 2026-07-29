@@ -487,6 +487,13 @@
 				:historial-completo="historialCompleto"
 				@close="mostrarInformePrima = false" />
 		</NcModal>
+		<ContextAssistant
+			v-if="mostrarAsistenteIa"
+			scope="vacaciones-empleado"
+			:context="aiContext"
+			:context-key="aiContextKey"
+			:title="t('empleados', 'Asistente de vacaciones')"
+			:suggestions="aiSuggestions" />
 	</div>
 </template>
 
@@ -502,6 +509,7 @@ import Magnify from 'vue-material-design-icons/Magnify.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 import FilterOff from 'vue-material-design-icons/FilterOff.vue'
 import AccountSearch from 'vue-material-design-icons/AccountSearch.vue'
+import ContextAssistant from '../../../components/Ai/ContextAssistant.vue'
 import InformePrimaVacacional from './InformePrimaVacacional.vue'
 import FileExcelOutline from 'vue-material-design-icons/FileExcelOutline.vue'
 
@@ -525,7 +533,7 @@ function hashStr(str) {
 export default {
 	name: 'ReporteAusencias',
 
-	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch, FileExcelOutline, InformePrimaVacacional },
+	components: { NcButton, NcLoadingIcon, NcModal, Close, Magnify, FilterVariant, FilterOff, AccountSearch, FileExcelOutline, ContextAssistant, InformePrimaVacacional },
 
 	emits: ['close'],
 
@@ -557,6 +565,65 @@ export default {
 	},
 
 	computed: {
+		mostrarAsistenteIa() {
+			return this.vistaActual === 'resumen'
+				&& this.empleadoResumen !== ''
+				&& this.periodoInfo !== null
+				&& !this.cargando
+		},
+
+		aiContextKey() {
+			return [
+				this.empleadoResumen,
+				this.periodoSeleccionado,
+			].join(':')
+		},
+
+		aiSuggestions() {
+			return [
+				t('empleados', '¿Cuántos días de vacaciones le quedan?'),
+				t('empleados', '¿Tiene días acumulados?'),
+				t('empleados', '¿Cuándo termina su periodo actual?'),
+				t('empleados', '¿Ya solicitó la prima vacacional?'),
+			]
+		},
+
+		aiContext() {
+			const periodo = this.periodoInfo
+			return {
+				empleado: {
+					nombre: this.empleadoResumen || null,
+				},
+				periodo: {
+					numero_aniversario: periodo?.numero_aniversario ?? null,
+					inicio: periodo?.periodo_inicio ?? null,
+					fin: periodo?.periodo_fin ?? null,
+					dias_derecho: periodo?.dias_derecho ?? null,
+					dias_disfrutados: periodo?.dias_disfrutados
+						?? this.resumenEmpleadoStats.dias
+						?? null,
+					dias_restantes: periodo?.dias_restantes ?? null,
+					dias_acumulados: periodo?.dias_acumulados_restantes
+						?? periodo?.dias_acumulados
+						?? null,
+					fecha_expiracion_acumulados: periodo?.fecha_expiracion_acumulados ?? null,
+				},
+				prima_vacacional: {
+					solicitada: this.resumenEmpleadoStats.primaSolicitada === true,
+					fecha: this.resumenEmpleadoStats.primaFecha ?? null,
+				},
+				registros_visibles: this.registrosResumenEmpleado
+					.slice(0, 50)
+					.map(item => ({
+						tipo: item.tipo_ausencia ?? null,
+						fecha_inicio: item.fecha_de ?? null,
+						fecha_fin: item.fecha_hasta ?? null,
+						dias: Number(item.dias_solicitados) || 0,
+						estado: this.chipEstado(item).texto,
+					})),
+			}
+		},
+
 		opcionesEmpleados() {
 			if (this.empleadosCatalogo.length > 0) return this.empleadosCatalogo
 			return [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort()

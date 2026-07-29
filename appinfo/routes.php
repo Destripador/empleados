@@ -157,6 +157,9 @@ return [
 
 		['name' => 'ausencias#DescargarReportePeriodosExcel', 'url' => '/reporte-periodos-excel', 'verb' => 'GET'],
 
+		['name' => 'ai#capabilities', 'url' => '/api/ai/capabilities', 'verb' => 'GET'],
+		['name' => 'ai#ask', 'url' => '/api/ai/ask', 'verb' => 'POST'],
+
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],
 		['name' => 'tipoausencias#VaciarTipo', 'url' => '/VaciarTipo', 'verb' => 'GET'],
