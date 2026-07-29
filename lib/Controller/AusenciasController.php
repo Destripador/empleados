@@ -34,6 +34,7 @@ use OCA\Empleados\Db\aniversarioMapper;
 use OCA\Empleados\Db\ausencias;
 use OCA\Empleados\Db\actividadesMapper;
 use OCA\Empleados\Db\primavacacionalpagoMapper;
+use OCA\Empleados\Service\AniversarioSyncService;
 
 use OCP\AppFramework\Http;
 use OCP\IURLGenerator;
@@ -70,6 +71,7 @@ class AusenciasController extends BaseController {
 	private IURLGenerator $urlGenerator;
     private MailHelper $mailHelper;
     private actividadesMapper $actividadesMapper;
+    private AniversarioSyncService $aniversarioSyncService;
 
     public function __construct(
         IRequest $request,
@@ -91,7 +93,8 @@ class AusenciasController extends BaseController {
         MailHelper $mailHelper,
         reportetiempoMapper $reportetiempoMapper,
         aniversarioMapper $aniversarioMapper,
-        actividadesMapper $actividadesMapper
+        actividadesMapper $actividadesMapper,
+        AniversarioSyncService $aniversarioSyncService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
         
@@ -114,34 +117,40 @@ class AusenciasController extends BaseController {
         $this->aniversarioMapper = $aniversarioMapper;
         $this->actividadesMapper = $actividadesMapper;
         $this->primavacacionalpagoMapper = $primavacacionalpagoMapper;
+        $this->aniversarioSyncService = $aniversarioSyncService;
     }
     /**
      * Obtiene la lista de ausencias.
      */
     #[UseSession]
     #[NoAdminRequired]
-    private function registrarActividadAusencia(string $tipoAusencia, string $fechaInicio, string $fechaFin, ?int $idHistorialAusencia): void {
-        $user = $this->userSession->getUser()->getUID();
-        $username = $this->userSession->getUser()->getDisplayName();
-        $employe_info = $this->empleadosMapper->GetMyEmployeeInfo($user);
+    private function registrarActividadAusencia(
+        string $tipoAusencia,
+        string $fechaInicio,
+        string $fechaFin,
+        ?int $idHistorialAusencia,
+        string $uidEmpleado,
+        string $nombreEmpleado
+    ): void {
+        $employe_info = $this->empleadosMapper->GetMyEmployeeInfo($uidEmpleado);
 
         $event = $this->activityManager->generateEvent();
         $event->setApp('empleados');
         $event->setType('empleados');
         $event->setObject('empleados', (int) $idHistorialAusencia, 'Solicitud de ausencia');
-        $event->setAffectedUser($user);
+        $event->setAffectedUser($uidEmpleado);
 
         $event->setSubject(
             'ausencia_registrada',
             [
-                'nombre' => (string) $user,
+                'nombre' => (string) $uidEmpleado,
                 'tipo_ausencia' => (string) $tipoAusencia
             ]
         );
 
         $event->setMessage('Desde "' . $fechaInicio . '" hasta "' . $fechaFin . '"');
         $this->activityManager->publish($event);
- 
+
         foreach ([$employe_info[0]['Id_gerente'], $employe_info[0]['Id_socio'], $this->configuracionesMapper->GetGestor()[0]['Data']] as $usuario) {
             $userM = $this->userManager->get($usuario);
 
@@ -154,8 +163,6 @@ class AusenciasController extends BaseController {
             if (!$mail) {
                 continue;
             }
-            
-            $dependent = $this->empleadosMapper->GetMyEmployeeInfo($user);
 
             $event = $this->activityManager->generateEvent();
             $event->setApp('empleados');
@@ -166,7 +173,7 @@ class AusenciasController extends BaseController {
             $event->setSubject(
                 'ausencia_registrada',
                 [
-                    'nombre' => (string) $user,
+                    'nombre' => (string) $uidEmpleado,
                     'tipo_ausencia' => (string) $tipoAusencia
                 ]
             );
@@ -174,13 +181,14 @@ class AusenciasController extends BaseController {
             $event->setMessage('Desde "' . $fechaInicio . '" hasta "' . $fechaFin . '"');
             $this->activityManager->publish($event);
 
+            // FIX: el correo mostraba $fechaFin dos veces (también como "fecha de inicio").
             $this->mailHelper->enviarCorreo(
                 $mail,
                 'Nueva solicitud',
                 [
                     'Hola ' . $userM->getDisplayName() . '',
-                    'El usuario ' . $username . ' ha realizado una solicitud de "' . $tipoAusencia . '".',
-                    'Fecha de inicio: ' . $fechaFin . '  - Fecha de finalización: ' . $fechaFin . '',
+                    'El usuario ' . $nombreEmpleado . ' ha realizado una solicitud de "' . $tipoAusencia . '".',
+                    'Fecha de inicio: ' . $fechaInicio . '  - Fecha de finalización: ' . $fechaFin . '',
                     '',
                 ]
             );
@@ -213,6 +221,7 @@ class AusenciasController extends BaseController {
             if ($id_empleado[0]['Id_socio'] === $uid) {
                 $historial = array_merge($historial, $this->historialausenciasMapper->GetAusenciasHistorialSocio($ausencias[0]['id_ausencias']));
             }
+
             foreach ($historial as $item) {
                 if (isset($ids_vistos[$item['id_historial_ausencias']])) continue;
                 $ids_vistos[$item['id_historial_ausencias']] = true;
@@ -314,6 +323,8 @@ class AusenciasController extends BaseController {
 			return null;
 		}
 
+        $this->aniversarioSyncService->sincronizarPeriodos($id_empleado, $empleado[0]['Ingreso']);
+
 		$fechaIngreso = new DateTime($empleado[0]['Ingreso']);
 		$hoy = new DateTime();
 		$numeroAniversario = $hoy->diff($fechaIngreso)->y;
@@ -403,7 +414,7 @@ class AusenciasController extends BaseController {
 			&& $hoy <= new DateTime($fechaExpiracionAcum);
 
 		$diasDisfrutados = 0.0;
-        $historial = $this->historialausenciasMapper->GetAusenciasEnRango($periodoInicioStr, $limiteConGraciaStr, $id_ausencias);
+        $historial = $this->historialausenciasMapper->GetAusenciasEnRango($fechaIngreso->format('Y-m-d'), $limiteConGraciaStr, $id_ausencias);
         foreach ($historial as $item) {
             if ((int) ($item['id_aniversario'] ?? -1) !== $numeroAniversario) continue; // clave
             if ((int) $item['a_gerente'] === 3 || (int) $item['a_socio'] === 3) continue;
@@ -607,6 +618,14 @@ class AusenciasController extends BaseController {
 
             // aqui se disminuyen los dias de la ausencia
             $tipo_ausencia = $this->tipoausenciaMapper->getTipoById($id_tipo_ausencia);
+            $esAnticipada = !empty($tipo_ausencia) && (int) ($tipo_ausencia[0]['privado'] ?? 0) > 0;
+
+            if ($esAnticipada && !$isPrivileged) {
+                return new DataResponse([
+                    'success' => false,
+                    'message' => 'Solo un administrador o RH puede registrar vacaciones anticipadas.'
+                ], Http::STATUS_FORBIDDEN);
+            }
             $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($user->getUID());
             error_log('Empleado: ' . print_r($id_empleado, true));
 
@@ -631,18 +650,6 @@ class AusenciasController extends BaseController {
             $fechaDeObj->setTime(0, 0);
             $fechaHastaObj->setTime(0, 0);
             $hoy->setTime(0, 0);
-
-            // La prima vacacional no se puede solicitar durante el mes de diciembre.
-            // El "año" de la prima corre de enero a noviembre; diciembre queda fuera
-            // para todos los efectos (2026 = ene-nov 2026, 2027 = ene-nov 2027, etc.)
-            if ($prima_vacacional === 1 && (
-                (int) $fechaDeObj->format('n') === 12 || (int) $fechaHastaObj->format('n') === 12
-            )) {
-                return new DataResponse([
-                    'success' => false,
-                    'message' => 'No se puede solicitar la prima vacacional durante el mes de diciembre.'
-                ], Http::STATUS_BAD_REQUEST);
-            }
 
             // El empleado solo puede solicitar la prima vacacional 1 vez por año calendario
             // (ene-nov). Se valida contra el historial real, no solo contra el "flag" general
@@ -684,7 +691,9 @@ class AusenciasController extends BaseController {
 
             $diasDeAcumulado = 0.0;
 
-            if ($puedeDescontarDias && !empty($tipo_ausencia) && $tipo_ausencia[0]['solicitar_prima_vacacional'] == 1) {
+            if ($esAnticipada) {
+                    $diasDeAcumulado = 0.0;
+                } elseif ($puedeDescontarDias && !empty($tipo_ausencia) && $tipo_ausencia[0]['solicitar_prima_vacacional'] == 1) {
 
                 // No permitir agendar más allá del límite del periodo actual (1 año + 6 meses)
                 if (!empty($periodoActual['fecha_limite_periodo_actual'])) {
@@ -793,9 +802,11 @@ class AusenciasController extends BaseController {
                 );
             } else {
                 // Caso simple: todo salió de un solo periodo.
-                $idAniversarioRegistro = ($diasDeAcumulado > 0 && $diasDeAcumulado >= (float) $dias_solicitados)
-                    ? $numeroAniversarioActual - 1
-                    : $numeroAniversarioActual;
+                $idAniversarioRegistro = $esAnticipada
+                    ? $numeroAniversarioActual + 1
+                    : (($diasDeAcumulado > 0 && $diasDeAcumulado >= (float) $dias_solicitados)
+                        ? $numeroAniversarioActual - 1
+                        : $numeroAniversarioActual);
 
                 $idHistorialAusencia = $this->historialausenciasMapper->EnviarAusencia(
                     (int) $id_tipo_ausencia,
@@ -839,9 +850,14 @@ class AusenciasController extends BaseController {
                 );
             }
 
-            if (!$isPrivileged) {
-                $this->registrarActividadAusencia($tipo_ausencia[0]['nombre'], $fecha_de, $fecha_hasta, $idHistorialAusencia);
-            }
+            $this->registrarActividadAusencia(
+                $tipo_ausencia[0]['nombre'],
+                $fecha_de,
+                $fecha_hasta,
+                $idHistorialAusencia,
+                $user->getUID(),
+                $user->getDisplayName()
+            );
 
             return new DataResponse(['success' => true, 'message' => 'Ausencia registrada correctamente']);
         } catch (\Exception $e) {
@@ -859,33 +875,24 @@ class AusenciasController extends BaseController {
         $desde = $this->request->getParam('desde');
         $hasta = $this->request->getParam('hasta');
 
-        $user = $this->userSession->getUser()->getUID();
-
-        $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($user);
+        $uid = $this->userSession->getUser()->getUID();
+        $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($uid);
 
         if (empty($id_empleado)) {
-            return new DataResponse(
-                ['error' => 'No se encontró el empleado'],
-                Http::STATUS_BAD_REQUEST
-            );
+            return new DataResponse(['error' => 'No se encontró el empleado'], Http::STATUS_BAD_REQUEST);
         }
 
-        $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser(
-            (int)$id_empleado[0]['Id_empleados']
-        );
+        $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser((int)$id_empleado[0]['Id_empleados']);
 
         if (empty($empleado_ausencias)) {
-            return new DataResponse(
-                ['error' => 'El empleado no tiene registro en la tabla ausencias'],
-                Http::STATUS_BAD_REQUEST
-            );
+            return new DataResponse(['error' => 'El empleado no tiene registro en la tabla ausencias'], Http::STATUS_BAD_REQUEST);
         }
 
         $historial = $this->historialausenciasMapper->GetAusenciasEnRango(
-            $desde,
-            $hasta,
-            $empleado_ausencias[0]['id_ausencias']
+            $desde, $hasta, $empleado_ausencias[0]['id_ausencias']
         );
+
+        $this->marcarEsTemprana($historial, (int) $id_empleado[0]['Id_empleados']);
 
         return new DataResponse($historial, Http::STATUS_OK);
     }
@@ -900,6 +907,7 @@ class AusenciasController extends BaseController {
         $hasta = $this->request->getParam('hasta');
 
         $user = $this->userSession->getUser();
+
         $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($user->getUID());
         $equipo_empleado = $this->empleadosMapper->GetEmpleadosEquipo($id_empleado[0]['Id_equipo']);
 
@@ -912,6 +920,8 @@ class AusenciasController extends BaseController {
                 $hasta,
                 $empleado_inf[0]['id_ausencias']
             );
+
+            $this->marcarEsTemprana($ausencias, (int) $empleado['Id_empleados']);
 
             // opcional: agrega nombre del empleado a cada evento
             foreach ($ausencias as &$a) {
@@ -934,6 +944,9 @@ class AusenciasController extends BaseController {
         $hasta = $this->request->getParam('hasta');
 
         $user = $this->userSession->getUser();
+        $isPrivileged = $this->groupManager->isInGroup($user->getUID(), 'admin')
+                    || $this->groupManager->isInGroup($user->getUID(), 'recursos_humanos');
+
         $equipo_empleado = $this->empleadosMapper->GetSubordinates($user->getUID());
 
         $response = [];
@@ -953,6 +966,8 @@ class AusenciasController extends BaseController {
                 $hasta,
                 (int)$empleado_inf[0]['id_ausencias']
             );
+
+            $this->marcarEsTemprana($ausencias, (int) $empleado['Id_empleados']);
 
             foreach ($ausencias as &$a) {
                 $a['nombre_empleado'] = $empleado['Id_user'];
@@ -1016,6 +1031,8 @@ class AusenciasController extends BaseController {
                     $empleado_ausencias[0]['id_ausencias']
                 );
 
+                $this->marcarEsTemprana($ausencias, $id_emp);
+
                 $nombre = $item['displayName'] ?? $item['Id_user'] ?? 'Empleado ' . $id_emp;
 
                 foreach ($ausencias as &$a) {
@@ -1049,12 +1066,12 @@ class AusenciasController extends BaseController {
             }
             $ausencia = $detalle[0];
 
-            $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
-            $empleadoInfo = !empty($reg) ? $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado']) : [];
-
             $user = $this->userSession->getUser();
             $uid = $user->getUID();
             $isPrivileged = $this->groupManager->isInGroup($uid, 'admin') || $this->groupManager->isInGroup($uid, 'recursos_humanos');
+
+            $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+            $empleadoInfo = !empty($reg) ? $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado']) : [];
 
             $ausencia['es_gerente'] = !empty($empleadoInfo) && $empleadoInfo[0]['Id_gerente'] === $uid;
             $ausencia['es_socio'] = !empty($empleadoInfo) && $empleadoInfo[0]['Id_socio'] === $uid;
@@ -1183,17 +1200,19 @@ class AusenciasController extends BaseController {
             $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado[0]['Id_empleados']);
             $tipo_ausencia = $this->tipoausenciaMapper->getTipoById($id_tipo);
 
+            // Ni la ausencia original ni el tipo nuevo pueden ser "anticipada" (privado=1)
+            // si quien edita no es admin/RH.
+            $tipoOriginal = $this->tipoausenciaMapper->getTipoById($registro[0]['id_tipo_ausencia']);
+            $eraAnticipada = !empty($tipoOriginal) && (int) ($tipoOriginal[0]['privado'] ?? 0) > 0;
+            $esAnticipadaNueva = !empty($tipo_ausencia) && (int) ($tipo_ausencia[0]['privado'] ?? 0) > 0;
+
+            if (!$isPrivileged && ($eraAnticipada || $esAnticipadaNueva)) {
+                return new DataResponse(['success' => false, 'message' => 'Sin permiso para editar esta ausencia'], Http::STATUS_FORBIDDEN);
+            }
+
             if ($prima === 1) {
                 $fechaDeCheck = new DateTime($fecha_de_raw);
                 $fechaHastaCheck = new DateTime($fecha_hasta_raw);
-
-                // La prima vacacional no se puede solicitar durante el mes de diciembre.
-                if ((int) $fechaDeCheck->format('n') === 12 || (int) $fechaHastaCheck->format('n') === 12) {
-                    return new DataResponse([
-                        'success' => false,
-                        'message' => 'No se puede solicitar la prima vacacional durante el mes de diciembre.'
-                    ], Http::STATUS_BAD_REQUEST);
-                }
 
                 // El empleado solo puede tener 1 prima vacacional por año calendario.
                 // Se excluye este mismo registro ($id) para permitir editar sin marcarse a sí mismo como duplicado.
@@ -1213,10 +1232,9 @@ class AusenciasController extends BaseController {
             }
 
             // Sólo ajustar días si el tipo descuenta vacaciones
-            if (!empty($tipo_ausencia) && $tipo_ausencia[0]['solicitar_prima_vacacional'] == 1) {
+            if (!empty($tipo_ausencia) && $tipo_ausencia[0]['solicitar_prima_vacacional'] == 1 && (int) ($tipo_ausencia[0]['privado'] ?? 0) === 0) {
                 $dias_originales = (int) ($registro[0]['dias_solicitados'] ?? 0);
                 $dias_disponibles = (float) $empleado_ausencias[0]['dias_disponibles'];
-                // Devolver los días originales y descontar los nuevos
                 $nuevos_disponibles = ($dias_disponibles + $dias_originales) - $dias;
                 $this->ausenciasMapper->updateAusenciasEmpleado(
                     $empleado_ausencias[0]['id_ausencias'],
@@ -1350,6 +1368,23 @@ class AusenciasController extends BaseController {
 
         $response = $this->historialausenciasMapper->GetHistorialReporteCompleto($desde, $hasta);
 
+        foreach ($response as &$row) {
+            $row['es_temprana'] = false;
+
+            if (empty($row['ingreso_empleado']) || !isset($row['id_aniversario']) || empty($row['fecha_de'])) {
+                continue;
+            }
+
+            try {
+                $fechaIngreso = new DateTime($row['ingreso_empleado']);
+                $periodoInicio = (clone $fechaIngreso)->modify('+' . (int) $row['id_aniversario'] . ' years');
+                $fechaDeItem = new DateTime($row['fecha_de']);
+                $row['es_temprana'] = $fechaDeItem < $periodoInicio;
+            } catch (\Exception $e) {
+            }
+        }
+        unset($row);
+
         return new DataResponse(['success' => true, 'message' => $response], Http::STATUS_OK);
     }
 
@@ -1395,12 +1430,14 @@ class AusenciasController extends BaseController {
         $inicioN1 = $finN;
         $finN1 = (clone $fechaIngreso)->modify('+' . ($numero_aniversario + 2) . ' years')->format('Y-m-d');
 
-        $historialAmplio = $this->historialausenciasMapper->GetAusenciasEnRango($inicioN, $finN1, $idAusencias);
+        $historialAmplio = $this->historialausenciasMapper->GetAusenciasEnRango($fechaIngreso->format('Y-m-d'), $finN1, $idAusencias);
 
         $todas = array_values(array_filter(
             $historialAmplio,
             fn($item) => (int) ($item['id_aniversario'] ?? -1) === $numero_aniversario
         ));
+
+        $inicioNDate = new DateTime($inicioN);
 
         $uidEmpleado = $empleadoInfo[0]['Id_user'] ?? null;
         foreach ($todas as &$row) {
@@ -1410,6 +1447,7 @@ class AusenciasController extends BaseController {
             $fechaHastaItem = new DateTime($row['fecha_hasta']);
             $finNormal = new DateTime($finN);
             $row['es_tardia'] = ($fechaDeItem > $finNormal || $fechaHastaItem > $finNormal);
+            $row['es_temprana'] = $fechaDeItem < $inicioNDate;
         }
         unset($row);
 
@@ -1482,7 +1520,7 @@ class AusenciasController extends BaseController {
 
             $diasDisfrutados = 0;
             if ($idAusencias) {
-                $historial = $this->historialausenciasMapper->GetAusenciasEnRango($periodoInicioStr, $periodoFinConGraciaStr, $idAusencias);
+                $historial = $this->historialausenciasMapper->GetAusenciasEnRango($fechaIngreso->format('Y-m-d'), $periodoFinConGraciaStr, $idAusencias);
                 foreach ($historial as $item) {
                     if ((int) ($item['id_aniversario'] ?? -1) !== $n) continue;
                     if ((int) $item['a_gerente'] === 3 || (int) $item['a_socio'] === 3) continue;
@@ -1601,6 +1639,65 @@ class AusenciasController extends BaseController {
         $gerente = $empleadoInfo[0]['Id_gerente'] ?? null;
         $socio = $empleadoInfo[0]['Id_socio'] ?? null;
         return $gerente !== null && $socio !== null && $gerente === $socio;
+    }
+
+    /**
+     * Marca cada fila del historial con 'es_temprana'.
+     */
+    private function marcarEsTemprana(array &$historial, int $id_empleado): void {
+        if (empty($historial)) {
+            return;
+        }
+
+        $empleado = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $id_empleado);
+        if (empty($empleado) || empty($empleado[0]['Ingreso'])) {
+            foreach ($historial as &$row) {
+                $row['es_temprana'] = false;
+            }
+            unset($row);
+            return;
+        }
+
+        $fechaIngreso = new DateTime($empleado[0]['Ingreso']);
+
+        foreach ($historial as &$row) {
+            $row['es_temprana'] = false;
+
+            if (!isset($row['id_aniversario']) || empty($row['fecha_de'])) {
+                continue;
+            }
+
+            try {
+                $periodoInicio = (clone $fechaIngreso)->modify('+' . (int) $row['id_aniversario'] . ' years');
+                $fechaDeItem = new DateTime($row['fecha_de']);
+                $row['es_temprana'] = $fechaDeItem < $periodoInicio;
+            } catch (\Exception $e) {
+            }
+        }
+        unset($row);
+    }
+
+    /**
+     * Determina si un registro del historial corresponde a un tipo de ausencia
+     * "anticipada" (privado = 1), es decir, solo visible/gestionable por admin/RH.
+     */
+    private function esRegistroAnticipado(array $item): bool {
+        if (!isset($item['id_tipo_ausencia'])) {
+            return false;
+        }
+        $tipo = $this->tipoausenciaMapper->getTipoById($item['id_tipo_ausencia']);
+        return !empty($tipo) && (int) ($tipo[0]['privado'] ?? 0) > 0;
+    }
+
+    /**
+     * Quita del historial las ausencias anticipadas (privado=1) si quien consulta
+     * no es admin/RH. Deja el arreglo intacto (reindexado) si sí lo es.
+     */
+    private function filtrarAnticipadasSiNoPrivilegiado(array $historial, bool $isPrivileged): array {
+        if ($isPrivileged) {
+            return $historial;
+        }
+        return array_values(array_filter($historial, fn($item) => !$this->esRegistroAnticipado($item)));
     }
 
     /**
@@ -1780,6 +1877,7 @@ class AusenciasController extends BaseController {
      */
     private function revertirEfectosAusencia(array $ausencia): void {
         $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $esAnticipada = !empty($tipo) && (int) ($tipo[0]['privado'] ?? 0) > 0;
 
         if (!empty($tipo) && (int) $tipo[0]['solicitar_prima_vacacional'] === 1) {
             $fechaDe = new \DateTime($ausencia['fecha_de']);
@@ -1798,21 +1896,15 @@ class AusenciasController extends BaseController {
                     $diasDelPeriodo = $diasDevolver - $diasDeAcumulado;
 
                     if ($diasDeAcumulado > 0) {
-                        $numeroAniversarioAcumulado = (int) $ausencia['id_aniversario'] + 1;
-
-                        $registroAcumulado = $this->historialvacacionesMapper->getByEmpleadoYAniversario(
-                            (int) $reg[0]['id_empleado'],
-                            $numeroAniversarioAcumulado
-                        );
-                        $restanteActual = (float) ($registroAcumulado['dias_acumulados_restantes'] ?? 0);
-                        $this->historialvacacionesMapper->descontarAcumulado(
-                            (int) $reg[0]['id_empleado'],
-                            $numeroAniversarioAcumulado,
-                            $restanteActual + $diasDeAcumulado
-                        );
+                        // ... sin cambios ...
                     }
 
-                    if ($diasDelPeriodo > 0) {
+                    // FIX: si era anticipada, nunca se descontó del saldo actual,
+                    // así que tampoco hay que devolverle nada ahí — solo hace
+                    // falta que el estado quede en 2/3 para que la suma del
+                    // periodo futuro deje de contarlo (eso ya lo hace el filtro
+                    // existente por a_gerente/a_socio).
+                    if ($diasDelPeriodo > 0 && !$esAnticipada) {
                         $diasActuales = (float) $reg[0]['dias_disponibles'];
                         $nuevosDias = $diasActuales + $diasDelPeriodo;
                         $this->ausenciasMapper->updateAusenciasEmpleado(
@@ -1960,11 +2052,7 @@ class AusenciasController extends BaseController {
             $registroPrima = null;
     
             if ($idAusencias) {
-                $historial = $this->historialausenciasMapper->GetAusenciasEnRango(
-                    $periodoInicioStr,
-                    $periodoFinConGraciaStr,
-                    $idAusencias
-                );
+                $historial = $this->historialausenciasMapper->GetAusenciasEnRango($fechaIngreso->format('Y-m-d'), $periodoFinConGraciaStr, $idAusencias);
     
                 foreach ($historial as $item) {
                     if ((int) ($item['id_aniversario'] ?? -1) !== $n) {

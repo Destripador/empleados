@@ -15,6 +15,7 @@ class tipoausencia extends Entity {
     protected ?bool $solicitar_archivo = null;
     protected ?bool $solicitar_prima_vacacional = null;
 	protected ?bool $cargable = null;
+	protected ?int $privado = null;
 
 	public function __construct() {
         $this->addType('id_tipo_ausencia', 'int');
@@ -23,6 +24,7 @@ class tipoausencia extends Entity {
 		$this->addType('solicitar_archivo', 'bool');
 		$this->addType('solicitar_prima_vacacional', 'bool');
 		$this->addType('cargable', 'bool');
+		$this->addType('privado', 'int');
 	}
 
 	public function read(): array {
@@ -33,6 +35,7 @@ class tipoausencia extends Entity {
 			'solicitar_archivo' => $this->solicitar_archivo,
 			'solicitar_prima_vacacional' => $this->solicitar_prima_vacacional,
 			'cargable' => $this->cargable,
+			'privado' => $this->privado,
 		];
 	}
 }
