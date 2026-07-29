@@ -556,6 +556,8 @@ export default {
 			periodosEmpleado: [],
 			periodoSeleccionado: null,
 			cargandoPeriodos: false,
+			periodosRequestSequence: 0,
+			reporteRequestSequence: 0,
 			haCargadoAlMenos: false,
 			empleadosCatalogo: [],
 			empleadoIdPorNombre: {},
@@ -760,6 +762,7 @@ export default {
 		},
 
 		async cargarReporte() {
+			const requestSequence = ++this.reporteRequestSequence
 			this.cargando = true
 			this.registros = []
 			this.limpiarFiltros()
@@ -778,22 +781,27 @@ export default {
 					const params = { desde: this.filtroDesde, hasta: this.filtroHasta }
 					;({ data } = await axios.get(url, { params }))
 				}
+				if (requestSequence !== this.reporteRequestSequence) return
 				const mensaje = data?.ocs?.data?.message ?? data?.message ?? []
 				this.registros = Array.isArray(mensaje) ? mensaje : []
 			} catch (e) {
-				console.error('Error cargando reporte:', e)
-			} finally {
-				this.cargando = false
-				this.haCargadoAlMenos = true
-				// Alimenta el catálogo de empleados con lo que vaya llegando.
-				if (this.empleadosCatalogo.length === 0 && this.registros.length > 0) {
-					this.empleadosCatalogo = [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort()
+				if (requestSequence === this.reporteRequestSequence) {
+					console.error('Error cargando reporte:', e)
 				}
-				this.registros.forEach(r => {
-					if (r.nombre_empleado && r.id_empleado) {
-						this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado
+			} finally {
+				if (requestSequence === this.reporteRequestSequence) {
+					this.cargando = false
+					this.haCargadoAlMenos = true
+					// Alimenta el catálogo de empleados con lo que vaya llegando.
+					if (this.empleadosCatalogo.length === 0 && this.registros.length > 0) {
+						this.empleadosCatalogo = [...new Set(this.registros.map(r => r.nombre_empleado).filter(Boolean))].sort()
 					}
-				})
+					this.registros.forEach(r => {
+						if (r.nombre_empleado && r.id_empleado) {
+							this.empleadoIdPorNombre[r.nombre_empleado] = r.id_empleado
+						}
+					})
+				}
 			}
 		},
 
@@ -839,25 +847,33 @@ export default {
 		},
 
 		async cargarPeriodosEmpleado() {
+			const requestSequence = ++this.periodosRequestSequence
+			const empleado = this.empleadoResumen
 			this.periodosEmpleado = []
 			this.periodoSeleccionado = null
-			if (!this.empleadoResumen) return
+			this.cargandoPeriodos = false
+			if (!empleado) return
 
-			const idEmpleado = this.empleadoIdPorNombre[this.empleadoResumen]
+			const idEmpleado = this.empleadoIdPorNombre[empleado]
 			if (!idEmpleado) return
 
 			this.cargandoPeriodos = true
 			try {
 				const url = generateUrl('/apps/empleados/periodos-vacaciones')
 				const { data } = await axios.get(url, { params: { id_empleado: idEmpleado } })
+				if (requestSequence !== this.periodosRequestSequence || empleado !== this.empleadoResumen) return
 				const periodos = data?.ocs?.data?.message ?? data?.message ?? []
 				this.periodosEmpleado = Array.isArray(periodos) ? periodos : []
 				const actual = this.periodosEmpleado.find(p => p.es_actual)
 				this.periodoSeleccionado = actual ? actual.numero_aniversario : (this.periodosEmpleado[0]?.numero_aniversario ?? null)
 			} catch (e) {
-				console.error('Error cargando periodos:', e)
+				if (requestSequence === this.periodosRequestSequence && empleado === this.empleadoResumen) {
+					console.error('Error cargando periodos:', e)
+				}
 			} finally {
-				this.cargandoPeriodos = false
+				if (requestSequence === this.periodosRequestSequence && empleado === this.empleadoResumen) {
+					this.cargandoPeriodos = false
+				}
 			}
 		},
 

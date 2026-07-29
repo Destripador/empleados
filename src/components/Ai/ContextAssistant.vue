@@ -102,7 +102,10 @@ function getCapabilities() {
 	if (capabilitiesPromise === null) {
 		capabilitiesPromise = axios.get(generateUrl('/apps/empleados/api/ai/capabilities'))
 			.then(({ data }) => data?.ocs?.data ?? data)
-			.catch(() => ({ available: false, scopes: [] }))
+			.catch(() => {
+				capabilitiesPromise = null
+				return { available: false, scopes: [] }
+			})
 	}
 	return capabilitiesPromise
 }
@@ -149,6 +152,7 @@ export default {
 			messages: [],
 			open: false,
 			question: '',
+			requestSequence: 0,
 		}
 	},
 
@@ -166,6 +170,7 @@ export default {
 
 	watch: {
 		contextKey() {
+			this.requestSequence += 1
 			this.question = ''
 			this.messages = []
 			this.error = ''
@@ -190,6 +195,8 @@ export default {
 			if (!this.canSend) return
 
 			const question = this.question.trim()
+			const contextKey = this.contextKey
+			const requestSequence = ++this.requestSequence
 			this.question = ''
 			this.error = ''
 			this.loading = true
@@ -209,18 +216,23 @@ export default {
 				if (typeof answer !== 'string' || answer.trim() === '') {
 					throw new Error('Empty answer')
 				}
-				this.messages.push({ role: 'assistant', text: answer })
+				if (requestSequence !== this.requestSequence || contextKey !== this.contextKey) return
+				this.messages.push({ role: 'assistant', text: answer.trim() })
 			} catch (error) {
+				if (requestSequence !== this.requestSequence || contextKey !== this.contextKey) return
 				if (error?.response?.status === 400) {
-					this.error = error.response?.data?.message
-						?? t('empleados', 'El contexto de esta vista no es válido.')
+					this.error = t('empleados', 'El contexto de esta vista no es válido.')
+				} else if (error?.response?.status === 401) {
+					this.error = t('empleados', 'La sesión ya no está disponible. Recarga la página e inténtalo de nuevo.')
 				} else if (error?.response?.status === 412) {
 					this.error = t('empleados', 'La IA no está disponible en esta instancia.')
 				} else {
 					this.error = t('empleados', 'No fue posible obtener una respuesta.')
 				}
 			} finally {
-				this.loading = false
+				if (requestSequence === this.requestSequence && contextKey === this.contextKey) {
+					this.loading = false
+				}
 			}
 		},
 	},

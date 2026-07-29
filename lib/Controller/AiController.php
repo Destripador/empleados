@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Controller;
 
+use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Service\Ai\ContextAiService;
 use OCA\Empleados\Service\Ai\ContextValidator;
 use OCP\AppFramework\Controller;
@@ -16,25 +17,26 @@ use OCP\IUserSession;
 
 class AiController extends Controller {
 	public function __construct(
-		string $appName,
 		IRequest $request,
 		private IUserSession $userSession,
-		private ContextAiService $aiService,
 		private ContextValidator $validator,
+		private ContextAiService $aiService,
 	) {
-		parent::__construct($appName, $request);
+		parent::__construct(Application::APP_ID, $request);
 	}
 
 	#[UseSession]
 	#[NoAdminRequired]
 	public function capabilities(): DataResponse {
-		if ($this->userSession->getUser() === null) {
+		$user = $this->userSession->getUser();
+		if ($user === null) {
 			return new DataResponse(['available' => false, 'scopes' => []], Http::STATUS_UNAUTHORIZED);
 		}
 
+		$available = $this->aiService->isAvailable($user->getUID());
 		return new DataResponse([
-			'available' => $this->aiService->isAvailable(),
-			'scopes' => ['vacaciones-empleado'],
+			'available' => $available,
+			'scopes' => $available ? ['vacaciones-empleado'] : [],
 		]);
 	}
 
@@ -53,13 +55,13 @@ class AiController extends Controller {
 		try {
 			$validated = $this->validator->validateAndSanitize($scope, $question, $context);
 		} catch (\InvalidArgumentException $e) {
-			$message = $e->getMessage() === 'question_too_long'
+			$message = $e->getMessage() === 'La pregunta es demasiado larga.'
 				? 'La pregunta es demasiado larga.'
 				: 'El contexto de esta vista no es válido.';
 			return new DataResponse(['message' => $message], Http::STATUS_BAD_REQUEST);
 		}
 
-		if (!$this->aiService->isAvailable()) {
+		if (!$this->aiService->isAvailable($user->getUID())) {
 			return new DataResponse(
 				['message' => 'La IA no está disponible en esta instancia.'],
 				Http::STATUS_PRECONDITION_FAILED

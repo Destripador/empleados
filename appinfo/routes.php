@@ -8,6 +8,9 @@ return [
 		/********************************** INDEX **********************************************/
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
+		['name' => 'ai#capabilities', 'url' => '/api/ai/capabilities', 'verb' => 'GET'],
+		['name' => 'ai#ask', 'url' => '/api/ai/ask', 'verb' => 'POST'],
+
 
 		/******************************** EMPLEADOS ********************************************/
 		# OBTENER DATOS DE USUARIO NEXTCLOUD
@@ -156,9 +159,6 @@ return [
 		['name' => 'ausencias#RechazarAusencia', 'url' => '/RechazarAusencia', 'verb' => 'POST'],
 
 		['name' => 'ausencias#DescargarReportePeriodosExcel', 'url' => '/reporte-periodos-excel', 'verb' => 'GET'],
-
-		['name' => 'ai#capabilities', 'url' => '/api/ai/capabilities', 'verb' => 'GET'],
-		['name' => 'ai#ask', 'url' => '/api/ai/ask', 'verb' => 'POST'],
 
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],
