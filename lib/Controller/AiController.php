@@ -7,6 +7,7 @@ namespace OCA\Empleados\Controller;
 use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Service\Ai\ContextAiService;
 use OCA\Empleados\Service\Ai\ContextValidator;
+use OCA\Empleados\Service\Ai\Scope\ContextScopeRegistry;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -21,6 +22,7 @@ class AiController extends Controller {
 		private IUserSession $userSession,
 		private ContextValidator $validator,
 		private ContextAiService $aiService,
+		private ContextScopeRegistry $scopeRegistry,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -36,15 +38,15 @@ class AiController extends Controller {
 		$available = $this->aiService->isAvailable($user->getUID());
 		return new DataResponse([
 			'available' => $available,
-			'scopes' => $available ? ['vacaciones-empleado'] : [],
+			'scopes' => $available ? $this->scopeRegistry->getAvailableScopeIds() : [],
 		]);
 	}
 
 	#[UseSession]
 	#[NoAdminRequired]
 	public function ask(
-		string $scope,
-		string $question,
+		string $scope = '',
+		string $question = '',
 		array $context = [],
 	): DataResponse {
 		$user = $this->userSession->getUser();

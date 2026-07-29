@@ -493,6 +493,7 @@
 			:context="aiContext"
 			:context-key="aiContextKey"
 			:title="t('empleados', 'Asistente de vacaciones')"
+			:notice="t('empleados', 'Solo responde sobre el empleado y el periodo visibles.')"
 			:suggestions="aiSuggestions" />
 	</div>
 </template>

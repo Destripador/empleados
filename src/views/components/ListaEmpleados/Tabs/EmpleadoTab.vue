@@ -346,6 +346,13 @@
 				</NcButton>
 			</div>
 		</div>
+		<ContextAssistant
+			v-if="mostrarAsistenteIa"
+			scope="empleado-laboral"
+			:context="aiContext"
+			:context-key="aiContextKey"
+			:title="t('empleados', 'Asistente del empleado')"
+			:suggestions="aiSuggestions" />
 	</div>
 </template>
 
@@ -369,6 +376,7 @@ import Cash from 'vue-material-design-icons/Cash.vue'
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
 import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import ContextAssistant from '../../../../components/Ai/ContextAssistant.vue'
 
 import {
 	NcAvatar,
@@ -401,6 +409,7 @@ export default {
 		NcSelect,
 		NcListItem,
 		NcCheckboxRadioSwitch,
+		ContextAssistant,
 	},
 
 	props: {
@@ -434,12 +443,126 @@ export default {
 			EmpleadosList: [],
 			Aniversario: '',
 			Vacaciones: '',
+			diasDerechoActual: null,
 			state: false,
 			inventarioEquipos: [],
 			diasDerechoOriginal: '',
 			guardandoDias: false,
 			cargandoPeriodo: false,
+			empleadoLoadSequence: 0,
 		}
+	},
+
+	computed: {
+		mostrarAsistenteIa() {
+			return Boolean(
+				this.data?.Id_empleados
+				|| this.data?.uid,
+			)
+				&& !this.show
+				&& !this.cargandoPeriodo
+		},
+
+		aiContextKey() {
+			return String(
+				this.data?.Id_empleados
+				?? this.data?.uid
+				?? '',
+			)
+		},
+
+		aiSuggestions() {
+			return [
+				t('empleados', '¿En qué área y puesto trabaja?'),
+				t('empleados', '¿Quién es su gerente?'),
+				t('empleados', '¿Cuánto tiempo lleva en la empresa?'),
+				t('empleados', '¿Qué equipo de cómputo tiene asignado?'),
+				t('empleados', '¿A qué equipo de trabajo pertenece?'),
+				t('empleados', '¿Cuántos días de vacaciones tiene asignados?'),
+			]
+		},
+
+		aiContext() {
+			const equipoAsignado = (
+				this.Equipo_asignado
+				&& typeof this.Equipo_asignado === 'object'
+			)
+				? this.Equipo_asignado
+				: {}
+
+			const equipoTrabajo = (
+				this.Equipo
+				&& typeof this.Equipo === 'object'
+			)
+				? this.Equipo
+				: {}
+
+			return {
+				empleado: {
+					nombre:
+						this.data?.displayname
+							?? this.data?.uid
+							?? null,
+					correo:
+						this.data?.mail
+							?? null,
+					numero_empleado:
+						this.Numero_empleado || null,
+					fecha_ingreso:
+						this.Ingreso || null,
+					antiguedad_anios:
+						this.calcularAniversarioDesdeFecha(this.Ingreso),
+				},
+				estructura: {
+					area:
+						this.aiDisplayValue(this.area),
+					puesto:
+						this.aiDisplayValue(this.puesto),
+					gerente:
+						this.aiDisplayValue(this.gerente),
+					socio:
+						this.aiDisplayValue(this.socio),
+					equipo:
+						this.aiDisplayValue(this.Equipo),
+					jefe_equipo:
+						this.aiDisplayValue(
+							equipoTrabajo.jefe
+								?? equipoTrabajo.Id_jefe_equipo
+								?? null,
+						),
+					miembros_visibles:
+						this.aiTeamMembers(),
+				},
+				vacaciones: {
+					aniversario_actual:
+						this.aiNumberOrNull(this.Aniversario),
+					dias_derecho:
+						this.aiNumberOrNull(this.diasDerechoActual),
+				},
+				sistemas: {
+					equipo_asignado: {
+						nombre_dispositivo:
+							equipoAsignado.nombre_dispositivo
+								?? null,
+						nombre_sistema:
+							equipoAsignado.nombre_sistema
+								?? null,
+						numero_serie:
+							equipoAsignado.numero_serie
+								?? null,
+						marca:
+							equipoAsignado.marca
+								?? null,
+						modelo:
+							equipoAsignado.modelo
+								?? null,
+						estado:
+							equipoAsignado.estado
+								?? null,
+					},
+				},
+			}
+		},
 	},
 
 	watch: {
@@ -453,25 +576,7 @@ export default {
 		},
 		async data(news) {
 			if (news) {
-				this.setAttr(
-					news.Numero_empleado,
-					news.Ingreso,
-					news.Id_departamento,
-					news.Id_puesto,
-					news.Id_gerente,
-					news.Id_socio,
-					news.Fondo_clave,
-					news.Fondo_ahorro,
-					news.Numero_cuenta,
-					news.Id_equipo,
-					news.Equipo_asignado,
-					news.Sueldo,
-					news.dias_disponibles,
-					news.id_aniversario,
-					news.state)
-
-				await this.cargarPeriodoActual(news.Id_empleados)
-				await this.getInventarioEquipos(news.Equipo_asignado)
+				await this.cargarEmpleado(news)
 			}
 		},
 
@@ -496,31 +601,114 @@ export default {
 			user: empleados.Id_user,
 		}))
 
-		this.setAttr(
-			this.data.Numero_empleado,
-			this.data.Ingreso,
-			this.data.Id_departamento,
-			this.data.Id_puesto,
-			this.data.Id_gerente,
-			this.data.Id_socio,
-			this.data.Fondo_clave,
-			this.data.Fondo_ahorro,
-			this.data.Numero_cuenta,
-			this.data.Id_equipo,
-			this.data.Equipo_asignado,
-			this.data.Sueldo,
-			this.data.dias_disponibles,
-			this.data.id_aniversario,
-			this.data.state)
-
-		await this.cargarPeriodoActual(this.data.Id_empleados)
-		await this.getInventarioEquipos(this.data.Equipo_asignado)
+		await this.cargarEmpleado(this.data)
 	},
 
 	methods: {
 		t,
 
-		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state) {
+		async cargarEmpleado(empleado) {
+			const requestSequence = ++this.empleadoLoadSequence
+			this.cargandoPeriodo = true
+
+			try {
+				await Promise.all([
+					this.setAttr(
+						empleado.Numero_empleado,
+						empleado.Ingreso,
+						empleado.Id_departamento,
+						empleado.Id_puesto,
+						empleado.Id_gerente,
+						empleado.Id_socio,
+						empleado.Fondo_clave,
+						empleado.Fondo_ahorro,
+						empleado.Numero_cuenta,
+						empleado.Id_equipo,
+						empleado.Equipo_asignado,
+						empleado.Sueldo,
+						empleado.state,
+						requestSequence,
+					),
+					this.cargarPeriodoActual(
+						empleado.Id_empleados,
+						requestSequence,
+					),
+					this.getInventarioEquipos(
+						empleado.Equipo_asignado,
+						requestSequence,
+					),
+				])
+			} finally {
+				if (requestSequence === this.empleadoLoadSequence) {
+					this.cargandoPeriodo = false
+				}
+			}
+		},
+
+		aiDisplayValue(value) {
+			if (value === null || value === undefined || value === '') {
+				return null
+			}
+
+			if (typeof value === 'string' || typeof value === 'number') {
+				return String(value)
+			}
+
+			if (typeof value === 'object') {
+				return value.displayName
+					?? value.displayname
+					?? value.label
+					?? value.name
+					?? value.nombre
+					?? value.user
+					?? null
+			}
+
+			return null
+		},
+
+		aiNumberOrNull(value) {
+			if (
+				value === null
+				|| value === undefined
+				|| value === ''
+				|| (typeof value === 'string' && value.trim() === '')
+			) {
+				return null
+			}
+
+			if (typeof value !== 'number' && typeof value !== 'string') {
+				return null
+			}
+
+			const number = Number(value)
+			return Number.isFinite(number) ? number : null
+		},
+
+		aiTeamMembers() {
+			const miembros = Array.isArray(this.peopleEquipo?.equipo)
+				? this.peopleEquipo.equipo
+				: []
+
+			return miembros
+				.slice(0, 50)
+				.map(item => ({
+					nombre:
+						item.displayname
+							?? item.displayName
+							?? item.nombre
+							?? item.Id_user
+							?? null,
+					puesto:
+						item.puesto
+							?? item.Nombre_puesto
+							?? null,
+				}))
+		},
+
+		async setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state, requestSequence = this.empleadoLoadSequence) {
+			if (requestSequence !== this.empleadoLoadSequence) return
+
 			this.Numero_empleado = this.checknull(NumeroEmpleado)
 			this.Ingreso = this.checknull(Ingreso)
 			this.area = Area
@@ -533,6 +721,7 @@ export default {
 			this.Equipo = this.checknull(Equipo)
 			this.Equipo_asignado = this.checknull(EquipoAsignado)
 			this.Sueldo = this.checknull(Sueldo)
+			this.peopleEquipo = {}
 
 			// Mapeo de estado: '1' = puede solicitar; '0'/'2' = solo lectura
 			if (state === '0' || state === '2') {
@@ -541,68 +730,88 @@ export default {
 				this.state = true
 			}
 
-			this.getAreas(this.area)
-			this.getPuestos(this.puesto)
-			this.getEquipos(this.Equipo)
+			await Promise.all([
+				this.getAreas(Area, requestSequence),
+				this.getPuestos(Puesto, requestSequence),
+				this.getEquipos(Equipo, requestSequence),
+				this.GetAllEquipo(Equipo, requestSequence),
+			])
 		},
 
-		async getAreas(Area) {
+		async getAreas(Area, requestSequence = this.empleadoLoadSequence) {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/GetAreasFix'))
-				this.optionsarea = response?.data?.ocs?.data
-				if (Area && Area.length !== 0) {
-					this.area = this.optionsarea.find(areas => areas.value === parseInt(Area)).label
-				} else {
-					this.area = ''
-				}
+				if (requestSequence !== this.empleadoLoadSequence) return
+
+				this.optionsarea = Array.isArray(response?.data?.ocs?.data)
+					? response.data.ocs.data
+					: []
+				const selectedArea = this.optionsarea
+					.find(area => area.value === parseInt(Area))
+				this.area = selectedArea?.label ?? ''
 			} catch (err) {
+				if (requestSequence !== this.empleadoLoadSequence) return
+				this.area = ''
 				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
-		async getPuestos(Puesto) {
+		async getPuestos(Puesto, requestSequence = this.empleadoLoadSequence) {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/GetPuestosFix'))
-				this.optionspuesto = response?.data?.ocs?.data
-				if (Puesto && Puesto.length !== 0) {
-					this.puesto = this.optionspuesto.find(role => role.value === parseInt(Puesto)).label
-				} else {
-					this.puesto = ''
-				}
+				if (requestSequence !== this.empleadoLoadSequence) return
+
+				this.optionspuesto = Array.isArray(response?.data?.ocs?.data)
+					? response.data.ocs.data
+					: []
+				const selectedPosition = this.optionspuesto
+					.find(position => position.value === parseInt(Puesto))
+				this.puesto = selectedPosition?.label ?? ''
 			} catch (err) {
+				if (requestSequence !== this.empleadoLoadSequence) return
+				this.puesto = ''
 				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
-		async getEquipos(Equipo) {
-			this.loading = false
-			this.GetAllEquipo(Equipo)
+		async getEquipos(Equipo, requestSequence = this.empleadoLoadSequence) {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/GetEquiposList'))
-				const data = response?.data?.ocs?.data
+				if (requestSequence !== this.empleadoLoadSequence) return
+
+				const data = Array.isArray(response?.data?.ocs?.data)
+					? response.data.ocs.data
+					: []
 				this.optionsequipos = data.map(equipo => ({
 					value: equipo.Id_equipo,
 					label: equipo.Nombre,
 					jefe: equipo.Id_jefe_equipo,
 				}))
-				if (Equipo && Equipo.length !== 0) {
-					this.Equipo = this.optionsequipos.find(role => role.value === parseInt(Equipo))
-				} else {
-					this.Equipo = ''
-				}
+				this.Equipo = this.optionsequipos
+					.find(team => team.value === parseInt(Equipo))
+					?? ''
 			} catch (err) {
+				if (requestSequence !== this.empleadoLoadSequence) return
+				this.Equipo = ''
 				showError(t('empleados', 'Se ha producido una excepción [01] [{error}]', { error: String(err), close: true }))
 			}
 		},
 
-		async GetAllEquipo(equipo) {
+		async GetAllEquipo(equipo, requestSequence = this.empleadoLoadSequence) {
+			if (requestSequence !== this.empleadoLoadSequence) return
+			if (equipo === '' || equipo === null || equipo === undefined) {
+				this.peopleEquipo = {}
+				return
+			}
+
 			try {
-				if (equipo !== '' || equipo !== null || equipo !== undefined) {
-					const response = await axios.get(generateUrl('/apps/empleados/GetEmpleadosEquipo/' + equipo))
-					const data = response?.data?.ocs?.data
-					this.peopleEquipo = data
-				}
+				const response = await axios.get(generateUrl('/apps/empleados/GetEmpleadosEquipo/' + equipo))
+				if (requestSequence !== this.empleadoLoadSequence) return
+
+				const data = response?.data?.ocs?.data
+				this.peopleEquipo = data
 			} catch (err) {
+				if (requestSequence !== this.empleadoLoadSequence) return
 				// eslint-disable-next-line no-console
 				console.log(err)
 			}
@@ -704,7 +913,12 @@ export default {
 			this.$bus.emit('send-data', data)
 			this.$bus.emit('show', false)
 		},
-		async getInventarioEquipos(currentEquipoId = null) {
+		async getInventarioEquipos(
+			currentEquipoId = null,
+			requestSequence = this.empleadoLoadSequence,
+		) {
+			if (requestSequence !== this.empleadoLoadSequence) return
+
 			try {
 				const current = currentEquipoId || this.getEquipoAsignadoValue()
 
@@ -714,6 +928,7 @@ export default {
 						onlyAvailable: true,
 					},
 				})
+				if (requestSequence !== this.empleadoLoadSequence) return
 
 				const data = this.normalizeInventarioEquiposResponse(response)
 
@@ -745,6 +960,7 @@ export default {
 					this.Equipo_asignado = ''
 				}
 			} catch (err) {
+				if (requestSequence !== this.empleadoLoadSequence) return
 				showError(t('empleados', 'No se pudo cargar el inventario de equipos [{error}]', {
 					error: String(err),
 					close: true,
@@ -851,28 +1067,36 @@ export default {
 			}
 		},
 
-		async cargarPeriodoActual(idEmpleado) {
-			if (!idEmpleado) return
+		async cargarPeriodoActual(
+			idEmpleado,
+			requestSequence = this.empleadoLoadSequence,
+		) {
+			if (requestSequence !== this.empleadoLoadSequence) return
 
-			this.cargandoPeriodo = true
 			this.Aniversario = ''
 			this.Vacaciones = ''
+			this.diasDerechoActual = null
+			this.diasDerechoOriginal = ''
+
+			if (!idEmpleado) return
 
 			try {
 				const response = await axios.post(generateUrl('/apps/empleados/GetAusenciasByUser'), {
 					id: idEmpleado,
 				})
+				if (requestSequence !== this.empleadoLoadSequence) return
+
 				const periodo = response?.data?.ocs?.data?.[0]
 
 				if (periodo) {
 					this.Aniversario = this.checknull(periodo.id_aniversario)
 					this.Vacaciones = this.checknull(periodo.dias_disponibles)
+					this.diasDerechoActual = this.aiNumberOrNull(periodo.dias_derecho)
 					this.diasDerechoOriginal = this.Vacaciones
 				}
 			} catch (err) {
+				if (requestSequence !== this.empleadoLoadSequence) return
 				showError(t('empleados', 'No se pudo cargar el periodo de vacaciones [{error}]', { error: String(err), close: true }))
-			} finally {
-				this.cargandoPeriodo = false
 			}
 		},
 

@@ -25,7 +25,7 @@
 			</header>
 
 			<p class="context-assistant__notice">
-				{{ t('empleados', 'Solo responde sobre el empleado y el periodo visibles.') }}
+				{{ notice }}
 			</p>
 
 			<div class="context-assistant__messages" aria-live="polite">
@@ -137,6 +137,10 @@ export default {
 		title: {
 			type: String,
 			default: '',
+		},
+		notice: {
+			type: String,
+			default: () => t('empleados', 'Solo responde sobre la información visible en esta vista.'),
 		},
 		suggestions: {
 			type: Array,
