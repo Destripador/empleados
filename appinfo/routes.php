@@ -181,6 +181,7 @@ return [
 
 		/******************************* CLIENTES *****************************************/
 		['name' => 'clientes#GetCompaniesGroups',  'url' => '/GetCompaniesGroups',  'verb' => 'GET'],
+		['name' => 'clientes#GetClientesEmpleadosLookup', 'url' => '/GetClientesEmpleadosLookup', 'verb' => 'GET'],
 		['name' => 'clientes#GetCompanieGroup',            'url' => '/GetCompanieGroup',    'verb' => 'POST'],
 		['name' => 'clientes#crearCliente', 'url' => '/crearCliente', 'verb' => 'POST'],
 		['name' => 'clientes#modificarCliente',    'url' => '/modificarCliente',    'verb' => 'POST'],
@@ -240,6 +241,9 @@ return [
 		['name' => 'reportetiempo#GetEmpleadosReports', 'url' => '/GetEmpleadosReports', 'verb' => 'POST'],
 		['name' => 'reportetiempo#ExportarReportes', 'url' => '/ExportarReportes', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetAdminReportsSummary', 'url' => '/GetAdminReportsSummary', 'verb' => 'POST',],
+		['name' => 'reportetiempo#GetCostosLideres', 'url' => '/GetCostosLideres', 'verb' => 'POST'],
+		['name' => 'reportetiempo#GetCostosActividades', 'url' => '/GetCostosActividades', 'verb' => 'GET'],
+		['name' => 'reportetiempo#GetCostosCandidatos', 'url' => '/GetCostosCandidatos', 'verb' => 'POST'],
 		['name' => 'reportetiempo#estadoReporteHoy', 'url' => '/estadoReporteHoy', 'verb' => 'GET',],
 		['name' => 'reportetiempo#GetCumplimientoReportesHoy', 'url' => '/GetCumplimientoReportesHoy', 'verb' => 'GET',],
 		['name' => 'reportetiempo#EnviarRecordatoriosPendientesHoy', 'url' => '/EnviarRecordatoriosPendientesHoy', 'verb' => 'POST',],

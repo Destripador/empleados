@@ -91,13 +91,22 @@ class ClientesController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetCompaniesGroups(): DataResponse {
-        $this->permisosService->requireCanSeeAny([
-            'empleados',
-        ]);
+        $this->requireClientesAccess();
 
         $clientes = $this->clientesMapper->findAll();
 
         return new DataResponse($clientes, Http::STATUS_OK);
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetClientesEmpleadosLookup(): DataResponse {
+        $this->requireClientesAccess();
+
+        return new DataResponse(
+            $this->empleadosMapper->getClientesEmployeeLookup(),
+            Http::STATUS_OK
+        );
     }
 
     #[UseSession]

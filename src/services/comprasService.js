@@ -61,7 +61,7 @@ export async function obtenerContextoCompras() {
 
 export const guardarDocumentoSolicitud = async (id) => {
 	const response = await axios.post(
-		generateUrl('/apps/empleados/compras/solicitudes/{id}/documento/guardar', { id })
+		generateUrl('/apps/empleados/compras/solicitudes/{id}/documento/guardar', { id }),
 	)
 
 	return response.data

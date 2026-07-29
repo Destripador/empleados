@@ -184,6 +184,14 @@
 							<ViewList :size="20" />
 						</template>
 					</NcAppNavigationItem>
+
+					<NcAppNavigationItem v-if="canSeeAdminReports"
+						:name="t('empleados', 'Costs')"
+						:to="{ name: 'Costs' }">
+						<template #icon>
+							<Cash :size="20" />
+						</template>
+					</NcAppNavigationItem>
 				</NcAppNavigationList>
 			</div>
 		</div>
@@ -205,6 +213,7 @@ import CalendarClock from 'vue-material-design-icons/CalendarClock.vue'
 import CalendarBlank from 'vue-material-design-icons/CalendarBlank.vue'
 import Laptop from 'vue-material-design-icons/Laptop.vue'
 import CartOutline from 'vue-material-design-icons/CartOutline.vue'
+import Cash from 'vue-material-design-icons/Cash.vue'
 
 import {
 	NcAppNavigation,
@@ -239,6 +248,7 @@ export default {
 		CalendarClock,
 		Laptop,
 		CartOutline,
+		Cash,
 	},
 
 	mixins: [permissionsMixin],

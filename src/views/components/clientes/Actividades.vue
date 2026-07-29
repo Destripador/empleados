@@ -4,7 +4,8 @@
 			:loading="loading"
 			:listas="filteredListas"
 			:select="select"
-			:show-options="true">
+			:show-options="canAdminCustomers"
+			:defaultbuttons="canAdminCustomers">
 			<template #custombuttons>
 				<div class="filter-wrap">
 					<NcButton
@@ -57,7 +58,7 @@
 		</List>
 
 		<NcModal
-			v-if="modal"
+			v-if="modal && canAdminCustomers"
 			ref="modalRef"
 			size="normal"
 			:name="editing ? t('empleados', 'Edit activity') : t('empleados', 'New activity')"
@@ -144,6 +145,7 @@
 		</NcModal>
 
 		<input
+			v-if="canAdminCustomers"
 			ref="file"
 			type="file"
 			class="file-input"
@@ -160,6 +162,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 import List from '../Helpers/Lists/List.vue'
 import ActividadesDetalles from './ActividadesDetalles.vue'
+import permissionsMixin from '../../../mixins/permissions.js'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 
 import {
@@ -184,6 +187,7 @@ export default {
 		NcCheckboxRadioSwitch,
 		ActividadesDetalles,
 	},
+	mixins: [permissionsMixin],
 	data() {
 		return {
 			editing: false,
@@ -203,6 +207,10 @@ export default {
 	},
 
 	computed: {
+		canAdminCustomers() {
+			return this.canSee('clientes.admin')
+		},
+
 		activeFilterCount() {
 			return (this.onlyBillable ? 1 : 0)
 		},
@@ -236,11 +244,13 @@ export default {
 		window.addEventListener('keydown', this.onKeyDown)
 
 		this.$root.$on('details', this._onDetails)
-		this.$root.$on('new', this._onNew)
-		this.$root.$on('delete', this._onDelete)
-		this.$root.$on('edit', this._onEdit)
-		this.$root.$on('exportlist', this._onExport)
-		this.$root.$on('importlist', this._onImport)
+		if (this.canAdminCustomers) {
+			this.$root.$on('new', this._onNew)
+			this.$root.$on('delete', this._onDelete)
+			this.$root.$on('edit', this._onEdit)
+			this.$root.$on('exportlist', this._onExport)
+			this.$root.$on('importlist', this._onImport)
+		}
 		this.GetActividades()
 		this._onClickOutside = (e) => {
 			const wrap = this.$el.querySelector('.filter-wrap')

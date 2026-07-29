@@ -452,6 +452,36 @@ class empleadosMapper extends QBMapper {
 
 		return $data;
 	}
+
+	public function getClientesEmployeeLookup(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('e.Id_empleados', 'id_empleado')
+			->selectAlias('e.Id_user', 'id_user')
+			->selectAlias('u.uid', 'uid')
+			->selectAlias('u.displayname', 'displayname')
+			->from($this->getTableName(), 'e')
+			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->where(
+				$qb->expr()->eq(
+					'e.estado',
+					$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->orderBy('u.displayname', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static function (array $row): array {
+			return [
+				'id_empleado' => (int)$row['id_empleado'],
+				'uid' => (string)$row['uid'],
+				'displayname' => (string)$row['displayname'],
+			];
+		}, $rows);
+	}
 	
 	public function getDisplayNameById(int $idEmpleado): ?string {
 		$qb = $this->db->getQueryBuilder();

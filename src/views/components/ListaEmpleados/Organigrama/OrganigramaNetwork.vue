@@ -7,14 +7,28 @@
 		</NcEmptyContent>
 
 		<template v-else>
-			<p class="organigrama-hint">
-				{{ viewMode === 'network'
-					? t('empleados', 'Hold and drag an avatar to move it. Double-click an avatar to start a connection, then drop it on another avatar. Double-click a connection to remove it.')
-					: t('empleados', 'Expand a manager to see all their direct and indirect reports.') }}
-			</p>
+			<div class="organigrama-hint" :class="{ 'organigrama-hint--active': connectMode }">
+				<span>{{ viewHint }}</span>
+				<button
+					v-if="connectMode"
+					type="button"
+					class="cancel-connection-btn"
+					@click="exitConnectMode">
+					{{ t('empleados', 'Cancel') }}
+				</button>
+			</div>
 
 			<div class="organigrama-content">
-				<div v-show="viewMode === 'network'" ref="networkContainer" class="organigrama-network" />
+				<div
+					v-show="viewMode === 'network'"
+					ref="networkContainer"
+					class="organigrama-network"
+					:class="{ 'organigrama-network--connecting': connectMode }" />
+				<OrganigramaTraditional
+					v-if="viewMode === 'traditional'"
+					class="organigrama-network"
+					:empleados="empleados"
+					:relaciones="relaciones" />
 				<OrganigramaTable
 					v-if="viewMode === 'table'"
 					class="organigrama-network"
@@ -23,15 +37,27 @@
 
 				<div class="organigrama-view-switch">
 					<button
+						type="button"
 						class="view-switch-btn"
 						:class="{ active: viewMode === 'network' }"
-						@click="viewMode = 'network'">
+						:aria-pressed="viewMode === 'network' ? 'true' : 'false'"
+						@click="setViewMode('network')">
 						{{ t('empleados', 'Network') }}
 					</button>
 					<button
+						type="button"
+						class="view-switch-btn"
+						:class="{ active: viewMode === 'traditional' }"
+						:aria-pressed="viewMode === 'traditional' ? 'true' : 'false'"
+						@click="setViewMode('traditional')">
+						{{ t('empleados', 'Organization chart') }}
+					</button>
+					<button
+						type="button"
 						class="view-switch-btn"
 						:class="{ active: viewMode === 'table' }"
-						@click="viewMode = 'table'">
+						:aria-pressed="viewMode === 'table' ? 'true' : 'false'"
+						@click="setViewMode('table')">
 						{{ t('empleados', 'Table') }}
 					</button>
 				</div>
@@ -47,6 +73,7 @@ import axios from '@nextcloud/axios'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import OrganigramaTable from './OrganigramaTable.vue'
+import OrganigramaTraditional from './OrganigramaTraditional.vue'
 
 import {
 	NcEmptyContent,
@@ -60,6 +87,7 @@ export default {
 		NcEmptyContent,
 		NcLoadingIcon,
 		OrganigramaTable,
+		OrganigramaTraditional,
 	},
 
 	data() {
@@ -70,17 +98,44 @@ export default {
 			relaciones: [],
 			posiciones: {},
 			connectMode: false,
+			connectionSourceId: null,
+			connectionPending: false,
 			viewMode: 'network',
 		}
 	},
 
+	computed: {
+		viewHint() {
+			if (this.connectMode) {
+				const source = this.empleados.find(
+					employee => String(employee.Id_empleados) === String(this.connectionSourceId),
+				)
+				const sourceName = source?.Id_user || t('empleados', 'the selected employee')
+				return t(
+					'empleados',
+					'Creating a connection from {employee}. Click the employee who will report to them.',
+					{ employee: sourceName },
+				)
+			}
+			if (this.viewMode === 'traditional') {
+				return t('empleados', 'This view shows the complete hierarchical structure. Edit relationships from the Network view.')
+			}
+			if (this.viewMode === 'table') {
+				return t('empleados', 'Expand a manager to see all their direct and indirect reports.')
+			}
+			return t('empleados', 'Drag an avatar to move it. To create a connection, double-click the manager and then click their dependent. Double-click a connection to remove it.')
+		},
+	},
+
 	async mounted() {
+		window.addEventListener('keydown', this.handleKeydown)
 		await this.cargarDatos()
 		this.loading = false
 		this.$nextTick(() => this.buildNetwork())
 	},
 
 	beforeDestroy() {
+		window.removeEventListener('keydown', this.handleKeydown)
 		if (this.network) {
 			this.network.destroy()
 		}
@@ -88,6 +143,22 @@ export default {
 
 	methods: {
 		t,
+
+		setViewMode(viewMode) {
+			const previousViewMode = this.viewMode
+			if (viewMode !== 'network') {
+				this.exitConnectMode()
+			}
+			this.viewMode = viewMode
+
+			if (viewMode === 'network' && previousViewMode !== 'network') {
+				this.$nextTick(() => {
+					if (!this.network) return
+					this.network.redraw()
+					this.network.fit()
+				})
+			}
+		},
 
 		async cargarDatos() {
 			try {
@@ -199,7 +270,9 @@ export default {
 
 			this.network.on('doubleClick', (params) => {
 				if (params.nodes.length === 1) {
-					this.enterConnectMode()
+					if (!this.connectMode) {
+						this.enterConnectMode(params.nodes[0])
+					}
 				} else if (params.nodes.length === 0 && params.edges.length === 1) {
 					const edgeId = params.edges[0]
 					const edge = this.network.body.data.edges.get(edgeId)
@@ -208,17 +281,61 @@ export default {
 					}
 				}
 			})
+
+			this.network.on('click', (params) => {
+				if (!this.connectMode || params.nodes.length !== 1) return
+				this.completeConnection(params.nodes[0])
+			})
 		},
 
-		enterConnectMode() {
+		handleKeydown(event) {
+			if (event.key === 'Escape' && this.connectMode) {
+				this.exitConnectMode()
+			}
+		},
+
+		enterConnectMode(sourceId) {
 			if (this.connectMode) return
 			this.connectMode = true
-			this.network.addEdgeMode()
+			this.connectionSourceId = sourceId
+			this.network.selectNodes([sourceId])
+		},
+
+		completeConnection(targetId) {
+			if (
+				!this.connectMode
+				|| this.connectionPending
+				|| String(targetId) === String(this.connectionSourceId)
+			) {
+				return
+			}
+
+			const sourceId = this.connectionSourceId
+			const alreadyExists = this.relaciones.some(
+				relation => String(relation.id_empleado) === String(sourceId)
+					&& String(relation.id_dependiente) === String(targetId),
+			)
+			if (alreadyExists) {
+				showError(t('empleados', 'This connection already exists'))
+				this.exitConnectMode()
+				return
+			}
+
+			this.connectionPending = true
+			this.crearRelacion(sourceId, targetId, edgeData => {
+				if (edgeData) {
+					this.network.body.data.edges.add(edgeData)
+				}
+			})
 		},
 
 		exitConnectMode() {
 			this.connectMode = false
-			this.network.disableEditMode()
+			this.connectionSourceId = null
+			this.connectionPending = false
+			if (this.network) {
+				this.network.unselectAll()
+			}
 		},
 
 		async guardarPosicion(idEmpleado, x, y) {
@@ -312,10 +429,29 @@ export default {
 }
 
 .organigrama-hint {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
 	margin: 0;
 	padding: 8px 16px;
 	color: var(--color-text-maxcontrast);
 	font-size: 13px;
+}
+
+.organigrama-hint--active {
+	color: var(--color-main-text);
+	background: var(--color-primary-element-light);
+	border-radius: var(--border-radius-large);
+}
+
+.cancel-connection-btn {
+	flex: 0 0 auto;
+	border: 0;
+	background: transparent;
+	color: var(--color-primary-element);
+	font-weight: 600;
+	cursor: pointer;
 }
 
 .organigrama-content {
@@ -330,6 +466,12 @@ export default {
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
+}
+
+.organigrama-network--connecting {
+	:deep(canvas) {
+		cursor: crosshair;
+	}
 }
 
 .organigrama-view-switch {
@@ -367,6 +509,20 @@ export default {
 		background: var(--color-primary-element);
 		color: var(--color-primary-element-text, #fff);
 		box-shadow: 0 2px 10px rgba(52, 120, 246, 0.35);
+	}
+}
+
+@media (max-width: 600px) {
+	.organigrama-view-switch {
+		right: 8px;
+		bottom: 8px;
+		left: 8px;
+		justify-content: center;
+	}
+
+	.view-switch-btn {
+		flex: 1;
+		padding: 7px 8px;
 	}
 }
 </style>

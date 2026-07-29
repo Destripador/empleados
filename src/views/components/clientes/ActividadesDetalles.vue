@@ -217,9 +217,7 @@ export default {
 			return Number.isFinite(parsed) ? parsed : null
 		},
 
-		/**
-		 * La BD siempre guarda minutos. Mostramos en h:mm si >= 60, si no en min.
-		 */
+		// a BD siempre guarda minutos. Mostramos en h:mm si >= 60, si no en min.
 		formatMinutes(value) {
 			if (value === null || value === undefined) return '-'
 			const v = Math.abs(value)
