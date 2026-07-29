@@ -4,8 +4,8 @@
 			<List :loading="loading"
 				:listas="filteredListas"
 				:select="select"
-				:show-options="true"
-				:show-toggle-estado="true"
+				:show-options="canAdminCustomers"
+				:show-toggle-estado="canAdminCustomers"
 				:toggle-estado-label="selectedIsActive ? t('empleados', 'Disable') : t('empleados', 'Enable')"
 				:defaultbuttons="false"
 				:custom="true">
@@ -99,32 +99,34 @@
 							{{ t('empleados', 'Only Disabled') }}
 						</NcActionCheckbox>
 
-						<NcActionSeparator />
+						<template v-if="canAdminCustomers">
+							<NcActionSeparator />
 
-						<NcActionButton :is-menu="true">
-							{{ t('empleados', 'Settings') }}
-						</NcActionButton>
+							<NcActionButton :is-menu="true">
+								{{ t('empleados', 'Settings') }}
+							</NcActionButton>
 
-						<NcActionButton @click="AgregarNuevo()">
-							<template #icon>
-								<AccountMultiplePlusOutline :size="20" />
-							</template>
-							{{ t('empleados', 'Add new') }}
-						</NcActionButton>
+							<NcActionButton @click="AgregarNuevo()">
+								<template #icon>
+									<AccountMultiplePlusOutline :size="20" />
+								</template>
+								{{ t('empleados', 'Add new') }}
+							</NcActionButton>
 
-						<NcActionButton @click="Exportar()">
-							<template #icon>
-								<DatabaseExport :size="20" />
-							</template>
-							{{ t('empleados', 'Export list') }}
-						</NcActionButton>
+							<NcActionButton @click="Exportar()">
+								<template #icon>
+									<DatabaseExport :size="20" />
+								</template>
+								{{ t('empleados', 'Export list') }}
+							</NcActionButton>
 
-						<NcActionButton @click="triggerImport()">
-							<template #icon>
-								<Upload :size="20" />
-							</template>
-							{{ t('empleados', 'Import data from template') }}
-						</NcActionButton>
+							<NcActionButton @click="triggerImport()">
+								<template #icon>
+									<Upload :size="20" />
+								</template>
+								{{ t('empleados', 'Import data from template') }}
+							</NcActionButton>
+						</template>
 					</NcActions>
 
 					<span
@@ -377,7 +379,7 @@
 														{{ t('empleados', 'Filters') }}
 													</NcActionButton>
 
-													<NcActionButton @click="toggleSelectMode">
+													<NcActionButton v-if="canAdminCustomers" @click="toggleSelectMode">
 														<template #icon>
 															<CheckboxMarkedOutline :size="20" />
 														</template>
@@ -389,7 +391,7 @@
 													{{ honorarioFilterCount }}
 												</span>
 
-												<NcButton type="primary" @click="openHonorarioModal">
+												<NcButton v-if="canAdminCustomers" type="primary" @click="openHonorarioModal">
 													{{ t('empleados', 'New fee') }}
 												</NcButton>
 											</div>
@@ -455,7 +457,7 @@
 														</span>
 														<!-- Botón reactivar — solo igualas completadas -->
 														<div class="honorario-right-actions">
-															<NcButton v-if="Number(honorario.numero_parcialidades) === 0"
+															<NcButton v-if="canAdminCustomers && Number(honorario.numero_parcialidades) === 0"
 																type="secondary"
 																@click="completarHonorarioBorrador(honorario)">
 																{{ t('empleados', 'Complete fee') }}
@@ -467,7 +469,7 @@
 																{{ t('empleados', 'Installments') }}
 															</NcButton>
 
-															<NcActions :force-menu="true">
+															<NcActions v-if="canAdminCustomers" :force-menu="true">
 																<template #icon>
 																	<DotsHorizontal :size="20" />
 																</template>
@@ -568,14 +570,14 @@
 																	honorario.tipo_moneda }}</span>
 
 																<div class="parcialidad-actions">
-																	<NcButton v-if="Number(p.pagado) === 0"
+																	<NcButton v-if="canAdminCustomers && Number(p.pagado) === 0"
 																		class="btn-pagar"
 																		type="primary"
 																		@click="abrirDialogPago(p.id_parcialidad, honorario.id_honorario)">
 																		{{ t('empleados', 'Mark as paid') }}
 																	</NcButton>
 
-																	<template v-else-if="Number(p.pagado) === 1">
+																	<template v-else-if="canAdminCustomers && Number(p.pagado) === 1">
 																		<NcButton class="btn-factura"
 																			type="secondary"
 																			@click="confirmarFactura(p.id_parcialidad, honorario.id_honorario)">
@@ -595,7 +597,7 @@
 																	💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
 																</span>
 
-																<NcActions v-if="Number(p.pagado) === 1" class="parcialidad-detalle-actions">
+																<NcActions v-if="canAdminCustomers && Number(p.pagado) === 1" class="parcialidad-detalle-actions">
 																	<template #icon>
 																		<DotsHorizontal :size="18" />
 																	</template>
@@ -700,7 +702,7 @@
 		</div>
 
 		<!-- Modal: Cliente -->
-		<NcModal v-if="modal"
+		<NcModal v-if="modal && canAdminCustomers"
 			ref="modalRef"
 			:name="modalTitle"
 			@close="closeModal">
@@ -865,7 +867,7 @@
 		</NcModal>
 
 		<!-- Modal - Reporte-Honorarios -->
-		<NcModal v-if="reporteModal"
+		<NcModal v-if="reporteModal && canAdminCustomers"
 			size="normal"
 			:name="t('empleados', 'Generate report')"
 			@close="reporteModal = false">
@@ -897,7 +899,7 @@
 		</NcModal>
 
 		<!-- Modal - Honorarios -->
-		<NcModal v-if="honorarioModal" :name="honorarioModalTitle" @close="closeHonorarioModal">
+		<NcModal v-if="honorarioModal && canAdminCustomers" :name="honorarioModalTitle" @close="closeHonorarioModal">
 			<div class="modal-content">
 				<div class="modal-header">
 					<p class="section-label">
@@ -1054,7 +1056,8 @@
 				</div>
 			</div>
 		</NcModal>
-		<input ref="file"
+		<input v-if="canAdminCustomers"
+			ref="file"
 			type="file"
 			class="file-input"
 			accept=".xlsx"
@@ -1069,6 +1072,7 @@ import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
 import List from '../Helpers/Lists/List.vue'
+import permissionsMixin from '../../../mixins/permissions.js'
 
 import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOutline.vue'
 import OfficeBuilding from 'vue-material-design-icons/OfficeBuilding.vue'
@@ -1156,6 +1160,7 @@ export default {
 		NcEmptyContent,
 		NcNoteCard,
 	},
+	mixins: [permissionsMixin],
 
 	data() {
 		return {
@@ -1295,6 +1300,10 @@ export default {
 	},
 
 	computed: {
+		canAdminCustomers() {
+			return this.canSee('clientes.admin')
+		},
+
 		/* ----------- Select Cliente ----------- */
 		selectedClient() {
 			return this.select?.[0] || {}
@@ -1599,15 +1608,15 @@ export default {
 		window.addEventListener('keydown', this.onKeyDown)
 
 		this.$root.$on('details', this._onDetails)
-		this.$root.$on('new', this._onNew)
-		this.$root.$on('delete', this._onDelete)
-		this.$root.$on('edit', this._onEdit)
-		this.$root.$on('exportlist', this._onExport)
-		this.$root.$on('importlist', this._onImport)
+		if (this.canAdminCustomers) {
+			this.$root.$on('new', this._onNew)
+			this.$root.$on('delete', this._onDelete)
+			this.$root.$on('edit', this._onEdit)
+			this.$root.$on('exportlist', this._onExport)
+			this.$root.$on('importlist', this._onImport)
+		}
 
-		this.GetCompaniesGroups()
-		this.GetEmpleadosList()
-		this.GetAreasList()
+		this.loadRequiredCustomerData()
 		this._onClickOutside = (e) => {
 			const wrap = this.$el.querySelector('.filter-wrap')
 			if (wrap && !wrap.contains(e.target)) {
@@ -1617,7 +1626,9 @@ export default {
 		document.addEventListener('click', this._onClickOutside)
 
 		this._onToggleEstado = () => this.toggleEstado()
-		this.$root.$on('toggleEstado', this._onToggleEstado)
+		if (this.canAdminCustomers) {
+			this.$root.$on('toggleEstado', this._onToggleEstado)
+		}
 	},
 
 	beforeDestroy() {
@@ -1643,6 +1654,21 @@ export default {
 			return true
 		},
 
+		async loadRequiredCustomerData() {
+			try {
+				await Promise.all([
+					this.GetCompaniesGroups(false),
+					this.GetClientesEmpleadosLookup(false),
+				])
+			} catch (err) {
+				showError(
+					t('empleados', 'Error loading customer data: {error}', {
+						error: String(err),
+					}),
+				)
+			}
+		},
+
 		async GetAreasList() {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/GetAreasList'))
@@ -1653,6 +1679,7 @@ export default {
 					value: a.Nombre,
 				}))
 			} catch (err) {
+				this.rep_departamentoOptions = []
 				showError(t('empleados', 'Error loading departments: {error}', { error: String(err) }))
 			}
 		},
@@ -1752,28 +1779,31 @@ export default {
 			this.showFilters = !this.showFilters
 		},
 
-		async GetEmpleadosList() {
+		async GetClientesEmpleadosLookup(showFailure = true) {
 			try {
 				const response = await axios.get(
-					generateUrl('/apps/empleados/GetEmpleadosList'),
+					generateUrl('/apps/empleados/GetClientesEmpleadosLookup'),
 				)
 
-				const empleados = response?.data?.ocs?.data?.Empleados || []
-				// eslint-disable-next-line no-console
-				console.log(this.getPayload())
+				const empleados = response?.data?.ocs?.data || []
 
-				this.projectManagers = empleados.map((emp) => ({
-					value: Number(emp.Id_empleados),
-					uid: emp.uid,
-					label: emp.displayname,
-					avatar: generateUrl(`/avatar/${emp.uid}/64`),
+				this.projectManagers = empleados.map((employee) => ({
+					value: Number(employee.id_empleado),
+					uid: employee.uid,
+					label: employee.displayname || employee.uid,
+					avatar: generateUrl(`/avatar/${employee.uid}/64`),
 				}))
 			} catch (err) {
-				showError(
-					t('empleados', 'Error loading employees: {error}', {
-						error: String(err),
-					}),
-				)
+				this.projectManagers = []
+				if (showFailure) {
+					showError(
+						t('empleados', 'Error loading employees: {error}', {
+							error: String(err),
+						}),
+					)
+				} else {
+					throw err
+				}
 			}
 		},
 
@@ -1790,7 +1820,7 @@ export default {
 			}
 		},
 
-		async GetCompaniesGroups() {
+		async GetCompaniesGroups(showFailure = true) {
 			this.loading = true
 
 			try {
@@ -1815,10 +1845,14 @@ export default {
 					label: item.nombre,
 				}))
 			} catch (err) {
-				showError(t('empleados', 'Error loading companies: {error}', { error: String(err) }))
 				this.rawClients = []
 				this.listas = []
 				this.options = []
+				if (showFailure) {
+					showError(t('empleados', 'Error loading companies: {error}', { error: String(err) }))
+				} else {
+					throw err
+				}
 			} finally {
 				this.loading = false
 			}
@@ -2551,7 +2585,11 @@ export default {
 			}
 		},
 
-		abrirReporteHonorario(honorario) {
+		async abrirReporteHonorario(honorario) {
+			if (this.rep_departamentoOptions.length === 0) {
+				await this.GetAreasList()
+			}
+
 			this.honorarioParaReporte = honorario
 			this.rep_departamento = null
 			this.rep_asunto = honorario.tipo_servicio || ''

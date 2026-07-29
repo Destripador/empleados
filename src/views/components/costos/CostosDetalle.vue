@@ -4,7 +4,7 @@
 			<img :src="avatarUrl" :alt="leaderName" class="leader-avatar">
 			<div>
 				<p class="eyebrow">
-					{{ t('empleados', 'Project leader') }}
+					{{ t('empleados', 'Project participant') }}
 				</p>
 				<h2>{{ leaderName }}</h2>
 				<p>{{ leader.uid }} · {{ companiesLabel }}</p>
@@ -40,7 +40,7 @@
 								</button>
 							</th>
 							<th scope="col">
-								{{ t('empleados', 'Parent group') }}
+								{{ t('empleados', 'Assignment role') }}
 							</th>
 							<th scope="col">
 								{{ t('empleados', 'Total hours') }}
@@ -51,40 +51,21 @@
 									<span aria-hidden="true">{{ sortIndicator('horas_cargables') }}</span>
 								</button>
 							</th>
-							<th scope="col">
-								{{ t('empleados', 'Non-billable hours') }}
-							</th>
-							<th scope="col" :aria-sort="ariaSort('porcentaje_cargable')">
-								<button type="button" @click="sortBy('porcentaje_cargable')">
-									{{ t('empleados', 'Billable percentage') }}
-									<span aria-hidden="true">{{ sortIndicator('porcentaje_cargable') }}</span>
+							<th scope="col" :aria-sort="ariaSort('costo_laboral_real')">
+								<button type="button" @click="sortBy('costo_laboral_real')">
+									{{ t('empleados', 'Real labor cost') }}
+									<span aria-hidden="true">{{ sortIndicator('costo_laboral_real') }}</span>
 								</button>
-							</th>
-							<th scope="col" :aria-sort="ariaSort('costo_cargable_estimado')">
-								<button type="button" @click="sortBy('costo_cargable_estimado')">
-									{{ t('empleados', 'Estimated billable cost') }}
-									<span aria-hidden="true">{{ sortIndicator('costo_cargable_estimado') }}</span>
-								</button>
-							</th>
-							<th scope="col">
-								{{ t('empleados', 'Status') }}
 							</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr v-for="company in sortedCompanies" :key="company.id_cliente">
 							<td>{{ company.nombre_cliente || '-' }}</td>
-							<td>{{ company.nombre_grupo_padre || '-' }}</td>
+							<td>{{ roleLabel(company.rol_asignacion) }}</td>
 							<td>{{ number(company.horas_totales) }}</td>
 							<td>{{ number(company.horas_cargables) }}</td>
-							<td>{{ number(company.horas_no_cargables) }}</td>
-							<td>{{ number(company.porcentaje_cargable) }} %</td>
-							<td>{{ money(company.costo_cargable_estimado) }}</td>
-							<td>
-								<span class="status" :class="{ 'status--inactive': !Number(company.estado) }">
-									{{ Number(company.estado) ? t('empleados', 'Active') : t('empleados', 'Inactive') }}
-								</span>
-							</td>
+							<td>{{ money(company.costo_laboral_real) }}</td>
 						</tr>
 					</tbody>
 				</table>
@@ -114,7 +95,7 @@ export default {
 	},
 	computed: {
 		leaderName() {
-			return this.leader.displayname || this.leader.uid || t('empleados', 'Project leader')
+			return this.leader.displayname || this.leader.uid || t('empleados', 'Employee')
 		},
 		avatarUrl() {
 			return generateUrl('/avatar/{userId}/64', { userId: this.leader.uid })
@@ -128,7 +109,7 @@ export default {
 				{ label: t('empleados', 'Billable hours'), value: this.number(this.leader.horas_cargables) },
 				{ label: t('empleados', 'Non-billable hours'), value: this.number(this.leader.horas_no_cargables) },
 				{ label: t('empleados', 'Billable percentage'), value: `${this.number(this.leader.porcentaje_cargable)} %` },
-				{ label: t('empleados', 'Estimated billable cost'), value: this.money(this.leader.costo_cargable_estimado) },
+				{ label: t('empleados', 'Real labor cost'), value: this.money(this.leader.costo_laboral_real) },
 			]
 		},
 		sortedCompanies() {
@@ -157,6 +138,15 @@ export default {
 				style: 'currency',
 				currency: 'MXN',
 			}).format(Number(value || 0))
+		},
+		roleLabel(role) {
+			const labels = {
+				lider: t('empleados', 'Leader'),
+				colaborador: t('empleados', 'Collaborator'),
+				participante_historico: t('empleados', 'Historical participant'),
+			}
+
+			return labels[role] || '-'
 		},
 		sortBy(key) {
 			if (this.sortKey === key) {

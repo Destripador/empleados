@@ -151,7 +151,6 @@ class EmpleadosController extends BaseController {
          $this->permisosService->requireCanSeeAny([
             'empleados.hr',
             'empleados.admin',
-            'clientes',
         ]);
         return new DataResponse([
             'Empleados'    => $this->empleadosMapper->GetUserLists()

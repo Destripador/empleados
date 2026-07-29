@@ -136,7 +136,7 @@ export default {
 			const viewportPadding = 12
 			const gap = 6
 			const triggerRect = trigger.getBoundingClientRect()
-			const maxWidth = Math.min(320, window.innerWidth - (viewportPadding * 2))
+			const maxWidth = Math.min(280, window.innerWidth - (viewportPadding * 2))
 
 			this.tooltipStyle = {
 				left: `${viewportPadding}px`,
@@ -216,7 +216,7 @@ export default {
 	position: fixed;
 	z-index: 10000;
 	box-sizing: border-box;
-	width: min(320px, calc(100vw - 24px));
+	width: min(280px, calc(100vw - 32px));
 	padding: 8px 10px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);

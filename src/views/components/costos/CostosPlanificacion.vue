@@ -31,6 +31,36 @@
 			</li>
 		</ol>
 
+		<section
+			class="planning__hours-summary"
+			:class="hoursSummaryClass"
+			:aria-label="t('empleados', 'Project hour assignment status')">
+			<dl>
+				<div class="planning__hours-summary-item">
+					<dt>{{ t('empleados', 'Required hours') }}</dt>
+					<dd>{{ hours(totalRequiredHours) }}</dd>
+				</div>
+				<div class="planning__hours-summary-item">
+					<dt>{{ t('empleados', 'Assigned hours') }}</dt>
+					<dd>{{ hours(totalAssignedHours) }}</dd>
+				</div>
+				<div class="planning__hours-summary-item">
+					<dt>{{ t('empleados', 'Remaining hours') }}</dt>
+					<dd>{{ hours(remainingProjectHours) }}</dd>
+				</div>
+			</dl>
+			<div
+				class="planning__hours-progress"
+				role="progressbar"
+				:aria-valuemin="0"
+				:aria-valuemax="totalRequiredHours"
+				:aria-valuenow="Math.min(totalAssignedHours, totalRequiredHours)"
+				:aria-valuetext="hoursProgressText">
+				<span class="planning__hours-progress-fill" :style="{ width: `${assignedProgress}%` }" />
+			</div>
+			<p>{{ hoursProgressText }} · {{ hoursAssignmentStateLabel }}</p>
+		</section>
+
 		<section class="planning__panel planning__panel--configuration" :aria-labelledby="`${componentId}-project-title`">
 			<div class="planning__panel-heading">
 				<span class="planning__step-number" aria-hidden="true">1</span>
@@ -142,8 +172,10 @@
 						v-for="activity in scenarioActivities"
 						:key="activity.id_actividad"
 						class="planning__activity-row">
-						<div>
-							<strong>{{ activity.nombre }}</strong>
+						<div class="planning__activity-identity">
+							<strong class="planning__activity-name" :title="activity.nombre">
+								{{ activity.nombre }}
+							</strong>
 							<span class="planning__badge">
 								{{ activity.cargable ? t('empleados', 'Billable') : t('empleados', 'Non-billable') }}
 							</span>
@@ -314,13 +346,24 @@
 
 			<div v-else class="planning__candidate-list">
 				<CostosCandidato
-					v-for="candidate in filteredCandidates"
+					v-for="candidate in visibleCandidates"
 					:key="candidate.id_empleado"
 					:candidate="candidate"
 					:required-hours="totalRequiredHours"
-					:selected-activity-ids="selectedActivityIds"
 					:already-selected="isCandidateSelected(candidate.id_empleado)"
+					:project-fully-assigned="projectHoursFullyAssigned || projectHoursExceeded"
+					@view-details="openCandidateDetail"
 					@add="openAddMember" />
+			</div>
+
+			<div v-if="hasMoreCandidates" class="planning__show-more">
+				<NcButton type="secondary" @click="showMoreCandidates">
+					{{ t('empleados', 'Show more') }}
+				</NcButton>
+				<span class="planning__show-more-label">{{ t('empleados', 'Showing {visible} of {total}', {
+					visible: visibleCandidates.length,
+					total: filteredCandidates.length,
+				}) }}</span>
 			</div>
 		</section>
 
@@ -374,7 +417,7 @@
 								{{ t('empleados', 'Estimated cost') }}
 							</th>
 							<th scope="col">
-								{{ t('empleados', 'Alerts') }}
+								{{ t('empleados', 'Status') }}
 							</th>
 							<th scope="col">
 								{{ t('empleados', 'Actions') }}
@@ -388,18 +431,24 @@
 								<span>{{ member.uid }}</span>
 							</td>
 							<td>{{ member.rol || t('empleados', 'Not specified') }}</td>
-							<td>{{ memberActivityNames(member) }}</td>
-							<td>{{ hours(member.horas_estimadas) }}</td>
-							<td>{{ nullableHours(member.disponibilidad_estimada) }}</td>
-							<td>{{ memberCost(member) }}</td>
 							<td>
-								<span v-if="member.snapshot_stale" class="planning__warning-text">
-									{{ t('empleados', 'Some information needed for the analysis is incomplete.') }}
+								<span class="planning__activity-lines" :title="memberActivityNames(member)">
+									{{ memberActivityNames(member) }}
 								</span>
-								<span v-else-if="memberExceedsAvailability(member)" class="planning__warning-text">
-									{{ t('empleados', 'Exceeds estimated availability') }}
+							</td>
+							<td class="planning__numeric-cell">
+								<strong>{{ hours(member.horas_estimadas) }}</strong>
+							</td>
+							<td class="planning__numeric-cell">
+								{{ nullableHours(member.disponibilidad_estimada) }}
+							</td>
+							<td class="planning__numeric-cell">
+								{{ memberCost(member) }}
+							</td>
+							<td>
+								<span class="planning__status-badge" :class="memberStatus(member).className">
+									{{ memberStatus(member).label }}
 								</span>
-								<span v-else>—</span>
 							</td>
 							<td>
 								<div class="planning__table-actions">
@@ -427,6 +476,17 @@
 			</div>
 
 			<div
+				v-if="projectHoursExceeded"
+				class="planning__alert planning__alert--error"
+				role="alert">
+				{{ t(
+					'empleados',
+					'Assigned hours exceed the current project requirement by {hours}. Adjust team assignments before continuing to the quote.',
+					{ hours: hours(exceededProjectHours) },
+				) }}
+			</div>
+
+			<div
 				v-if="planningAlerts.length"
 				class="planning__alert planning__alert--warning"
 				role="status">
@@ -438,11 +498,29 @@
 			</div>
 
 			<div class="planning__quote-action">
-				<NcButton type="primary" :disabled="!team.length" @click="$emit('go-to-quote')">
+				<NcButton
+					type="primary"
+					:disabled="!team.length || projectHoursExceeded"
+					@click="goToQuote">
 					{{ t('empleados', 'Go to quote') }}
 				</NcButton>
 			</div>
 		</section>
+
+		<NcModal
+			v-if="selectedCandidateDetail"
+			size="large"
+			:name="t('empleados', 'Candidate details')"
+			@close="closeCandidateDetail">
+			<CostosCandidatoDetalle
+				:candidate="selectedCandidateDetail"
+				:required-hours="totalRequiredHours"
+				:selected-activity-ids="selectedActivityIds"
+				:already-selected="isCandidateSelected(selectedCandidateDetail.id_empleado)"
+				:project-fully-assigned="projectHoursFullyAssigned || projectHoursExceeded"
+				@close="closeCandidateDetail"
+				@add="addCandidateFromDetail" />
+		</NcModal>
 
 		<NcModal
 			v-if="memberModalOpen"
@@ -452,6 +530,21 @@
 			<form class="planning__member-modal" @submit.prevent="saveMember">
 				<h2>{{ memberModalTitle }}</h2>
 				<p>{{ memberDraft.displayname || memberDraft.uid }}</p>
+
+				<dl class="planning__assignment-summary">
+					<div class="planning__assignment-summary-item">
+						<dt>{{ t('empleados', 'Project required hours') }}</dt>
+						<dd>{{ hours(totalRequiredHours) }}</dd>
+					</div>
+					<div class="planning__assignment-summary-item">
+						<dt>{{ t('empleados', 'Hours already assigned') }}</dt>
+						<dd>{{ hours(assignedHoursExcluding(editingMemberId)) }}</dd>
+					</div>
+					<div class="planning__assignment-summary-item">
+						<dt>{{ t('empleados', 'Maximum for this employee') }}</dt>
+						<dd>{{ hours(maxDraftAssignableHours) }}</dd>
+					</div>
+				</dl>
 
 				<label class="planning__field">
 					<span>{{ t('empleados', 'Role in project') }}</span>
@@ -467,11 +560,26 @@
 					<input
 						v-model.number="memberDraft.horas_estimadas"
 						type="number"
-						min="0"
+						min="0.25"
+						:max="maxDraftAssignableHours"
 						step="0.25"
 						inputmode="decimal"
 						required>
 				</label>
+				<p class="planning__field-help">
+					{{ t(
+						'empleados',
+						'You can assign up to {hours} without exceeding the project requirement.',
+						{ hours: hours(maxDraftAssignableHours) },
+					) }}
+				</p>
+
+				<div
+					v-if="draftExceedsProjectHours"
+					class="planning__alert planning__alert--error"
+					role="alert">
+					{{ t('empleados', 'Assigned hours exceed the remaining project hours.') }}
+				</div>
 
 				<NcSelect
 					v-model="memberDraft.actividades"
@@ -519,6 +627,7 @@ import PencilOutline from 'vue-material-design-icons/PencilOutline.vue'
 
 import HelpHint from '../Helpers/HelpHint.vue'
 import CostosCandidato from './CostosCandidato.vue'
+import CostosCandidatoDetalle from './CostosCandidatoDetalle.vue'
 
 let planningComponentId = 0
 
@@ -527,6 +636,7 @@ export default {
 	components: {
 		AccountSearchOutline,
 		CostosCandidato,
+		CostosCandidatoDetalle,
 		DeleteOutline,
 		HelpHint,
 		NcButton,
@@ -569,6 +679,8 @@ export default {
 			analyzedSignature: '',
 			requestSerial: 0,
 			requestController: null,
+			candidateDisplayLimit: 10,
+			selectedCandidateDetail: null,
 			memberModalOpen: false,
 			editingMemberId: null,
 			memberCandidateSnapshot: null,
@@ -686,6 +798,12 @@ export default {
 					&& this.matchesActivityFilter(candidate)
 			})
 		},
+		visibleCandidates() {
+			return this.filteredCandidates.slice(0, this.candidateDisplayLimit)
+		},
+		hasMoreCandidates() {
+			return this.visibleCandidates.length < this.filteredCandidates.length
+		},
 		candidateSummary() {
 			if (!this.hasAnalyzed) {
 				return t('empleados', 'Candidate analysis has not been requested for the current requirements.')
@@ -705,6 +823,52 @@ export default {
 				0,
 			)
 		},
+		remainingProjectHours() {
+			return Math.max(0, this.totalRequiredHours - this.totalAssignedHours)
+		},
+		exceededProjectHours() {
+			return Math.max(0, this.totalAssignedHours - this.totalRequiredHours)
+		},
+		projectHoursFullyAssigned() {
+			return !this.projectHoursExceeded
+				&& this.remainingProjectHours <= 0
+		},
+		projectHoursExceeded() {
+			return this.totalAssignedHours > this.totalRequiredHours
+		},
+		assignedProgress() {
+			return this.totalRequiredHours > 0
+				? Math.min(100, this.totalAssignedHours / this.totalRequiredHours * 100)
+				: 0
+		},
+		hoursProgressText() {
+			return t('empleados', '{assigned} of {required} hours assigned', {
+				assigned: this.numberValue(this.totalAssignedHours),
+				required: this.numberValue(this.totalRequiredHours),
+			})
+		},
+		hoursAssignmentStateLabel() {
+			if (this.totalRequiredHours <= 0) {
+				return t('empleados', 'No assignments')
+			}
+			if (this.projectHoursExceeded) {
+				return t('empleados', 'Assignment exceeded')
+			}
+			if (this.projectHoursFullyAssigned) {
+				return t('empleados', 'Hours complete')
+			}
+			if (this.totalAssignedHours > 0) {
+				return t('empleados', 'Partial assignment')
+			}
+			return t('empleados', 'No assignments')
+		},
+		hoursSummaryClass() {
+			return {
+				'planning__hours-summary--complete': this.projectHoursFullyAssigned
+					&& this.totalRequiredHours > 0,
+				'planning__hours-summary--error': this.projectHoursExceeded,
+			}
+		},
 		teamEstimatedAvailability() {
 			if (
 				!this.team.length
@@ -720,6 +884,10 @@ export default {
 		},
 		planningAlertKeys() {
 			const alerts = []
+
+			if (this.projectHoursExceeded) {
+				alerts.push('assigned_hours_exceed_requirement')
+			}
 
 			if (this.totalRequiredHours > this.totalAssignedHours) {
 				alerts.push('required_hours_unassigned')
@@ -777,10 +945,18 @@ export default {
 
 			return Boolean(
 				Number.isInteger(idEmpleado)
-				&& idEmpleado > 0
-				&& this.hasNumber(this.memberDraft.horas_estimadas)
-				&& Number(this.memberDraft.horas_estimadas) >= 0,
+					&& idEmpleado > 0
+					&& this.hasNumber(this.memberDraft.horas_estimadas)
+					&& Number(this.memberDraft.horas_estimadas) > 0
+					&& !this.draftExceedsProjectHours,
 			)
+		},
+		maxDraftAssignableHours() {
+			return this.maxAssignableHours(this.editingMemberId)
+		},
+		draftExceedsProjectHours() {
+			return this.hasNumber(this.memberDraft.horas_estimadas)
+				&& Number(this.memberDraft.horas_estimadas) > this.maxDraftAssignableHours
 		},
 		draftExceedsAvailability() {
 			const availability = this.memberDraft.disponibilidad_estimada
@@ -799,7 +975,21 @@ export default {
 			this.availabilityFilter = 'all'
 			this.experienceFilter = 'all'
 			this.activityFilter = 'all'
+			this.resetCandidateDisplay()
+			this.closeCandidateDetail()
 			this.closeMemberModal()
+		},
+		candidateSearch() {
+			this.resetCandidateDisplay()
+		},
+		availabilityFilter() {
+			this.resetCandidateDisplay()
+		},
+		experienceFilter() {
+			this.resetCandidateDisplay()
+		},
+		activityFilter() {
+			this.resetCandidateDisplay()
 		},
 	},
 	beforeDestroy() {
@@ -955,6 +1145,7 @@ export default {
 
 				const data = ocs.data || {}
 				this.candidates = Array.isArray(data.candidatos) ? data.candidatos : []
+				this.resetCandidateDisplay()
 				this.analyzedSignature = signature
 				const calculableCandidates = this.candidates.filter(candidate => (
 					candidate.capacidad_calculable === true
@@ -1027,6 +1218,7 @@ export default {
 			this.candidates = []
 			this.candidateError = ''
 			this.analyzedSignature = ''
+			this.closeCandidateDetail()
 
 			if (this.scenario.analysis) {
 				this.emitChanges({ analysis: null })
@@ -1110,8 +1302,41 @@ export default {
 		isCandidateSelected(id) {
 			return this.team.some(member => Number(member.id_empleado) === Number(id))
 		},
+		resetCandidateDisplay() {
+			this.candidateDisplayLimit = 10
+		},
+		showMoreCandidates() {
+			this.candidateDisplayLimit += 10
+		},
+		openCandidateDetail(candidate) {
+			this.selectedCandidateDetail = candidate
+		},
+		closeCandidateDetail() {
+			this.selectedCandidateDetail = null
+		},
+		addCandidateFromDetail(candidate) {
+			this.closeCandidateDetail()
+			this.openAddMember(candidate)
+		},
+		assignedHoursExcluding(employeeId = null) {
+			return this.team.reduce((total, member) => (
+				employeeId !== null && Number(member.id_empleado) === Number(employeeId)
+					? total
+					: total + this.nonNegativeNumber(member.horas_estimadas)
+			), 0)
+		},
+		maxAssignableHours(employeeId = null) {
+			return Math.max(
+				0,
+				this.totalRequiredHours - this.assignedHoursExcluding(employeeId),
+			)
+		},
 		openAddMember(candidate) {
-			if (this.isCandidateSelected(candidate.id_empleado)) {
+			if (
+				this.isCandidateSelected(candidate.id_empleado)
+				|| this.remainingProjectHours <= 0
+				|| this.projectHoursExceeded
+			) {
 				return
 			}
 
@@ -1356,6 +1581,46 @@ export default {
 			return this.hasNumber(member.disponibilidad_estimada)
 				&& Number(member.horas_estimadas) > Number(member.disponibilidad_estimada)
 		},
+		memberStatus(member) {
+			if (this.projectHoursExceeded) {
+				return {
+					label: t('empleados', 'Exceeds project requirement'),
+					className: 'planning__status-badge--error',
+				}
+			}
+			const hasIncompleteDataRisk = (Array.isArray(member.riesgos) ? member.riesgos : [])
+				.some(risk => (risk?.key || risk?.code || risk) === 'datos_incompletos')
+			if (
+				member.snapshot_stale
+				|| hasIncompleteDataRisk
+				|| !this.hasNumber(member.costo_hora)
+			) {
+				return {
+					label: t('empleados', 'Incomplete data'),
+					className: 'planning__status-badge--warning',
+				}
+			}
+			if (this.memberExceedsAvailability(member)) {
+				return {
+					label: t('empleados', 'Exceeds availability'),
+					className: 'planning__status-badge--warning',
+				}
+			}
+			const maximum = this.maxAssignableHours(member.id_empleado)
+			if (
+				maximum > 0
+				&& this.nonNegativeNumber(member.horas_estimadas) >= maximum * 0.9
+			) {
+				return {
+					label: t('empleados', 'Near the limit'),
+					className: 'planning__status-badge--attention',
+				}
+			}
+			return {
+				label: t('empleados', 'Correct'),
+				className: 'planning__status-badge--success',
+			}
+		},
 		memberActivityNames(member) {
 			const names = (Array.isArray(member.actividades) ? member.actividades : [])
 				.map(activity => activity.nombre || activity.label)
@@ -1373,6 +1638,7 @@ export default {
 		},
 		planningAlertLabel(key) {
 			const labels = {
+				assigned_hours_exceed_requirement: t('empleados', 'Assigned hours exceed the current project requirement.'),
 				required_hours_unassigned: t('empleados', 'Required hours exceed the hours currently assigned to the tentative team.'),
 				single_person_dependency: t('empleados', 'The current plan depends entirely on one person.'),
 				team_availability_shortfall: t('empleados', 'Required hours exceed the estimated availability of the tentative team.'),
@@ -1387,6 +1653,17 @@ export default {
 					maximumFractionDigits: 2,
 				}).format(this.nonNegativeNumber(value)),
 			})
+		},
+		numberValue(value) {
+			return new Intl.NumberFormat('es-MX', {
+				maximumFractionDigits: 2,
+			}).format(this.nonNegativeNumber(value))
+		},
+		goToQuote() {
+			if (!this.team.length || this.projectHoursExceeded) {
+				return
+			}
+			this.$emit('go-to-quote')
 		},
 		nullableHours(value) {
 			return this.hasNumber(value)
@@ -1480,6 +1757,78 @@ export default {
 .planning__step--complete .planning__step-index {
 	border-color: var(--color-success) !important;
 	color: var(--color-success);
+}
+
+.planning__hours-summary {
+	--hours-progress-color: var(--color-primary-element);
+
+	position: sticky;
+	top: 8px;
+	z-index: 20;
+	padding: 12px 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+	dl {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 12px;
+		margin: 0 0 8px;
+	}
+
+	.planning__hours-summary-item {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px;
+	}
+
+	dt {
+		min-width: 0;
+		color: var(--color-text-maxcontrast);
+		overflow-wrap: anywhere;
+	}
+
+	dd {
+		margin: 0;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+
+	p {
+		margin: 6px 0 0;
+		color: var(--color-text-maxcontrast);
+		font-size: 0.82rem;
+	}
+}
+
+.planning__hours-summary--complete {
+	--hours-progress-color: var(--color-success);
+
+	border-color: var(--color-success);
+}
+
+.planning__hours-summary--error {
+	--hours-progress-color: var(--color-error);
+
+	border-color: var(--color-error);
+}
+
+.planning__hours-progress {
+	overflow: hidden;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--color-background-dark);
+
+	.planning__hours-progress-fill {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: var(--hours-progress-color);
+		transition: width 180ms ease;
+	}
 }
 
 .planning__header .planning__intro {
@@ -1651,20 +2000,21 @@ export default {
 
 .planning__activity-row {
 	display: grid;
-	grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) auto;
-	align-items: end;
+	grid-template-columns: minmax(0, 1fr) 180px auto;
+	align-items: center;
 	gap: 12px;
-	padding: 12px;
+	padding: 8px 10px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
 
-	> div:first-child {
+	> .planning__activity-identity {
 		display: flex;
+		min-width: 0;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
-		align-self: center;
+
 	}
 
 	label {
@@ -1688,6 +2038,13 @@ export default {
 			color: var(--color-main-text);
 		}
 	}
+}
+
+.planning__activity-name {
+	overflow: hidden;
+	min-width: 0;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .planning__field input:focus-visible,
@@ -1793,9 +2150,22 @@ export default {
 
 .planning__candidate-list {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 	gap: 16px;
 	margin-top: 18px;
+}
+
+.planning__show-more {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	margin-top: 16px;
+
+	.planning__show-more-label {
+		color: var(--color-text-maxcontrast);
+		font-size: 0.85rem;
+	}
 }
 
 .planning__table-scroll {
@@ -1837,9 +2207,49 @@ td:first-child {
 	}
 }
 
+.planning__activity-lines {
+	display: -webkit-box;
+	overflow: hidden;
+	max-width: 280px;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-height: 1.35;
+}
+
+.planning__numeric-cell {
+	text-align: end;
+	white-space: nowrap;
+}
+
 .planning__warning-text {
 	color: var(--color-warning);
 	font-weight: 600;
+}
+
+.planning__status-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	font-size: 0.78rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.planning__status-badge--success {
+	border-color: var(--color-success);
+}
+
+.planning__status-badge--attention {
+	border-color: var(--color-primary-element);
+}
+
+.planning__status-badge--warning {
+	border-color: var(--color-warning);
+}
+
+.planning__status-badge--error {
+	border-color: var(--color-error);
 }
 
 .planning__table-actions {
@@ -1866,6 +2276,32 @@ td:first-child {
 
 	> p {
 		color: var(--color-text-maxcontrast);
+	}
+}
+
+.planning__assignment-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+	margin: 0;
+
+	.planning__assignment-summary-item {
+		min-width: 0;
+		padding: 10px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius-large);
+		background: var(--color-background-hover);
+	}
+
+	dt {
+		color: var(--color-text-maxcontrast);
+		line-height: 1.3;
+		overflow-wrap: anywhere;
+	}
+
+	dd {
+		margin: 4px 0 0;
+		font-weight: 700;
 	}
 }
 
@@ -1936,6 +2372,19 @@ td:first-child {
 	.planning__member-modal {
 		min-width: min(440px, calc(100vw - 32px));
 		padding: 16px;
+	}
+
+	.planning__hours-summary {
+		position: static;
+
+		dl {
+			grid-template-columns: 1fr;
+			gap: 4px;
+		}
+	}
+
+	.planning__assignment-summary {
+		grid-template-columns: 1fr;
 	}
 
 	.planning__modal-actions {

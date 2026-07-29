@@ -40,11 +40,11 @@
 		</details>
 
 		<p class="cost-note">
-			{{ t('empleados', 'Estimated costs are calculated using the hourly cost configured for each employee.') }}
+			{{ t('empleados', 'Labor costs are calculated using the hourly cost configured for each employee and their reported time.') }}
 		</p>
 
 		<NcEmptyContent
-			v-if="!leadersCount && !employees.length"
+			v-if="!participantsCount && !employees.length"
 			class="summary-empty"
 			:name="t('empleados', 'No employees are available in your scope.')"
 			:description="t('empleados', 'There is no cost or availability information to display for the selected period.')" />
@@ -53,8 +53,8 @@
 			<article class="chart-card chart-card--wide">
 				<div class="chart-heading">
 					<div>
-						<h3>{{ t('empleados', 'Total and billable hours by project leader') }}</h3>
-						<p>{{ t('empleados', 'Project leaders are ordered by billable hours.') }}</p>
+						<h3>{{ t('empleados', 'Total and billable hours by employee') }}</h3>
+						<p>{{ t('empleados', 'Project participants are ordered by billable hours.') }}</p>
 					</div>
 					<HelpHint
 						:label="t('empleados', 'About billable hours')"
@@ -63,12 +63,12 @@
 				<NcEmptyContent
 					v-if="!leaderChartRows.length"
 					class="chart-empty"
-					:name="t('empleados', 'No time data is available for project leaders in this period.')" />
+					:name="t('empleados', 'No time data is available for project participants in this period.')" />
 				<div v-else class="chart-box chart-box--leaders">
 					<canvas
 						ref="leaderHoursCanvas"
 						role="img"
-						:aria-label="t('empleados', 'Chart of total and billable hours by project leader')" />
+						:aria-label="t('empleados', 'Chart of total and billable hours by employee')" />
 				</div>
 			</article>
 
@@ -150,8 +150,8 @@ export default {
 		}
 	},
 	computed: {
-		leadersCount() {
-			return Number(this.kpis.total_lideres ?? this.leaders.length ?? 0)
+		participantsCount() {
+			return Number(this.kpis.total_empleados ?? this.leaders.length ?? 0)
 		},
 		lowAvailabilityCount() {
 			const value = this.firstFinite(this.kpis, [
@@ -190,13 +190,13 @@ export default {
 		cards() {
 			return [
 				{
-					key: 'leaders',
-					label: t('empleados', 'Project leaders'),
-					value: this.integer(this.leadersCount),
+					key: 'participants',
+					label: t('empleados', 'Employees with project participation'),
+					value: this.integer(this.participantsCount),
 				},
 				{
 					key: 'companies',
-					label: t('empleados', 'Companies with leader'),
+					label: t('empleados', 'Companies in scope'),
 					value: this.integer(this.kpis.total_empresas),
 				},
 				{
@@ -223,8 +223,10 @@ export default {
 				},
 				{
 					key: 'total-cost',
-					label: t('empleados', 'Total estimated cost'),
-					value: this.money(this.kpis.costo_total_estimado),
+					label: t('empleados', 'Real labor cost'),
+					value: this.money(
+						this.kpis.costo_laboral_real ?? this.kpis.costo_total_estimado,
+					),
 				},
 				{
 					key: 'billable-cost',
@@ -247,7 +249,7 @@ export default {
 		},
 		primaryCards() {
 			const primaryKeys = new Set([
-				'leaders',
+				'participants',
 				'companies',
 				'total-hours',
 				'total-cost',
@@ -262,7 +264,7 @@ export default {
 		leaderChartRows() {
 			const rows = this.leaders
 				.map(leader => ({
-					label: leader.displayname || leader.uid || t('empleados', 'Project leader'),
+					label: leader.displayname || leader.uid || t('empleados', 'Employee'),
 					total: this.numericValue(leader, ['horas_totales']) ?? 0,
 					billable: this.numericValue(leader, ['horas_cargables']) ?? 0,
 				}))

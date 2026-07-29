@@ -181,6 +181,7 @@ return [
 
 		/******************************* CLIENTES *****************************************/
 		['name' => 'clientes#GetCompaniesGroups',  'url' => '/GetCompaniesGroups',  'verb' => 'GET'],
+		['name' => 'clientes#GetClientesEmpleadosLookup', 'url' => '/GetClientesEmpleadosLookup', 'verb' => 'GET'],
 		['name' => 'clientes#GetCompanieGroup',            'url' => '/GetCompanieGroup',    'verb' => 'POST'],
 		['name' => 'clientes#crearCliente', 'url' => '/crearCliente', 'verb' => 'POST'],
 		['name' => 'clientes#modificarCliente',    'url' => '/modificarCliente',    'verb' => 'POST'],

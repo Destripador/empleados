@@ -12,6 +12,7 @@ use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\reportetiempo;
 use OCA\Empleados\Db\reportetiempoMapper;
 use OCA\Empleados\Db\historialausenciasMapper;
+use OCA\Empleados\Service\PermisosService;
 use OCA\Empleados\Service\VacacionesCalculoService;
 use OCA\Empleados\UploadException;
 use OCP\AppFramework\Http;
@@ -59,6 +60,7 @@ class reportetiempoController extends BaseController {
     private $urlGenerator;
 	private $mailer;
 	private INotificationManager $notificationManager;
+	private PermisosService $permisosService;
 	private VacacionesCalculoService $vacacionesCalculoService;
 
 	public function __construct(
@@ -80,6 +82,7 @@ class reportetiempoController extends BaseController {
 		ISubAdmin $subAdmin,
 		INotificationManager $notificationManager,
 		VacacionesCalculoService $vacacionesCalculoService,
+		PermisosService $permisosService,
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -107,6 +110,13 @@ class reportetiempoController extends BaseController {
 		$this->notificationManager = $notificationManager;
 		$this->historialausenciasMapper = $historialausenciasMapper;
 		$this->vacacionesCalculoService = $vacacionesCalculoService;
+		$this->permisosService = $permisosService;
+	}
+
+	private function requireAdminReportsAccess(): void {
+		$this->permisosService->requireCanSee(
+			'reporte_tiempos.admin'
+		);
 	}
 
 	/**
@@ -115,16 +125,12 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetReportes(): DataResponse {
-		$this->checkAccess(['admin', 'empleados', 'recursos_humanos']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		return new DataResponse(
-			$this->reportetiempoMapper->findAll(),
+			$this->reportetiempoMapper->findAllByEmployeeIds(
+				$this->getIdsEmpleadosVisibles()
+			),
 			Http::STATUS_OK
 		);
 	}
@@ -137,18 +143,25 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function findById($id = null, $periodo_inicio = null, $periodo_fin = null, $anio = null): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+		$user = $this->userSession->getUser();
+		$empleado = $user === null
+			? []
+			: $this->empleadosMapper->GetMyEmployeeInfo($user->getUID());
+		$empleadoRow = isset($empleado[0]) && is_array($empleado[0])
+			? $empleado[0]
+			: $empleado;
+		$idEmpleadoActual = (int)(
+			$empleadoRow['Id_empleados']
+			?? $empleadoRow['id_empleados']
+			?? 0
+		);
 
-		if ($id !== null) {
-			$denied = $this->denyIfNoAdminReportsAccess();
-
-			if ($denied !== null) {
-				return $denied;
-			}
+		if ($id === null) {
+			$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
 
 			return new DataResponse(
 				$this->reportetiempoMapper->findById(
-					(int)$id,
+					$idEmpleadoActual,
 					0,
 					0,
 					$periodo_inicio,
@@ -159,13 +172,29 @@ class reportetiempoController extends BaseController {
 			);
 		}
 
-		$empleado = $this->empleadosMapper->GetMyEmployeeInfo(
-			$this->userSession->getUser()->getUID()
-		);
+		$idEmpleadoConsultado = (int)$id;
+		// Un ID explícito puede provenir de la vista administrativa incluso si
+		// coincide con el usuario actual; el acceso personal sigue disponible
+		// para empleados que no cuentan con el permiso administrativo.
+		$esConsultaPersonal = $idEmpleadoActual > 0
+			&& $idEmpleadoConsultado === $idEmpleadoActual
+			&& !$this->permisosService->canSee('reporte_tiempos.admin');
+
+		if ($esConsultaPersonal) {
+			$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+		} else {
+			$this->requireAdminReportsAccess();
+
+			if (!in_array($idEmpleadoConsultado, $this->getIdsEmpleadosVisibles(), true)) {
+				return new DataResponse([
+					'error' => 'El empleado solicitado no está dentro de tu alcance visible.',
+				], Http::STATUS_FORBIDDEN);
+			}
+		}
 
 		return new DataResponse(
 			$this->reportetiempoMapper->findById(
-				(int)$empleado[0]['Id_empleados'],
+				$idEmpleadoConsultado,
 				0,
 				0,
 				$periodo_inicio,
@@ -304,13 +333,7 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetEmpleadosReports($periodo_inicio = null, $periodo_fin = null, $anio = null): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		return new DataResponse(
 			$this->getEmpleadosReportsData($periodo_inicio, $periodo_fin, $anio),
@@ -327,13 +350,7 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetAdminReportsSummary($periodo_inicio = null, $periodo_fin = null, $anio = null): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		$empleadosData = $this->getEmpleadosReportsData(
 			$periodo_inicio,
@@ -411,7 +428,7 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
-	 * Resumen de costos estimados y horas propias de los líderes de proyecto.
+	 * Resumen de costos, empresas y participantes visibles del periodo.
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
@@ -420,13 +437,7 @@ class reportetiempoController extends BaseController {
 		$periodo_fin = null,
 		$anio = null
 	): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		if ($anio !== null) {
 			$anioValidado = filter_var($anio, FILTER_VALIDATE_INT, [
@@ -526,13 +537,7 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetCostosActividades(): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		return new DataResponse(
 			$this->reportetiempoMapper->getCostosActividadesDisponibles(),
@@ -551,13 +556,7 @@ class reportetiempoController extends BaseController {
 		$fecha_fin = null,
 		$actividades = []
 	): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		$inicio = $this->normalizarFechaCostos($fecha_inicio);
 		$fin = $this->normalizarFechaCostos($fecha_fin);
@@ -582,7 +581,7 @@ class reportetiempoController extends BaseController {
 		$fechaInicio = $inicio->format('Y-m-d');
 		$fechaFin = $fin->format('Y-m-d');
 		$horasDiarias = $this->getCostosHorasDiarias();
-		$idEmpleadosVisibles = $this->getIdsEmpleadosVisiblesCostos();
+		$idEmpleadosVisibles = $this->getIdsEmpleadosVisibles();
 
 		if (empty($idEmpleadosVisibles)) {
 			return new DataResponse([
@@ -740,13 +739,7 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function ExportarReportes($periodo_inicio = null, $periodo_fin = null, $anio = null) {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		$empleadosData = $this->getEmpleadosReportsData(
 			$periodo_inicio,
@@ -837,7 +830,7 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function ImportarReportes(): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos']);
+		$this->requireAdminReportsAccess();
 
 		$file = $this->getUploadedFile('ReportesfileXLSX');
 
@@ -857,6 +850,30 @@ class reportetiempoController extends BaseController {
 				'status' => 'error',
 				'message' => 'El archivo no contiene reportes.',
 			], Http::STATUS_BAD_REQUEST);
+		}
+
+		$empleadosVisibles = array_fill_keys(
+			$this->getIdsEmpleadosVisibles(),
+			true
+		);
+
+		foreach ($rows as $index => $row) {
+			if (
+				$index === 0
+				|| empty($row[1])
+				|| empty($row[2])
+				|| empty($row[3])
+			) {
+				continue;
+			}
+
+			if (!isset($empleadosVisibles[(int)$row[3]])) {
+				return new DataResponse([
+					'status' => 'error',
+					'message' => 'La importación contiene empleados fuera de tu alcance visible.',
+					'fila' => $index + 1,
+				], Http::STATUS_FORBIDDEN);
+			}
 		}
 
 		$insertados = 0;
@@ -1053,13 +1070,7 @@ class reportetiempoController extends BaseController {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function GetCumplimientoReportesHoy($fecha = null): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		$user = $this->userSession->getUser();
 
@@ -1193,7 +1204,7 @@ class reportetiempoController extends BaseController {
 	/**
 	 * Extrae únicamente identificadores válidos del alcance calculado desde la sesión.
 	 */
-	private function getIdsEmpleadosVisiblesCostos(): array {
+	private function getIdsEmpleadosVisibles(): array {
 		$ids = array_map(
 			static function (array $empleado): int {
 				return (int)(
@@ -1827,13 +1838,7 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function EnviarRecordatoriosPendientesHoy($fecha = null): DataResponse {
-		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
-
-		$denied = $this->denyIfNoAdminReportsAccess();
-
-		if ($denied !== null) {
-			return $denied;
-		}
+		$this->requireAdminReportsAccess();
 
 		$user = $this->userSession->getUser();
 
@@ -2077,57 +2082,15 @@ class reportetiempoController extends BaseController {
 	}
 
 	private function clearReporteTiempoNotification(string $uid, string $fecha): void {
-			$notification = $this->notificationManager->createNotification();
+		$notification = $this->notificationManager->createNotification();
 
-			$notification
-				->setApp(Application::APP_ID)
-				->setUser($uid)
-				->setObject('reporte_tiempo', $fecha);
+		$notification
+			->setApp(Application::APP_ID)
+			->setUser($uid)
+			->setObject('reporte_tiempo', $fecha);
 
-			$this->notificationManager->markProcessed($notification);
-		}
-		private function canAccessAdminReports(): bool {
-		$user = $this->userSession->getUser();
-
-		if ($user === null) {
-			return false;
-		}
-
-		$uid = $user->getUID();
-
-		if ($this->groupManager->isAdmin($uid)) {
-			return true;
-		}
-
-		$groupId = trim($this->config->getAppValue(
-			Application::APP_ID,
-			'reportes_admin_reports_group',
-			'recursos_humanos'
-		));
-
-		if ($groupId === '') {
-			return false;
-		}
-
-		$group = $this->groupManager->get($groupId);
-
-		if ($group === null) {
-			return false;
-		}
-
-		return $group->inGroup($user);
+		$this->notificationManager->markProcessed($notification);
 	}
-	
-	private function denyIfNoAdminReportsAccess(): ?DataResponse {
-		if (!$this->canAccessAdminReports()) {
-			return new DataResponse([
-				'error' => 'No tienes permisos para acceder a reportes administrativos.',
-			], Http::STATUS_FORBIDDEN);
-		}
-
-		return null;
-	}
-	
 
 	private function buildResumenReportesXlsx(
 		array $resumen,

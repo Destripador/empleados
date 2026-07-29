@@ -16,11 +16,11 @@ class reportetiempoMapper extends QBMapper {
 	}
 
 	/**
-	 * Costos estimados y horas reportadas personalmente por los líderes de proyecto.
+	 * Costos reales por empresa y empleado visible.
 	 *
-	 * La consulta se agrupa por líder y cliente para evitar consultas adicionales al
-	 * construir el resumen. Las condiciones del periodo viven en el LEFT JOIN para
-	 * conservar líderes y empresas que no tienen reportes.
+	 * El equipo configurado determina el rol actual, pero las horas siempre provienen
+	 * de los reportes reales del periodo. Así se conservan participantes históricos
+	 * que ya no aparecen en la configuración actual de la empresa.
 	 */
 	public function getCostosPorLider(
 		$periodo_inicio = null,
@@ -29,10 +29,7 @@ class reportetiempoMapper extends QBMapper {
 		array $idEmpleadosVisibles = []
 	): array {
 		$periodo = $this->normalizarPeriodoCostos($periodo_inicio, $periodo_fin, $anio);
-		$idEmpleadosVisibles = array_values(array_unique(array_filter(array_map(
-			'intval',
-			$idEmpleadosVisibles
-		))));
+		$idEmpleadosVisibles = $this->normalizarIdsCostos($idEmpleadosVisibles);
 
 		if (empty($idEmpleadosVisibles)) {
 			return $this->crearRespuestaCostosVacia($periodo);
@@ -45,35 +42,351 @@ class reportetiempoMapper extends QBMapper {
 			$periodo['periodo_fin']
 		)))->modify('last day of this month')->format('Y-m-d');
 
-		$qb = $this->db->getQueryBuilder();
-		$reportJoin = $qb->expr()->andX(
-			$qb->expr()->eq('r.id_cliente', 'c.id'),
-			$qb->expr()->eq('r.id_empleado', 'c.lider_proyecto'),
-			$qb->expr()->gte('r.fecha_registro', $qb->createNamedParameter($inicio)),
-			$qb->expr()->lte('r.fecha_registro', $qb->createNamedParameter($fin)),
-			$qb->expr()->neq('r.id_cliente', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)),
-			$qb->expr()->neq('r.id_actividad', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT))
+		$directorio = $this->getDirectorioCostosEmpleados($idEmpleadosVisibles);
+
+		if (empty($directorio)) {
+			return $this->crearRespuestaCostosVacia($periodo);
+		}
+
+		$idEmpleadosExistentes = array_keys($directorio);
+		$reportes = $this->getReportesCostosPorEmpresaEmpleado(
+			$inicio,
+			$fin,
+			$idEmpleadosExistentes
 		);
-		$parentJoin = $qb->expr()->andX(
-			$qb->expr()->eq('p.id', 'c.cliente_padre'),
-			$qb->expr()->in(
-				'p.lider_proyecto',
+		$reportesPorEmpresa = [];
+
+		foreach ($reportes as $reporte) {
+			$idCliente = (int)($reporte['id_cliente'] ?? 0);
+			$idEmpleado = (int)($reporte['id_empleado'] ?? 0);
+
+			if (
+				$idCliente <= 0
+				|| $idCliente === 99999
+				|| !isset($directorio[$idEmpleado])
+			) {
+				continue;
+			}
+
+			$reportesPorEmpresa[$idCliente][$idEmpleado] = [
+				'total_minutos' => (float)($reporte['total_minutos'] ?? 0),
+				'minutos_cargables' => (float)($reporte['minutos_cargables'] ?? 0),
+			];
+		}
+
+		$clientesConfigurados = $this->getClientesConfiguradosCostos();
+		$empresasBase = [];
+
+		foreach ($clientesConfigurados as $cliente) {
+			$idCliente = (int)($cliente['id_cliente'] ?? 0);
+
+			if ($idCliente <= 0 || $idCliente === 99999) {
+				continue;
+			}
+
+			$idLider = (int)($cliente['lider_proyecto'] ?? 0);
+			$liderVisible = isset($directorio[$idLider]) ? $idLider : 0;
+			$idColaboradores = $this->normalizarColaboradoresCostos(
+				$cliente['colaboradores'] ?? null,
+				$liderVisible,
+				$idEmpleadosExistentes
+			);
+			$idReportantes = array_keys($reportesPorEmpresa[$idCliente] ?? []);
+			$idParticipantes = $this->normalizarIdsCostos(array_merge(
+				$liderVisible > 0 ? [$liderVisible] : [],
+				$idColaboradores,
+				$idReportantes
+			));
+
+			if (empty($idParticipantes)) {
+				continue;
+			}
+
+			$empresasBase[$idCliente] = [
+				'cliente' => $cliente,
+				'id_lider' => $liderVisible,
+				'id_colaboradores' => $idColaboradores,
+				'id_participantes' => $idParticipantes,
+				'reportes' => $reportesPorEmpresa[$idCliente] ?? [],
+			];
+		}
+
+		if (empty($empresasBase)) {
+			return $this->crearRespuestaCostosVacia($periodo);
+		}
+
+		$metricasFinancieras = $this->getMetricasHonorariosCostos(
+			array_keys($empresasBase),
+			$inicio,
+			$fin
+		);
+		$empresas = [];
+		$empleados = [];
+
+		foreach ($empresasBase as $idCliente => $empresaBase) {
+			$cliente = $empresaBase['cliente'];
+			$idLider = $empresaBase['id_lider'];
+			$idColaboradores = $empresaBase['id_colaboradores'];
+			$idColaboradoresMap = array_fill_keys($idColaboradores, true);
+			$participantes = [];
+			$totalMinutos = 0.0;
+			$minutosCargables = 0.0;
+			$costoLaboral = 0.0;
+			$costoCargable = 0.0;
+
+			foreach ($empresaBase['id_participantes'] as $idEmpleado) {
+				$empleado = $directorio[$idEmpleado];
+				$reporte = $empresaBase['reportes'][$idEmpleado] ?? [];
+				$minutosEmpleado = (float)($reporte['total_minutos'] ?? 0);
+				$minutosCargablesEmpleado = (float)($reporte['minutos_cargables'] ?? 0);
+				$costoHora = (float)($empleado['costo_hora'] ?? 0);
+				$costoEmpleado = ($minutosEmpleado / 60) * $costoHora;
+				$costoCargableEmpleado = ($minutosCargablesEmpleado / 60) * $costoHora;
+				$rol = $idEmpleado === $idLider
+					? 'lider'
+					: (isset($idColaboradoresMap[$idEmpleado])
+						? 'colaborador'
+						: 'participante_historico');
+				$metricasEmpleadoEmpresa = $this->normalizarMetricasCostosAgregadas(
+					$minutosEmpleado,
+					$minutosCargablesEmpleado,
+					$costoEmpleado,
+					$costoCargableEmpleado
+				);
+				$participante = array_merge(
+					$this->crearIdentidadEmpleadoCostos($empleado, $rol),
+					$metricasEmpleadoEmpresa
+				);
+				$participantes[] = $participante;
+
+				if (!isset($empleados[$idEmpleado])) {
+					$empleados[$idEmpleado] = array_merge(
+						$this->crearIdentidadEmpleadoCostos($empleado),
+						[
+							'empresas_count' => 0,
+							'total_minutos' => 0.0,
+							'minutos_cargables' => 0.0,
+							'costo_laboral_real' => 0.0,
+							'costo_cargable_real' => 0.0,
+							'empresas' => [],
+						]
+					);
+				}
+
+				$empleados[$idEmpleado]['empresas'][] = [
+					'id_cliente' => $idCliente,
+					'nombre_cliente' => (string)($cliente['nombre_cliente'] ?? ''),
+					'rol_asignacion' => $rol,
+					'horas_totales' => $metricasEmpleadoEmpresa['horas_totales'],
+					'horas_cargables' => $metricasEmpleadoEmpresa['horas_cargables'],
+					'costo_laboral_real' => $metricasEmpleadoEmpresa['costo_laboral_real'],
+				];
+				$empleados[$idEmpleado]['empresas_count']++;
+				$empleados[$idEmpleado]['total_minutos'] += $minutosEmpleado;
+				$empleados[$idEmpleado]['minutos_cargables'] += $minutosCargablesEmpleado;
+				$empleados[$idEmpleado]['costo_laboral_real'] += $costoEmpleado;
+				$empleados[$idEmpleado]['costo_cargable_real'] += $costoCargableEmpleado;
+
+				$totalMinutos += $minutosEmpleado;
+				$minutosCargables += $minutosCargablesEmpleado;
+				$costoLaboral += $costoEmpleado;
+				$costoCargable += $costoCargableEmpleado;
+			}
+
+			usort($participantes, static function (array $primero, array $segundo): int {
+				$orden = [
+					'lider' => 0,
+					'colaborador' => 1,
+					'participante_historico' => 2,
+				];
+				$comparacionRol = ($orden[$primero['rol_asignacion']] ?? 3)
+					<=> ($orden[$segundo['rol_asignacion']] ?? 3);
+
+				return $comparacionRol !== 0
+					? $comparacionRol
+					: strcasecmp($primero['displayname'], $segundo['displayname']);
+			});
+
+			$finanzas = $metricasFinancieras[$idCliente]
+				?? $this->crearMetricasHonorariosCostosVacias();
+			$otrosCostos = 0.0;
+			$participacionOficina = 0.0;
+			$finanzasComparables = (bool)(
+				$finanzas['metricas_financieras_comparables']
+				?? true
+			);
+			$ingresoPeriodo = $finanzasComparables
+				? (float)$finanzas['ingreso_periodo']
+				: null;
+			$utilidadOperativa = $ingresoPeriodo !== null
+				? $ingresoPeriodo
+					- $costoLaboral
+					- $otrosCostos
+					- $participacionOficina
+				: null;
+			$metricasEmpresa = $this->normalizarMetricasCostosAgregadas(
+				$totalMinutos,
+				$minutosCargables,
+				$costoLaboral,
+				$costoCargable
+			);
+			$idClientePadre = (int)($cliente['cliente_padre'] ?? 0);
+			$nombreGrupoPadre = isset($empresasBase[$idClientePadre])
+				? (string)($empresasBase[$idClientePadre]['cliente']['nombre_cliente'] ?? '')
+				: null;
+
+			$empresas[] = array_merge([
+				'id_cliente' => $idCliente,
+				'nombre_cliente' => (string)($cliente['nombre_cliente'] ?? ''),
+				'cliente_padre' => $idClientePadre > 0 ? $idClientePadre : null,
+				'nombre_grupo_padre' => $nombreGrupoPadre,
+				'estado' => (int)($cliente['estado'] ?? 0),
+				'lider' => $idLider > 0
+					? $this->crearIdentidadEmpleadoCostos($directorio[$idLider], 'lider')
+					: null,
+				'colaboradores' => array_map(
+					fn (int $idEmpleado): array => $this->crearIdentidadEmpleadoCostos(
+						$directorio[$idEmpleado],
+						'colaborador'
+					),
+					$idColaboradores
+				),
+				'participantes' => $participantes,
+				'empleados_count' => count($participantes),
+			], $metricasEmpresa, $finanzas, [
+				'otros_costos' => $otrosCostos,
+				'participacion_oficina_nacional' => $participacionOficina,
+				'utilidad_operativa' => $utilidadOperativa !== null
+					? round($utilidadOperativa, 2)
+					: null,
+				'muo' => $ingresoPeriodo !== null && $ingresoPeriodo > 0
+					? round(($utilidadOperativa / $ingresoPeriodo) * 100, 2)
+					: ($ingresoPeriodo === null ? null : 0.0),
+			]);
+		}
+
+		foreach ($empleados as &$empleado) {
+			$metricas = $this->normalizarMetricasCostosAgregadas(
+				$empleado['total_minutos'],
+				$empleado['minutos_cargables'],
+				$empleado['costo_laboral_real'],
+				$empleado['costo_cargable_real']
+			);
+			$empleado = array_merge($empleado, $metricas);
+			unset($empleado['costo_cargable_real']);
+		}
+		unset($empleado);
+
+		usort(
+			$empresas,
+			static fn (array $primera, array $segunda): int
+				=> strcasecmp($primera['nombre_cliente'], $segunda['nombre_cliente'])
+		);
+		usort(
+			$empleados,
+			static fn (array $primero, array $segundo): int
+				=> strcasecmp($primero['displayname'], $segundo['displayname'])
+		);
+
+		$lideres = array_values(array_filter(
+			$empleados,
+			static function (array $empleado): bool {
+				return array_reduce(
+					$empleado['empresas'],
+					static fn (bool $esLider, array $empresa): bool
+						=> $esLider || $empresa['rol_asignacion'] === 'lider',
+					false
+				);
+			}
+		));
+		$kpis = $this->crearKpisCostos($empresas, count($empleados), count($lideres));
+
+		return [
+			'periodo' => $periodo,
+			'kpis' => $kpis,
+			'empresas' => $empresas,
+			'empleados' => array_values($empleados),
+			// Compatibilidad temporal con consumidores anteriores.
+			'lideres' => $lideres,
+		];
+	}
+
+	/**
+	 * Directorio laboral limitado estrictamente a los IDs visibles de la sesión.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function getDirectorioCostosEmpleados(array $idEmpleadosVisibles): array {
+		$idEmpleadosVisibles = $this->normalizarIdsCostos($idEmpleadosVisibles);
+
+		if (empty($idEmpleadosVisibles)) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectAlias('e.Id_empleados', 'id_empleado')
+			->selectAlias('e.Id_user', 'uid')
+			->selectAlias('u.displayname', 'displayname')
+			->selectAlias('e.Sueldo', 'costo_hora')
+			->from('empleados', 'e')
+			->leftJoin('e', 'users', 'u', 'u.uid = e.Id_user')
+			->where($qb->expr()->in(
+				'e.Id_empleados',
 				$qb->createNamedParameter(
 					$idEmpleadosVisibles,
 					IQueryBuilder::PARAM_INT_ARRAY
 				)
+			));
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		$directorio = [];
+
+		foreach ($rows as $row) {
+			$idEmpleado = (int)($row['id_empleado'] ?? 0);
+
+			if ($idEmpleado <= 0) {
+				continue;
+			}
+
+			$uid = (string)($row['uid'] ?? '');
+			$directorio[$idEmpleado] = [
+				'id_empleado' => $idEmpleado,
+				'uid' => $uid,
+				'displayname' => (string)($row['displayname'] ?? $uid),
+				'costo_hora' => (float)($row['costo_hora'] ?? 0),
+			];
+		}
+
+		return $directorio;
+	}
+
+	/**
+	 * Reportes reales del periodo agrupados por empresa y empleado visible.
+	 */
+	private function getReportesCostosPorEmpresaEmpleado(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleadosVisibles
+	): array {
+		$idEmpleadosVisibles = $this->normalizarIdsCostos($idEmpleadosVisibles);
+
+		if (empty($idEmpleadosVisibles)) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$actividadValida = $qb->expr()->orX(
+			$qb->expr()->isNull('r.id_actividad'),
+			$qb->expr()->neq(
+				'r.id_actividad',
+				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
 			)
 		);
 
-		$qb->selectAlias('e.Id_empleados', 'id_empleado')
-			->selectAlias('e.Id_user', 'uid')
-			->selectAlias('u.displayname', 'displayname')
-			->selectAlias('e.Sueldo', 'sueldo_hora')
-			->selectAlias('c.id', 'id_cliente')
-			->selectAlias('c.nombre', 'nombre_cliente')
-			->selectAlias('p.id', 'cliente_padre')
-			->selectAlias('p.nombre', 'nombre_grupo_padre')
-			->selectAlias('c.estado', 'estado')
+		$qb->selectAlias('r.id_cliente', 'id_cliente')
+			->selectAlias('r.id_empleado', 'id_empleado')
 			->selectAlias(
 				$qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'),
 				'total_minutos'
@@ -84,133 +397,383 @@ class reportetiempoMapper extends QBMapper {
 				),
 				'minutos_cargables'
 			)
-			->from('empleados_clientes', 'c')
-			->innerJoin('c', 'empleados', 'e', 'c.lider_proyecto = e.Id_empleados')
-			->leftJoin('e', 'users', 'u', 'u.uid = e.Id_user')
-			->leftJoin('c', 'empleados_clientes', 'p', $parentJoin)
-			->leftJoin('c', 'empleados_rep_tiempos', 'r', $reportJoin)
+			->from('empleados_rep_tiempos', 'r')
 			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
-			->where($qb->expr()->isNotNull('c.lider_proyecto'))
-			->andWhere($qb->expr()->neq(
-				'c.id',
-				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
-			))
-			->andWhere($qb->expr()->gt(
-				'c.lider_proyecto',
-				$qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)
-			))
-			->andWhere($qb->expr()->eq(
-				'e.Estado',
-				$qb->createNamedParameter('1', IQueryBuilder::PARAM_STR)
-			))
-			->andWhere($qb->expr()->in(
-				'c.lider_proyecto',
+			->where($qb->expr()->in(
+				'r.id_empleado',
 				$qb->createNamedParameter(
-					$idEmpleadosVisibles,
-					IQueryBuilder::PARAM_INT_ARRAY
+					array_map('strval', $idEmpleadosVisibles),
+					IQueryBuilder::PARAM_STR_ARRAY
 				)
 			))
-			->groupBy(
-				'e.Id_empleados',
-				'e.Id_user',
-				'u.displayname',
-				'e.Sueldo',
-				'c.id',
-				'c.nombre',
-				'p.id',
-				'p.nombre',
-				'c.estado'
-			)
-			->orderBy('u.displayname', 'ASC')
-			->addOrderBy('c.nombre', 'ASC');
+			->andWhere($qb->expr()->gte(
+				'r.fecha_registro',
+				$qb->createNamedParameter($fechaInicio)
+			))
+			->andWhere($qb->expr()->lte(
+				'r.fecha_registro',
+				$qb->createNamedParameter($fechaFin)
+			))
+			->andWhere($qb->expr()->neq(
+				'r.id_cliente',
+				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
+			))
+			->andWhere($actividadValida)
+			->groupBy('r.id_cliente', 'r.id_empleado');
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
 		$result->closeCursor();
 
-		$lideres = [];
+		return $rows;
+	}
 
-		foreach ($rows as $row) {
-			$idEmpleado = (int)($row['id_empleado'] ?? 0);
+	/**
+	 * Configuración mínima de empresas. El alcance se aplica después de normalizar
+	 * el JSON de colaboradores y cruzarlo con el directorio visible.
+	 */
+	private function getClientesConfiguradosCostos(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectAlias('c.id', 'id_cliente')
+			->selectAlias('c.nombre', 'nombre_cliente')
+			->selectAlias('c.lider_proyecto', 'lider_proyecto')
+			->selectAlias('c.colaboradores', 'colaboradores')
+			->selectAlias('c.cliente_padre', 'cliente_padre')
+			->selectAlias('c.estado', 'estado')
+			->from('empleados_clientes', 'c')
+			->where($qb->expr()->neq(
+				'c.id',
+				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
+			));
 
-			if (!isset($lideres[$idEmpleado])) {
-				$lideres[$idEmpleado] = [
-					'id_empleado' => $idEmpleado,
-					'uid' => (string)($row['uid'] ?? ''),
-					'displayname' => (string)($row['displayname'] ?? ''),
-					'sueldo_hora' => (float)($row['sueldo_hora'] ?? 0),
-					'empresas_count' => 0,
-					'total_minutos' => 0.0,
-					'minutos_cargables' => 0.0,
-					'empresas' => [],
-				];
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	private function normalizarColaboradoresCostos(
+		$colaboradores,
+		int $idLider,
+		array $idEmpleadosVisibles
+	): array {
+		$normalizados = $colaboradores;
+
+		for ($intento = 0; $intento < 2 && is_string($normalizados); $intento++) {
+			$decodificados = json_decode($normalizados, true);
+
+			if (json_last_error() !== JSON_ERROR_NONE) {
+				return [];
 			}
 
-			$totalMinutos = (float)($row['total_minutos'] ?? 0);
-			$minutosCargables = (float)($row['minutos_cargables'] ?? 0);
-			$sueldoHora = (float)($row['sueldo_hora'] ?? 0);
-			$empresa = $this->normalizarMetricasCostos(
-				$totalMinutos,
-				$minutosCargables,
-				$sueldoHora
-			);
-
-			$empresa = array_merge([
-				'id_cliente' => (int)($row['id_cliente'] ?? 0),
-				'nombre_cliente' => (string)($row['nombre_cliente'] ?? ''),
-				'cliente_padre' => isset($row['cliente_padre']) ? (int)$row['cliente_padre'] : null,
-				'nombre_grupo_padre' => $row['nombre_grupo_padre'] ?? null,
-				'estado' => (int)($row['estado'] ?? 0),
-			], $empresa);
-
-			$lideres[$idEmpleado]['empresas'][] = $empresa;
-			$lideres[$idEmpleado]['empresas_count']++;
-			$lideres[$idEmpleado]['total_minutos'] += $totalMinutos;
-			$lideres[$idEmpleado]['minutos_cargables'] += $minutosCargables;
+			$normalizados = $decodificados;
 		}
 
-		$kpis = [
-			'total_lideres' => count($lideres),
-			'total_empresas' => 0,
-			'total_minutos' => 0.0,
-			'minutos_cargables' => 0.0,
-			'costo_total_estimado' => 0.0,
-			'costo_cargable_estimado' => 0.0,
+		if (!is_array($normalizados)) {
+			return [];
+		}
+
+		$ids = [];
+
+		foreach ($normalizados as $idEmpleado) {
+			if (!is_int($idEmpleado) && !is_string($idEmpleado) && !is_float($idEmpleado)) {
+				continue;
+			}
+
+			$id = (int)$idEmpleado;
+
+			if ($id > 0 && $id !== $idLider) {
+				$ids[] = $id;
+			}
+		}
+
+		$ids = $this->normalizarIdsCostos($ids);
+		$visibles = array_fill_keys($this->normalizarIdsCostos($idEmpleadosVisibles), true);
+
+		return array_values(array_filter(
+			$ids,
+			static fn (int $idEmpleado): bool => isset($visibles[$idEmpleado])
+		));
+	}
+
+	/**
+	 * Métricas de honorarios independientes de los reportes para evitar multiplicar
+	 * horas o importes al unir dos relaciones uno-a-muchos.
+	 *
+	 * No existe actualmente una fuente de otros costos ni participación nacional;
+	 * esos conceptos permanecen explícitamente en cero al construir cada empresa.
+	 */
+	private function getMetricasHonorariosCostos(
+		array $idClientes,
+		string $fechaInicio,
+		string $fechaFin
+	): array {
+		$idClientes = $this->normalizarIdsCostos($idClientes);
+
+		if (empty($idClientes)) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectAlias('h.id_cliente', 'id_cliente')
+			->selectAlias('p.pfecha_inicio', 'pfecha_inicio')
+			->selectAlias('p.pfecha_fin', 'pfecha_fin')
+			->selectAlias('p.importe_parcialidad', 'importe_parcialidad')
+			->selectAlias('p.pagado', 'pagado')
+			->selectAlias('p.fecha_pago', 'fecha_pago')
+			->selectAlias('h.tipo_moneda', 'tipo_moneda')
+			->from('empleados_honorarios', 'h')
+			->innerJoin(
+				'h',
+				'empleados_honorarios_p',
+				'p',
+				'p.id_honorario = h.id_honorario'
+			)
+			->where($qb->expr()->in(
+				'h.id_cliente',
+				$qb->createNamedParameter($idClientes, IQueryBuilder::PARAM_INT_ARRAY)
+			));
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		$metricas = [];
+		$cobradoAcumulado = [];
+		$monedas = [];
+
+		foreach ($rows as $row) {
+			$idCliente = (int)($row['id_cliente'] ?? 0);
+
+			if ($idCliente <= 0) {
+				continue;
+			}
+
+			if (!isset($metricas[$idCliente])) {
+				$metricas[$idCliente] = $this->crearMetricasHonorariosCostosVacias();
+				$cobradoAcumulado[$idCliente] = 0.0;
+			}
+
+			$importe = (float)($row['importe_parcialidad'] ?? 0);
+			$inicioParcialidad = $this->normalizarFechaCostos($row['pfecha_inicio'] ?? null);
+			$finParcialidad = $this->normalizarFechaCostos($row['pfecha_fin'] ?? null)
+				?? $inicioParcialidad;
+			$fechaPago = $this->normalizarFechaCostos($row['fecha_pago'] ?? null);
+			$estadoPago = (int)($row['pagado'] ?? 0);
+			$tipoMoneda = strtoupper(trim((string)($row['tipo_moneda'] ?? 'MXN')))
+				?: 'MXN';
+			$esProyectado = $inicioParcialidad !== null
+				&& $inicioParcialidad <= $fechaFin;
+			$esIngresoPeriodo = $finParcialidad !== null
+				&& $finParcialidad >= $fechaInicio
+				&& $finParcialidad <= $fechaFin;
+			$esCobroPeriodo = in_array($estadoPago, [1, 2], true)
+				&& $fechaPago !== null
+				&& $fechaPago >= $fechaInicio
+				&& $fechaPago <= $fechaFin;
+
+			if ($esProyectado || $esIngresoPeriodo || $esCobroPeriodo) {
+				$monedas[$idCliente][$tipoMoneda] = true;
+			}
+
+			if ($esProyectado) {
+				$metricas[$idCliente]['honorario_proyectado_acumulado'] += $importe;
+
+				if (
+					in_array($estadoPago, [1, 2], true)
+					&& $fechaPago !== null
+					&& $fechaPago <= $fechaFin
+				) {
+					$cobradoAcumulado[$idCliente] += $importe;
+				}
+			}
+
+			if ($esIngresoPeriodo) {
+				$metricas[$idCliente]['ingreso_periodo'] += $importe;
+			}
+
+			if ($esCobroPeriodo) {
+				$metricas[$idCliente]['honorario_cobrado_periodo'] += $importe;
+			}
+		}
+
+		foreach ($metricas as $idCliente => &$metrica) {
+			$metrica['saldo_pendiente'] = max(
+				0.0,
+				$metrica['honorario_proyectado_acumulado']
+					- ($cobradoAcumulado[$idCliente] ?? 0.0)
+			);
+
+			foreach ([
+				'honorario_proyectado_acumulado',
+				'ingreso_periodo',
+				'honorario_cobrado_periodo',
+				'saldo_pendiente',
+			] as $claveMetrica) {
+				$metrica[$claveMetrica] = round((float)$metrica[$claveMetrica], 2);
+			}
+			$monedasCliente = array_keys($monedas[$idCliente] ?? []);
+			sort($monedasCliente);
+			$comparables = empty($monedasCliente)
+				|| $monedasCliente === ['MXN'];
+			$metrica['monedas_honorarios'] = $monedasCliente;
+			$metrica['metricas_financieras_comparables'] = $comparables;
+
+			if (!$comparables) {
+				$metrica['honorario_proyectado_acumulado'] = null;
+				$metrica['ingreso_periodo'] = null;
+				$metrica['honorario_cobrado_periodo'] = null;
+				$metrica['saldo_pendiente'] = null;
+			}
+		}
+		unset($metrica);
+
+		return $metricas;
+	}
+
+	private function normalizarFechaCostos($fecha): ?string {
+		if (!is_string($fecha)) {
+			return null;
+		}
+
+		$fecha = trim($fecha);
+
+		return preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) === 1
+			? $fecha
+			: null;
+	}
+
+	private function crearMetricasHonorariosCostosVacias(): array {
+		return [
+			'honorario_proyectado_acumulado' => 0.0,
+			'ingreso_periodo' => 0.0,
+			'honorario_cobrado_periodo' => 0.0,
+			'saldo_pendiente' => 0.0,
+			'monedas_honorarios' => [],
+			'metricas_financieras_comparables' => true,
+		];
+	}
+
+	private function crearIdentidadEmpleadoCostos(
+		array $empleado,
+		?string $rolAsignacion = null
+	): array {
+		$identidad = [
+			'id_empleado' => (int)($empleado['id_empleado'] ?? 0),
+			'uid' => (string)($empleado['uid'] ?? ''),
+			'displayname' => (string)(
+				$empleado['displayname']
+				?? $empleado['uid']
+				?? ''
+			),
 		];
 
-		foreach ($lideres as &$lider) {
-			$metricas = $this->normalizarMetricasCostos(
-				$lider['total_minutos'],
-				$lider['minutos_cargables'],
-				$lider['sueldo_hora']
-			);
-			$lider = array_merge($lider, $metricas);
-			unset($lider['sueldo_hora']);
-			$kpis['total_empresas'] += $lider['empresas_count'];
-			$kpis['total_minutos'] += $lider['total_minutos'];
-			$kpis['minutos_cargables'] += $lider['minutos_cargables'];
-			$kpis['costo_total_estimado'] += $lider['costo_total_estimado'];
-			$kpis['costo_cargable_estimado'] += $lider['costo_cargable_estimado'];
+		if ($rolAsignacion !== null) {
+			$identidad['rol_asignacion'] = $rolAsignacion;
 		}
-		unset($lider);
 
-		$metricasGenerales = $this->normalizarMetricasCostos(
-			$kpis['total_minutos'],
-			$kpis['minutos_cargables'],
-			0
-		);
-		$costoTotalEstimado = $kpis['costo_total_estimado'];
-		$costoCargableEstimado = $kpis['costo_cargable_estimado'];
-		$kpis = array_merge($kpis, $metricasGenerales, [
-			'costo_total_estimado' => $costoTotalEstimado,
-			'costo_cargable_estimado' => $costoCargableEstimado,
-		]);
+		return $identidad;
+	}
+
+	private function normalizarMetricasCostosAgregadas(
+		float $totalMinutos,
+		float $minutosCargables,
+		float $costoLaboral,
+		float $costoCargable
+	): array {
+		$minutosNoCargables = max(0.0, $totalMinutos - $minutosCargables);
 
 		return [
-			'periodo' => $periodo,
-			'kpis' => $kpis,
-			'lideres' => array_values($lideres),
+			'total_minutos' => round($totalMinutos, 2),
+			'minutos_cargables' => round($minutosCargables, 2),
+			'minutos_no_cargables' => round($minutosNoCargables, 2),
+			'horas_totales' => round($totalMinutos / 60, 2),
+			'horas_cargables' => round($minutosCargables / 60, 2),
+			'horas_no_cargables' => round($minutosNoCargables / 60, 2),
+			'porcentaje_cargable' => $totalMinutos > 0
+				? round(($minutosCargables / $totalMinutos) * 100, 2)
+				: 0.0,
+			'costo_laboral_real' => round($costoLaboral, 2),
+			'costo_total_estimado' => round($costoLaboral, 2),
+			'costo_cargable_estimado' => round($costoCargable, 2),
 		];
+	}
+
+	private function crearKpisCostos(
+		array $empresas,
+		int $totalEmpleados,
+		int $totalLideres
+	): array {
+		$totalMinutos = 0.0;
+		$minutosCargables = 0.0;
+		$costoLaboral = 0.0;
+		$costoCargable = 0.0;
+		$honorarioProyectado = 0.0;
+		$ingresoPeriodo = 0.0;
+		$honorarioCobrado = 0.0;
+		$saldoPendiente = 0.0;
+		$otrosCostos = 0.0;
+		$participacionOficina = 0.0;
+		$utilidadOperativa = 0.0;
+		$finanzasComparables = true;
+
+		foreach ($empresas as $empresa) {
+			$totalMinutos += (float)($empresa['total_minutos'] ?? 0);
+			$minutosCargables += (float)($empresa['minutos_cargables'] ?? 0);
+			$costoLaboral += (float)($empresa['costo_laboral_real'] ?? 0);
+			$costoCargable += (float)($empresa['costo_cargable_estimado'] ?? 0);
+			$empresaComparable = (bool)(
+				$empresa['metricas_financieras_comparables']
+				?? true
+			);
+			$finanzasComparables = $finanzasComparables && $empresaComparable;
+
+			if ($empresaComparable) {
+				$honorarioProyectado += (float)($empresa['honorario_proyectado_acumulado'] ?? 0);
+				$ingresoPeriodo += (float)($empresa['ingreso_periodo'] ?? 0);
+				$honorarioCobrado += (float)($empresa['honorario_cobrado_periodo'] ?? 0);
+				$saldoPendiente += (float)($empresa['saldo_pendiente'] ?? 0);
+				$utilidadOperativa += (float)($empresa['utilidad_operativa'] ?? 0);
+			}
+			$otrosCostos += (float)($empresa['otros_costos'] ?? 0);
+			$participacionOficina += (float)(
+				$empresa['participacion_oficina_nacional']
+				?? 0
+			);
+		}
+
+		return array_merge([
+			'total_lideres' => $totalLideres,
+			'total_empleados' => $totalEmpleados,
+			'total_empresas' => count($empresas),
+		], $this->normalizarMetricasCostosAgregadas(
+			$totalMinutos,
+			$minutosCargables,
+			$costoLaboral,
+			$costoCargable
+		), [
+			'honorario_proyectado_acumulado' => $finanzasComparables
+				? round($honorarioProyectado, 2)
+				: null,
+			'ingreso_periodo' => $finanzasComparables
+				? round($ingresoPeriodo, 2)
+				: null,
+			'honorario_cobrado_periodo' => $finanzasComparables
+				? round($honorarioCobrado, 2)
+				: null,
+			'saldo_pendiente' => $finanzasComparables
+				? round($saldoPendiente, 2)
+				: null,
+			'otros_costos' => round($otrosCostos, 2),
+			'participacion_oficina_nacional' => round($participacionOficina, 2),
+			'utilidad_operativa' => $finanzasComparables
+				? round($utilidadOperativa, 2)
+				: null,
+			'muo' => $finanzasComparables && $ingresoPeriodo > 0
+				? round(($utilidadOperativa / $ingresoPeriodo) * 100, 2)
+				: ($finanzasComparables ? 0.0 : null),
+			'metricas_financieras_comparables' => $finanzasComparables,
+		]);
 	}
 
 	/**
@@ -706,6 +1269,7 @@ class reportetiempoMapper extends QBMapper {
 			'periodo' => $periodo,
 			'kpis' => [
 				'total_lideres' => 0,
+				'total_empleados' => 0,
 				'total_empresas' => 0,
 				'total_minutos' => 0.0,
 				'minutos_cargables' => 0.0,
@@ -716,7 +1280,19 @@ class reportetiempoMapper extends QBMapper {
 				'porcentaje_cargable' => 0.0,
 				'costo_total_estimado' => 0.0,
 				'costo_cargable_estimado' => 0.0,
+				'costo_laboral_real' => 0.0,
+				'honorario_proyectado_acumulado' => 0.0,
+				'ingreso_periodo' => 0.0,
+				'honorario_cobrado_periodo' => 0.0,
+				'saldo_pendiente' => 0.0,
+				'otros_costos' => 0.0,
+				'participacion_oficina_nacional' => 0.0,
+				'utilidad_operativa' => 0.0,
+				'muo' => 0.0,
+				'metricas_financieras_comparables' => true,
 			],
+			'empresas' => [],
+			'empleados' => [],
 			'lideres' => [],
 		];
 	}
@@ -735,30 +1311,6 @@ class reportetiempoMapper extends QBMapper {
 			'periodo_inicio' => $inicio,
 			'periodo_fin' => $fin,
 			'anio' => $anio === null ? $anioActual : max(1, (int)$anio),
-		];
-	}
-
-	private function normalizarMetricasCostos(
-		float $totalMinutos,
-		float $minutosCargables,
-		float $sueldoHora
-	): array {
-		$minutosNoCargables = max(0, $totalMinutos - $minutosCargables);
-		$horasTotales = $totalMinutos / 60;
-		$horasCargables = $minutosCargables / 60;
-
-		return [
-			'total_minutos' => round($totalMinutos, 2),
-			'minutos_cargables' => round($minutosCargables, 2),
-			'minutos_no_cargables' => round($minutosNoCargables, 2),
-			'horas_totales' => round($horasTotales, 2),
-			'horas_cargables' => round($horasCargables, 2),
-			'horas_no_cargables' => round($minutosNoCargables / 60, 2),
-			'porcentaje_cargable' => $totalMinutos > 0
-				? round(($minutosCargables / $totalMinutos) * 100, 2)
-				: 0.0,
-			'costo_total_estimado' => round($horasTotales * $sueldoHora, 2),
-			'costo_cargable_estimado' => round($horasCargables * $sueldoHora, 2),
 		];
 	}
 
@@ -833,6 +1385,48 @@ class reportetiempoMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName())
+			->orderBy('id_reporte', 'DESC');
+
+		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
+
+		if ($limit > 0) {
+			$qb->setMaxResults($limit)
+				->setFirstResult($offset);
+		}
+
+		return $this->findEntities($qb);
+	}
+
+	/**
+	 * Reportes pertenecientes exclusivamente a empleados dentro del alcance visible.
+	 *
+	 * @return reportetiempo[]
+	 */
+	public function findAllByEmployeeIds(
+		array $idEmpleados,
+		int $limit = 100,
+		int $offset = 0,
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null
+	): array {
+		$idEmpleados = array_values(array_unique(array_filter(
+			array_map('intval', $idEmpleados),
+			static fn (int $id): bool => $id > 0
+		)));
+
+		if (empty($idEmpleados)) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->in(
+				'id_empleado',
+				$qb->createNamedParameter($idEmpleados, IQueryBuilder::PARAM_INT_ARRAY)
+			))
 			->orderBy('id_reporte', 'DESC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);

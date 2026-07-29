@@ -140,6 +140,22 @@
 							</h3>
 							<p>{{ t('empleados', 'Edit roles, assigned hours and activities for this temporary scenario.') }}</p>
 						</div>
+						<p class="team-hours-state" :class="{ 'team-hours-state--error': activeSummary.exceededHours > 0 }">
+							<strong>{{ formatHours(activeSummary.assignedHours) }}</strong>
+							{{ t('empleados', 'of') }}
+							<strong>{{ formatHours(activeSummary.requiredHours) }}</strong>
+							{{ t('empleados', 'assigned') }}
+							<span v-if="activeSummary.exceededHours > 0">
+								· {{ t('empleados', '{hours} over the requirement', {
+									hours: formatHours(activeSummary.exceededHours),
+								}) }}
+							</span>
+							<span v-else>
+								· {{ t('empleados', '{hours} remaining', {
+									hours: formatHours(activeSummary.remainingHours),
+								}) }}
+							</span>
+						</p>
 					</div>
 
 					<div
@@ -244,10 +260,17 @@
 											:id="`member-hours-${memberKey(member, memberIndex)}`"
 											class="table-input table-input--number"
 											type="number"
-											min="0"
+											min="0.25"
+											:max="maxMemberAssignableHours(memberIndex)"
 											step="0.25"
 											:value="memberAssignedHours(member)"
-											@input="updateMember(memberIndex, 'horas_estimadas', normalizedNonNegative($event.target.value))">
+											@input="updateMemberHours(memberIndex, $event.target.value)">
+										<p
+											v-if="memberHourError(memberIndex)"
+											class="table-field-error"
+											role="alert">
+											{{ memberHourError(memberIndex) }}
+										</p>
 									</td>
 									<td :data-label="t('empleados', 'Estimated availability')">
 										{{ formatNullableHours(memberAvailability(member)) }}
@@ -572,6 +595,11 @@ export default {
 			default: null,
 		},
 	},
+	data() {
+		return {
+			memberHourErrors: {},
+		}
+	},
 	computed: {
 		activeScenario() {
 			return this.scenarios.find(scenario => this.sameId(scenario.id, this.activeScenarioId))
@@ -592,6 +620,11 @@ export default {
 					? this.sameId(scenario.id, this.activeScenario.id)
 					: index === 0,
 			}))
+		},
+	},
+	watch: {
+		activeScenarioId() {
+			this.memberHourErrors = {}
 		},
 	},
 	methods: {
@@ -737,6 +770,8 @@ export default {
 				team,
 				requiredHours: this.scenarioRequiredHours(scenario),
 				assignedHours,
+				remainingHours: Math.max(0, this.scenarioRequiredHours(scenario) - assignedHours),
+				exceededHours: Math.max(0, assignedHours - this.scenarioRequiredHours(scenario)),
 				price,
 				contingencyPercentage,
 				hasUnknownCosts,
@@ -972,6 +1007,8 @@ export default {
 				return t('empleados', 'Some information needed for the analysis is incomplete.')
 			case 'required_hours_unassigned':
 				return t('empleados', 'Required hours exceed the hours currently assigned to the tentative team.')
+			case 'assigned_hours_exceed_requirement':
+				return t('empleados', 'Assigned hours exceed the current project requirement. Adjust the team before continuing.')
 			case 'single_person_dependency':
 				return t('empleados', 'The current plan depends entirely on one person.')
 			case 'team_availability_shortfall':
@@ -991,6 +1028,9 @@ export default {
 
 			if (requiredHours > assignedHours) {
 				alerts.push('required_hours_unassigned')
+			}
+			if (assignedHours > requiredHours) {
+				alerts.push('assigned_hours_exceed_requirement')
 			}
 
 			if (team.length === 1 && assignedHours > 0) {
@@ -1149,7 +1189,40 @@ export default {
 			))
 			this.emitScenarioChanges({ team })
 		},
+		maxMemberAssignableHours(index) {
+			const team = this.scenarioTeam(this.activeScenario)
+			const assignedByOthers = team.reduce((total, member, memberIndex) => (
+				memberIndex === index ? total : total + this.memberAssignedHours(member)
+			), 0)
+			return Math.max(0, this.scenarioRequiredHours(this.activeScenario) - assignedByOthers)
+		},
+		memberHourError(index) {
+			return this.memberHourErrors[index] || ''
+		},
+		updateMemberHours(index, value) {
+			const hours = this.toNullableNumber(value)
+			const maximum = this.maxMemberAssignableHours(index)
+			if (hours === null || hours <= 0) {
+				this.$set(
+					this.memberHourErrors,
+					index,
+					t('empleados', 'Assigned hours must be greater than zero.'),
+				)
+				return
+			}
+			if (hours > maximum) {
+				this.$set(
+					this.memberHourErrors,
+					index,
+					t('empleados', 'Assigned hours exceed the remaining project hours.'),
+				)
+				return
+			}
+			this.$delete(this.memberHourErrors, index)
+			this.updateMember(index, 'horas_estimadas', hours)
+		},
 		removeMember(index) {
+			this.memberHourErrors = {}
 			const team = this.scenarioTeam(this.activeScenario).filter((member, memberIndex) => memberIndex !== index)
 			this.emitScenarioChanges({ team })
 		},
@@ -1365,6 +1438,19 @@ export default {
 	color: var(--color-text-maxcontrast);
 }
 
+.section-title .team-hours-state {
+	margin: 0;
+	padding: 7px 10px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	color: var(--color-main-text);
+	text-align: end;
+}
+
+.section-title .team-hours-state--error {
+	border-color: var(--color-error);
+}
+
 .label-with-help {
 	display: inline-flex;
 	align-items: center;
@@ -1439,6 +1525,14 @@ export default {
 
 .table-input--number {
 	width: 96px;
+}
+
+.table-field-error {
+	width: 180px;
+	margin: 4px 0 0;
+	color: var(--color-error);
+	font-size: 0.78rem;
+	line-height: 1.3;
 }
 
 .activity-picker {
@@ -1657,9 +1751,14 @@ export default {
 	}
 
 	.quotation-toolbar,
-	.scenario-actions {
+	.scenario-actions,
+	.section-title {
 		align-items: stretch;
 		flex-direction: column;
+	}
+
+	.section-title .team-hours-state {
+		text-align: start;
 	}
 
 	.financial-inputs {

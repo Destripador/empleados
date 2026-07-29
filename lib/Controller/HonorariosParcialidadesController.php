@@ -86,7 +86,7 @@ class HonorariosParcialidadesController extends BaseController {
 		int $id_parcialidad,
 		string $fecha_pago
 	): DataResponse {
-		$this->permisosService->requireCanSee('clientes');
+		$this->requireClientesAdminAccess();
 
 		$idHonorarioFinalizado = $this->honorariosParcialidadesMapper
 			->marcarPagada(

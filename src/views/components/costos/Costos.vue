@@ -49,7 +49,7 @@
 				<template #custom>
 					<CostosResumen
 						:kpis="kpis"
-						:leaders="leaders"
+						:leaders="participants"
 						:employees="employeesAvailability"
 						:period-label="periodLabel" />
 				</template>
@@ -172,6 +172,8 @@ export default {
 			activeTab: 'resumen',
 			loading: true,
 			leaders: [],
+			participants: [],
+			companiesSummary: [],
 			employeesAvailability: [],
 			activities: [],
 			kpis: {},
@@ -241,7 +243,7 @@ export default {
 			}
 		},
 		leaderList() {
-			return this.leaders.map(leader => ({
+			return this.participants.map(leader => ({
 				id: leader.id_empleado,
 				name: leader.displayname || leader.uid,
 				image: leader.uid,
@@ -253,7 +255,9 @@ export default {
 			}))
 		},
 		selectedLeader() {
-			return this.leaders.find(leader => Number(leader.id_empleado) === Number(this.selectedLeaderId)) || null
+			return this.participants.find(
+				participant => Number(participant.id_empleado) === Number(this.selectedLeaderId),
+			) || null
 		},
 		periodLabel() {
 			const period = this.normalizedPeriod
@@ -265,10 +269,31 @@ export default {
 		companies() {
 			const companies = new Map()
 
-			this.leaders.forEach(leader => {
-				const leaderCompanies = Array.isArray(leader.empresas) ? leader.empresas : []
+			this.companiesSummary.forEach(company => {
+				const id = Number(company.id_cliente ?? company.id ?? 0)
+				const active = company.estado === true || Number(company.estado) === 1
 
-				leaderCompanies.forEach(company => {
+				if (!id || !active) {
+					return
+				}
+
+				const name = company.nombre_cliente || company.nombre || company.name || ''
+				companies.set(id, {
+					...company,
+					id,
+					id_cliente: id,
+					name,
+					nombre: name,
+					nombre_cliente: name,
+				})
+			})
+
+			this.participants.forEach(participant => {
+				const participantCompanies = Array.isArray(participant.empresas)
+					? participant.empresas
+					: []
+
+				participantCompanies.forEach(company => {
 					const id = Number(company.id_cliente ?? company.id ?? 0)
 					const active = company.estado === true || Number(company.estado) === 1
 
@@ -397,7 +422,7 @@ export default {
 			await this.loadCosts()
 		},
 		async loadCosts() {
-			if (this.loading && this.leaders.length) {
+			if (this.loading && this.participants.length) {
 				return
 			}
 
@@ -414,7 +439,11 @@ export default {
 				}
 
 				const data = response?.data?.ocs?.data || {}
+				this.participants = Array.isArray(data.empleados)
+					? data.empleados
+					: (Array.isArray(data.lideres) ? data.lideres : [])
 				this.leaders = Array.isArray(data.lideres) ? data.lideres : []
+				this.companiesSummary = Array.isArray(data.empresas) ? data.empresas : []
 				this.employeesAvailability = Array.isArray(data.empleados_disponibilidad)
 					? data.empleados_disponibilidad
 					: []
@@ -422,6 +451,8 @@ export default {
 				this.ensureSelectedCompanyIsVisible()
 			} catch (error) {
 				this.leaders = []
+				this.participants = []
+				this.companiesSummary = []
 				this.employeesAvailability = []
 				this.kpis = {}
 				this.selection = []
