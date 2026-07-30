@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\AppInfo;
 
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
+use OCA\Empleados\Cron\RecordatorioPrimaVacacional;
 use OCA\Empleados\BackgroundJob\RecalcularVacacionesJob;
 use OCA\Empleados\Dashboard\ReportesWidget;
 use OCA\Empleados\Helper\MailHelper;
@@ -36,6 +37,11 @@ class Application extends App implements IBootstrap {
 			);
 		});
 
+		$context->registerService(AniversarioSyncService::class, function($c) {
+			return new AniversarioSyncService(
+				$c->query(historialvacacionesMapper::class)
+			);
+		});
 		$context->registerDashboardWidget(ReportesWidget::class);
 		$context->registerNotifierService(ReportesNotifier::class);
 		$context->registerNotifierService(ComprasNotifier::class);
@@ -49,6 +55,10 @@ class Application extends App implements IBootstrap {
 
 			if (!$jobList->has(RecalcularVacacionesJob::class, null)) {
 				$jobList->add(RecalcularVacacionesJob::class);
+			}
+
+			if (!$jobList->has(RecordatorioPrimaVacacional::class, null)) {
+				$jobList->add(RecordatorioPrimaVacacional::class);
 			}
 		});
 	}

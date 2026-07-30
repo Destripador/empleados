@@ -420,31 +420,25 @@ class EmpleadosController extends BaseController {
             throw new \RuntimeException("Empleado $id_empleados no existe");
         }
 
+        $ingresoAnterior = $empBefore[0]['Ingreso'] ?? null;
         $oldUid    = $empBefore[0]['Id_user'] ?? null;
         $oldEquipo = $empBefore[0]['Id_equipo'] ?? null;
-        
+
         // 1) Aplica cambios en BD (empleado + ausencias)
         $this->empleadosMapper->CambiosEmpleado(
-            $id_empleados, 
-            $numeroempleado, 
-            $ingreso, 
-            $area, 
-            $puesto, 
-            $socio, 
-            $gerente, 
-            $fondoclave, 
-            $fondoahorro, 
-            $numerocuenta, 
-            $equipoasignado, 
-            $equipo, 
-            $sueldo
+            $id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio,
+            $gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado,
+            $equipo, $sueldo
         );
 
         $this->ausenciasMapper->updateAusenciasById(
-            (int)$id_empleados, 
-            (int)$id_aniversario, 
-            (float)$dias_disponibles
+            (int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
         );
+
+        // 1.5) Sincroniza periodos SOLO si cambió el ingreso, y una sola vez
+        if (!empty($ingreso) && $ingresoAnterior !== $ingreso) {
+            $this->aniversarioSyncService->sincronizarPeriodos($id_empleados, $ingreso);
+        }
 
         // 2) Si no cambió el equipo o está vacío → no tocar grupos
         if (empty($equipo) || (string)$oldEquipo === (string)$equipo) {

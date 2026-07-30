@@ -221,14 +221,14 @@
 									:class="rowClass(item)">
 									<td class="col-periodo-resumen">
 										<span
-											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
-											:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
+											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia, 'fecha-temprana': item.es_temprana }"
+											:title="item.es_temprana ? t('empleados', 'Vacación anticipada — descuenta del periodo siguiente') : ((parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : '')">
 											{{ formatFecha(item.fecha_de) }}
 										</span>
 										<span class="periodo-sep">→</span>
 										<span
-											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
-											:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
+											:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia, 'fecha-temprana': item.es_temprana }"
+											:title="item.es_temprana ? t('empleados', 'Vacación anticipada — descuenta del periodo siguiente') : ((parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : '')">
 											{{ formatFecha(item.fecha_hasta) }}
 										</span>
 									</td>
@@ -336,14 +336,14 @@
 							</td>
 							<td>
 								<span
-									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
-									:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
+									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia, 'fecha-temprana': item.es_temprana }"
+									:title="item.es_temprana ? t('empleados', 'Vacación anticipada — descuenta del periodo siguiente') : ((parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : '')">
 									{{ formatFecha(item.fecha_de) }}
 								</span>
 								<span class="periodo-sep">→</span>
 								<span
-									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia }"
-									:title="(parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : ''">
+									:class="{ 'fecha-tardia': parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia, 'fecha-temprana': item.es_temprana }"
+									:title="item.es_temprana ? t('empleados', 'Vacación anticipada — descuenta del periodo siguiente') : ((parseFloat(item.dias_de_acumulado) > 0 || item.es_tardia) ? t('empleados', 'Fuera del periodo normal') : '')">
 									{{ formatFecha(item.fecha_hasta) }}
 								</span>
 							</td>
@@ -1447,7 +1447,12 @@ export default {
 }
 
 .fecha-tardia {
-	color: #ac1818;
+	color: #b60909;
+	font-weight: 600;
+}
+
+.fecha-temprana {
+	color: #f85a1c;
 	font-weight: 600;
 }
 

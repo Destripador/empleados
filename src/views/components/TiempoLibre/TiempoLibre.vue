@@ -919,7 +919,9 @@ export default {
 			if (isApproved) {
 				return { classNames: ['event-approved'] }
 			}
-			// Pendiente / recién creada
+			if (item.es_temprana) {
+				return { classNames: ['event-pending-anticipada'] }
+			}
 			return { classNames: ['event-pending'] }
 		},
 
@@ -1378,7 +1380,7 @@ export default {
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							classNames: ['event-pending'],
+							classNames: item.es_temprana ? ['event-pending-anticipada'] : ['event-pending'],
 
 							/*
 					 * Se conserva el UID para el avatar y para abrir
@@ -1422,6 +1424,18 @@ export default {
 	color: #ffffff !important;
 }
 
+.fc-event.event-pending-anticipada {
+	background: repeating-linear-gradient(
+		135deg,
+		#e07b28 0px,
+		#d97324 8px,
+		#f0994f 8px,
+		#f0994f 16px
+	) !important;
+	border-color: #f2a05e !important;
+	color: #ffffff !important;
+}
+
 .fc-event.event-approved {
 	background: #6fbf8b !important;
 	border-color: #4f9e6c !important;
@@ -1447,6 +1461,7 @@ export default {
 	text-decoration: line-through;
 	opacity: 0.8;
 }
+
 </style>
 
 <style scoped>
