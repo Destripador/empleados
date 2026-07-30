@@ -35,6 +35,12 @@
 				:text="AusenciaSeleccionada.descripcion" />
 		</section>
 
+		<section v-if="esRangoUnDia" class="form-section">
+			<NcCheckboxRadioSwitch v-model="medioDia" type="switch">
+				{{ t('empleados', 'Half day (0.5 day)') }}
+			</NcCheckboxRadioSwitch>
+		</section>
+
 		<NcNoteCard
 			v-if="exceedsAvailableDays"
 			type="info"
@@ -213,6 +219,7 @@ export default {
 			RestanteDias: 0,
 			comentarios: '',
 			SolicitarPrima: false,
+			medioDia: false,
 			selectedFiles: [],
 			loading: false,
 			propsEmployees: {
@@ -231,9 +238,26 @@ export default {
 	},
 
 	computed: {
+		esRangoUnDia() {
+			if (!this.date?.start || !this.date?.end) return false
+
+			const start = new Date(this.date.start)
+			const end = new Date(this.date.end)
+
+			return start.getFullYear() === end.getFullYear()
+				&& start.getMonth() === end.getMonth()
+				&& start.getDate() === end.getDate()
+		},
+
+		diasSolicitadosEfectivos() {
+			return this.esRangoUnDia && this.medioDia
+				? 0.5
+				: (Number(this.diasSolicitados) || 0)
+		},
+
 		diasAcumuladosNum() {
 			const val = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
-			return parseFloat(val) || 0
+			return Number.parseFloat(val) || 0
 		},
 
 		esAusenciaVacacional() {
@@ -277,10 +301,10 @@ export default {
 		},
 
 		diasDentroDeVigencia() {
-			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitados
+			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitadosEfectivos
 
 			const limite = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
-			if (!limite) return this.diasSolicitados
+			if (!limite) return this.diasSolicitadosEfectivos
 			limite.setHours(0, 0, 0, 0)
 			const start = new Date(this.date.start)
 			start.setHours(0, 0, 0, 0)
@@ -301,12 +325,12 @@ export default {
 
 		diasDelAcumuladoAUsar() {
 			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
-			return Math.min(this.diasAcumuladosNum, this.diasSolicitados, this.diasDentroDeVigencia)
+			return Math.min(this.diasAcumuladosNum, this.diasSolicitadosEfectivos, this.diasDentroDeVigencia)
 		},
 
 		diasDelPeriodoActualAUsar() {
 			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
-			return this.diasSolicitados - this.diasDelAcumuladoAUsar
+			return this.diasSolicitadosEfectivos - this.diasDelAcumuladoAUsar
 		},
 
 		acumuladoNoAplicaPorFecha() {
@@ -320,14 +344,14 @@ export default {
 			return this.AusenciaSeleccionada
 				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
 				&& !this.esAusenciaAnticipada
-				&& this.diasSolicitados > this.TotalDias
+				&& this.diasSolicitadosEfectivos > this.TotalDias
 		},
 
 		periodItems() {
 			const items = [
 				{
 					label: t('empleados', 'Days to take'),
-					value: this.diasSolicitados,
+					value: this.diasSolicitadosEfectivos,
 				},
 				{
 					label: t('empleados', 'From:'),
@@ -354,7 +378,7 @@ export default {
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasSolicitados < 2
+			return this.primaVacacionalUsada || this.diasSolicitadosEfectivos < 2
 		},
 	},
 	watch: {
@@ -377,8 +401,22 @@ export default {
 		},
 
 		diasSolicitados(nuevo) {
-			if (nuevo < 2) {
+			if (Number(nuevo) < 2) {
 				this.SolicitarPrima = false
+			}
+			this.recalcularDias()
+		},
+
+		medioDia() {
+			if (this.diasSolicitadosEfectivos < 2) {
+				this.SolicitarPrima = false
+			}
+			this.recalcularDias()
+		},
+
+		esRangoUnDia(esUnDia) {
+			if (!esUnDia) {
+				this.medioDia = false
 			}
 		},
 
@@ -393,15 +431,7 @@ export default {
 	},
 
 	mounted() {
-		this.TotalDias = parseInt(this.diasDisponibles, 10) + this.diasAcumuladosNum
-		this.RestanteDias = this.TotalDias - this.diasSolicitados
-		this.GetTipoAusencias()
-		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
-			this.checkPrimaVacacional()
-		}
-
 		this.recalcularDias()
-		this.GetTipoAusencias()
 		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
 			this.checkPrimaVacacional()
 		}
@@ -445,8 +475,8 @@ export default {
 		recalcularDias() {
 			const disponibles = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
 			const acumulados = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
-			this.TotalDias = parseInt(disponibles, 10) + (parseFloat(acumulados) || 0)
-			this.RestanteDias = this.TotalDias - this.diasSolicitados
+			this.TotalDias = (Number(disponibles) || 0) + (Number.parseFloat(acumulados) || 0)
+			this.RestanteDias = this.TotalDias - this.diasSolicitadosEfectivos
 			this.GetTipoAusencias()
 		},
 
@@ -458,7 +488,8 @@ export default {
 							this.TipoAusencias = response.data
 								.filter(item => (Number(item.privado) !== 1 || this.admin)
 									&& (Number(item.privado) === 1
-										|| !(item.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias)))
+										|| !(Number(item.solicitar_prima_vacacional) === 1
+											&& this.diasSolicitadosEfectivos > this.TotalDias)))
 								.map(item => ({
 									id: item.id_tipo_ausencia,
 									label: item.nombre,
@@ -499,7 +530,7 @@ export default {
 					formData.append('id_usuario', this.employees_list.user)
 				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
-				formData.append('dias_solicitados', this.diasSolicitados)
+				formData.append('dias_solicitados', this.diasSolicitadosEfectivos)
 				formData.append('fecha_de', this.formatFechaParaBackend(this.date.start))
 				formData.append('fecha_hasta', this.date.end ? this.formatFechaParaBackend(this.date.end) : '')
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)

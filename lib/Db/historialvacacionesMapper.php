@@ -92,6 +92,7 @@ class historialvacacionesMapper extends QBMapper {
 		float $dias_acumulados,
 		?string $fecha_expiracion_acumulados
 	): void {
+		$timestamp = date('Y-m-d H:i:s');
 		$insert = $this->db->getQueryBuilder();
 		$insert->insert($this->getTableName())
 			->values([
@@ -102,10 +103,140 @@ class historialvacacionesMapper extends QBMapper {
 				'dias_derecho'               => $insert->createNamedParameter($dias_derecho),
 				'dias_acumulados'            => $insert->createNamedParameter($dias_acumulados),
 				'dias_acumulados_restantes'  => $insert->createNamedParameter($dias_acumulados),
-				'fecha_expiracion_acumulados' => $insert->createNamedParameter($fecha_expiracion_acumulados),
-				'acumulado_calculado'        => $insert->createNamedParameter(1, IQueryBuilder::PARAM_INT),
-			]);
+					'fecha_expiracion_acumulados' => $insert->createNamedParameter($fecha_expiracion_acumulados),
+					'acumulado_calculado'        => $insert->createNamedParameter(1, IQueryBuilder::PARAM_INT),
+					'created_at'                 => $insert->createNamedParameter($timestamp),
+					'updated_at'                 => $insert->createNamedParameter($timestamp),
+				]);
 		$insert->executeStatement();
+	}
+
+	/**
+	 * Persiste una proyección completa del periodo. Toda la aritmética vive en
+	 * VacacionesCalculoService; el mapper no incrementa ni decrementa saldos.
+	 *
+	 * @param array<string, mixed> $periodo
+	 */
+	public function upsertCalculado(array $periodo): void {
+		$idEmpleado = (int) $periodo['id_empleado'];
+		$numero = (int) $periodo['numero_aniversario'];
+		$existente = $this->getByEmpleadoYAniversario($idEmpleado, $numero);
+		$timestamp = date('Y-m-d H:i:s');
+
+		$valores = [
+			'periodo_inicio' => (string) $periodo['periodo_inicio'],
+			'periodo_fin' => (string) $periodo['periodo_fin'],
+			'fecha_ingreso_base' => (string) $periodo['fecha_ingreso_base'],
+			'dias_derecho' => max(0.0, (float) $periodo['dias_derecho']),
+			'dias_periodo_usados' => max(0.0, (float) $periodo['dias_periodo_usados']),
+			'dias_acumulados' => max(0.0, (float) $periodo['dias_acumulados']),
+			'dias_acumulados_usados' => max(0.0, (float) $periodo['dias_acumulados_usados']),
+			'dias_acumulados_restantes' => max(0.0, (float) $periodo['dias_acumulados_restantes']),
+			'dias_acumulados_vencidos' => max(0.0, (float) $periodo['dias_acumulados_vencidos']),
+			'dias_excedentes' => max(0.0, (float) $periodo['dias_excedentes']),
+			'fecha_expiracion_acumulados' => $periodo['fecha_expiracion_acumulados'],
+			'acumulado_calculado' => 1,
+			'vigente' => (int) $periodo['vigente'],
+			'recalculado_at' => $timestamp,
+			'updated_at' => $timestamp,
+		];
+
+		$qb = $this->db->getQueryBuilder();
+		if ($existente === null) {
+			$qb->insert($this->getTableName())
+				->values([
+					'id_empleado' => $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT),
+					'numero_aniversario' => $qb->createNamedParameter($numero, IQueryBuilder::PARAM_INT),
+					'periodo_inicio' => $qb->createNamedParameter($valores['periodo_inicio']),
+					'periodo_fin' => $qb->createNamedParameter($valores['periodo_fin']),
+					'fecha_ingreso_base' => $qb->createNamedParameter($valores['fecha_ingreso_base']),
+					'dias_derecho' => $qb->createNamedParameter($valores['dias_derecho']),
+					'dias_periodo_usados' => $qb->createNamedParameter($valores['dias_periodo_usados']),
+					'dias_acumulados' => $qb->createNamedParameter($valores['dias_acumulados']),
+					'dias_acumulados_usados' => $qb->createNamedParameter($valores['dias_acumulados_usados']),
+					'dias_acumulados_restantes' => $qb->createNamedParameter($valores['dias_acumulados_restantes']),
+					'dias_acumulados_vencidos' => $qb->createNamedParameter($valores['dias_acumulados_vencidos']),
+					'dias_excedentes' => $qb->createNamedParameter($valores['dias_excedentes']),
+					'fecha_expiracion_acumulados' => $qb->createNamedParameter($valores['fecha_expiracion_acumulados']),
+					'acumulado_calculado' => $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT),
+					'asignado_manualmente' => $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT),
+					'acumulado_asignado_manualmente' => $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT),
+					'vigente' => $qb->createNamedParameter($valores['vigente'], IQueryBuilder::PARAM_INT),
+					'recalculado_at' => $qb->createNamedParameter($timestamp),
+					'created_at' => $qb->createNamedParameter($timestamp),
+					'updated_at' => $qb->createNamedParameter($timestamp),
+				]);
+		} else {
+			$qb->update($this->getTableName());
+			foreach ($valores as $columna => $valor) {
+				$tipo = in_array($columna, ['acumulado_calculado', 'vigente'], true)
+					? IQueryBuilder::PARAM_INT
+					: null;
+				$qb->set($columna, $qb->createNamedParameter($valor, $tipo));
+			}
+			$qb->where(
+					$qb->expr()->eq(
+						'id_empleado',
+						$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
+					)
+				)
+				->andWhere(
+					$qb->expr()->eq(
+						'numero_aniversario',
+						$qb->createNamedParameter($numero, IQueryBuilder::PARAM_INT)
+					)
+				);
+		}
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Antes de reconstruir se desactivan todas las proyecciones. Los periodos
+	 * válidos se reactivan mediante upsertCalculado; ninguno se borra.
+	 */
+	public function marcarNoVigentes(int $idEmpleado): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('vigente', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+			->where(
+				$qb->expr()->eq(
+					'id_empleado',
+					$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qb->executeStatement();
+	}
+
+	public function establecerAcumuladoManual(
+		int $idEmpleado,
+		int $numeroAniversario,
+		float $dias,
+		?string $fechaExpiracion
+	): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('dias_acumulados', $qb->createNamedParameter(max(0.0, $dias)))
+			->set('dias_acumulados_restantes', $qb->createNamedParameter(max(0.0, $dias)))
+			->set('dias_acumulados_usados', $qb->createNamedParameter(0.0))
+			->set('dias_acumulados_vencidos', $qb->createNamedParameter(0.0))
+			->set('fecha_expiracion_acumulados', $qb->createNamedParameter($fechaExpiracion))
+			->set('acumulado_asignado_manualmente', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
+			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+			->where(
+				$qb->expr()->eq(
+					'id_empleado',
+					$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->andWhere(
+				$qb->expr()->eq(
+					'numero_aniversario',
+					$qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qb->executeStatement();
 	}
 
 	/**

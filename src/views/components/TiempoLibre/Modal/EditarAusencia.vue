@@ -47,11 +47,18 @@
 				</div>
 			</div>
 
+			<NcCheckboxRadioSwitch
+				v-if="esRangoUnDia"
+				v-model="medioDia"
+				type="switch">
+				{{ t('empleados', 'Half day (0.5 day)') }}
+			</NcCheckboxRadioSwitch>
+
 			<!-- Resumen del periodo -->
 			<div v-if="diasHabiles > 0" class="period-grid">
 				<div class="period-item">
 					<span>{{ t('empleados', 'Business days') }}</span>
-					<strong>{{ diasHabiles }}</strong>
+					<strong>{{ diasSolicitadosEfectivos }}</strong>
 				</div>
 				<div v-if="AusenciaSeleccionada && Number(AusenciaSeleccionada.solicitar_prima_vacacional) === 1" class="period-item">
 					<span>{{ t('empleados', 'Available days') }}</span>
@@ -206,9 +213,10 @@ export default {
 				? this.ausencia.fecha_hasta.substring(0, 10)
 				: '',
 			diasHabiles: 0,
-			TotalDias: parseInt(this.diasDisponibles, 10) || 0,
+			TotalDias: Number(this.diasDisponibles) || 0,
 			comentarios: this.ausencia.notas || '',
 			SolicitarPrima: Number(this.ausencia.prima_vacacional) === 1,
+			medioDia: Number(this.ausencia.dias_solicitados) === 0.5,
 			selectedFiles: [],
 			loading: false,
 			primaVacacionalUsada: false,
@@ -219,6 +227,17 @@ export default {
 	},
 
 	computed: {
+		esRangoUnDia() {
+			return Boolean(this.fechaDesdeStr)
+				&& this.fechaDesdeStr === this.fechaHastaStr
+		},
+
+		diasSolicitadosEfectivos() {
+			return this.esRangoUnDia && this.medioDia
+				? 0.5
+				: this.diasHabiles
+		},
+
 		// Días que tenía la ausencia original (para devolver y restar correctamente)
 		diasOriginales() {
 			return Number(this.ausencia.dias_solicitados) || 0
@@ -226,7 +245,7 @@ export default {
 
 		diasDisponiblesVigente() {
 			const val = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
-			return parseInt(val, 10) || 0
+			return Number(val) || 0
 		},
 
 		fechaLimitePeriodoVigente() {
@@ -241,7 +260,7 @@ export default {
 			}
 			// Días disponibles reales = actuales + originales (porque ya se descontaron)
 			const disponiblesReales = this.TotalDias + this.diasOriginales
-			return disponiblesReales - this.diasHabiles
+			return disponiblesReales - this.diasSolicitadosEfectivos
 		},
 
 		exceedsAvailableDays() {
@@ -250,7 +269,7 @@ export default {
 				return false
 			}
 			const disponiblesReales = this.TotalDias + this.diasOriginales
-			return this.diasHabiles > disponiblesReales
+			return this.diasSolicitadosEfectivos > disponiblesReales
 		},
 
 		esAusenciaVacacional() {
@@ -274,14 +293,14 @@ export default {
 			return this.AusenciaSeleccionada
 				&& this.fechaDesdeStr
 				&& this.fechaHastaStr
-				&& this.diasHabiles > 0
+				&& this.diasSolicitadosEfectivos > 0
 				&& !this.exceedsAvailableDays
 				&& !this.excedeFechaLimite
 				&& !this.loadingEmpleado
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasHabiles < 2
+			return this.primaVacacionalUsada || this.diasSolicitadosEfectivos < 2
 		},
 	},
 
@@ -295,6 +314,16 @@ export default {
 		fechaDesdeStr() {
 			if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
 				this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
+			}
+		},
+		medioDia() {
+			if (this.diasSolicitadosEfectivos < 2) {
+				this.SolicitarPrima = false
+			}
+		},
+		esRangoUnDia(esUnDia) {
+			if (!esUnDia) {
+				this.medioDia = false
 			}
 		},
 	},
@@ -377,7 +406,7 @@ export default {
 			}
 			this.diasHabiles = count
 
-			if (this.diasHabiles < 2) {
+			if (this.diasSolicitadosEfectivos < 2) {
 				this.SolicitarPrima = false
 			}
 		},
@@ -405,7 +434,7 @@ export default {
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('fecha_de', this.fechaDesdeStr)
 				formData.append('fecha_hasta', this.fechaHastaStr)
-				formData.append('dias_solicitados', this.diasHabiles)
+				formData.append('dias_solicitados', this.diasSolicitadosEfectivos)
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
 
@@ -437,7 +466,7 @@ export default {
 				const res = await axios.get(
 					generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
-					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`
+					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`,
 				)
 				this.primaVacacionalUsada = res.data.ocs.data.used === true
 			} catch (e) {
