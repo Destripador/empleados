@@ -14,6 +14,9 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCA\Empleados\UploadException;
 
+use OCP\IUserSession;
+use OCP\IGroupManager;
+
 use DateTime;
 
 use OCA\Empleados\Db\tipoausenciaMapper;
@@ -29,33 +32,54 @@ class TipoausenciasController extends Controller {
 
     protected $l10n;
     protected $tipoausenciaMapper;
+    protected $userSession;
+    protected $groupManager;
 
     public function __construct(
         IRequest $request,
         IL10N $l10n,
         tipoausenciaMapper $tipoausenciaMapper,
+        IUserSession $userSession,
+        IGroupManager $groupManager,
     ) {
         parent::__construct(Application::APP_ID, $request);
         
         $this->l10n = $l10n;
         $this->tipoausenciaMapper = $tipoausenciaMapper;
+        $this->userSession = $userSession;
+        $this->groupManager = $groupManager;
     }
 
     /**
-     * Obtiene la lista de tipoausencias.
+     * Determina si el usuario actual es admin o RH.
+     */
+    private function isPrivileged(): bool {
+        $user = $this->userSession->getUser();
+        if (!$user) {
+            return false;
+        }
+        $uid = $user->getUID();
+        return $this->groupManager->isInGroup($uid, 'admin')
+            || $this->groupManager->isInGroup($uid, 'recursos_humanos');
+    }
+
+    /**
+     * Obtiene la lista de tipoausencias visibles para el usuario actual.
+     * Los tipos marcados como privados solo se devuelven a admin/RH.
      */
     #[UseSession]
     #[NoAdminRequired]
     public function getTipo(): array {
-        return $this->tipoausenciaMapper->getTipo();
+        return $this->tipoausenciaMapper->getTipoVisible($this->isPrivileged());
     }
 
     /**
      * Exporta la lista de tipo de ausencias a un archivo XLSX.
+     * Solo admin/RH exportan, así que aquí sí van todos, incluidos privados.
      */
     public function ExportarTipo(): array {
         $tipoausencias = $this->tipoausenciaMapper->getTipo();
-        $books = [['nombre', 'descripcion', 'solicitar_archivo', 'solicitar_prima_vacacional']];
+        $books = [['nombre', 'descripcion', 'solicitar_archivo', 'solicitar_prima_vacacional', 'cargable', 'privado']];
 
         foreach ($tipoausencias as $tipo) {
             $books[] = [
@@ -63,6 +87,8 @@ class TipoausenciasController extends Controller {
                 $tipo['descripcion'],
                 $tipo['solicitar_archivo'],
                 $tipo['solicitar_prima_vacacional'],
+                $tipo['cargable'],
+                $tipo['privado'],
             ];
         }
 
@@ -77,12 +103,14 @@ class TipoausenciasController extends Controller {
         $file = $this->getUploadedFile('fileXLSX');
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
-                $tipo = new tipoausencia();
-                $tipo->setnombre($row[0]);
-                $tipo->setdescripcion($row[1]);
-                $tipo->setsolicitar_archivo($row[2]);
-                $tipo->setsolicitar_prima_vacacional($row[3]);
-                $this->tipoausenciaMapper->insert($tipo);
+                $this->tipoausenciaMapper->insertTipoAusencia(
+                    (string) $row[0],
+                    (string) $row[1],
+                    (int) $row[2],
+                    (int) $row[3],
+                    (int) ($row[4] ?? 0),
+                    (int) ($row[5] ?? 0),
+                );
             }
         }
     }
@@ -126,17 +154,25 @@ class TipoausenciasController extends Controller {
 
     /**
      * Crea un nuevo tipo de ausencia.
+     * Solo admin/RH pueden marcar un tipo como privado.
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function AgregarNuevoTipo(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable): void {
-        $tipo = new tipoausencia();
-        $tipo->setnombre($nombre);
-        $tipo->setdescripcion($descripcion);
-        $tipo->setsolicitar_archivo($solicitar_archivo);
-        $tipo->setsolicitar_prima_vacacional($solicitar_prima_vacacional);
-        $tipo->setcargable($cargable);
-        $this->tipoausenciaMapper->insert($tipo);
+    public function AgregarNuevoTipo(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado = 0): DataResponse {
+        if ($privado > 0 && !$this->isPrivileged()) {
+            return new DataResponse(['success' => false, 'message' => 'Sin permiso para crear tipos privados'], Http::STATUS_FORBIDDEN);
+        }
+
+        $this->tipoausenciaMapper->insertTipoAusencia(
+            $nombre,
+            $descripcion,
+            $solicitar_archivo,
+            $solicitar_prima_vacacional,
+            $cargable,
+            $privado,
+        );
+
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
@@ -171,9 +207,13 @@ class TipoausenciasController extends Controller {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable): DataResponse {
+    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado = 0): DataResponse {
+        if ($privado > 0 && !$this->isPrivileged()) {
+            return new DataResponse('Sin permiso para marcar como privado', Http::STATUS_FORBIDDEN);
+        }
+
         try {
-            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional, $cargable);
+            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional, $cargable, $privado);
             return new DataResponse('ok', Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);

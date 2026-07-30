@@ -119,10 +119,6 @@
 					v-if="primaVacacionalUsada"
 					type="warning"
 					:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
-				<NcNoteCard
-					v-if="bloqueaPorDiciembre"
-					type="warning"
-					:text="t('empleados', 'You cannot request the vacation bonus for a period that includes days in December.')" />
 			</template>
 
 			<NcTextArea
@@ -285,29 +281,7 @@ export default {
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasHabiles < 2 || this.bloqueaPorDiciembre
-		},
-
-		incluyeDiciembre() {
-			if (!this.fechaDesdeStr || !this.fechaHastaStr) return false
-			const start = new Date(this.fechaDesdeStr + 'T00:00:00')
-			const end = new Date(this.fechaHastaStr + 'T00:00:00')
-			let cursor = new Date(start.getFullYear(), start.getMonth(), 1)
-			const finMes = new Date(end.getFullYear(), end.getMonth(), 1)
-			while (cursor <= finMes) {
-				if (cursor.getMonth() === 11) return true
-
-				cursor = new Date(
-					cursor.getFullYear(),
-					cursor.getMonth() + 1,
-					1,
-				)
-			}
-			return false
-		},
-
-		bloqueaPorDiciembre() {
-			return this.esAusenciaVacacional && this.incluyeDiciembre
+			return this.primaVacacionalUsada || this.diasHabiles < 2
 		},
 	},
 
@@ -321,12 +295,6 @@ export default {
 		fechaDesdeStr() {
 			if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
 				this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
-			}
-		},
-
-		incluyeDiciembre(nuevo) {
-			if (nuevo && this.SolicitarPrima) {
-				this.SolicitarPrima = false
 			}
 		},
 	},
@@ -469,7 +437,7 @@ export default {
 				const res = await axios.get(
 					generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
-					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`,
+					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`
 				)
 				this.primaVacacionalUsada = res.data.ocs.data.used === true
 			} catch (e) {

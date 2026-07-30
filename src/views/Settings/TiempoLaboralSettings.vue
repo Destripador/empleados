@@ -150,12 +150,15 @@
 								<th class="col-center">
 									{{ t('empleados', 'Billable') }}
 								</th>
+								<th class="col-center">
+									{{ t('empleados', 'Private') }}
+								</th>
 								<th class="col-actions" />
 							</tr>
 						</thead>
 						<tbody>
 							<tr v-if="TipoAusencias.length === 0">
-								<td colspan="5" class="empty-row">
+								<td colspan="6" class="empty-row">
 									{{ t('empleados', 'No absence types defined yet.') }}
 								</td>
 							</tr>
@@ -174,6 +177,11 @@
 								<td class="col-center">
 									<span :class="item.cargable == 1 ? 'pill pill--yes' : 'pill pill--no'">
 										{{ item.cargable == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+									</span>
+								</td>
+								<td class="col-center">
+									<span :class="item.privado > 0 ? 'pill pill--yes' : 'pill pill--no'">
+										{{ item.privado > 0 ? t('empleados', 'Yes') : t('empleados', 'No') }}
 									</span>
 								</td>
 								<td class="col-actions">
@@ -381,6 +389,17 @@
 							</p>
 						</div>
 					</div>
+					<div class="switch-card span-2">
+						<NcCheckboxRadioSwitch v-model="privado" type="switch" />
+						<div>
+							<p class="switch-label">
+								{{ t('empleados', 'Private') }}
+							</p>
+							<p class="switch-desc">
+								{{ t('empleados', 'Only admins and HR can see and request this absence type.') }}
+							</p>
+						</div>
+					</div>
 				</div>
 				<div class="modal-actions">
 					<NcButton @click="closeModalTipo">
@@ -494,6 +513,7 @@ export default {
 			SolicitarArchivoTipo: false,
 			solicitar_prima_vacacional: false,
 			cargable: false,
+			privado: false,
 
 			// ── Holidays ──
 			Festivos: [],
@@ -638,6 +658,7 @@ export default {
 			this.SolicitarArchivoTipo = false
 			this.solicitar_prima_vacacional = false
 			this.cargable = false
+			this.privado = false
 			this.modalAddTipo = true
 		},
 
@@ -648,6 +669,7 @@ export default {
 			this.SolicitarArchivoTipo = item.solicitar_archivo === 1
 			this.solicitar_prima_vacacional = item.solicitar_prima_vacacional === 1
 			this.cargable = item.cargable === 1
+			this.privado = item.privado > 0
 			this.modalAddTipo = true
 		},
 
@@ -659,6 +681,7 @@ export default {
 			this.SolicitarArchivoTipo = false
 			this.solicitar_prima_vacacional = false
 			this.cargable = false
+			this.privado = false
 		},
 
 		async getTipo() {
@@ -677,12 +700,13 @@ export default {
 			try {
 				if (this.editingTipo) {
 					await axios.post(generateUrl('/apps/empleados/modificarTipo'), {
-						id: this.editingTipo.id_tipo_ausencia, // ← corregido también
+						id: this.editingTipo.id_tipo_ausencia,
 						nombre: this.NombreTipo,
 						descripcion: this.DescripcionTipo,
 						solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
 						solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0,
 						cargable: this.cargable ? 1 : 0,
+						privado: this.privado ? 1 : 0,
 					})
 				} else {
 					await axios.post(generateUrl('/apps/empleados/AgregarNuevoTipo'), {
@@ -691,6 +715,7 @@ export default {
 						solicitar_archivo: this.SolicitarArchivoTipo ? 1 : 0,
 						solicitar_prima_vacacional: this.solicitar_prima_vacacional ? 1 : 0,
 						cargable: this.cargable ? 1 : 0,
+						privado: this.privado ? 1 : 0,
 					})
 				}
 				showSuccess(t('empleados', 'Absence type saved'))

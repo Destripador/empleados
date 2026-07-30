@@ -47,12 +47,12 @@
 
 		<template v-if="AusenciaSeleccionada && !exceedsAvailableDays">
 			<NcNoteCard
-				v-if="esAusenciaVacacional && diasAcumuladosNum > 0"
+				v-if="esAusenciaVacacional && !esAusenciaAnticipada && diasAcumuladosNum > 0"
 				type="warning"
 				:text="t('empleados', 'You have accumulated vacation days from your previous period: {dias} days, available until {fecha}. After that date they will be lost.', { dias: diasAcumuladosNum, fecha: fechaExpiracionFormateada })" />
 
 			<NcNoteCard
-				v-if="esAusenciaVacacional && diasDelAcumuladoAUsar > 0 && diasDelPeriodoActualAUsar > 0"
+				v-if="esAusenciaVacacional && !esAusenciaAnticipada && diasDelAcumuladoAUsar > 0 && diasDelPeriodoActualAUsar > 0"
 				type="info"
 				:text="t('empleados', 'This request will be split: {acumulado} day(s) will be taken from your accumulated (expiring) balance, and {actual} day(s) from your current period.', { acumulado: diasDelAcumuladoAUsar, actual: diasDelPeriodoActualAUsar })" />
 
@@ -60,6 +60,11 @@
 				v-if="acumuladoNoAplicaPorFecha"
 				type="info"
 				:text="t('empleados', 'Vacation days will be deducted from the balance of your current period, as accrued vacation days must be used within the corresponding period (before {fecha}).', { fecha: fechaExpiracionFormateada })" />
+
+			<NcNoteCard
+				v-if="esAusenciaAnticipada"
+				type="info"
+				:text="t('empleados', 'This is an early/advance request. It will not be deducted from your current period balance.')" />
 
 			<section class="form-section">
 				<h3>{{ t('empleados', 'Absence period') }}</h3>
@@ -116,10 +121,6 @@
 						v-if="primaVacacionalUsada"
 						type="warning"
 						:text="t('empleados', 'Your vacation bonus for this year has already been used. You may request it again if your previous absence is cancelled.')" />
-					<NcNoteCard
-						v-if="bloqueaPorDiciembre"
-						type="warning"
-						:text="t('empleados', 'You cannot request the vacation bonus for a period that includes days in December.')" />
 				</template>
 
 				<NcTextArea
@@ -239,26 +240,8 @@ export default {
 			return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
 		},
 
-		incluyeDiciembre() {
-			if (!this.date?.start) return false
-			const start = new Date(this.date.start)
-			const end = this.date.end ? new Date(this.date.end) : start
-			let cursor = new Date(start.getFullYear(), start.getMonth(), 1)
-			const finMes = new Date(end.getFullYear(), end.getMonth(), 1)
-			while (cursor <= finMes) {
-				if (cursor.getMonth() === 11) return true
-
-				cursor = new Date(
-					cursor.getFullYear(),
-					cursor.getMonth() + 1,
-					1,
-				)
-			}
-			return false
-		},
-
-		bloqueaPorDiciembre() {
-			return this.esAusenciaVacacional && this.incluyeDiciembre
+		esAusenciaAnticipada() {
+			return this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.privado) === 1
 		},
 
 		fechaExpiracionAcumuladosVigente() {
@@ -269,17 +252,14 @@ export default {
 			return this.diasInfoEmpleado?.fecha_limite_periodo_actual ?? this.fechaLimitePeriodoActual
 		},
 
-		// FIX: usar parseFechaLocal en vez de `new Date(stringYmd)` para evitar
-		// el desfase de un día causado por la interpretación UTC de JS.
 		fechaExpiracionFormateada() {
 			const d = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
 			if (!d) return ''
 			return d.toLocaleDateString('es-MX')
 		},
 
-		// FIX: mismo parseo seguro
 		excedeFechaLimite() {
-			if (!this.esAusenciaVacacional || !this.fechaLimitePeriodoVigente || !this.date?.start) return false
+			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada || !this.fechaLimitePeriodoVigente || !this.date?.start) return false
 			const limite = this.parseFechaLocal(this.fechaLimitePeriodoVigente)
 			if (!limite) return false
 			limite.setHours(0, 0, 0, 0)
@@ -290,16 +270,12 @@ export default {
 			return start > limite || end > limite
 		},
 
-		// FIX: mismo parseo seguro
 		fechaLimiteFormateada() {
 			const d = this.parseFechaLocal(this.fechaLimitePeriodoVigente)
 			if (!d) return ''
 			return d.toLocaleDateString('es-MX')
 		},
 
-		// FIX: mismo parseo seguro — este es el que causaba el split incorrecto
-		// (2/2 en vez de 3/1) por estar comparando contra un límite un día antes
-		// del real.
 		diasDentroDeVigencia() {
 			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitados
 
@@ -324,17 +300,18 @@ export default {
 		},
 
 		diasDelAcumuladoAUsar() {
-			if (!this.esAusenciaVacacional) return 0
+			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
 			return Math.min(this.diasAcumuladosNum, this.diasSolicitados, this.diasDentroDeVigencia)
 		},
 
 		diasDelPeriodoActualAUsar() {
-			if (!this.esAusenciaVacacional) return 0
+			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
 			return this.diasSolicitados - this.diasDelAcumuladoAUsar
 		},
 
 		acumuladoNoAplicaPorFecha() {
 			return this.esAusenciaVacacional
+				&& !this.esAusenciaAnticipada
 				&& this.diasAcumuladosNum > 0
 				&& this.diasDelAcumuladoAUsar === 0
 		},
@@ -342,6 +319,7 @@ export default {
 		exceedsAvailableDays() {
 			return this.AusenciaSeleccionada
 				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
+				&& !this.esAusenciaAnticipada
 				&& this.diasSolicitados > this.TotalDias
 		},
 
@@ -361,7 +339,7 @@ export default {
 				},
 			]
 
-			if (Number(this.AusenciaSeleccionada?.solicitar_prima_vacacional) === 1) {
+			if (Number(this.AusenciaSeleccionada?.solicitar_prima_vacacional) === 1 && !this.esAusenciaAnticipada) {
 				items.unshift({
 					label: t('empleados', 'Available days'),
 					value: this.TotalDias,
@@ -376,7 +354,7 @@ export default {
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasSolicitados < 2 || this.bloqueaPorDiciembre
+			return this.primaVacacionalUsada || this.diasSolicitados < 2
 		},
 	},
 	watch: {
@@ -412,12 +390,6 @@ export default {
 		diasAcumulados() {
 			this.recalcularDias()
 		},
-
-		incluyeDiciembre() {
-			if (this.SolicitarPrima && this.bloqueaPorDiciembre) {
-				this.SolicitarPrima = false
-			}
-		},
 	},
 
 	mounted() {
@@ -438,10 +410,6 @@ export default {
 	methods: {
 		t,
 
-		// FIX: parsea un string "yyyy-mm-dd" como fecha LOCAL, evitando que
-		// `new Date("yyyy-mm-dd")` lo interprete como medianoche UTC (lo cual
-		// en zonas horarias negativas como Torreón/UTC-6 desplaza la fecha
-		// un día hacia atrás).
 		parseFechaLocal(fechaStr) {
 			if (!fechaStr) return null
 			const partes = String(fechaStr).split('-')
@@ -450,12 +418,6 @@ export default {
 			return Number.isNaN(d.getTime()) ? null : d
 		},
 
-		// FIX: formatea una fecha a "dd/mm/yyyy" de forma explícita, sin
-		// depender del locale del navegador. `toLocaleDateString()` sin
-		// argumentos usa el idioma configurado en el navegador del usuario:
-		// en es-MX da "dd/mm/yyyy" pero en en-US da "mm/dd/yyyy", lo cual
-		// el backend (que siempre espera 'd/m/Y') puede leer mal o invertir
-		// silenciosamente día y mes.
 		formatFechaParaBackend(fecha) {
 			if (!fecha) return ''
 			const d = String(fecha.getDate()).padStart(2, '0')
@@ -494,13 +456,16 @@ export default {
 					.then(
 						(response) => {
 							this.TipoAusencias = response.data
-								.filter(item => !(item.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias))
+								.filter(item => (Number(item.privado) !== 1 || this.admin)
+									&& (Number(item.privado) === 1
+										|| !(item.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias)))
 								.map(item => ({
 									id: item.id_tipo_ausencia,
 									label: item.nombre,
 									descripcion: item.descripcion,
 									solicitar_archivo: item.solicitar_archivo,
 									solicitar_prima_vacacional: item.solicitar_prima_vacacional,
+									privado: item.privado,
 								}))
 						},
 						(err) => { showError(err) },
@@ -535,8 +500,6 @@ export default {
 				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('dias_solicitados', this.diasSolicitados)
-				// FIX: formato explícito d/m/Y en vez de toLocaleDateString() sin
-				// argumentos, para no depender del idioma del navegador.
 				formData.append('fecha_de', this.formatFechaParaBackend(this.date.start))
 				formData.append('fecha_hasta', this.date.end ? this.formatFechaParaBackend(this.date.end) : '')
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
@@ -570,7 +533,6 @@ export default {
 			try {
 				let url = generateUrl('/apps/empleados/check-prima-vacacional')
 					+ `?exclude_id=${excludeId}`
-					// FIX: mismo formato explícito d/m/Y para consistencia
 					+ `&fecha_de=${encodeURIComponent(this.formatFechaParaBackend(this.date.start))}`
 				if (this.admin && this.employees_list?.user) {
 					url += `&id_usuario=${this.employees_list.user}`

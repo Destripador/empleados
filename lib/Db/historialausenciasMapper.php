@@ -171,11 +171,13 @@ class historialausenciasMapper extends QBMapper {
 			->where($qb->expr()->eq('id_ausencias', $qb->createNamedParameter($id_ausencias)))
 			->andWhere($qb->expr()->eq($qb->createFunction('YEAR(fecha_de)'), $qb->createNamedParameter($anio, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('prima_vacacional', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
-			// Excluir canceladas: está cancelada cuando a_gerente = 3 O a_socio = 3
+			// Excluir canceladas (3) Y rechazadas (2) en ambos roles
 			->andWhere(
 				$qb->expr()->andX(
 					$qb->expr()->neq('a_gerente', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
-					$qb->expr()->neq('a_socio',   $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+					$qb->expr()->neq('a_socio',   $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
+					$qb->expr()->neq('a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
+					$qb->expr()->neq('a_socio',   $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
 				)
 			);
 
@@ -251,7 +253,8 @@ class historialausenciasMapper extends QBMapper {
 				't.nombre AS tipo_ausencia',
 				't.solicitar_prima_vacacional',
 				'e.Id_user AS nombre_empleado',
-				'e.Id_empleados AS id_empleado'
+				'e.Id_empleados AS id_empleado',
+				'e.Ingreso AS ingreso_empleado'
 			)
 			->from($this->getTableName(), 'h')
 			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))

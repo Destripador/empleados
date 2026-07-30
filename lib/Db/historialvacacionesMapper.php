@@ -232,4 +232,27 @@ class historialvacacionesMapper extends QBMapper {
 			->andWhere($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)));
 		$qb->executeStatement();
 	}
+
+	/**
+	 * Igual que actualizarFechas(), pero también corrige la fecha de
+	 * expiración del colchón acumulado, que siempre es "periodo_inicio + 6 meses".
+	 * Si no se corrige junto con periodo_inicio, queda apuntando a una fecha vieja.
+	 */
+	public function actualizarFechasYExpiracion(
+		int $idEmpleado,
+		int $numeroAniversario,
+		string $periodoInicio,
+		string $periodoFin,
+		?string $fechaExpiracionAcumulados
+	): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('periodo_inicio', $qb->createNamedParameter($periodoInicio))
+			->set('periodo_fin', $qb->createNamedParameter($periodoFin))
+			->set('fecha_expiracion_acumulados', $qb->createNamedParameter($fechaExpiracionAcumulados))
+			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+			->where($qb->expr()->eq('id_empleado', $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+	}
 }
