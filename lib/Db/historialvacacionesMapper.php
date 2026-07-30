@@ -44,6 +44,15 @@ class historialvacacionesMapper extends QBMapper {
 		return $rows;
 	}
 
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')->from($this->getTableName())->orderBy('id_empleado', 'ASC')->addOrderBy('numero_aniversario', 'DESC');
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		return $rows;
+	}
+
 	public function guardar(int $idEmpleado, int $numeroAniversario, string $periodoInicio, string $periodoFin, float $diasDerecho): void {
 		$timestamp = date('Y-m-d H:i:s');
 		$existente = $this->getByEmpleadoYAniversario($idEmpleado, $numeroAniversario);

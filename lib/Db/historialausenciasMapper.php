@@ -347,4 +347,22 @@ class historialausenciasMapper extends QBMapper {
 
 		return $rows;
 	}
+
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(
+			'h.*',
+			'a.id_empleado',
+			't.nombre AS tipo_ausencia',
+			't.solicitar_prima_vacacional'
+		)
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'ausencias', 'a', $qb->expr()->eq('h.id_ausencias', 'a.id_ausencias'))
+			->leftJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->orderBy('h.timestamp', 'DESC');
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		return $rows;
+	}
 }

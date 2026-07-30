@@ -93,6 +93,72 @@ class empleadosMapper extends QBMapper {
 		return $users;
 	}
 
+	/**
+	 * Directorio administrativo para el contexto de IA.
+	 *
+	 * La tabla de empleados es la raíz y las relaciones son opcionales para no
+	 * perder empleados inactivos o expedientes todavía incompletos.
+	 */
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('e.*')
+			->selectAlias('u.uid', 'uid')
+			->selectAlias('u.displayname', 'displayname')
+			->selectAlias('primary_email.configvalue', 'correo_corporativo_primario')
+			->selectAlias('system_email.configvalue', 'correo_corporativo_sistema')
+			->selectAlias('d.Nombre', 'area_nombre')
+			->selectAlias('dp.Nombre', 'area_padre_nombre')
+			->selectAlias('p.Nombre', 'puesto_nombre')
+			->selectAlias('p.Nivel', 'puesto_nivel')
+			->selectAlias('eq.Nombre', 'equipo_laboral_nombre')
+			->selectAlias('eq.Id_jefe_equipo', 'jefe_equipo_referencia')
+			->selectAlias('a.id_ausencias', 'id_ausencias')
+			->selectAlias('a.id_aniversario', 'id_aniversario')
+			->selectAlias('a.dias_disponibles', 'dias_disponibles')
+			->selectAlias('a.prima_vacacional', 'prima_vacacional_actual')
+			->from($this->getTableName(), 'e')
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin('e', 'preferences', 'primary_email', $qb->expr()->andX(
+				$qb->expr()->eq('primary_email.userid', 'e.Id_user'),
+				$qb->expr()->eq('primary_email.appid', $qb->createNamedParameter('settings')),
+				$qb->expr()->eq('primary_email.configkey', $qb->createNamedParameter('primary_email'))
+			))
+			->leftJoin('e', 'preferences', 'system_email', $qb->expr()->andX(
+				$qb->expr()->eq('system_email.userid', 'e.Id_user'),
+				$qb->expr()->eq('system_email.appid', $qb->createNamedParameter('settings')),
+				$qb->expr()->eq('system_email.configkey', $qb->createNamedParameter('email'))
+			))
+			->leftJoin('e', 'departamentos', 'd', $this->portableStringIntegerEquals(
+				$qb,
+				'e.Id_departamento',
+				'd.Id_departamento',
+			))
+			->leftJoin('d', 'departamentos', 'dp', $this->portableStringIntegerEquals(
+				$qb,
+				'd.Id_padre',
+				'dp.Id_departamento',
+			))
+			->leftJoin('e', 'puestos', 'p', $this->portableStringIntegerEquals(
+				$qb,
+				'e.Id_puesto',
+				'p.Id_puestos',
+			))
+			->leftJoin('e', 'equipos', 'eq', $this->portableStringIntegerEquals(
+				$qb,
+				'e.Id_equipo',
+				'eq.Id_equipo',
+			))
+			->leftJoin('e', 'ausencias', 'a', $qb->expr()->eq('a.id_empleado', 'e.Id_empleados'))
+			->orderBy('e.Id_empleados', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
 	public function getAllUsers(): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -502,5 +568,23 @@ class empleadosMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $nombre !== false ? $nombre : null;
+	}
+
+	private function portableStringIntegerEquals(
+		IQueryBuilder $qb,
+		string $stringColumn,
+		string $integerColumn,
+	): string {
+		$castType = match ($this->db->getDatabasePlatform()->getName()) {
+			'mysql', 'mariadb' => 'CHAR',
+			'postgresql' => 'VARCHAR',
+			'sqlite' => 'TEXT',
+			default => throw new \RuntimeException('Plataforma de base de datos no compatible.'),
+		};
+
+		return $qb->expr()->eq(
+			$stringColumn,
+			$qb->createFunction('CAST(' . $integerColumn . ' AS ' . $castType . ')')
+		);
 	}
 }

@@ -11,6 +11,8 @@ final class ContextScopeRegistry {
 		'vacaciones-empleado' => VacacionesEmpleadoScope::class,
 		'empleado-laboral' => EmpleadoLaboralScope::class,
 		'empleados-listado' => EmpleadosListadoScope::class,
+		'empleados-completo' => EmpleadosCompletoScope::class,
+		'reportes-tiempo-admin' => ReportesTiempoAdminScope::class,
 	];
 
 	public function __construct(

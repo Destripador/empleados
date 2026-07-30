@@ -1671,6 +1671,171 @@ class reportetiempoMapper extends QBMapper {
 		}, $rows);
 	}
 
+	/**
+	 * Agregados administrativos para el contexto de IA de Reportes de tiempo.
+	 *
+	 * Parte del directorio visible y mantiene el filtro de periodo dentro del
+	 * LEFT JOIN para conservar empleados sin registros, necesarios para el KPI
+	 * de cumplimiento. Solo selecciona el nombre visible de proyectos/clientes.
+	 */
+	public function getAiAggregates(
+		string $userId,
+		string $fechaInicio,
+		string $fechaFin,
+		string $fechaReferencia,
+		int|string|null $empleado = null,
+	): array {
+		$qb = $this->db->getQueryBuilder();
+		$referenceParameter = $qb->createNamedParameter($fechaReferencia);
+		$reportsJoin = $qb->expr()->andX(
+			$this->aiEmployeeReportJoin($qb, 'r', 'e'),
+			$qb->expr()->gte('r.fecha_registro', $qb->createNamedParameter($fechaInicio)),
+			$qb->expr()->lte('r.fecha_registro', $qb->createNamedParameter($fechaFin))
+		);
+
+		$qb->selectAlias('e.Id_empleados', 'id_empleado')
+			->selectAlias('e.Id_user', 'uid')
+			->selectAlias('u.displayname', 'nombre_empleado')
+			->selectAlias('e.Sueldo', 'costo_hora')
+			->selectAlias('r.id_cliente', 'id_proyecto')
+			->selectAlias('c.nombre', 'nombre_proyecto')
+			->selectAlias('r.id_actividad', 'id_actividad')
+			->selectAlias('a.nombre', 'nombre_actividad')
+			->selectAlias('a.cargable', 'actividad_cargable')
+			->selectAlias(
+				$qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'),
+				'total_minutos'
+			)
+			->selectAlias(
+				$qb->createFunction('COUNT(r.id_reporte)'),
+				'total_reportes'
+			)
+			->selectAlias(
+				$qb->createFunction(
+					'COALESCE(SUM(CASE WHEN r.fecha_registro = '
+					. $referenceParameter
+					. ' THEN 1 ELSE 0 END), 0)'
+				),
+				'reportes_fecha_referencia'
+			)
+			->from('empleados', 'e')
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin('e', $this->getTableName(), 'r', $reportsJoin)
+			->leftJoin('r', 'empleados_clientes', 'c', $qb->expr()->eq('c.id', 'r.id_cliente'))
+			->leftJoin('r', 'empleados_actividades', 'a', $qb->expr()->eq('a.id_actividad', 'r.id_actividad'))
+			->where($qb->expr()->orX(
+				$qb->expr()->eq('e.Id_user', $qb->createNamedParameter($userId)),
+				$qb->expr()->eq('e.Id_gerente', $qb->createNamedParameter($userId)),
+				$qb->expr()->eq('e.Id_socio', $qb->createNamedParameter($userId))
+			))
+			->groupBy('e.Id_empleados')
+			->addGroupBy('e.Id_user')
+			->addGroupBy('u.displayname')
+			->addGroupBy('e.Sueldo')
+			->addGroupBy('r.id_cliente')
+			->addGroupBy('c.nombre')
+			->addGroupBy('r.id_actividad')
+			->addGroupBy('a.nombre')
+			->addGroupBy('a.cargable')
+			->orderBy('total_minutos', 'DESC');
+
+		$this->applyAiEmployeeFilter($qb, $empleado);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * Detalle reciente para IA. Se solicita un registro adicional para detectar
+	 * truncamiento sin ejecutar una consulta COUNT separada.
+	 */
+	public function getAiRecentReports(
+		string $userId,
+		string $fechaInicio,
+		string $fechaFin,
+		int|string|null $empleado = null,
+		int $limit = 301,
+	): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('r.id_reporte', 'id_reporte')
+			->selectAlias('r.fecha_registro', 'fecha')
+			->selectAlias('r.id_empleado', 'id_empleado')
+			->selectAlias('e.Id_user', 'uid')
+			->selectAlias('u.displayname', 'nombre_empleado')
+			->selectAlias('r.id_cliente', 'id_proyecto')
+			->selectAlias('c.nombre', 'nombre_proyecto')
+			->selectAlias('r.id_actividad', 'id_actividad')
+			->selectAlias('a.nombre', 'nombre_actividad')
+			->selectAlias('a.cargable', 'actividad_cargable')
+			->selectAlias('r.descripcion', 'descripcion')
+			->selectAlias('r.tiempo_registrado', 'minutos')
+			->selectAlias('e.Sueldo', 'costo_hora')
+			->from($this->getTableName(), 'r')
+			->innerJoin('r', 'empleados', 'e', $this->aiEmployeeReportJoin($qb, 'r', 'e'))
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin('r', 'empleados_clientes', 'c', $qb->expr()->eq('c.id', 'r.id_cliente'))
+			->leftJoin('r', 'empleados_actividades', 'a', $qb->expr()->eq('a.id_actividad', 'r.id_actividad'))
+			->where($qb->expr()->orX(
+				$qb->expr()->eq('e.Id_user', $qb->createNamedParameter($userId)),
+				$qb->expr()->eq('e.Id_gerente', $qb->createNamedParameter($userId)),
+				$qb->expr()->eq('e.Id_socio', $qb->createNamedParameter($userId))
+			))
+			->andWhere($qb->expr()->gte(
+				'r.fecha_registro',
+				$qb->createNamedParameter($fechaInicio)
+			))
+			->andWhere($qb->expr()->lte(
+				'r.fecha_registro',
+				$qb->createNamedParameter($fechaFin)
+			))
+			->orderBy('r.fecha_registro', 'DESC')
+			->addOrderBy('r.id_reporte', 'DESC')
+			->setMaxResults(max(1, $limit));
+
+		$this->applyAiEmployeeFilter($qb, $empleado);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	private function aiEmployeeReportJoin(
+		IQueryBuilder $qb,
+		string $reportAlias,
+		string $employeeAlias,
+	): string {
+		return $qb->expr()->eq(
+			$reportAlias . '.id_empleado',
+			$qb->expr()->castColumn(
+				$employeeAlias . '.Id_empleados',
+				IQueryBuilder::PARAM_STR
+			)
+		);
+	}
+
+	private function applyAiEmployeeFilter(
+		IQueryBuilder $qb,
+		int|string|null $empleado,
+	): void {
+		if (is_int($empleado)) {
+			$qb->andWhere($qb->expr()->eq(
+				'e.Id_empleados',
+				$qb->createNamedParameter($empleado, IQueryBuilder::PARAM_INT)
+			));
+		} elseif (is_string($empleado) && $empleado !== '') {
+			$qb->andWhere($qb->expr()->eq(
+				'e.Id_user',
+				$qb->createNamedParameter($empleado, IQueryBuilder::PARAM_STR)
+			));
+		}
+	}
+
 	public function deleteById(int $id): void {
 		$qb = $this->db->getQueryBuilder();
 

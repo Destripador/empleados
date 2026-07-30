@@ -21,6 +21,19 @@ class userahorroMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id_ahorro', 'id_user', 'state', 'last_modified')
+			->from($this->getTableName())
+			->orderBy('id_ahorro', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
 	public function getUsersWithAhorro(): array {
 		$qb = $this->db->getQueryBuilder();
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Db;
 
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 class historialahorroMapper extends QBMapper {
@@ -24,6 +25,22 @@ class historialahorroMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $users;
+	}
+
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('h.*', 'a.id_user AS id_empleado')
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'user_ahorro', 'a', $this->portableStringIntegerEquals(
+				$qb,
+				'h.id_ahorro',
+				'a.id_ahorro',
+			))
+			->orderBy('h.id_historial', 'DESC');
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		return $rows;
 	}
 
 	public function GetHistorialPanel(string $options_fechas_value, string $options_estado_values): array {
@@ -91,5 +108,23 @@ class historialahorroMapper extends QBMapper {
 			->where($qb->expr()->eq('id_historial', $qb->createNamedParameter($id)));
 
 		$qb->executeStatement();
+	}
+
+	private function portableStringIntegerEquals(
+		IQueryBuilder $qb,
+		string $stringColumn,
+		string $integerColumn,
+	): string {
+		$castType = match ($this->db->getDatabasePlatform()->getName()) {
+			'mysql', 'mariadb' => 'CHAR',
+			'postgresql' => 'VARCHAR',
+			'sqlite' => 'TEXT',
+			default => throw new \RuntimeException('Plataforma de base de datos no compatible.'),
+		};
+
+		return $qb->expr()->eq(
+			$stringColumn,
+			$qb->createFunction('CAST(' . $integerColumn . ' AS ' . $castType . ')')
+		);
 	}
 }

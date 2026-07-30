@@ -35,9 +35,9 @@
 			<template #custom>
 				<div class="periodo-details">
 					<h3>
-						{{ t('empleados', 'General summary') }} - {{ monthLabel(periodo_inicio) }} -
-						{{ monthLabel(periodo_fin) }}
-						({{ normalizedPeriod.anio || '-' }})
+						{{ t('empleados', 'General summary') }} - {{ monthLabel(activePeriod.periodo_inicio) }} -
+						{{ monthLabel(activePeriod.periodo_fin) }}
+						({{ activePeriod.anio || '-' }})
 					</h3>
 
 					<AdminResumenGeneral
@@ -48,7 +48,7 @@
 				</div>
 			</template>
 			<template #details>
-				<h3>{{ t('empleados', 'Employee summary') }} - {{ monthLabel(periodo_inicio) }} - {{ monthLabel(periodo_fin) }} ({{ normalizedPeriod.anio || '-' }})</h3>
+				<h3>{{ t('empleados', 'Employee summary') }} - {{ monthLabel(activePeriod.periodo_inicio) }} - {{ monthLabel(activePeriod.periodo_fin) }} ({{ activePeriod.anio || '-' }})</h3>
 				<AdminDetalles :select="select"
 					:sueldo="sueldo"
 					:actividades-list="actividades"
@@ -173,6 +173,18 @@
 				</div>
 			</div>
 		</NcModal>
+
+		<ContextAssistant
+			v-if="mostrarAsistenteIa"
+			scope="reportes-tiempo-admin"
+			:context="aiParameters"
+			:context-key="aiContextKey"
+			:title="t('empleados', 'Asistente de reportes de tiempo')"
+			:description="t(
+				'empleados',
+				'Consulta horas, cumplimiento, actividades, proyectos y costos del periodo seleccionado.',
+			)"
+			:suggestions="aiSuggestions" />
 	</NcAppContent>
 </template>
 
@@ -191,6 +203,7 @@ import { translate as t } from '@nextcloud/l10n'
 import List from '../../Helpers/Lists/List.vue'
 import AdminDetalles from './AdminDetalles.vue'
 import AdminResumenGeneral from './AdminResumenGeneral.vue'
+import ContextAssistant from '../../../../components/Ai/ContextAssistant.vue'
 
 import {
 	NcAppContent,
@@ -222,6 +235,7 @@ export default {
 		DatabaseCog,
 		NcSelect,
 		AdminResumenGeneral,
+		ContextAssistant,
 	},
 	data() {
 		return {
@@ -229,6 +243,9 @@ export default {
 			loading: true,
 			listas: [],
 			select: [],
+			selectedEmployeeId: null,
+			employeeRequestSequence: 0,
+			periodRequestSequence: 0,
 			modal: false,
 			name_activity: '',
 			description_activity: '',
@@ -238,6 +255,11 @@ export default {
 			periodo_inicio: null,
 			periodo_fin: null,
 			anioSeleccionado: null,
+			appliedPeriod: {
+				periodo_inicio: null,
+				periodo_fin: null,
+				anio: null,
+			},
 			actividades: [],
 			meses: [
 				{ label: t('empleados', 'January'), value: 1 },
@@ -278,6 +300,48 @@ export default {
 			}
 		},
 
+		activePeriod() {
+			return { ...this.appliedPeriod }
+		},
+
+		mostrarAsistenteIa() {
+			return !this.loading
+		},
+
+		aiParameters() {
+			return {
+				periodo: {
+					mes_inicio: this.activePeriod.periodo_inicio,
+					mes_fin: this.activePeriod.periodo_fin,
+					anio: this.activePeriod.anio,
+				},
+				empleado: {
+					id: this.selectedEmployeeId,
+				},
+			}
+		},
+
+		aiContextKey() {
+			return [
+				'reportes-tiempo-admin',
+				this.activePeriod.periodo_inicio ?? 'todos',
+				this.activePeriod.periodo_fin ?? 'todos',
+				this.activePeriod.anio ?? 'todos',
+				this.selectedEmployeeId ?? 'todos',
+			].join(':')
+		},
+
+		aiSuggestions() {
+			return [
+				t('empleados', 'Resume el periodo seleccionado.'),
+				t('empleados', '¿Cuántas horas fueron reportadas?'),
+				t('empleados', '¿Qué empleados tienen reportes pendientes?'),
+				t('empleados', '¿Qué actividades acumularon más horas?'),
+				t('empleados', '¿Qué proyectos tuvieron mayor costo?'),
+				t('empleados', 'Compara el cumplimiento de los empleados.'),
+			]
+		},
+
 		resumenFmt() {
 			const kpis = this.resumenGeneral?.kpis || {}
 
@@ -304,6 +368,10 @@ export default {
 		this.periodo_inicio = Number(localStorage.getItem('nextcloud_empleados_mes_inicio')) || null
 		this.periodo_fin = Number(localStorage.getItem('nextcloud_empleados_mes_fin')) || null
 		this.anioSeleccionado = Number(localStorage.getItem('nextcloud_empleados_anio_seleccionado')) || null
+		const storedPeriod = this.normalizedPeriod
+		if (this.isPeriodEmpty(storedPeriod) || this.isPeriodComplete(storedPeriod)) {
+			this.appliedPeriod = { ...storedPeriod }
+		}
 
 		this._onDetails = (id) => this.gethistorial(id)
 		this._onNew = () => this.openModal()
@@ -318,10 +386,9 @@ export default {
 		this.$root.$on('edit', this._onEdit)
 		this.$root.$on('exportlist', this._onExport)
 		this.$root.$on('importlist', this._onImport)
-		this.GetEmpleadosReports()
 		this.GetCompaniesGroups()
 		this.GetActividades()
-		this.GetAdminReportsSummary()
+		this.refreshPeriodData()
 	},
 
 	beforeDestroy() {
@@ -343,7 +410,9 @@ export default {
 		},
 
 		onEsc() {
+			this.employeeRequestSequence++
 			this.select = []
+			this.selectedEmployeeId = null
 			this.sueldo = 0
 		},
 
@@ -363,6 +432,9 @@ export default {
 		},
 
 		reportConfig() {
+			this.periodo_inicio = this.activePeriod.periodo_inicio
+			this.periodo_fin = this.activePeriod.periodo_fin
+			this.anioSeleccionado = this.activePeriod.anio
 			this.modalReport = true
 		},
 
@@ -445,94 +517,133 @@ export default {
 			}
 		},
 
-		async GetEmpleadosReports() {
+		refreshPeriodData() {
+			const requestSequence = ++this.periodRequestSequence
+			const period = { ...this.activePeriod }
+
+			this.listas = []
+			this.resumenGeneral = null
+			this.loadingResumen = true
+			this.GetEmpleadosReports(requestSequence, period)
+			this.GetAdminReportsSummary(requestSequence, period)
+		},
+
+		async GetEmpleadosReports(requestSequence, period) {
 			try {
-				await axios.post(generateUrl('/apps/empleados/GetEmpleadosReports'), this.normalizedPeriod).then(
-					(response) => {
-						if (response?.data?.ocs?.meta?.status !== 'ok') {
-							showError(response?.data?.ocs?.meta?.message)
-							this.loading = false
-							window.location.href = '/apps/empleados/#/'
-							return
-						}
-						const keyMap = {
-							Id_empleados: 'id',
-							displayname: 'name',
-							Id_user: 'image',
-							total_tiempo_registrado: 'count',
-							Sueldo: 'Sueldo',
-						}
-
-						const renameKeys = (obj, map) =>
-							Object.fromEntries(
-								Object.entries(obj).map(([k, v]) => {
-									if (k === 'displayname') {
-										return ['name', v ?? obj.Id_user]
-									}
-									return [map[k] ?? k, v]
-								}),
-							)
-
-						const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : []
-
-						this.listas = arr.map(o => renameKeys(o, keyMap))
-
-						this.loading = false
-					},
-					(err) => {
-						showError(err)
-					},
+				const response = await axios.post(
+					generateUrl('/apps/empleados/GetEmpleadosReports'),
+					period,
 				)
+				if (requestSequence !== this.periodRequestSequence) {
+					return
+				}
+				if (response?.data?.ocs?.meta?.status !== 'ok') {
+					showError(response?.data?.ocs?.meta?.message)
+					window.location.href = '/apps/empleados/#/'
+					return
+				}
+				const keyMap = {
+					Id_empleados: 'id',
+					displayname: 'name',
+					Id_user: 'image',
+					total_tiempo_registrado: 'count',
+					Sueldo: 'Sueldo',
+				}
+
+				const renameKeys = (obj, map) =>
+					Object.fromEntries(
+						Object.entries(obj).map(([k, v]) => {
+							if (k === 'displayname') {
+								return ['name', v ?? obj.Id_user]
+							}
+							return [map[k] ?? k, v]
+						}),
+					)
+
+				const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : []
+
+				this.listas = arr.map(o => renameKeys(o, keyMap))
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+				if (requestSequence === this.periodRequestSequence) {
+					showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+				}
+			} finally {
+				if (requestSequence === this.periodRequestSequence) {
+					this.loading = false
+				}
 			}
 		},
 
 		ChangeReportConfig() {
 			const period = this.normalizedPeriod
+			if (!this.isPeriodEmpty(period) && !this.isPeriodComplete(period)) {
+				showError(t(
+					'empleados',
+					'Selecciona el mes inicial, el mes final y el año para aplicar el periodo.',
+				))
+				return
+			}
 
 			this.periodo_inicio = period.periodo_inicio
 			this.periodo_fin = period.periodo_fin
 			this.anioSeleccionado = period.anio
+			this.appliedPeriod = { ...period }
 
 			localStorage.setItem('nextcloud_empleados_mes_inicio', String(period.periodo_inicio ?? ''))
 			localStorage.setItem('nextcloud_empleados_mes_fin', String(period.periodo_fin ?? ''))
 			localStorage.setItem('nextcloud_empleados_anio_seleccionado', String(period.anio ?? ''))
 
 			this.closeModal()
+			this.employeeRequestSequence++
 			this.select = []
+			this.selectedEmployeeId = null
 			this.sueldo = 0
-			this.GetEmpleadosReports()
-			this.GetAdminReportsSummary()
+			this.refreshPeriodData()
 		},
 
 		async gethistorial(id) {
+			const requestSequence = ++this.employeeRequestSequence
+			this.selectedEmployeeId = id
+			this.select = []
+			this.sueldo = 0
 			try {
-				await axios.post(generateUrl('/apps/empleados/GetReportesById'), {
+				const response = await axios.post(generateUrl('/apps/empleados/GetReportesById'), {
 					id,
-					...this.normalizedPeriod,
-				}).then(
-					(response) => {
-						this.select = response?.data?.ocs?.data
-						this.sueldo = parseInt(this.listas.find(e => e.id === id).Sueldo)
-					},
-					(err) => {
-						showError(err)
-					},
-				)
-
-			} catch (e) {
-				showError(t('ahorrosgossler', 'Could not fetch your information'))
+					...this.activePeriod,
+				})
+				if (requestSequence !== this.employeeRequestSequence
+					|| this.selectedEmployeeId !== id) {
+					return
+				}
+				this.select = Array.isArray(response?.data?.ocs?.data)
+					? response.data.ocs.data
+					: []
+				const employee = this.listas.find(item => item.id === id)
+				this.sueldo = Number.parseInt(employee?.Sueldo ?? 0) || 0
+			} catch (error) {
+				if (requestSequence !== this.employeeRequestSequence) {
+					return
+				}
+				this.select = []
+				this.selectedEmployeeId = null
+				this.sueldo = 0
+				showError(t('empleados', 'No fue posible cargar los reportes del empleado.'))
 			} finally {
-				this.loading = false
+				if (requestSequence === this.employeeRequestSequence) {
+					this.loading = false
+				}
 			}
 		},
 
-		async GetAdminReportsSummary() {
+		async GetAdminReportsSummary(requestSequence, period) {
 			try {
-				this.loadingResumen = true
-
-				const response = await axios.post(generateUrl('/apps/empleados/GetAdminReportsSummary'), this.normalizedPeriod)
+				const response = await axios.post(
+					generateUrl('/apps/empleados/GetAdminReportsSummary'),
+					period,
+				)
+				if (requestSequence !== this.periodRequestSequence) {
+					return
+				}
 
 				if (response?.data?.ocs?.meta?.status !== 'ok') {
 					showError(response?.data?.ocs?.meta?.message)
@@ -541,16 +652,20 @@ export default {
 
 				this.resumenGeneral = response?.data?.ocs?.data ?? null
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [Resumen] [{error}]', { error: String(err) }))
+				if (requestSequence === this.periodRequestSequence) {
+					showError(t('empleados', 'Se ha producido una excepcion [Resumen] [{error}]', { error: String(err) }))
+				}
 			} finally {
-				this.loadingResumen = false
+				if (requestSequence === this.periodRequestSequence) {
+					this.loadingResumen = false
+				}
 			}
 		},
 
 		Exportar() {
 			axios.post(
 				generateUrl('/apps/empleados/ExportarReportes'),
-				this.normalizedPeriod,
+				this.activePeriod,
 				{
 					responseType: 'blob',
 				},
@@ -584,6 +699,18 @@ export default {
 			const number = Number(raw)
 
 			return Number.isFinite(number) ? number : null
+		},
+
+		isPeriodEmpty(period) {
+			return period.periodo_inicio === null
+				&& period.periodo_fin === null
+				&& period.anio === null
+		},
+
+		isPeriodComplete(period) {
+			return period.periodo_inicio !== null
+				&& period.periodo_fin !== null
+				&& period.anio !== null
 		},
 
 		monthLabel(value) {

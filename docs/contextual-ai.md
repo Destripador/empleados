@@ -26,8 +26,8 @@ Las responsabilidades están separadas de la siguiente manera:
 
 | Componente | Responsabilidad |
 | --- | --- |
-| Vista Vue | Construye manualmente el contexto con los valores visibles y define una clave de identidad para la conversación. |
-| `ContextAssistant` | Consulta capacidades, muestra la interfaz y envía `scope`, `question` y `context`. |
+| Vista Vue | Construye manualmente un contexto visible o, para scopes de servidor, únicamente filtros escalares controlados; también define la clave de conversación. |
+| `ContextAssistant` | Consulta capacidades, muestra la interfaz y envía `scope`, `question`, `context` e historial breve en memoria. |
 | `AiController` | Exige una sesión autenticada, conserva las respuestas HTTP seguras y coordina la validación y el proveedor. |
 | `ContextValidator` | Aplica límites comunes a la pregunta y al tamaño del contexto, resuelve el scope y delega el saneamiento. |
 | `ContextScopeRegistry` | Mantiene el registro explícito de identificadores permitidos y resuelve su implementación desde el contenedor. |
@@ -54,6 +54,136 @@ Los scopes iniciales son:
   equipo asignado del empleado mostrado.
 - `empleados-listado`: directorio laboral de los empleados cargados en el
   módulo.
+- `empleados-completo`: directorio y expedientes administrativos construidos
+  completamente en el servidor.
+- `reportes-tiempo-admin`: análisis administrativo de reportes, cumplimiento,
+  actividades, proyectos y costos del periodo visible, construido en servidor.
+
+## Scopes con contexto de servidor
+
+Un scope que implementa `ServerContextScopeInterface` recibe filtros, no filas:
+
+```php
+public function sanitizeParameters(array $parameters): array;
+
+public function buildServerContext(
+	string $question,
+	string $userId,
+	array $parameters,
+): array;
+```
+
+El orden del endpoint es estricto: resuelve el scope, comprueba sus permisos,
+sanea los parámetros, construye el contexto mediante consultas PHP y por
+último llama al proveedor. Los parámetros tienen un máximo de 16 KB; los
+contextos visibles conservan el máximo general de 64 KB.
+
+Todo contexto generado en servidor incluye `contexto.scope`,
+`contexto.generado_en`, `contexto.periodo`, conteos, `contexto.truncado` y las
+secciones incorporadas. No contiene rutas físicas ni datos del proveedor.
+
+## Historial conversacional
+
+El endpoint acepta hasta 12 mensajes —seis intercambios— alternados entre
+`user` y `assistant`, con un máximo de 2,000 caracteres por mensaje.
+`ContextAssistant` conserva solamente intercambios exitosos y los limpia al
+cambiar `scope` o `contextKey`; errores, cargas y HTML no forman parte del
+historial. No se usa almacenamiento local, de sesión ni IndexedDB.
+
+Para `core:text2text:chat`, el servicio convierte el contrato con roles a la
+`ListOfTexts` de mensajes JSON alternados que exige Nextcloud. Para
+`core:text2text` y el API
+heredado de `TextProcessing`, conserva los roles dentro de delimitadores de
+texto. La pregunta actual se envía aparte y nunca se duplica en el historial.
+Si la pregunta contiene una referencia de seguimiento, el validador recorre
+la cadena inmediata hasta la última consulta autosuficiente, con un máximo de
+tres consultas. No cruza un rechazo de dominio ni mezcla una persona
+autosuficiente anterior. Así el provider vuelve a seleccionar el expediente
+correcto sin almacenar conversación en el servidor; la pregunta actual sigue
+apareciendo una sola vez. En chat, el historial delimitado no se duplica en el
+prompt porque ya viaja en el campo nativo `history`. Un rechazo de dominio
+también corta el historial que se entrega al proveedor.
+
+La detección de proveedor hace fallthrough: si existe el manager moderno de
+`TaskProcessing` pero no anuncia `core:text2text:chat` ni `core:text2text`, se
+intenta el manager heredado de `TextProcessing`. La presencia de la API moderna
+sin un tipo compatible no oculta un proveedor legado funcional.
+
+## Scope administrativo `empleados-completo`
+
+`empleados-completo` implementa un contexto generado en servidor. El frontend
+envía la pregunta con `context: {}` y no envía registros de empleados. El
+backend rechaza cualquier campo de contexto inyectado por el cliente, exige
+`empleados.hr` y solo entonces consulta los mappers permitidos. El permiso
+`empleados.admin` no basta porque su catálogo excluye explícitamente el acceso
+completo de Recursos Humanos y este scope contiene datos sensibles.
+
+El directorio escalar de toda la plantilla contiene identidad, datos laborales
+y organizacionales, personales, fiscales, financieros, ahorro, vacaciones,
+equipo y notas disponibles. Los historiales pesados se cargan selectivamente
+para hasta cinco empleados identificados de forma determinista por nombre,
+usuario o número, o como resumen global cuando la pregunta lo requiere. Esto
+evita una consulta por empleado: las fuentes detalladas se leen mediante
+consultas masivas y se agrupan en PHP.
+
+Para esos empleados seleccionados, PHP prepara además una proyección escalar y
+hechos prioritarios —por ejemplo, sueldo o días de vacaciones con su semántica
+explícita— que se colocan junto a la pregunta. No se consulta otra fuente ni se
+calcula un dato nuevo: es una representación breve de los mismos valores
+autorizados para proveedores con ventanas de atención pequeñas.
+
+Un conjunto reducido de preguntas factuales con patrón cerrado puede responder
+directamente con texto preparado por PHP: sueldo actual sin moneda, vacaciones
+restantes, empleados sin inventario asignado, mayor antigüedad y campos
+administrativos faltantes. Esta ruta solo se acepta en scopes de servidor y no
+se activa para preguntas históricas, comparativas, causales o de promedios. Las
+demás preguntas continúan pasando por el proveedor de IA.
+
+Los expedientes de archivos contienen exclusivamente metadatos (nombre, ruta
+relativa, tipo, tamaño, modificación y si es carpeta), con un máximo de 200
+entradas por empleado. Nunca se incluyen binarios, previsualizaciones ni rutas
+físicas. Las notas se convierten a texto plano y se limitan a 5,000 caracteres.
+El JSON generado tiene un límite inicial de 512 KB; si se rebasa se eliminan
+notas del directorio y se reducen archivos e historiales, marcando el contexto
+como truncado. Si aún no cabe, la petición falla de forma segura.
+
+Este scope incluye datos sensibles y está pensado para proveedores locales
+controlados. La autorización ocurre antes de consultar datos. El modelo no
+ejecuta SQL, no dispone de herramientas y no decide consultas; recibe solamente
+el JSON ya construido por PHP.
+
+Las dependencias de `EmpleadosFullContextProvider` están limitadas al dominio
+de empleados: directorio, estructura laboral, organigrama, vacaciones,
+ausencias, ahorro, inventario asignado, expediente y metadatos. No inyecta ni
+consulta clientes, honorarios, actividades de reportes o reportes de tiempo.
+
+## Scope `reportes-tiempo-admin`
+
+La integración en `Adminreports.vue` envía exclusivamente el periodo
+normalizado y el identificador independiente del empleado seleccionado. Nunca
+envía las listas, gráficas, sueldo ni respuestas de Axios. El scope exige el
+permiso backend real `reporte_tiempos.admin`; `PermisosService` también
+comprueba que el módulo esté habilitado.
+
+El provider ejecuta dos consultas fijas, independientemente de la cantidad de
+empleados: una agregada por empleado, proyecto y actividad, y otra con los 301
+reportes más recientes para devolver 300 y detectar truncamiento. La
+visibilidad replica la vista administrativa: usuario actual y subordinados
+directos por gerente o socio. Los joins de clientes seleccionan únicamente el
+nombre visible; no cargan razón social, contactos, honorarios ni expedientes.
+
+Los costos son estimaciones con la tarifa actual del empleado, igual que el
+módulo existente. No existe costo histórico ni moneda en cada reporte, por lo
+que el contexto no inventa ninguno. El cumplimiento declara su regla y fecha:
+al menos un reporte en la fecha de referencia. Los máximos son 300 reportes,
+200 empleados, 100 actividades y 100 proyectos, con metadatos por sección y
+bandera global de truncamiento.
+
+> **Advertencia:** Si en el futuro el administrador cambia a un proveedor
+> externo, debe revisar este scope antes de habilitarlo, ya que transmite
+> identidades laborales, actividades, nombres visibles de proyectos y la
+> tarifa actual utilizada para estimar costos. No transmite datos personales,
+> fiscales, bancarios ni de ahorro.
 
 ### Un empleado frente al directorio
 
@@ -65,16 +195,13 @@ deben usarse como si fueran equivalentes:
 | `empleado-laboral` | Un empleado seleccionado. |
 | `empleados-listado` | Múltiples empleados cargados en el directorio. |
 
-El chat de `empleados-listado` vive en
-`src/views/components/ListaEmpleados/EmployeeList.vue`. No depende de
-`EmployeeDetails` ni de que exista un empleado seleccionado. Abrir el detalle
-de otro empleado no cambia el contexto del chat: el contexto depende de la
-lista cargada y su versión, no de la selección activa.
-
-`EmployeeList.vue` reconstruye cada entrada mediante una lista blanca antes de
-enviarla. El backend vuelve a reconstruir la lista campo por campo en
-`EmpleadosListadoScope::sanitize()`; no acepta el array original ni objetos
-completos de empleados.
+`empleados-listado` se conserva por compatibilidad para integraciones de
+contexto visible y mantiene su lista blanca en
+`EmpleadosListadoScope::sanitize()`. La vista
+`src/views/components/ListaEmpleados/EmployeeList.vue` utiliza ahora
+`empleados-completo`: envía `context: {}` y el backend construye el directorio
+autorizado, sin depender de las filas cargadas en Vue ni de un empleado
+seleccionado.
 
 El scope `empleados-listado` requiere que el usuario tenga permisos de RH o de
 administrador. La autorización se declara en el scope y se comprueba en el

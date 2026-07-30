@@ -44,6 +44,27 @@ class primavacacionalpagoMapper extends QBMapper {
 		return $rows;
 	}
 
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(
+			'id_empleado',
+			'numero_aniversario',
+			'fecha_pago',
+			'dias_pagados',
+			'created_at',
+			'updated_at'
+		)
+			->from($this->getTableName())
+			->orderBy('id_empleado', 'ASC')
+			->addOrderBy('numero_aniversario', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
 	/**
 	 * Inserta el pago si no existe, o lo actualiza si ya estaba registrado
 	 */

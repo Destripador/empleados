@@ -86,6 +86,41 @@ class InventarioComputoMapper extends QBMapper {
 		return $data;
 	}
 
+	public function getAllForAiContext(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('c.id_equipo', 'id_equipo')
+			->selectAlias('c.id_empleado', 'id_empleado')
+			->selectAlias('c.id_modelo', 'id_modelo')
+			->selectAlias('c.nombre_dispositivo', 'nombre_dispositivo')
+			->selectAlias('c.nombre_sistema', 'nombre_sistema')
+			->selectAlias('c.numero_serie', 'numero_serie')
+			->selectAlias('c.estado', 'estado')
+			->selectAlias('c.info', 'info')
+			->selectAlias('c.created_at', 'created_at')
+			->selectAlias('c.updated_at', 'updated_at')
+			->selectAlias('m.marca', 'marca')
+			->selectAlias('m.modelo', 'modelo')
+			->selectAlias('m.procesador', 'procesador')
+			->selectAlias('m.ram', 'ram')
+			->selectAlias('m.disco_duro', 'disco_duro')
+			->selectAlias('m.tipo', 'tipo')
+			->from($this->getTableName(), 'c')
+			->leftJoin(
+				'c',
+				'inventario_modelos',
+				'm',
+				$qb->expr()->eq('m.id_modelo', 'c.id_modelo')
+			)
+			->orderBy('c.id_equipo', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
 	public function findById(int $id): ?array {
 		$qb = $this->db->getQueryBuilder();
 

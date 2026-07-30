@@ -8,6 +8,7 @@ use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Service\Ai\ContextAiService;
 use OCA\Empleados\Service\Ai\ContextValidator;
 use OCA\Empleados\Service\Ai\Scope\ContextScopeRegistry;
+use OCA\Empleados\Service\Ai\Scope\ServerContextScopeInterface;
 use OCA\Empleados\Service\PermisosService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -50,6 +51,7 @@ class AiController extends Controller {
 		string $scope = '',
 		string $question = '',
 		array $context = [],
+		array $history = [],
 	): DataResponse {
 		$user = $this->userSession->getUser();
 		if ($user === null) {
@@ -57,7 +59,7 @@ class AiController extends Controller {
 		}
 
 		try {
-			$validated = $this->validator->validateAndSanitize($scope, $question, $context);
+			$validated = $this->validator->validateAndSanitize($scope, $question, $context, $history);
 		} catch (\InvalidArgumentException $e) {
 			$message = $e->getMessage() === 'La pregunta es demasiado larga.'
 				? 'La pregunta es demasiado larga.'
@@ -66,8 +68,9 @@ class AiController extends Controller {
 		}
 
 		try {
+			$scopeDefinition = $validated['scope'];
 			$this->permisosService->requireCanSeeAny(
-				$validated['scope']->getRequiredPermissions(),
+				$scopeDefinition->getRequiredPermissions(),
 			);
 		} catch (\Throwable) {
 			return new DataResponse(
@@ -84,14 +87,40 @@ class AiController extends Controller {
 		}
 
 		try {
-			$answer = $this->aiService->ask(
-				$validated['scope'],
-				$validated['question'],
+			$sanitizedContext = $this->validator->sanitizeAuthorizedContext(
+				$scopeDefinition,
 				$validated['context'],
-				$user->getUID()
+			);
+		} catch (\InvalidArgumentException) {
+			return new DataResponse(
+				['message' => 'El contexto de esta vista no es válido.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
+		try {
+			$resolvedContext = $scopeDefinition instanceof ServerContextScopeInterface
+				? $scopeDefinition->buildServerContext(
+					$validated['contextual_question'],
+					$user->getUID(),
+					$sanitizedContext,
+				)
+				: $sanitizedContext;
+			$answer = $this->aiService->ask(
+				$scopeDefinition,
+				$validated['contextual_question'],
+				$resolvedContext,
+				$user->getUID(),
+				$validated['history'],
 			);
 			return new DataResponse(['answer' => $answer]);
 		} catch (\Throwable) {
+			if (!$this->aiService->isAvailable($user->getUID())) {
+				return new DataResponse(
+					['message' => 'La IA no está disponible en esta instancia.'],
+					Http::STATUS_PRECONDITION_FAILED
+				);
+			}
 			return new DataResponse(
 				['message' => 'No fue posible obtener una respuesta.'],
 				Http::STATUS_INTERNAL_SERVER_ERROR
