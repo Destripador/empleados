@@ -1,0 +1,1140 @@
+commit d1999fc3ea909211692aaf1d447bfa111274e769
+Author:     destripador <alvarado.hdz.luis@gmail.com>
+AuthorDate: Wed Jul 29 18:46:15 2026 -0600
+Commit:     destripador <alvarado.hdz.luis@gmail.com>
+CommitDate: Wed Jul 29 18:46:15 2026 -0600
+
+    WIP: recalculo de aniversarios y periodos vacacionales
+
+diff --git a/lib/Db/historialausenciasMapper.php b/lib/Db/historialausenciasMapper.php
+index 7735301..b17345f 100755
+--- a/lib/Db/historialausenciasMapper.php
++++ b/lib/Db/historialausenciasMapper.php
+@@ -2,9 +2,10 @@
+ 
+ declare(strict_types=1);
+ 
+-namespace OCA\empleados\Db;
++namespace OCA\Empleados\Db;
+ 
+ use OCP\AppFramework\Db\QBMapper;
++use OCP\DB\QueryBuilder\IQueryBuilder;
+ use OCP\IDBConnection;
+ 
+ class historialausenciasMapper extends QBMapper {
+@@ -14,14 +15,17 @@ class historialausenciasMapper extends QBMapper {
+ 
+ 	public function EnviarAusencia(
+ 		int $id_tipo_ausencia,
+-		$id_ausencias,
+-		$fecha_de,
+-		$fecha_hasta,
++		int $id_ausencias,
++		string $fecha_de,
++		string $fecha_hasta,
+ 		int $prima_vacacional,
+ 		string $notas,
+-		$id_aniverario,
+-		int $dias_solicitados,
+-		float $dias_de_acumulado = 0.0
++		int $id_aniverario,
++		float $dias_solicitados,
++		float $dias_de_acumulado = 0.0,
++		float $dias_de_periodo = 0.0,
++		?string $solicitud_grupo = null,
++		?string $idempotency_key = null
+ 	): int {
+ 		$insert = $this->db->getQueryBuilder();
+ 		$insert->insert($this->getTableName())
+@@ -33,10 +37,13 @@ class historialausenciasMapper extends QBMapper {
+ 				'fecha_hasta'       => $insert->createNamedParameter($fecha_hasta),
+ 				'prima_vacacional'  => $insert->createNamedParameter($prima_vacacional),
+ 				'notas'             => $insert->createNamedParameter($notas),
+-				'dias_solicitados'  => $insert->createNamedParameter($dias_solicitados),
+-				'dias_de_acumulado' => $insert->createNamedParameter($dias_de_acumulado),
+-				'timestamp'         => $insert->createNamedParameter((new \DateTime())->format('Y-m-d H:i:s')),
+-			]);
++					'dias_solicitados'  => $insert->createNamedParameter($dias_solicitados),
++					'dias_de_acumulado' => $insert->createNamedParameter($dias_de_acumulado),
++					'dias_de_periodo'   => $insert->createNamedParameter($dias_de_periodo),
++					'solicitud_grupo'   => $insert->createNamedParameter($solicitud_grupo),
++					'idempotency_key'   => $insert->createNamedParameter($idempotency_key),
++					'timestamp'         => $insert->createNamedParameter((new \DateTime())->format('Y-m-d H:i:s')),
++				]);
+ 
+ 		$insert->executeStatement();
+ 		return (int) $this->db->lastInsertId('historial_ausencias');
+@@ -63,6 +70,114 @@ class historialausenciasMapper extends QBMapper {
+ 		return $ausencias;
+ 	}
+ 
++	/**
++	 * Devuelve todas las solicitudes con la metadata necesaria para reconstruir
++	 * el saldo. No filtra por fechas: al cambiar Ingreso también deben
++	 * conservarse y auditarse solicitudes que queden fuera del calendario nuevo.
++	 */
++	public function getSolicitudesParaCalculo(int $idAusencias): array {
++		$qb = $this->db->getQueryBuilder();
++
++		$qb->select(
++				'h.*',
++				't.solicitar_prima_vacacional',
++				't.privado'
++			)
++			->from($this->getTableName(), 'h')
++			->innerJoin(
++				'h',
++				'tipo_ausencia',
++				't',
++				$qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia')
++			)
++			->where(
++				$qb->expr()->eq(
++					'h.id_ausencias',
++					$qb->createNamedParameter($idAusencias, IQueryBuilder::PARAM_INT)
++				)
++			)
++			->orderBy('h.fecha_de', 'ASC')
++			->addOrderBy('h.timestamp', 'ASC')
++			->addOrderBy('h.id_historial_ausencias', 'ASC');
++
++		$result = $qb->executeQuery();
++		$rows = $result->fetchAll();
++		$result->closeCursor();
++
++		return $rows;
++	}
++
++	public function getByIdempotencyKey(int $idAusencias, string $idempotencyKey): ?array {
++		$qb = $this->db->getQueryBuilder();
++		$qb->select('*')
++			->from($this->getTableName())
++			->where(
++				$qb->expr()->eq(
++					'id_ausencias',
++					$qb->createNamedParameter($idAusencias, IQueryBuilder::PARAM_INT)
++				)
++			)
++			->andWhere(
++				$qb->expr()->eq(
++					'idempotency_key',
++					$qb->createNamedParameter($idempotencyKey)
++				)
++			)
++			->setMaxResults(1);
++
++		$result = $qb->executeQuery();
++		$row = $result->fetch();
++		$result->closeCursor();
++
++		return $row !== false ? $row : null;
++	}
++
++	/**
++	 * Las solicitudes nuevas ocupan una sola fila. Este método mantiene soporte
++	 * para filas agrupadas que puedan existir durante una transición.
++	 */
++	public function GetGrupoById(int $id): array {
++		$base = $this->GetById($id);
++		if (empty($base) || empty($base[0]['solicitud_grupo'])) {
++			return $base;
++		}
++
++		$qb = $this->db->getQueryBuilder();
++		$qb->select('*')
++			->from($this->getTableName())
++			->where(
++				$qb->expr()->eq(
++					'solicitud_grupo',
++					$qb->createNamedParameter($base[0]['solicitud_grupo'])
++				)
++			)
++			->orderBy('id_historial_ausencias', 'ASC');
++
++		$result = $qb->executeQuery();
++		$rows = $result->fetchAll();
++		$result->closeCursor();
++
++		return $rows;
++	}
++
++	public function actualizarAsignacion(
++		int $id,
++		float $diasDeAcumulado,
++		float $diasDePeriodo
++	): void {
++		$qb = $this->db->getQueryBuilder();
++		$qb->update($this->getTableName())
++			->set('dias_de_acumulado', $qb->createNamedParameter(max(0.0, $diasDeAcumulado)))
++			->set('dias_de_periodo', $qb->createNamedParameter(max(0.0, $diasDePeriodo)))
++			->where(
++				$qb->expr()->eq(
++					'id_historial_ausencias',
++					$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
++				)
++			);
++		$qb->executeStatement();
++	}
++
+ 	public function GetAusenciasHistorialGerente(int $id): array {
+ 		$qb = $this->db->getQueryBuilder();
+ 
+@@ -146,7 +261,10 @@ class historialausenciasMapper extends QBMapper {
+ 		string $fecha_hasta,
+ 		int $prima_vacacional,
+ 		string $notas,
+-		int $dias_solicitados 
++		float $dias_solicitados,
++		int $id_aniversario,
++		float $dias_de_acumulado,
++		float $dias_de_periodo
+ 	): void {
+ 		$qb = $this->db->getQueryBuilder();
+ 		$qb->update($this->getTableName())
+@@ -154,10 +272,13 @@ class historialausenciasMapper extends QBMapper {
+ 			->set('fecha_de',         $qb->createNamedParameter($fecha_de))
+ 			->set('fecha_hasta',      $qb->createNamedParameter($fecha_hasta))
+ 			->set('prima_vacacional', $qb->createNamedParameter($prima_vacacional))
+-			->set('notas',            $qb->createNamedParameter($notas))
+-			->set('dias_solicitados', $qb->createNamedParameter($dias_solicitados))
+-			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+-		$qb->executeStatement();
++				->set('notas',            $qb->createNamedParameter($notas))
++				->set('dias_solicitados', $qb->createNamedParameter($dias_solicitados))
++				->set('id_aniversario',   $qb->createNamedParameter($id_aniversario, IQueryBuilder::PARAM_INT))
++				->set('dias_de_acumulado', $qb->createNamedParameter(max(0.0, $dias_de_acumulado)))
++				->set('dias_de_periodo',  $qb->createNamedParameter(max(0.0, $dias_de_periodo)))
++				->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
++			$qb->executeStatement();
+ 	}
+ 
+ 	/**
+@@ -165,11 +286,14 @@ class historialausenciasMapper extends QBMapper {
+ 	 */
+ 	public function PrimaVacacionalUsadaEsteAnio(int $id_ausencias, int $anio, int $exclude_id = 0): bool {
+ 		$qb = $this->db->getQueryBuilder();
++		$desde = sprintf('%04d-01-01', $anio);
++		$hasta = sprintf('%04d-01-01', $anio + 1);
+ 
+ 		$qb->select($qb->createFunction('COUNT(*)'))
+-			->from($this->getTableName())
+-			->where($qb->expr()->eq('id_ausencias', $qb->createNamedParameter($id_ausencias)))
+-			->andWhere($qb->expr()->eq($qb->createFunction('YEAR(fecha_de)'), $qb->createNamedParameter($anio, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
++				->from($this->getTableName())
++				->where($qb->expr()->eq('id_ausencias', $qb->createNamedParameter($id_ausencias)))
++				->andWhere($qb->expr()->gte('fecha_de', $qb->createNamedParameter($desde)))
++				->andWhere($qb->expr()->lt('fecha_de', $qb->createNamedParameter($hasta)))
+ 			->andWhere($qb->expr()->eq('prima_vacacional', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+ 			// Excluir canceladas (3) Y rechazadas (2) en ambos roles
+ 			->andWhere(
+@@ -350,4 +474,4 @@ class historialausenciasMapper extends QBMapper {
+ 
+ 		return $rows;
+ 	}
+-}
+\ No newline at end of file
++}
+diff --git a/lib/Db/historialvacacionesMapper.php b/lib/Db/historialvacacionesMapper.php
+index 2fbd707..20662ec 100644
+--- a/lib/Db/historialvacacionesMapper.php
++++ b/lib/Db/historialvacacionesMapper.php
+@@ -92,6 +92,7 @@ class historialvacacionesMapper extends QBMapper {
+ 		float $dias_acumulados,
+ 		?string $fecha_expiracion_acumulados
+ 	): void {
++		$timestamp = date('Y-m-d H:i:s');
+ 		$insert = $this->db->getQueryBuilder();
+ 		$insert->insert($this->getTableName())
+ 			->values([
+@@ -102,12 +103,142 @@ class historialvacacionesMapper extends QBMapper {
+ 				'dias_derecho'               => $insert->createNamedParameter($dias_derecho),
+ 				'dias_acumulados'            => $insert->createNamedParameter($dias_acumulados),
+ 				'dias_acumulados_restantes'  => $insert->createNamedParameter($dias_acumulados),
+-				'fecha_expiracion_acumulados' => $insert->createNamedParameter($fecha_expiracion_acumulados),
+-				'acumulado_calculado'        => $insert->createNamedParameter(1, IQueryBuilder::PARAM_INT),
+-			]);
++					'fecha_expiracion_acumulados' => $insert->createNamedParameter($fecha_expiracion_acumulados),
++					'acumulado_calculado'        => $insert->createNamedParameter(1, IQueryBuilder::PARAM_INT),
++					'created_at'                 => $insert->createNamedParameter($timestamp),
++					'updated_at'                 => $insert->createNamedParameter($timestamp),
++				]);
+ 		$insert->executeStatement();
+ 	}
+ 
++	/**
++	 * Persiste una proyección completa del periodo. Toda la aritmética vive en
++	 * VacacionesCalculoService; el mapper no incrementa ni decrementa saldos.
++	 *
++	 * @param array<string, mixed> $periodo
++	 */
++	public function upsertCalculado(array $periodo): void {
++		$idEmpleado = (int) $periodo['id_empleado'];
++		$numero = (int) $periodo['numero_aniversario'];
++		$existente = $this->getByEmpleadoYAniversario($idEmpleado, $numero);
++		$timestamp = date('Y-m-d H:i:s');
++
++		$valores = [
++			'periodo_inicio' => (string) $periodo['periodo_inicio'],
++			'periodo_fin' => (string) $periodo['periodo_fin'],
++			'fecha_ingreso_base' => (string) $periodo['fecha_ingreso_base'],
++			'dias_derecho' => max(0.0, (float) $periodo['dias_derecho']),
++			'dias_periodo_usados' => max(0.0, (float) $periodo['dias_periodo_usados']),
++			'dias_acumulados' => max(0.0, (float) $periodo['dias_acumulados']),
++			'dias_acumulados_usados' => max(0.0, (float) $periodo['dias_acumulados_usados']),
++			'dias_acumulados_restantes' => max(0.0, (float) $periodo['dias_acumulados_restantes']),
++			'dias_acumulados_vencidos' => max(0.0, (float) $periodo['dias_acumulados_vencidos']),
++			'dias_excedentes' => max(0.0, (float) $periodo['dias_excedentes']),
++			'fecha_expiracion_acumulados' => $periodo['fecha_expiracion_acumulados'],
++			'acumulado_calculado' => 1,
++			'vigente' => (int) $periodo['vigente'],
++			'recalculado_at' => $timestamp,
++			'updated_at' => $timestamp,
++		];
++
++		$qb = $this->db->getQueryBuilder();
++		if ($existente === null) {
++			$qb->insert($this->getTableName())
++				->values([
++					'id_empleado' => $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT),
++					'numero_aniversario' => $qb->createNamedParameter($numero, IQueryBuilder::PARAM_INT),
++					'periodo_inicio' => $qb->createNamedParameter($valores['periodo_inicio']),
++					'periodo_fin' => $qb->createNamedParameter($valores['periodo_fin']),
++					'fecha_ingreso_base' => $qb->createNamedParameter($valores['fecha_ingreso_base']),
++					'dias_derecho' => $qb->createNamedParameter($valores['dias_derecho']),
++					'dias_periodo_usados' => $qb->createNamedParameter($valores['dias_periodo_usados']),
++					'dias_acumulados' => $qb->createNamedParameter($valores['dias_acumulados']),
++					'dias_acumulados_usados' => $qb->createNamedParameter($valores['dias_acumulados_usados']),
++					'dias_acumulados_restantes' => $qb->createNamedParameter($valores['dias_acumulados_restantes']),
++					'dias_acumulados_vencidos' => $qb->createNamedParameter($valores['dias_acumulados_vencidos']),
++					'dias_excedentes' => $qb->createNamedParameter($valores['dias_excedentes']),
++					'fecha_expiracion_acumulados' => $qb->createNamedParameter($valores['fecha_expiracion_acumulados']),
++					'acumulado_calculado' => $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT),
++					'asignado_manualmente' => $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT),
++					'acumulado_asignado_manualmente' => $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT),
++					'vigente' => $qb->createNamedParameter($valores['vigente'], IQueryBuilder::PARAM_INT),
++					'recalculado_at' => $qb->createNamedParameter($timestamp),
++					'created_at' => $qb->createNamedParameter($timestamp),
++					'updated_at' => $qb->createNamedParameter($timestamp),
++				]);
++		} else {
++			$qb->update($this->getTableName());
++			foreach ($valores as $columna => $valor) {
++				$tipo = in_array($columna, ['acumulado_calculado', 'vigente'], true)
++					? IQueryBuilder::PARAM_INT
++					: null;
++				$qb->set($columna, $qb->createNamedParameter($valor, $tipo));
++			}
++			$qb->where(
++					$qb->expr()->eq(
++						'id_empleado',
++						$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
++					)
++				)
++				->andWhere(
++					$qb->expr()->eq(
++						'numero_aniversario',
++						$qb->createNamedParameter($numero, IQueryBuilder::PARAM_INT)
++					)
++				);
++		}
++
++		$qb->executeStatement();
++	}
++
++	/**
++	 * Antes de reconstruir se desactivan todas las proyecciones. Los periodos
++	 * válidos se reactivan mediante upsertCalculado; ninguno se borra.
++	 */
++	public function marcarNoVigentes(int $idEmpleado): void {
++		$qb = $this->db->getQueryBuilder();
++		$qb->update($this->getTableName())
++			->set('vigente', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
++			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
++			->where(
++				$qb->expr()->eq(
++					'id_empleado',
++					$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
++				)
++			);
++		$qb->executeStatement();
++	}
++
++	public function establecerAcumuladoManual(
++		int $idEmpleado,
++		int $numeroAniversario,
++		float $dias,
++		?string $fechaExpiracion
++	): void {
++		$qb = $this->db->getQueryBuilder();
++		$qb->update($this->getTableName())
++			->set('dias_acumulados', $qb->createNamedParameter(max(0.0, $dias)))
++			->set('dias_acumulados_restantes', $qb->createNamedParameter(max(0.0, $dias)))
++			->set('dias_acumulados_usados', $qb->createNamedParameter(0.0))
++			->set('dias_acumulados_vencidos', $qb->createNamedParameter(0.0))
++			->set('fecha_expiracion_acumulados', $qb->createNamedParameter($fechaExpiracion))
++			->set('acumulado_asignado_manualmente', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
++			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
++			->where(
++				$qb->expr()->eq(
++					'id_empleado',
++					$qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT)
++				)
++			)
++			->andWhere(
++				$qb->expr()->eq(
++					'numero_aniversario',
++					$qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)
++				)
++			);
++		$qb->executeStatement();
++	}
++
+ 	/**
+ 	 * Marca acumulado_calculado = 1 para que no se vuelva a recalcular después.
+ 	 */
+@@ -255,4 +386,4 @@ class historialvacacionesMapper extends QBMapper {
+ 			->andWhere($qb->expr()->eq('numero_aniversario', $qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)));
+ 		$qb->executeStatement();
+ 	}
+-}
+\ No newline at end of file
++}
+diff --git a/lib/Service/VacationPeriodCalculator.php b/lib/Service/VacationPeriodCalculator.php
+new file mode 100644
+index 0000000..7c6ac2e
+--- /dev/null
++++ b/lib/Service/VacationPeriodCalculator.php
+@@ -0,0 +1,225 @@
++<?php
++
++declare(strict_types=1);
++
++namespace OCA\Empleados\Service;
++
++use DateTimeImmutable;
++use DateTimeZone;
++use InvalidArgumentException;
++
++/**
++ * Pure vacation-period calendar and balance calculations.
++ *
++ * Dates are treated as civil dates. Time-of-day and timezone offsets do not
++ * affect comparisons. Employees hired on February 29 celebrate their
++ * anniversary on February 28 in non-leap years.
++ */
++final class VacationPeriodCalculator {
++	private const DAY_SCALE = 2;
++
++	public function parseDate(string $date): DateTimeImmutable {
++		$value = trim($date);
++		$parsed = DateTimeImmutable::createFromFormat(
++			'!Y-m-d',
++			$value,
++			new DateTimeZone('UTC'),
++		);
++		$errors = DateTimeImmutable::getLastErrors();
++
++		if (
++			$parsed === false
++			|| $value !== $parsed->format('Y-m-d')
++			|| ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
++		) {
++			throw new InvalidArgumentException('Invalid date; expected YYYY-MM-DD.');
++		}
++
++		return $parsed;
++	}
++
++	public function anniversaryDate(DateTimeImmutable $hireDate, int $anniversary): DateTimeImmutable {
++		if ($anniversary < 0) {
++			throw new InvalidArgumentException('Anniversary number cannot be negative.');
++		}
++
++		$targetYear = (int)$hireDate->format('Y') + $anniversary;
++		$month = (int)$hireDate->format('n');
++		$day = (int)$hireDate->format('j');
++
++		if ($month === 2 && $day === 29 && !checkdate($month, $day, $targetYear)) {
++			$day = 28;
++		}
++
++		return $hireDate
++			->setDate($targetYear, $month, $day)
++			->setTime(0, 0, 0);
++	}
++
++	public function completedAnniversaries(
++		DateTimeImmutable $hireDate,
++		DateTimeImmutable $today,
++	): int {
++		if ($this->dateKey($today) < $this->dateKey($hireDate)) {
++			return 0;
++		}
++
++		$completed = (int)$today->format('Y') - (int)$hireDate->format('Y');
++
++		if (
++			$completed > 0
++			&& $this->dateKey($today) < $this->dateKey($this->anniversaryDate($hireDate, $completed))
++		) {
++			$completed--;
++		}
++
++		return max(0, $completed);
++	}
++
++	/**
++	 * @return array{
++	 *     number: int,
++	 *     start: DateTimeImmutable,
++	 *     end: DateTimeImmutable,
++	 *     carry_expires: DateTimeImmutable
++	 * }
++	 */
++	public function period(DateTimeImmutable $hireDate, int $anniversary): array {
++		$start = $this->anniversaryDate($hireDate, $anniversary);
++
++		return [
++			'number' => $anniversary,
++			'start' => $start,
++			'end' => $this->anniversaryDate($hireDate, $anniversary + 1),
++			'carry_expires' => $this->addMonthsClamped($start, 6),
++		];
++	}
++
++	public function isCarryValid(
++		DateTimeImmutable $expiryDate,
++		DateTimeImmutable $today,
++	): bool {
++		return $this->dateKey($today) <= $this->dateKey($expiryDate);
++	}
++
++	/**
++	 * Allocates requested days to carry-over first, then to the current period.
++	 *
++	 * @return array{
++	 *     requested: float,
++	 *     carry_used: float,
++	 *     current_used: float,
++	 *     carry_remaining: float
++	 * }
++	 */
++	public function allocate(float $days, float $carryAvailable): array {
++		$requested = $this->nonNegativeDays($days);
++		$availableCarry = $this->nonNegativeDays($carryAvailable);
++		$carryUsed = $this->days(min($requested, $availableCarry));
++
++		return [
++			'requested' => $requested,
++			'carry_used' => $carryUsed,
++			'current_used' => $this->days($requested - $carryUsed),
++			'carry_remaining' => $this->days($availableCarry - $carryUsed),
++		];
++	}
++
++	/**
++	 * Produces a non-negative balance while retaining audit amounts for excess
++	 * usage and expired carry-over.
++	 *
++	 * @return array{
++	 *     current_grant: float,
++	 *     current_used: float,
++	 *     current_used_applied: float,
++	 *     current_remaining: float,
++	 *     current_excess: float,
++	 *     carry_grant: float,
++	 *     carry_used: float,
++	 *     carry_used_applied: float,
++	 *     carry_unused: float,
++	 *     carry_remaining: float,
++	 *     carry_expired: float,
++	 *     carry_excess: float,
++	 *     carry_valid: bool,
++	 *     available: float,
++	 *     excess: float,
++	 *     expired: float
++	 * }
++	 */
++	public function balance(
++		float $grant,
++		float $currentUsed,
++		float $carryGrant,
++		float $carryUsed,
++		?DateTimeImmutable $carryExpiry,
++		DateTimeImmutable $today,
++	): array {
++		$currentGrant = $this->nonNegativeDays($grant);
++		$totalCurrentUsed = $this->nonNegativeDays($currentUsed);
++		$currentUsedApplied = $this->days(min($currentGrant, $totalCurrentUsed));
++		$currentExcess = $this->days(max(0.0, $totalCurrentUsed - $currentGrant));
++		$currentRemaining = $this->days($currentGrant - $currentUsedApplied);
++
++		$totalCarryGrant = $this->nonNegativeDays($carryGrant);
++		$totalCarryUsed = $this->nonNegativeDays($carryUsed);
++		$carryUsedApplied = $this->days(min($totalCarryGrant, $totalCarryUsed));
++		$carryExcess = $this->days(max(0.0, $totalCarryUsed - $totalCarryGrant));
++		$carryUnused = $this->days($totalCarryGrant - $carryUsedApplied);
++		$carryValid = $carryExpiry !== null && $this->isCarryValid($carryExpiry, $today);
++		$carryRemaining = $carryValid ? $carryUnused : 0.0;
++		$carryExpired = $carryValid ? 0.0 : $carryUnused;
++
++		return [
++			'current_grant' => $currentGrant,
++			'current_used' => $totalCurrentUsed,
++			'current_used_applied' => $currentUsedApplied,
++			'current_remaining' => $currentRemaining,
++			'current_excess' => $currentExcess,
++			'carry_grant' => $totalCarryGrant,
++			'carry_used' => $totalCarryUsed,
++			'carry_used_applied' => $carryUsedApplied,
++			'carry_unused' => $carryUnused,
++			'carry_remaining' => $carryRemaining,
++			'carry_expired' => $carryExpired,
++			'carry_excess' => $carryExcess,
++			'carry_valid' => $carryValid,
++			'available' => $this->days($currentRemaining + $carryRemaining),
++			'excess' => $this->days($currentExcess + $carryExcess),
++			'expired' => $carryExpired,
++		];
++	}
++
++	private function addMonthsClamped(DateTimeImmutable $date, int $months): DateTimeImmutable {
++		$monthIndex = ((int)$date->format('Y') * 12) + ((int)$date->format('n') - 1) + $months;
++		$targetYear = intdiv($monthIndex, 12);
++		$targetMonth = ($monthIndex % 12) + 1;
++		$lastDay = (int)$date
++			->setDate($targetYear, $targetMonth, 1)
++			->format('t');
++		$targetDay = min((int)$date->format('j'), $lastDay);
++
++		return $date
++			->setDate($targetYear, $targetMonth, $targetDay)
++			->setTime(0, 0, 0);
++	}
++
++	private function dateKey(DateTimeImmutable $date): string {
++		return $date->format('Y-m-d');
++	}
++
++	private function nonNegativeDays(float $days): float {
++		if (!is_finite($days)) {
++			throw new InvalidArgumentException('Days must be a finite number.');
++		}
++
++		return $this->days(max(0.0, $days));
++	}
++
++	private function days(float $days): float {
++		$rounded = round($days, self::DAY_SCALE);
++
++		return abs($rounded) < 0.01 ? 0.0 : $rounded;
++	}
++}
+diff --git a/src/views/components/TiempoLibre/Modal/EditarAusencia.vue b/src/views/components/TiempoLibre/Modal/EditarAusencia.vue
+index 014d15e..c69b2c2 100644
+--- a/src/views/components/TiempoLibre/Modal/EditarAusencia.vue
++++ b/src/views/components/TiempoLibre/Modal/EditarAusencia.vue
+@@ -47,11 +47,18 @@
+ 				</div>
+ 			</div>
+ 
++			<NcCheckboxRadioSwitch
++				v-if="esRangoUnDia"
++				v-model="medioDia"
++				type="switch">
++				{{ t('empleados', 'Half day (0.5 day)') }}
++			</NcCheckboxRadioSwitch>
++
+ 			<!-- Resumen del periodo -->
+ 			<div v-if="diasHabiles > 0" class="period-grid">
+ 				<div class="period-item">
+ 					<span>{{ t('empleados', 'Business days') }}</span>
+-					<strong>{{ diasHabiles }}</strong>
++					<strong>{{ diasSolicitadosEfectivos }}</strong>
+ 				</div>
+ 				<div v-if="AusenciaSeleccionada && Number(AusenciaSeleccionada.solicitar_prima_vacacional) === 1" class="period-item">
+ 					<span>{{ t('empleados', 'Available days') }}</span>
+@@ -206,9 +213,10 @@ export default {
+ 				? this.ausencia.fecha_hasta.substring(0, 10)
+ 				: '',
+ 			diasHabiles: 0,
+-			TotalDias: parseInt(this.diasDisponibles, 10) || 0,
++			TotalDias: Number(this.diasDisponibles) || 0,
+ 			comentarios: this.ausencia.notas || '',
+ 			SolicitarPrima: Number(this.ausencia.prima_vacacional) === 1,
++			medioDia: Number(this.ausencia.dias_solicitados) === 0.5,
+ 			selectedFiles: [],
+ 			loading: false,
+ 			primaVacacionalUsada: false,
+@@ -219,6 +227,17 @@ export default {
+ 	},
+ 
+ 	computed: {
++		esRangoUnDia() {
++			return Boolean(this.fechaDesdeStr)
++				&& this.fechaDesdeStr === this.fechaHastaStr
++		},
++
++		diasSolicitadosEfectivos() {
++			return this.esRangoUnDia && this.medioDia
++				? 0.5
++				: this.diasHabiles
++		},
++
+ 		// Días que tenía la ausencia original (para devolver y restar correctamente)
+ 		diasOriginales() {
+ 			return Number(this.ausencia.dias_solicitados) || 0
+@@ -226,7 +245,7 @@ export default {
+ 
+ 		diasDisponiblesVigente() {
+ 			const val = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
+-			return parseInt(val, 10) || 0
++			return Number(val) || 0
+ 		},
+ 
+ 		fechaLimitePeriodoVigente() {
+@@ -241,7 +260,7 @@ export default {
+ 			}
+ 			// Días disponibles reales = actuales + originales (porque ya se descontaron)
+ 			const disponiblesReales = this.TotalDias + this.diasOriginales
+-			return disponiblesReales - this.diasHabiles
++			return disponiblesReales - this.diasSolicitadosEfectivos
+ 		},
+ 
+ 		exceedsAvailableDays() {
+@@ -250,7 +269,7 @@ export default {
+ 				return false
+ 			}
+ 			const disponiblesReales = this.TotalDias + this.diasOriginales
+-			return this.diasHabiles > disponiblesReales
++			return this.diasSolicitadosEfectivos > disponiblesReales
+ 		},
+ 
+ 		esAusenciaVacacional() {
+@@ -274,14 +293,14 @@ export default {
+ 			return this.AusenciaSeleccionada
+ 				&& this.fechaDesdeStr
+ 				&& this.fechaHastaStr
+-				&& this.diasHabiles > 0
++				&& this.diasSolicitadosEfectivos > 0
+ 				&& !this.exceedsAvailableDays
+ 				&& !this.excedeFechaLimite
+ 				&& !this.loadingEmpleado
+ 		},
+ 
+ 		primaDisabled() {
+-			return this.primaVacacionalUsada || this.diasHabiles < 2
++			return this.primaVacacionalUsada || this.diasSolicitadosEfectivos < 2
+ 		},
+ 	},
+ 
+@@ -297,6 +316,16 @@ export default {
+ 				this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
+ 			}
+ 		},
++		medioDia() {
++			if (this.diasSolicitadosEfectivos < 2) {
++				this.SolicitarPrima = false
++			}
++		},
++		esRangoUnDia(esUnDia) {
++			if (!esUnDia) {
++				this.medioDia = false
++			}
++		},
+ 	},
+ 
+ 	mounted() {
+@@ -377,7 +406,7 @@ export default {
+ 			}
+ 			this.diasHabiles = count
+ 
+-			if (this.diasHabiles < 2) {
++			if (this.diasSolicitadosEfectivos < 2) {
+ 				this.SolicitarPrima = false
+ 			}
+ 		},
+@@ -405,7 +434,7 @@ export default {
+ 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
+ 				formData.append('fecha_de', this.fechaDesdeStr)
+ 				formData.append('fecha_hasta', this.fechaHastaStr)
+-				formData.append('dias_solicitados', this.diasHabiles)
++				formData.append('dias_solicitados', this.diasSolicitadosEfectivos)
+ 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
+ 				formData.append('notas', this.comentarios || '')
+ 
+@@ -437,7 +466,7 @@ export default {
+ 				const res = await axios.get(
+ 					generateUrl('/apps/empleados/check-prima-vacacional')
+ 					+ `?exclude_id=${excludeId}`
+-					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`
++					+ `&fecha_de=${encodeURIComponent(this.fechaDesdeStr)}`,
+ 				)
+ 				this.primaVacacionalUsada = res.data.ocs.data.used === true
+ 			} catch (e) {
+diff --git a/src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue b/src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue
+index e870a6f..2786172 100755
+--- a/src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue
++++ b/src/views/components/TiempoLibre/Modal/NuevaSolicitud.vue
+@@ -35,6 +35,12 @@
+ 				:text="AusenciaSeleccionada.descripcion" />
+ 		</section>
+ 
++		<section v-if="esRangoUnDia" class="form-section">
++			<NcCheckboxRadioSwitch v-model="medioDia" type="switch">
++				{{ t('empleados', 'Half day (0.5 day)') }}
++			</NcCheckboxRadioSwitch>
++		</section>
++
+ 		<NcNoteCard
+ 			v-if="exceedsAvailableDays"
+ 			type="info"
+@@ -213,6 +219,7 @@ export default {
+ 			RestanteDias: 0,
+ 			comentarios: '',
+ 			SolicitarPrima: false,
++			medioDia: false,
+ 			selectedFiles: [],
+ 			loading: false,
+ 			propsEmployees: {
+@@ -231,9 +238,26 @@ export default {
+ 	},
+ 
+ 	computed: {
++		esRangoUnDia() {
++			if (!this.date?.start || !this.date?.end) return false
++
++			const start = new Date(this.date.start)
++			const end = new Date(this.date.end)
++
++			return start.getFullYear() === end.getFullYear()
++				&& start.getMonth() === end.getMonth()
++				&& start.getDate() === end.getDate()
++		},
++
++		diasSolicitadosEfectivos() {
++			return this.esRangoUnDia && this.medioDia
++				? 0.5
++				: (Number(this.diasSolicitados) || 0)
++		},
++
+ 		diasAcumuladosNum() {
+ 			const val = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
+-			return parseFloat(val) || 0
++			return Number.parseFloat(val) || 0
+ 		},
+ 
+ 		esAusenciaVacacional() {
+@@ -277,10 +301,10 @@ export default {
+ 		},
+ 
+ 		diasDentroDeVigencia() {
+-			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitados
++			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitadosEfectivos
+ 
+ 			const limite = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
+-			if (!limite) return this.diasSolicitados
++			if (!limite) return this.diasSolicitadosEfectivos
+ 			limite.setHours(0, 0, 0, 0)
+ 			const start = new Date(this.date.start)
+ 			start.setHours(0, 0, 0, 0)
+@@ -301,12 +325,12 @@ export default {
+ 
+ 		diasDelAcumuladoAUsar() {
+ 			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
+-			return Math.min(this.diasAcumuladosNum, this.diasSolicitados, this.diasDentroDeVigencia)
++			return Math.min(this.diasAcumuladosNum, this.diasSolicitadosEfectivos, this.diasDentroDeVigencia)
+ 		},
+ 
+ 		diasDelPeriodoActualAUsar() {
+ 			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
+-			return this.diasSolicitados - this.diasDelAcumuladoAUsar
++			return this.diasSolicitadosEfectivos - this.diasDelAcumuladoAUsar
+ 		},
+ 
+ 		acumuladoNoAplicaPorFecha() {
+@@ -320,14 +344,14 @@ export default {
+ 			return this.AusenciaSeleccionada
+ 				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
+ 				&& !this.esAusenciaAnticipada
+-				&& this.diasSolicitados > this.TotalDias
++				&& this.diasSolicitadosEfectivos > this.TotalDias
+ 		},
+ 
+ 		periodItems() {
+ 			const items = [
+ 				{
+ 					label: t('empleados', 'Days to take'),
+-					value: this.diasSolicitados,
++					value: this.diasSolicitadosEfectivos,
+ 				},
+ 				{
+ 					label: t('empleados', 'From:'),
+@@ -354,7 +378,7 @@ export default {
+ 		},
+ 
+ 		primaDisabled() {
+-			return this.primaVacacionalUsada || this.diasSolicitados < 2
++			return this.primaVacacionalUsada || this.diasSolicitadosEfectivos < 2
+ 		},
+ 	},
+ 	watch: {
+@@ -377,9 +401,23 @@ export default {
+ 		},
+ 
+ 		diasSolicitados(nuevo) {
+-			if (nuevo < 2) {
++			if (Number(nuevo) < 2) {
++				this.SolicitarPrima = false
++			}
++			this.recalcularDias()
++		},
++
++		medioDia() {
++			if (this.diasSolicitadosEfectivos < 2) {
+ 				this.SolicitarPrima = false
+ 			}
++			this.recalcularDias()
++		},
++
++		esRangoUnDia(esUnDia) {
++			if (!esUnDia) {
++				this.medioDia = false
++			}
+ 		},
+ 
+ 		// Si el padre actualiza estos props
+@@ -393,15 +431,7 @@ export default {
+ 	},
+ 
+ 	mounted() {
+-		this.TotalDias = parseInt(this.diasDisponibles, 10) + this.diasAcumuladosNum
+-		this.RestanteDias = this.TotalDias - this.diasSolicitados
+-		this.GetTipoAusencias()
+-		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+-			this.checkPrimaVacacional()
+-		}
+-
+ 		this.recalcularDias()
+-		this.GetTipoAusencias()
+ 		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
+ 			this.checkPrimaVacacional()
+ 		}
+@@ -445,8 +475,8 @@ export default {
+ 		recalcularDias() {
+ 			const disponibles = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
+ 			const acumulados = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
+-			this.TotalDias = parseInt(disponibles, 10) + (parseFloat(acumulados) || 0)
+-			this.RestanteDias = this.TotalDias - this.diasSolicitados
++			this.TotalDias = (Number(disponibles) || 0) + (Number.parseFloat(acumulados) || 0)
++			this.RestanteDias = this.TotalDias - this.diasSolicitadosEfectivos
+ 			this.GetTipoAusencias()
+ 		},
+ 
+@@ -458,7 +488,8 @@ export default {
+ 							this.TipoAusencias = response.data
+ 								.filter(item => (Number(item.privado) !== 1 || this.admin)
+ 									&& (Number(item.privado) === 1
+-										|| !(item.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias)))
++										|| !(Number(item.solicitar_prima_vacacional) === 1
++											&& this.diasSolicitadosEfectivos > this.TotalDias)))
+ 								.map(item => ({
+ 									id: item.id_tipo_ausencia,
+ 									label: item.nombre,
+@@ -499,7 +530,7 @@ export default {
+ 					formData.append('id_usuario', this.employees_list.user)
+ 				}
+ 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
+-				formData.append('dias_solicitados', this.diasSolicitados)
++				formData.append('dias_solicitados', this.diasSolicitadosEfectivos)
+ 				formData.append('fecha_de', this.formatFechaParaBackend(this.date.start))
+ 				formData.append('fecha_hasta', this.date.end ? this.formatFechaParaBackend(this.date.end) : '')
+ 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
+diff --git a/tests/unit/Service/VacationPeriodCalculatorTest.php b/tests/unit/Service/VacationPeriodCalculatorTest.php
+new file mode 100644
+index 0000000..68b1ae8
+--- /dev/null
++++ b/tests/unit/Service/VacationPeriodCalculatorTest.php
+@@ -0,0 +1,182 @@
++<?php
++
++declare(strict_types=1);
++
++namespace OCA\Empleados\Tests\Unit\Service;
++
++use DateTimeImmutable;
++use InvalidArgumentException;
++use OCA\Empleados\Service\VacationPeriodCalculator;
++use PHPUnit\Framework\TestCase;
++
++final class VacationPeriodCalculatorTest extends TestCase {
++	private VacationPeriodCalculator $calculator;
++
++	protected function setUp(): void {
++		parent::setUp();
++		$this->calculator = new VacationPeriodCalculator();
++	}
++
++	public function testParseDateAcceptsOnlyRealIsoDates(): void {
++		self::assertSame('2026-07-29', $this->calculator->parseDate('2026-07-29')->format('Y-m-d'));
++
++		$this->expectException(InvalidArgumentException::class);
++		$this->calculator->parseDate('2026-02-30');
++	}
++
++	public function testEmployeeWithLessThanOneYearHasNoCompletedAnniversary(): void {
++		self::assertSame(
++			0,
++			$this->calculator->completedAnniversaries(
++				$this->date('2025-10-10'),
++				$this->date('2026-07-29'),
++			),
++		);
++	}
++
++	public function testFirstAnniversaryIsDetectedOnTheDateAndAfterALateRun(): void {
++		$hireDate = $this->date('2025-07-29');
++
++		self::assertSame(0, $this->calculator->completedAnniversaries($hireDate, $this->date('2026-07-28')));
++		self::assertSame(1, $this->calculator->completedAnniversaries($hireDate, $this->date('2026-07-29')));
++		self::assertSame(1, $this->calculator->completedAnniversaries($hireDate, $this->date('2026-08-15')));
++	}
++
++	public function testSecondAndLaterAnniversariesAreCalculatedFromHireDate(): void {
++		$hireDate = $this->date('2020-03-10');
++
++		self::assertSame(5, $this->calculator->completedAnniversaries($hireDate, $this->date('2026-03-09')));
++		self::assertSame(6, $this->calculator->completedAnniversaries($hireDate, $this->date('2026-03-10')));
++	}
++
++	public function testFutureHireDateReturnsZeroCompletedAnniversaries(): void {
++		self::assertSame(
++			0,
++			$this->calculator->completedAnniversaries(
++				$this->date('2030-01-01'),
++				$this->date('2026-07-29'),
++			),
++		);
++	}
++
++	public function testLeapDayAnniversaryUsesFebruaryTwentyEightInNonLeapYears(): void {
++		$hireDate = $this->date('2020-02-29');
++
++		self::assertSame('2021-02-28', $this->calculator->anniversaryDate($hireDate, 1)->format('Y-m-d'));
++		self::assertSame('2024-02-29', $this->calculator->anniversaryDate($hireDate, 4)->format('Y-m-d'));
++		self::assertSame(0, $this->calculator->completedAnniversaries($hireDate, $this->date('2021-02-27')));
++		self::assertSame(1, $this->calculator->completedAnniversaries($hireDate, $this->date('2021-02-28')));
++	}
++
++	public function testPeriodContainsStartEndAndSixMonthCarryExpiry(): void {
++		$period = $this->calculator->period($this->date('2020-03-10'), 2);
++
++		self::assertSame(2, $period['number']);
++		self::assertSame('2022-03-10', $period['start']->format('Y-m-d'));
++		self::assertSame('2023-03-10', $period['end']->format('Y-m-d'));
++		self::assertSame('2022-09-10', $period['carry_expires']->format('Y-m-d'));
++	}
++
++	public function testCarryExpiryClampsToTheLastDayOfShorterMonth(): void {
++		$period = $this->calculator->period($this->date('2023-08-31'), 0);
++
++		self::assertSame('2024-02-29', $period['carry_expires']->format('Y-m-d'));
++	}
++
++	public function testCarryIsValidThroughExpiryDateButNotTheNextDay(): void {
++		$expiry = $this->date('2026-09-10');
++
++		self::assertTrue($this->calculator->isCarryValid($expiry, $this->date('2026-09-10')));
++		self::assertFalse($this->calculator->isCarryValid($expiry, $this->date('2026-09-11')));
++	}
++
++	public function testAllocationConsumesDecimalCarryBeforeCurrentDays(): void {
++		$allocation = $this->calculator->allocate(1.5, 0.5);
++
++		self::assertSame(1.5, $allocation['requested']);
++		self::assertSame(0.5, $allocation['carry_used']);
++		self::assertSame(1.0, $allocation['current_used']);
++		self::assertSame(0.0, $allocation['carry_remaining']);
++
++		$halfDay = $this->calculator->allocate(0.5, 2.0);
++		self::assertSame(0.5, $halfDay['carry_used']);
++		self::assertSame(0.0, $halfDay['current_used']);
++		self::assertSame(1.5, $halfDay['carry_remaining']);
++	}
++
++	public function testBalanceCombinesCurrentAndValidCarryWithoutNegativeValues(): void {
++		$balance = $this->calculator->balance(
++			14.0,
++			3.0,
++			4.0,
++			1.5,
++			$this->date('2026-09-10'),
++			$this->date('2026-09-10'),
++		);
++
++		self::assertSame(11.0, $balance['current_remaining']);
++		self::assertSame(2.5, $balance['carry_remaining']);
++		self::assertSame(13.5, $balance['available']);
++		self::assertSame(0.0, $balance['excess']);
++		self::assertSame(0.0, $balance['expired']);
++		self::assertTrue($balance['carry_valid']);
++	}
++
++	public function testExpiredCarryIsReportedAndCurrentBalanceIsPreserved(): void {
++		$balance = $this->calculator->balance(
++			14.0,
++			3.0,
++			4.0,
++			1.5,
++			$this->date('2026-09-10'),
++			$this->date('2026-09-11'),
++		);
++
++		self::assertSame(11.0, $balance['current_remaining']);
++		self::assertSame(0.0, $balance['carry_remaining']);
++		self::assertSame(2.5, $balance['expired']);
++		self::assertSame(11.0, $balance['available']);
++		self::assertFalse($balance['carry_valid']);
++	}
++
++	public function testBalanceClampsOveruseAndReportsExcess(): void {
++		$balance = $this->calculator->balance(
++			2.0,
++			3.5,
++			1.0,
++			1.5,
++			$this->date('2026-09-10'),
++			$this->date('2026-08-01'),
++		);
++
++		self::assertSame(0.0, $balance['current_remaining']);
++		self::assertSame(0.0, $balance['carry_remaining']);
++		self::assertSame(1.5, $balance['current_excess']);
++		self::assertSame(0.5, $balance['carry_excess']);
++		self::assertSame(2.0, $balance['excess']);
++		self::assertSame(0.0, $balance['available']);
++	}
++
++	public function testNegativeBalanceInputsAreClampedToZero(): void {
++		$balance = $this->calculator->balance(
++			-10.0,
++			-2.0,
++			-5.0,
++			-1.0,
++			null,
++			$this->date('2026-07-29'),
++		);
++
++		self::assertSame(0.0, $balance['current_grant']);
++		self::assertSame(0.0, $balance['current_used']);
++		self::assertSame(0.0, $balance['carry_grant']);
++		self::assertSame(0.0, $balance['carry_used']);
++		self::assertSame(0.0, $balance['available']);
++		self::assertSame(0.0, $balance['excess']);
++		self::assertSame(0.0, $balance['expired']);
++	}
++
++	private function date(string $date): DateTimeImmutable {
++		return $this->calculator->parseDate($date);
++	}
++}

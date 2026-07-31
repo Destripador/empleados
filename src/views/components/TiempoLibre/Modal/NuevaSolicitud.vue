@@ -174,6 +174,13 @@ import {
 	NcLoadingIcon,
 } from '@nextcloud/vue'
 
+const createIdempotencyKey = () => {
+	if (window.crypto?.randomUUID) {
+		return window.crypto.randomUUID()
+	}
+	return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 export default {
 	name: 'NuevaSolicitud',
 
@@ -234,6 +241,7 @@ export default {
 			diasDisponiblesActual: null,
 			diasAcumuladosActual: null,
 			diasInfoEmpleado: null,
+			idempotencyKey: createIdempotencyKey(),
 		}
 	},
 
@@ -256,7 +264,9 @@ export default {
 		},
 
 		diasAcumuladosNum() {
-			const val = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
+			const val = this.diasInfoEmpleado?.dias_acumulados_disponibles
+				?? this.diasInfoEmpleado?.dias_acumulados
+				?? this.diasAcumulados
 			return Number.parseFloat(val) || 0
 		},
 
@@ -473,9 +483,16 @@ export default {
 		},
 
 		recalcularDias() {
-			const disponibles = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
-			const acumulados = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
-			this.TotalDias = (Number(disponibles) || 0) + (Number.parseFloat(acumulados) || 0)
+			const periodo = this.diasInfoEmpleado?.dias_periodo_disponibles
+				?? this.diasInfoEmpleado?.dias_disponibles
+				?? this.diasDisponibles
+			const acumulados = this.diasInfoEmpleado?.dias_acumulados_disponibles
+				?? this.diasInfoEmpleado?.dias_acumulados
+				?? this.diasAcumulados
+			const totalExplicito = this.diasInfoEmpleado?.dias_totales_disponibles
+			this.TotalDias = totalExplicito !== undefined && totalExplicito !== null
+				? (Number(totalExplicito) || 0)
+				: (Number(periodo) || 0) + (Number(acumulados) || 0)
 			this.RestanteDias = this.TotalDias - this.diasSolicitadosEfectivos
 			this.GetTipoAusencias()
 		},
@@ -530,11 +547,12 @@ export default {
 					formData.append('id_usuario', this.employees_list.user)
 				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
-				formData.append('dias_solicitados', this.diasSolicitadosEfectivos)
 				formData.append('fecha_de', this.formatFechaParaBackend(this.date.start))
 				formData.append('fecha_hasta', this.date.end ? this.formatFechaParaBackend(this.date.end) : '')
+				formData.append('medio_dia', this.medioDia ? 1 : 0)
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
+				formData.append('idempotency_key', this.idempotencyKey)
 
 				for (let i = 0; i < this.selectedFiles.length; i++) {
 					formData.append('archivos[]', this.selectedFiles[i])

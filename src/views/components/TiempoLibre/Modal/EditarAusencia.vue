@@ -191,6 +191,7 @@ export default {
 	props: {
 		ausencia: { type: Object, required: true },
 		diasDisponibles: { type: [String, Number], required: true },
+		diasAcumulados: { type: [String, Number], default: 0 },
 		fechaLimitePeriodoActual: { type: String, default: null },
 		prima: { type: Number, default: 0 },
 		employees: { type: Array, default: () => [] },
@@ -213,7 +214,8 @@ export default {
 				? this.ausencia.fecha_hasta.substring(0, 10)
 				: '',
 			diasHabiles: 0,
-			TotalDias: Number(this.diasDisponibles) || 0,
+			TotalDias: (Number(this.diasDisponibles) || 0)
+					+ (Number(this.diasAcumulados) || 0),
 			comentarios: this.ausencia.notas || '',
 			SolicitarPrima: Number(this.ausencia.prima_vacacional) === 1,
 			medioDia: Number(this.ausencia.dias_solicitados) === 0.5,
@@ -244,8 +246,21 @@ export default {
 		},
 
 		diasDisponiblesVigente() {
-			const val = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
+			const val = this.diasInfoEmpleado?.dias_periodo_disponibles
+				?? this.diasInfoEmpleado?.dias_disponibles
+				?? this.diasDisponibles
 			return Number(val) || 0
+		},
+
+		diasTotalesVigentes() {
+			const total = this.diasInfoEmpleado?.dias_totales_disponibles
+			if (total !== undefined && total !== null) {
+				return Number(total) || 0
+			}
+			const acumulados = this.diasInfoEmpleado?.dias_acumulados_disponibles
+				?? this.diasInfoEmpleado?.dias_acumulados
+				?? this.diasAcumulados
+			return this.diasDisponiblesVigente + (Number(acumulados) || 0)
 		},
 
 		fechaLimitePeriodoVigente() {
@@ -352,7 +367,7 @@ export default {
 					id: idEmpleado,
 				})
 				this.diasInfoEmpleado = res?.data?.ocs?.data?.[0] || null
-				this.TotalDias = this.diasDisponiblesVigente
+				this.TotalDias = this.diasTotalesVigentes
 			} catch (err) {
 				showError(t('empleados', 'Error al obtener los días del empleado'))
 			} finally {
@@ -369,6 +384,7 @@ export default {
 					descripcion: item.descripcion,
 					solicitar_archivo: item.solicitar_archivo,
 					solicitar_prima_vacacional: item.solicitar_prima_vacacional,
+					privado: item.privado,
 				}))
 				this.AusenciaSeleccionada = this.TipoAusencias.find(
 					t => String(t.id) === String(this.ausencia.id_tipo_ausencia),
@@ -434,7 +450,7 @@ export default {
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('fecha_de', this.fechaDesdeStr)
 				formData.append('fecha_hasta', this.fechaHastaStr)
-				formData.append('dias_solicitados', this.diasSolicitadosEfectivos)
+				formData.append('medio_dia', this.medioDia ? 1 : 0)
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
 

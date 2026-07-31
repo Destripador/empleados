@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Service;
 
-use DateTime;
 use OCA\Empleados\Db\historialvacacionesMapper;
 
 /**
@@ -16,7 +15,10 @@ class AniversarioSyncService {
 
     private historialvacacionesMapper $historialvacacionesMapper;
 
-    public function __construct(historialvacacionesMapper $historialvacacionesMapper) {
+    public function __construct(
+        historialvacacionesMapper $historialvacacionesMapper,
+        private VacationPeriodCalculator $calculator,
+    ) {
         $this->historialvacacionesMapper = $historialvacacionesMapper;
     }
 
@@ -29,7 +31,7 @@ class AniversarioSyncService {
             return [];
         }
 
-        $ingresoActual = new DateTime($ingresoActualStr);
+        $ingresoActual = $this->calculator->parseDate($ingresoActualStr);
         $filas = $this->historialvacacionesMapper->getByEmpleado($idEmpleado);
 
         $cambios = [];
@@ -37,13 +39,12 @@ class AniversarioSyncService {
         foreach ($filas as $fila) {
             $n = (int) $fila['numero_aniversario'];
 
-            $periodoInicioNuevo = (clone $ingresoActual)->modify('+' . $n . ' years');
-            $periodoFinNuevo    = (clone $ingresoActual)->modify('+' . ($n + 1) . ' years');
-            $periodoInicioNuevoStr = $periodoInicioNuevo->format('Y-m-d');
-            $periodoFinNuevoStr    = $periodoFinNuevo->format('Y-m-d');
+            $periodo = $this->calculator->period($ingresoActual, $n);
+            $periodoInicioNuevoStr = $periodo['start']->format('Y-m-d');
+            $periodoFinNuevoStr = $periodo['end']->format('Y-m-d');
 
             $fechaExpiracionNueva = !empty($fila['fecha_expiracion_acumulados'])
-                ? (clone $periodoInicioNuevo)->modify('+6 months')->format('Y-m-d')
+                ? $periodo['carry_expires']->format('Y-m-d')
                 : null;
 
             $huboCambio = $fila['periodo_inicio'] !== $periodoInicioNuevoStr

@@ -8,7 +8,6 @@ use OCP\BackgroundJob\TimedJob;
 use OCA\Empleados\Db\ausenciasMapper;
 use OCA\Empleados\Service\VacacionesCalculoService;
 use Psr\Log\LoggerInterface;
-use DateTime;
 
 /**
  * Recalcula diariamente el periodo/aniversario y el colchón acumulado de
@@ -54,7 +53,7 @@ class RecalcularVacacionesJob extends TimedJob {
             }
 
             try {
-                $resultado = $this->vacacionesCalculoService->getPeriodoActualEmpleado(
+                $this->vacacionesCalculoService->recalcularEmpleado(
                     $idEmpleado,
                     $idAusencias,
                 );

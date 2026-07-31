@@ -36,12 +36,12 @@
 												</span>
 
 												<NcLoadingIcon
-													v-if="Ausencias.dias_disponibles === undefined || Ausencias.dias_disponibles === null"
+													v-if="Ausencias.dias_periodo_disponibles === undefined || Ausencias.dias_periodo_disponibles === null"
 													:size="22" />
 
 												<template v-else>
 													<strong class="vacation-card__value">
-														{{ Ausencias.dias_disponibles }}
+														{{ Ausencias.dias_periodo_disponibles }}
 													</strong>
 
 													<span class="vacation-card__subtitle">
@@ -59,7 +59,7 @@
 												</span>
 
 												<strong class="vacation-card__value">
-													{{ Ausencias.dias_acumulados }}
+													{{ Ausencias.dias_acumulados_disponibles }}
 												</strong>
 
 												<span class="vacation-card__subtitle">
@@ -451,8 +451,8 @@
 				ref="modalRef"
 				:date="date"
 				:dias-solicitados="diasSolicitados"
-				:dias-disponibles="Ausencias.dias_disponibles"
-				:dias-acumulados="Ausencias.dias_acumulados"
+				:dias-disponibles="Ausencias.dias_periodo_disponibles"
+				:dias-acumulados="Ausencias.dias_acumulados_disponibles"
 				:fecha-expiracion-acumulados="Ausencias.fecha_expiracion_acumulados"
 				:fecha-limite-periodo-actual="Ausencias.fecha_limite_periodo_actual"
 				:prima="Ausencias.prima_vacacional"
@@ -472,7 +472,8 @@
 				v-if="modalEditar && ausenciaEditar"
 				:ausencia="ausenciaEditar"
 				:username-empleado="usuarioAusenciaSeleccionada"
-				:dias-disponibles="Ausencias.dias_disponibles"
+				:dias-disponibles="Ausencias.dias_periodo_disponibles"
+				:dias-acumulados="Ausencias.dias_acumulados_disponibles"
 				:fecha-limite-periodo-actual="Ausencias.fecha_limite_periodo_actual"
 				:prima="Ausencias.prima_vacacional"
 				:employees="propsEmployees.options"
@@ -721,7 +722,7 @@ export default {
 			return agrupados
 		},
 		tieneVacacionesAcumuladas() {
-			return Number(this.Ausencias?.dias_acumulados ?? 0) > 0
+			return Number(this.Ausencias?.dias_acumulados_disponibles ?? 0) > 0
 				&& Boolean(this.Ausencias?.fecha_expiracion_acumulados)
 		},
 	},

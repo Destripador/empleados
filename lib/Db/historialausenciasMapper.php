@@ -178,6 +178,40 @@ class historialausenciasMapper extends QBMapper {
 		$qb->executeStatement();
 	}
 
+	/**
+	 * Reasigna una solicitud al calendario vigente y persiste el reparto que el
+	 * backend volvió a calcular. Ningún valor enviado por el navegador llega a
+	 * este método.
+	 */
+	public function actualizarClasificacion(
+		int $id,
+		int $numeroAniversario,
+		float $diasDeAcumulado,
+		float $diasDePeriodo
+	): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set(
+				'id_aniversario',
+				$qb->createNamedParameter($numeroAniversario, IQueryBuilder::PARAM_INT)
+			)
+			->set(
+				'dias_de_acumulado',
+				$qb->createNamedParameter(max(0.0, $diasDeAcumulado))
+			)
+			->set(
+				'dias_de_periodo',
+				$qb->createNamedParameter(max(0.0, $diasDePeriodo))
+			)
+			->where(
+				$qb->expr()->eq(
+					'id_historial_ausencias',
+					$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qb->executeStatement();
+	}
+
 	public function GetAusenciasHistorialGerente(int $id): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -238,6 +272,7 @@ class historialausenciasMapper extends QBMapper {
 		$qb->update($this->getTableName())
 			->set('a_gerente', $qb->createNamedParameter(3))
 			->set('a_socio',   $qb->createNamedParameter(3))
+			->set('a_capital_humano', $qb->createNamedParameter(3))
 			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
 
 		$qb->executeStatement();

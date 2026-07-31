@@ -39,6 +39,7 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\VacacionesCalculoService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -61,6 +62,7 @@ class EmpleadosController extends BaseController {
     protected $equiposMapper;
     protected $historialvacacionesMapper;
     protected PermisosService $permisosService;
+    private VacacionesCalculoService $vacacionesCalculoService;
 
     protected IRootFolder $rootFolder;
 
@@ -80,7 +82,8 @@ class EmpleadosController extends BaseController {
         IAvatarManager $avatarManager,
         equiposMapper $equiposMapper,
         historialvacacionesMapper $historialvacacionesMapper,
-        PermisosService $permisosService
+        PermisosService $permisosService,
+        VacacionesCalculoService $vacacionesCalculoService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -99,8 +102,9 @@ class EmpleadosController extends BaseController {
         $this->rootFolder = $rootFolder;
 
         $this->equiposMapper = $equiposMapper;
-
-        $this->permisosService = $permisosService;  
+        $this->historialvacacionesMapper = $historialvacacionesMapper;
+        $this->permisosService = $permisosService;
+        $this->vacacionesCalculoService = $vacacionesCalculoService;
     }
 
     /**
@@ -435,9 +439,27 @@ class EmpleadosController extends BaseController {
             (int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
         );
 
-        // 1.5) Sincroniza periodos SOLO si cambió el ingreso, y una sola vez
-        if (!empty($ingreso) && $ingresoAnterior !== $ingreso) {
-            $this->aniversarioSyncService->sincronizarPeriodos($id_empleados, $ingreso);
+        // La fecha de ingreso invalida toda proyección anterior. Se conservan
+        // filas y solicitudes, pero los saldos se reconstruyen desde cero.
+        if ((string)$ingresoAnterior !== (string)$ingreso) {
+            $registroAusencias = $this->ausenciasMapper->GetAusenciasByUser(
+                (int)$id_empleados
+            );
+            if (!empty($registroAusencias) && !empty($ingreso)) {
+                $this->vacacionesCalculoService->recalcularEmpleado(
+                    (int)$id_empleados,
+                    (int)$registroAusencias[0]['id_ausencias']
+                );
+            } elseif (!empty($registroAusencias)) {
+                $this->historialvacacionesMapper->marcarNoVigentes(
+                    (int)$id_empleados
+                );
+                $this->ausenciasMapper->updateAusenciasById(
+                    (int)$id_empleados,
+                    0,
+                    0.0
+                );
+            }
         }
 
         // 2) Si no cambió el equipo o está vacío → no tocar grupos

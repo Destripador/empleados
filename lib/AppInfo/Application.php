@@ -37,11 +37,6 @@ class Application extends App implements IBootstrap {
 			);
 		});
 
-		$context->registerService(AniversarioSyncService::class, function($c) {
-			return new AniversarioSyncService(
-				$c->query(historialvacacionesMapper::class)
-			);
-		});
 		$context->registerDashboardWidget(ReportesWidget::class);
 		$context->registerNotifierService(ReportesNotifier::class);
 		$context->registerNotifierService(ComprasNotifier::class);

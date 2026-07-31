@@ -19,8 +19,12 @@ class HistorialAusencias extends Entity {
 	protected ?bool $a_socio = false;
 	protected ?bool $a_gerente = false;
 	protected ?bool $a_capital_humano = false;
-    protected string $notas = '';
-	protected int $dias_solicitados = 0;
+	protected string $notas = '';
+	protected float $dias_solicitados = 0.0;
+	protected float $dias_de_acumulado = 0.0;
+	protected float $dias_de_periodo = 0.0;
+	protected ?string $solicitud_grupo = null;
+	protected ?string $idempotency_key = null;
 
 	public function __construct() {
 		$this->addType('id_historial_ausencias', 'string');
@@ -36,7 +40,11 @@ class HistorialAusencias extends Entity {
 		$this->addType('a_gerente', 'bool');
 		$this->addType('a_capital_humano', 'bool');
 		$this->addType('notas', 'string');
-		$this->addType('dias_solicitados', 'integer');
+		$this->addType('dias_solicitados', 'decimal');
+		$this->addType('dias_de_acumulado', 'decimal');
+		$this->addType('dias_de_periodo', 'decimal');
+		$this->addType('solicitud_grupo', 'string');
+		$this->addType('idempotency_key', 'string');
 	}
 
 	public function read(): array {
@@ -55,6 +63,10 @@ class HistorialAusencias extends Entity {
 			'a_capital_humano' => $this->a_capital_humano,
 			'notas' => $this->notas,
 			'dias_solicitados' => $this->dias_solicitados,
+			'dias_de_acumulado' => $this->dias_de_acumulado,
+			'dias_de_periodo' => $this->dias_de_periodo,
+			'solicitud_grupo' => $this->solicitud_grupo,
+			'idempotency_key' => $this->idempotency_key,
 		];
 	}
 }
