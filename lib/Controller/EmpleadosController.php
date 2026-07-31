@@ -39,6 +39,7 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\AniversarioSyncService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -61,6 +62,7 @@ class EmpleadosController extends BaseController {
     protected $equiposMapper;
     protected $historialvacacionesMapper;
     protected PermisosService $permisosService;
+    private AniversarioSyncService $aniversarioSyncService;
 
     protected IRootFolder $rootFolder;
 
@@ -80,7 +82,8 @@ class EmpleadosController extends BaseController {
         IAvatarManager $avatarManager,
         equiposMapper $equiposMapper,
         historialvacacionesMapper $historialvacacionesMapper,
-        PermisosService $permisosService
+        PermisosService $permisosService,
+        AniversarioSyncService $aniversarioSyncService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -100,7 +103,8 @@ class EmpleadosController extends BaseController {
 
         $this->equiposMapper = $equiposMapper;
 
-        $this->permisosService = $permisosService;  
+        $this->permisosService = $permisosService;
+        $this->aniversarioSyncService = $aniversarioSyncService;
     }
 
     /**
@@ -437,7 +441,11 @@ class EmpleadosController extends BaseController {
 
         // 1.5) Sincroniza periodos SOLO si cambió el ingreso, y una sola vez
         if (!empty($ingreso) && $ingresoAnterior !== $ingreso) {
-            $this->aniversarioSyncService->sincronizarPeriodos($id_empleados, $ingreso);
+            try {
+                $this->aniversarioSyncService->sincronizarPeriodos($id_empleados, $ingreso);
+            } catch (\Exception $e) {
+                return new DataResponse("Error al sincronizar periodos: " . $e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
+            }
         }
 
         // 2) Si no cambió el equipo o está vacío → no tocar grupos
