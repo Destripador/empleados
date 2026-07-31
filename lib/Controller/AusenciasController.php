@@ -1734,6 +1734,17 @@ class AusenciasController extends BaseController {
             ], Http::STATUS_FORBIDDEN);
         }
 
+        // RH "puro" (no gerente ni socio) solo puede aprobar como capital_humano
+        // después de que gerente y socio ya hayan aprobado.
+        if ($rol === 'capital_humano' && !$esGerente && !$esSocio) {
+            if ((int) $ausencia['a_gerente'] !== 1 || (int) $ausencia['a_socio'] !== 1) {
+                return new DataResponse([
+                    'success' => false,
+                    'message' => 'RH solo puede aprobar una vez que gerente y socio hayan aprobado'
+                ], Http::STATUS_BAD_REQUEST);
+            }
+        }
+
         if (
             $rol === 'capital_humano_como_socio' &&
             (int)$ausencia['a_socio'] === 1
@@ -1808,10 +1819,9 @@ class AusenciasController extends BaseController {
             $uid = $user->getUID();
             $isPrivileged = $this->groupManager->isInGroup($uid, 'admin') || $this->groupManager->isInGroup($uid, 'recursos_humanos');
 
-            $autorizado = match ($rol) {
+           $autorizado = match ($rol) {
                 'gerente' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_gerente'] === $uid,
                 'socio' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_socio'] === $uid,
-                'capital_humano', 'capital_humano_como_socio' => $isPrivileged,
                 default => false,
             };
 
@@ -1859,11 +1869,6 @@ class AusenciasController extends BaseController {
                         // ... sin cambios ...
                     }
 
-                    // FIX: si era anticipada, nunca se descontó del saldo actual,
-                    // así que tampoco hay que devolverle nada ahí — solo hace
-                    // falta que el estado quede en 2/3 para que la suma del
-                    // periodo futuro deje de contarlo (eso ya lo hace el filtro
-                    // existente por a_gerente/a_socio).
                     if ($diasDelPeriodo > 0 && !$esAnticipada) {
                         $diasActuales = (float) $reg[0]['dias_disponibles'];
                         $nuevosDias = $diasActuales + $diasDelPeriodo;

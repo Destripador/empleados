@@ -101,6 +101,9 @@ export default {
 			connectionSourceId: null,
 			connectionPending: false,
 			viewMode: 'network',
+			ringRadii: [0, 0, 0, 0, 0],
+			espacioPorEmpleado: 70,
+			radioMinimoEntreAnillos: 300,
 		}
 	},
 
@@ -124,6 +127,16 @@ export default {
 				return t('empleados', 'Expand a manager to see all their direct and indirect reports.')
 			}
 			return t('empleados', 'Drag an avatar to move it. To create a connection, double-click the manager and then click their dependent. Double-click a connection to remove it.')
+		},
+
+		ringLabels() {
+			return [
+				null,
+				t('empleados', 'Socios'),
+				t('empleados', 'Gerentes'),
+				t('empleados', 'Supervisores'),
+				t('empleados', 'Staff'),
+			]
 		},
 	},
 
@@ -181,7 +194,115 @@ export default {
 			return generateUrl('/avatar/{userId}/64', { userId })
 		},
 
+		// Calcula el nivel jerárquico (anillo) de cada empleado a partir de las
+		// relaciones jefe -> dependiente, vía BFS desde las "raíces" (quienes no
+		// dependen de nadie, es decir, el/los patrón(es)).
+		calcularNiveles() {
+			const niveles = {}
+			const hijosDe = {}
+			const esDependiente = new Set()
+
+			this.relaciones.forEach(rel => {
+				esDependiente.add(String(rel.id_dependiente))
+				if (!hijosDe[rel.id_empleado]) hijosDe[rel.id_empleado] = []
+				hijosDe[rel.id_empleado].push(rel.id_dependiente)
+			})
+
+			const raices = this.empleados
+				.map(emp => emp.Id_empleados)
+				.filter(id => !esDependiente.has(String(id)))
+
+			const visitado = new Set(raices.map(id => String(id)))
+			const cola = raices.map(id => ({ id, nivel: 0 }))
+
+			while (cola.length) {
+				const { id, nivel } = cola.shift()
+				niveles[id] = Math.min(nivel, this.ringLabels.length - 1)
+				const hijos = hijosDe[id] || []
+				hijos.forEach(hijoId => {
+					if (!visitado.has(String(hijoId))) {
+						visitado.add(String(hijoId))
+						cola.push({ id: hijoId, nivel: nivel + 1 })
+					}
+				})
+			}
+
+			// Empleados sin ninguna relación: los mandamos al anillo exterior (staff)
+			this.empleados.forEach(emp => {
+				if (!(emp.Id_empleados in niveles)) {
+					niveles[emp.Id_empleados] = this.ringLabels.length - 1
+				}
+			})
+
+			return niveles
+		},
+
+		// Calcula el radio de cada anillo según cuántos empleados le tocan.
+		// Entre más gente en un nivel, más grande su circunferencia, para que
+		// siempre haya "espacioPorEmpleado" px de separación entre avatares.
+		calcularRadios(niveles) {
+			const conteoPorNivel = [0, 0, 0, 0, 0]
+			Object.values(niveles).forEach(nivel => {
+				conteoPorNivel[nivel] = (conteoPorNivel[nivel] || 0) + 1
+			})
+
+			const radios = [0]
+			for (let nivel = 1; nivel < conteoPorNivel.length; nivel++) {
+				const cantidad = conteoPorNivel[nivel] || 0
+				// Radio necesario para que la circunferencia completa (2πr) alcance
+				// a darle "espacioPorEmpleado" px a cada quien.
+				const radioPorCantidad = (cantidad * this.espacioPorEmpleado) / (2 * Math.PI)
+				// Nunca más chico que el anillo anterior + un mínimo de separación.
+				const radioMinimo = radios[nivel - 1] + this.radioMinimoEntreAnillos
+				radios.push(Math.max(radioPorCantidad, radioMinimo))
+			}
+
+			return radios
+		},
+
+		// Calcula el ángulo de cada empleado dentro de su anillo, agrupando a
+		// los hijos cerca del ángulo de su jefe para minimizar cruces de líneas.
+		calcularAngulos(niveles) {
+			const angulos = {}
+			const padreDe = {}
+			this.relaciones.forEach(rel => {
+				padreDe[rel.id_dependiente] = rel.id_empleado
+			})
+
+			const raices = this.empleados
+				.map(emp => emp.Id_empleados)
+				.filter(id => niveles[id] === 0)
+
+			raices.forEach((id, index) => {
+				angulos[id] = (2 * Math.PI * index) / Math.max(raices.length, 1)
+			})
+
+			const maxNivel = Math.max(0, ...Object.values(niveles))
+			for (let nivel = 1; nivel <= maxNivel; nivel++) {
+				const idsDelNivel = this.empleados
+					.map(emp => emp.Id_empleados)
+					.filter(id => niveles[id] === nivel)
+
+				idsDelNivel.sort((a, b) => {
+					const anguloA = angulos[padreDe[a]] ?? 0
+					const anguloB = angulos[padreDe[b]] ?? 0
+					if (anguloA !== anguloB) return anguloA - anguloB
+					return String(a).localeCompare(String(b))
+				})
+
+				idsDelNivel.forEach((id, index) => {
+					angulos[id] = (2 * Math.PI * index) / Math.max(idsDelNivel.length, 1)
+				})
+			}
+
+			return angulos
+		},
+
 		buildNetwork() {
+			const niveles = this.calcularNiveles()
+			this.ringRadii = this.calcularRadios(niveles)
+			const angulos = this.calcularAngulos(niveles)
+
 			const nodes = this.empleados.map(emp => {
 				const guardada = this.posiciones[emp.Id_empleados]
 				const nodo = {
@@ -191,14 +312,18 @@ export default {
 					image: this.avatarUrl(emp.Id_user),
 					brokenImage: this.avatarUrl(emp.Id_user),
 					size: 28,
+					physics: false,
 				}
 
 				if (guardada) {
-					// Nodo con posición fija: no participa en la simulación de física,
-					// pero sigue siendo arrastrable manualmente.
 					nodo.x = guardada.x
 					nodo.y = guardada.y
-					nodo.physics = false
+				} else {
+					const nivel = niveles[emp.Id_empleados] ?? this.ringLabels.length - 1
+					const angulo = angulos[emp.Id_empleados] ?? 0
+					const radio = this.ringRadii[nivel]
+					nodo.x = radio * Math.cos(angulo)
+					nodo.y = radio * Math.sin(angulo)
 				}
 
 				return nodo
@@ -213,9 +338,7 @@ export default {
 
 			const options = {
 				physics: {
-					enabled: true,
-					solver: 'forceAtlas2Based',
-					stabilization: { iterations: 150 },
+					enabled: false,
 				},
 				edges: {
 					smooth: { type: 'continuous' },
@@ -248,16 +371,35 @@ export default {
 				options,
 			)
 
-			// Cuando la física termina de acomodar los nodos nuevos (sin posición guardada),
-			// congelamos el layout y guardamos TODAS las posiciones para que el próximo
-			// reload se vea exactamente igual.
-			this.network.once('stabilizationIterationsDone', () => {
-				this.network.setOptions({ physics: { enabled: false } })
-				this.network.fit()
-				this.guardarTodasLasPosiciones()
+			this.network.on('beforeDrawing', (ctx) => {
+				ctx.save()
+
+				for (let nivel = 1; nivel < this.ringRadii.length; nivel++) {
+					const radio = this.ringRadii[nivel]
+					if (!radio) continue
+
+					ctx.beginPath()
+					ctx.arc(0, 0, radio, 0, 2 * Math.PI)
+					ctx.strokeStyle = '#3478f6'
+					ctx.lineWidth = 1
+					ctx.setLineDash([4, 6])
+					ctx.stroke()
+
+					const etiqueta = this.ringLabels[nivel]
+					if (etiqueta) {
+						ctx.font = '11px sans-serif'
+						ctx.fillStyle = 'rgba(150, 150, 150, 0.5)'
+						ctx.textAlign = 'center'
+						ctx.setLineDash([])
+						ctx.fillText(etiqueta, 0, -radio - 6)
+					}
+				}
+
+				ctx.restore()
 			})
 
-			// Si arrastras un nodo manualmente, guarda solo esa posición.
+			this.network.fit()
+
 			this.network.on('dragEnd', (params) => {
 				if (params.nodes.length === 1) {
 					const idEmpleado = params.nodes[0]
@@ -350,24 +492,6 @@ export default {
 			}
 		},
 
-		async guardarTodasLasPosiciones() {
-			try {
-				const ids = this.empleados.map(e => e.Id_empleados)
-				const posiciones = this.network.getPositions(ids)
-				const payload = Object.keys(posiciones).map(id => ({
-					id_empleado: id,
-					x: posiciones[id].x,
-					y: posiciones[id].y,
-				}))
-
-				await axios.post(generateUrl('/apps/empleados/GuardarPosicionesOrganigrama'), {
-					posiciones: payload,
-				})
-			} catch (err) {
-				showError(t('empleados', 'An exception has occurred [03] [{error}]', { error: String(err) }))
-			}
-		},
-
 		async crearRelacion(idEmpleado, idDependiente, callback) {
 			try {
 				await axios.post(generateUrl('/apps/empleados/CrearRelacionOrganigrama'), {
@@ -381,9 +505,6 @@ export default {
 					arrows: 'to',
 				})
 
-				// Reflejamos el cambio en los datos reactivos: esto es lo que hace
-				// que la tabla (y cualquier otra vista) se actualice sola, sin
-				// necesidad de recargar la página.
 				this.relaciones = [
 					...this.relaciones,
 					{ id_empleado: idEmpleado, id_dependiente: idDependiente },
@@ -406,8 +527,6 @@ export default {
 				})
 				this.network.body.data.edges.remove(edgeId)
 
-				// Igual que al crear: quitamos la relación del array reactivo
-				// para que la tabla se refresque automáticamente.
 				this.relaciones = this.relaciones.filter(
 					rel => !(rel.id_empleado === idEmpleado && rel.id_dependiente === idDependiente),
 				)

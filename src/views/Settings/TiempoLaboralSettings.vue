@@ -254,12 +254,15 @@
 							<tr>
 								<th>{{ t('empleados', 'Name') }}</th>
 								<th>{{ t('empleados', 'Date') }}</th>
+								<th class="col-center">
+									{{ t('empleados', 'Official') }}
+								</th>
 								<th class="col-actions" />
 							</tr>
 						</thead>
 						<tbody>
 							<tr v-if="Festivos.length === 0">
-								<td colspan="3" class="empty-row">
+								<td colspan="4" class="empty-row">
 									{{ t('empleados', 'No holidays defined yet.') }}
 								</td>
 							</tr>
@@ -270,6 +273,11 @@
 								<td>
 									<span class="date-chip">{{ item.fecha }}</span>
 								</td>
+								<td class="col-center">
+									<span :class="item.oficial == 1 ? 'pill pill--yes' : 'pill pill--no'">
+										{{ item.oficial == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+									</span>
+								</td>
 								<td class="col-actions">
 									<NcActions>
 										<NcActionButton :close-after-click="true" @click="editFestivo(item)">
@@ -278,7 +286,7 @@
 											</template>
 											{{ t('empleados', 'Edit') }}
 										</NcActionButton>
-										<NcActionButton :close-after-click="true" @click="deleteFestivo(item.id_festivo)">
+										<NcActionButton v-if="item.oficial != 1" :close-after-click="true" @click="deleteFestivo(item.id_festivo)">
 											<template #icon>
 												<Delete :size="20" />
 											</template>
@@ -424,6 +432,9 @@
 					</p>
 					<h2>{{ editingFestivo ? t('empleados', 'Edit holiday') : t('empleados', 'New holiday') }}</h2>
 					<p>{{ t('empleados', 'Public holidays are excluded from working day calculations.') }}</p>
+					<p v-if="editingFestivo && editingFestivo.oficial == 1" class="official-warning">
+						{{ t('empleados', 'This is an official holiday. If its date depends on a weekday rule (e.g. "third Monday of March"), your edit may be overwritten automatically next January 1st.') }}
+					</p>
 				</div>
 				<div class="form-grid">
 					<NcTextField class="span-2" :label="t('empleados', 'Holiday name')" :value.sync="festivoNombre" />
@@ -782,7 +793,7 @@ export default {
 		},
 
 		// ────────────────────────────────────────────
-		// Holidays (sin cambios)
+		// Holidays
 		// ────────────────────────────────────────────
 		async getFestivos() {
 			try {
@@ -1114,6 +1125,15 @@ export default {
 	font-size: 0.8rem;
 	font-family: monospace;
 	color: var(--color-main-text);
+}
+
+.official-warning {
+	margin: 6px 0 0 !important;
+	padding: 8px 12px;
+	border-radius: var(--border-radius);
+	background: #fef9c3;
+	color: #713f12;
+	font-size: 0.8rem !important;
 }
 
 /* ── Modals ── */
