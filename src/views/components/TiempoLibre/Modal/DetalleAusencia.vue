@@ -184,12 +184,10 @@ export default {
 	},
 
 	computed: {
-		// true cuando quien está viendo el detalle es un jefe (gerente/socio/RH)
-		// y la solicitud sigue pendiente: el botón único actúa como "rechazar"
 		esRechazoDeJefe() {
 			if (!this.ausencia) return false
 			return this.statusKey === 'pending'
-				&& (this.ausencia.es_gerente || this.ausencia.es_socio || this.ausencia.es_privilegiado)
+				&& (this.ausencia.es_gerente || this.ausencia.es_socio)
 		},
 
 		canCancel() {
@@ -243,14 +241,16 @@ export default {
 			return this.ausencia?.es_socio && Number(this.ausencia.a_socio) === 0
 		},
 		puedeAprobarCapitalHumano() {
-			return this.ausencia?.es_privilegiado && Number(this.ausencia.a_capital_humano ?? 0) === 0
+			if (!this.ausencia?.es_privilegiado) return false
+			if (Number(this.ausencia.a_capital_humano ?? 0) !== 0) return false
+			// Si RH también es gerente o socio, el botón aparece de inmediato
+			if (this.ausencia?.es_gerente || this.ausencia?.es_socio) return true
+			// RH "puro": espera a que gerente y socio ya hayan aprobado
+			return Number(this.ausencia.a_gerente) === 1 && Number(this.ausencia.a_socio) === 1
 		},
 		puedeAprobarComoSocioRH() {
-			// RH ya aprobó como capital humano y el socio todavía no aprueba:
-			// este botón reemplaza al de "Aprobar" de capital humano
 			return this.ausencia?.es_privilegiado
 				&& !this.ausencia?.es_socio
-				&& Number(this.ausencia.a_capital_humano ?? 0) === 1
 				&& Number(this.ausencia.a_socio) === 0
 		},
 

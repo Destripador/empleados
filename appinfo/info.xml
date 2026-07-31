@@ -125,6 +125,7 @@ This project is currently in beta and under active development. It is already fu
     <commands>
         <command>OCA\Empleados\Command\RepairConfigCommand</command>
         <command>OCA\Empleados\Command\ResetBetaSchemaCommand</command>
+        <command>OCA\Empleados\Command\SeedFestivosOficiales</command>
     </commands>
 
     <settings>

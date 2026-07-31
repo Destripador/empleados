@@ -621,6 +621,7 @@ export default {
 			ModalAniversario: false,
 			Ausencias: [],
 			Aniversarios: [],
+			Festivos: [],
 			diasSolicitados: 0,
 			date: ref({
 				start: new Date(),
@@ -640,6 +641,7 @@ export default {
 				dateClick: this.onDateClick,
 				eventClick: this.OnClickEvent,
 				select: this.onDateRangeSelect,
+				dayCellDidMount: this.onDayCellDidMount,
 				selectable: true,
 				fixedWeekCount: false,
 				dayMaxEvents: true,
@@ -724,6 +726,20 @@ export default {
 			return Number(this.Ausencias?.dias_acumulados ?? 0) > 0
 				&& Boolean(this.Ausencias?.fecha_expiracion_acumulados)
 		},
+
+		/**
+		 * Diccionario 'MM-DD' -> nombre del festivo, para lookup O(1)
+		 * al pintar cada celda del calendario.
+		 */
+		festivosPorFecha() {
+			const mapa = {}
+			this.Festivos.forEach(item => {
+				if (item?.fecha && item?.nombre) {
+					mapa[item.fecha] = item.nombre
+				}
+			})
+			return mapa
+		},
 	},
 
 	mounted() {
@@ -742,6 +758,7 @@ export default {
 		}
 		this.getEquipos()
 		this.GetAllEquipo()
+		this.getFestivosCalendario()
 		this.checkNotifications()
 		this.$nextTick(() => {
 			this.ajustarAlturaCalendario()
@@ -755,6 +772,96 @@ export default {
 
 	methods: {
 		t,
+
+		/**
+		 * Trae la lista de festivos (fecha en formato MM-DD, se repite cada
+		 * año) para pintarlos en el calendario. Como fullCalendar ya montó
+		 * las celdas antes de que esta llamada regrese, forzamos un
+		 * re-render con .render() para que dayCellDidMount se vuelva a
+		 * ejecutar con festivosPorFecha ya lleno.
+		 */
+		async getFestivosCalendario() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/getFestivos'))
+				this.Festivos = response?.data?.ocs?.data ?? response?.data ?? []
+				this.$nextTick(() => {
+					this.$refs.fullCalendar?.getApi()?.render()
+				})
+			} catch (err) {
+				// No bloqueamos el calendario si esto falla, solo no se pintan los festivos.
+				console.error('No se pudieron cargar los festivos:', err)
+			}
+		},
+
+		/**
+		 * Convierte un Date a 'MM-DD' (mismo formato que usa la tabla de festivos).
+		 */
+		formatMesDia(date) {
+			const mes = String(date.getMonth() + 1).padStart(2, '0')
+			const dia = String(date.getDate()).padStart(2, '0')
+			return `${mes}-${dia}`
+		},
+
+		/**
+		 * Indica si una fecha determinada corresponde a un día festivo
+		 * registrado (usa el mismo diccionario 'MM-DD' -> nombre).
+		 */
+		esFestivo(date) {
+			return Boolean(this.festivosPorFecha[this.formatMesDia(date)])
+		},
+
+		/**
+		 * Hook de FullCalendar: pinta en verde pastel la celda del día si
+		 * corresponde a un festivo, y agrega una etiqueta elegante con el
+		 * nombre debajo del número de día.
+		 *
+		 * El color se aplica como estilo en línea con prioridad "important"
+		 * porque FullCalendar también usa reglas !important para "hoy" y
+		 * para la selección, y sin esto a veces esas reglas ganaban y el
+		 * verde desaparecía. Como excepción: si la celda es "hoy", dejamos
+		 * que se vea el resaltado amarillo propio de FullCalendar aunque
+		 * el día sea festivo (solo se mantienen la etiqueta y el bloqueo).
+		 */
+		onDayCellDidMount(arg) {
+			const mesDia = this.formatMesDia(arg.date)
+			const nombreFestivo = this.festivosPorFecha[mesDia]
+
+			if (!nombreFestivo) {
+				return
+			}
+
+			arg.el.classList.add('fc-day-festivo')
+			arg.el.setAttribute('title', nombreFestivo)
+
+			const esHoy = arg.el.classList.contains('fc-day-today')
+
+			if (!esHoy) {
+				const colorBase = '#e3f5e6'
+				const colorHover = '#d9f0dd'
+				arg.el.style.setProperty('background-color', colorBase, 'important')
+				arg.el.addEventListener('mouseenter', () => {
+					arg.el.style.setProperty('background-color', colorHover, 'important')
+				})
+				arg.el.addEventListener('mouseleave', () => {
+					arg.el.style.setProperty('background-color', colorBase, 'important')
+				})
+			}
+
+			// La etiqueta con el nombre solo se ve bien en vista de mes;
+			// en multi-mes las celdas son muy pequeñas para texto legible.
+			if (arg.view.type !== 'dayGridMonth') {
+				return
+			}
+
+			const frame = arg.el.querySelector('.fc-daygrid-day-frame') || arg.el
+
+			const etiqueta = document.createElement('div')
+			etiqueta.className = 'fc-festivo-label'
+			etiqueta.textContent = nombreFestivo
+			// Tooltip nativo con el nombre completo por si el texto se corta.
+			etiqueta.title = nombreFestivo
+			frame.appendChild(etiqueta)
+		},
 
 		abrirDetalleDesdeNotificacion(item) {
 			this.selectedEventId = item.id_historial_ausencias
@@ -909,6 +1016,7 @@ export default {
 			const isCancelled = roles.includes(3)
 			const isRejected = roles.includes(2)
 			const isApproved = roles.length > 0 && roles.every(v => v === 1)
+			const esTemprana = Number(item.es_temprana) === 1
 
 			if (isCancelled) {
 				return { classNames: ['event-cancelled'] }
@@ -919,7 +1027,7 @@ export default {
 			if (isApproved) {
 				return { classNames: ['event-approved'] }
 			}
-			if (item.es_temprana) {
+			if (esTemprana) {
 				return { classNames: ['event-pending-anticipada'] }
 			}
 			return { classNames: ['event-pending'] }
@@ -1176,11 +1284,18 @@ export default {
 				return
 			}
 
+			// No se permite iniciar ni terminar la ausencia en un día festivo.
+			if (this.esFestivo(startDate) || this.esFestivo(endDate)) {
+				showError(t('empleados', 'You cannot start or end your absence on a holiday'))
+				return
+			}
+
 			let fecha = new Date(startDate)
 			let diasHabiles = 0
 			while (fecha <= endDate) {
 				const diaSemana = fecha.getDay()
-				if (diaSemana !== 0 && diaSemana !== 6) diasHabiles++
+				const esFestivoDia = this.esFestivo(fecha)
+				if (diaSemana !== 0 && diaSemana !== 6 && !esFestivoDia) diasHabiles++
 				fecha = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1)
 			}
 
@@ -1364,11 +1479,6 @@ export default {
 						) {
 							return null
 						}
-
-						/*
-				 * FullCalendar utiliza una fecha final exclusiva
-				 * para eventos de día completo.
-				 */
 						fechaHasta.setDate(fechaHasta.getDate() + 1)
 
 						const nombre = this.notificationEmployeeName(item)
@@ -1380,12 +1490,8 @@ export default {
 							start: fechaInicio.toISOString(),
 							end: fechaHasta.toISOString(),
 							allDay: true,
-							classNames: item.es_temprana ? ['event-pending-anticipada'] : ['event-pending'],
+							classNames: Number(item.es_temprana) === 1 ? ['event-pending-anticipada'] : ['event-pending'],
 
-							/*
-					 * Se conserva el UID para el avatar y para abrir
-					 * correctamente el detalle de la solicitud.
-					 */
 							nombre_empleado: item.Id_user || nombre,
 
 							extendedProps: {
@@ -1437,14 +1543,14 @@ export default {
 }
 
 .fc-event.event-approved {
-	background: #6fbf8b !important;
-	border-color: #4f9e6c !important;
+	background: #68b868 !important;
+	border-color: #1e8a46 !important;
 	color: #ffffff !important;
 }
 
 .fc-event.event-rejected {
-	background: #d98484 !important;
-	border-color: #bf5f5f !important;
+	background: #f04747 !important;
+	border-color: #912222 !important;
 	color: #ffffff !important;
 }
 .event-rejected .fc-event-title {
@@ -1462,6 +1568,56 @@ export default {
 	opacity: 0.8;
 }
 
+/* ========================================
+ * DÍAS FESTIVOS / INHÁBILES
+ * ======================================== */
+
+.fc-day-festivo {
+	position: relative;
+
+	/*
+	 * El color de fondo real se aplica en línea (inline style con
+	 * !important) desde onDayCellDidMount, para ganarle a las reglas
+	 * !important que FullCalendar aplica a "hoy" y a la selección.
+	 * Este valor queda solo como respaldo visual.
+	 */
+	background-color: #e3f5e6;
+	transition: background-color 0.15s ease;
+}
+
+.fc-day-festivo .fc-daygrid-day-number {
+	color: #2f6b45;
+	font-weight: 700;
+}
+
+.fc-day-festivo .fc-daygrid-day-frame {
+	position: relative;
+}
+
+.fc-festivo-label {
+	position: absolute;
+	right: 4px;
+	bottom: -50px;
+	left: 4px;
+
+	overflow: hidden;
+
+	color: #2f6b45;
+	font-size: 0.6rem;
+	font-style: normal;
+	font-weight: 600;
+	line-height: 1.15;
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	letter-spacing: 0.01em;
+
+	background: rgba(255, 255, 255, 0.55);
+	border-radius: 4px;
+	padding: 2px 4px 3px;
+
+	pointer-events: none;
+}
 </style>
 
 <style scoped>

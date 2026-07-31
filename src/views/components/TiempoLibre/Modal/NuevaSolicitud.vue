@@ -253,9 +253,8 @@ export default {
 		},
 
 		fechaExpiracionFormateada() {
-			const d = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
-			if (!d) return ''
-			return d.toLocaleDateString('es-MX')
+			if (!this.fechaVencimientoReal) return ''
+			return this.fechaVencimientoReal.toLocaleDateString('es-MX')
 		},
 
 		excedeFechaLimite() {
@@ -279,9 +278,9 @@ export default {
 		diasDentroDeVigencia() {
 			if (!this.fechaExpiracionAcumuladosVigente || !this.date?.start) return this.diasSolicitados
 
-			const limite = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
+			const limite = this.fechaVencimientoReal
 			if (!limite) return this.diasSolicitados
-			limite.setHours(0, 0, 0, 0)
+
 			const start = new Date(this.date.start)
 			start.setHours(0, 0, 0, 0)
 			const end = this.date.end ? new Date(this.date.end) : start
@@ -321,6 +320,14 @@ export default {
 				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
 				&& !this.esAusenciaAnticipada
 				&& this.diasSolicitados > this.TotalDias
+		},
+
+		fechaVencimientoReal() {
+			const d = this.parseFechaLocal(this.fechaExpiracionAcumuladosVigente)
+			if (!d) return null
+			d.setDate(d.getDate() - 1)
+			d.setHours(0, 0, 0, 0)
+			return d
 		},
 
 		periodItems() {

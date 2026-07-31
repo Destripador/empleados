@@ -108,6 +108,8 @@ class FestivosController extends BaseController {
 			);
 		}
 
+		// Los festivos creados manualmente desde la UI siempre son
+		// tipo 'fijo' y NO oficiales (oficial = 0 por default en el mapper).
 		$this->festivosMapper->createFestivo($nombre, $fecha);
 
 		return new DataResponse(
@@ -135,6 +137,12 @@ class FestivosController extends BaseController {
 			$fecha
 		);
 
+		// Nota: si este festivo es de tipo 'variable' (Constitución, Juárez,
+		// Revolución), su fecha se sobrescribirá de nuevo automáticamente
+		// el próximo 1 de enero por RecalcularFestivosVariablesJob, sin
+		// importar lo que se edite aquí manualmente. Eso queda advertido
+		// en la UI (modal de edición), no se fuerza nada aquí.
+
 		return new DataResponse(
 			['status' => 'ok'],
 			Http::STATUS_OK
@@ -148,6 +156,16 @@ class FestivosController extends BaseController {
 	): DataResponse {
 
 		$this->checkAccess(['admin', 'recursos_humanos']);
+
+		if ($this->festivosMapper->esOficial($id_festivo)) {
+			return new DataResponse(
+				[
+					'status' => 'error',
+					'message' => 'Los festivos oficiales no se pueden eliminar.'
+				],
+				Http::STATUS_FORBIDDEN
+			);
+		}
 
 		$this->festivosMapper->deleteById($id_festivo);
 
@@ -189,6 +207,7 @@ class FestivosController extends BaseController {
 			$fecha    = strlen($fechaRaw) === 10 ? substr($fechaRaw, 5) : $fechaRaw; // siempre MM-DD
 			if (!$nombre || !$fecha) continue;
 			if ($this->festivosMapper->existeFecha($fecha)) continue;
+			// Los festivos importados por XLSX también son 'fijo' y NO oficiales.
 			$this->festivosMapper->createFestivo($nombre, $fecha);
 			$creados++;
 		}
@@ -218,6 +237,7 @@ class FestivosController extends BaseController {
 	#[NoAdminRequired]
 	public function vaciarFestivos(): DataResponse {
 		$this->checkAccess(['admin', 'recursos_humanos']);
+		// deleteAll() ya preserva internamente los festivos oficiales.
 		$this->festivosMapper->deleteAll();
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}

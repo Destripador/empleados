@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\AppInfo;
 
+use OCA\Empleados\Command\SeedFestivosOficiales;
+use OCP\IDBConnection;
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
 use OCA\Empleados\Cron\RecordatorioPrimaVacacional;
 use OCA\Empleados\BackgroundJob\RecalcularVacacionesJob;
+use OCA\Empleados\Service\AniversarioSyncService;
+use OCA\Empleados\Db\historialvacacionesMapper;
+use OCA\Empleados\BackgroundJob\RecalcularFestivosVariablesJob;
 use OCA\Empleados\Dashboard\ReportesWidget;
 use OCA\Empleados\Helper\MailHelper;
 use OCA\Empleados\Notification\ComprasNotifier;
@@ -45,6 +50,13 @@ class Application extends App implements IBootstrap {
 		$context->registerDashboardWidget(ReportesWidget::class);
 		$context->registerNotifierService(ReportesNotifier::class);
 		$context->registerNotifierService(ComprasNotifier::class);
+		$context->registerJob(RecalcularFestivosVariablesJob::class);
+		$context->registerService(SeedFestivosOficiales::class, function($c) {
+			return new SeedFestivosOficiales(
+				$c->query(IDBConnection::class),
+				$c->query(\OCA\Empleados\Db\festivosMapper::class)
+			);
+		});
 	}
 
 	public function boot(IBootContext $context): void {
@@ -55,6 +67,10 @@ class Application extends App implements IBootstrap {
 
 			if (!$jobList->has(RecalcularVacacionesJob::class, null)) {
 				$jobList->add(RecalcularVacacionesJob::class);
+			}
+
+			if (!$jobList->has(RecalcularFestivosVariablesJob::class, null)) {
+				$jobList->add(RecalcularFestivosVariablesJob::class);
 			}
 
 			if (!$jobList->has(RecordatorioPrimaVacacional::class, null)) {
