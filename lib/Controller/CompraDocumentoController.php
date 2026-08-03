@@ -33,6 +33,7 @@ use OCP\Files\NotFoundException;
  * Controlador para generar el PDF de solicitud de compra.
  */
 class CompraDocumentoController extends Controller {
+	private const MAX_SIGNED_FILE_SIZE = 10485760;
 
 	private CompraSolicitudService $service;
 	private IUserSession $userSession;
@@ -460,8 +461,11 @@ class CompraDocumentoController extends Controller {
 			}
 
 			$userId = $user->getUID();
+			$data = $this->service->obtenerDetalle($id, $userId);
+			$solicitud = $data['solicitud']->jsonSerialize();
+			$this->assertCanManageOfficialDocuments($solicitud, $userId);
 
-			$generado = $this->generarPdfSolicitud($id, $userId);
+			$generado = $this->generarPdfSolicitud($id, $userId, $data);
 
 			$file = $this->guardarPdfEnArchivos(
 				$userId,
@@ -504,11 +508,11 @@ class CompraDocumentoController extends Controller {
 			return new DataResponse([
 				'success' => false,
 				'message' => 'No se pudo guardar el PDF: ' . $e->getMessage(),
-			], Http::STATUS_BAD_REQUEST);
+			], $this->errorStatus($e));
 		}
 	}
 
-	private function generarPdfSolicitud(int $id, string $userId): array {
+	private function generarPdfSolicitud(int $id, string $userId, ?array $detail = null): array {
 		$autoload = __DIR__ . '/../../vendor/autoload.php';
 
 		if (!file_exists($autoload)) {
@@ -521,7 +525,7 @@ class CompraDocumentoController extends Controller {
 			throw new Exception('La clase Dompdf no está disponible.');
 		}
 
-		$data = $this->service->obtenerDetalle($id, $userId);
+		$data = $detail ?? $this->service->obtenerDetalle($id, $userId);
 		$solicitud = $data['solicitud']->jsonSerialize();
 
 		$folio = (string)($solicitud['folio'] ?? ('Solicitud-' . $id));
@@ -634,6 +638,7 @@ class CompraDocumentoController extends Controller {
 
 			$data = $this->service->obtenerDetalle($id, $userId);
 			$solicitud = $data['solicitud']->jsonSerialize();
+			$this->assertCanManageOfficialDocuments($solicitud, $userId);
 
 			$uploadedFile = $this->request->getUploadedFile('archivo');
 
@@ -647,24 +652,23 @@ class CompraDocumentoController extends Controller {
 
 			$originalName = (string)($uploadedFile['name'] ?? 'documento-firmado.pdf');
 			$tmpName = (string)$uploadedFile['tmp_name'];
-			$mime = (string)($uploadedFile['type'] ?? '');
-
-			$this->validarArchivoFirmado($originalName, $mime);
-
-			$folio = (string)($solicitud['folio'] ?? ('Solicitud-' . $id));
-			$extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-
-			if ($extension === '') {
-				$extension = 'pdf';
-			}
-
-			$fileName = $this->safeFilename('Solicitud-compra-' . $folio . '-firmado.' . $extension);
 
 			$content = file_get_contents($tmpName);
 
 			if ($content === false || $content === '') {
 				throw new Exception('No se pudo leer el archivo subido.');
 			}
+
+			$validated = $this->validarArchivoFirmado(
+				$originalName,
+				(string)($uploadedFile['type'] ?? ''),
+				$content,
+				(int)($uploadedFile['size'] ?? 0)
+			);
+			$mime = $validated['mime'];
+			$extension = $validated['extension'];
+			$folio = (string)($solicitud['folio'] ?? ('Solicitud-' . $id));
+			$fileName = $this->safeFilename('Solicitud-compra-' . $folio . '-firmado.' . $extension);
 
 			$file = $this->guardarArchivoFirmado(
 				$userId,
@@ -676,7 +680,7 @@ class CompraDocumentoController extends Controller {
 			$this->solicitudMapper->updateSolicitud($id, [
 				'firmado_file_id' => $file->getId(),
 				'firmado_nombre' => $fileName,
-				'firmado_mime' => $mime ?: $this->mimeFromExtension($extension),
+				'firmado_mime' => $mime,
 				'firmado_subido_at' => date('Y-m-d H:i:s'),
 				'firmado_subido_by' => $userId,
 				'updated_by' => $userId,
@@ -691,7 +695,8 @@ class CompraDocumentoController extends Controller {
 				[
 					'file_id' => $file->getId(),
 					'file_name' => $fileName,
-					'mime' => $mime ?: $this->mimeFromExtension($extension),
+					'mime' => $mime,
+					'tamano' => strlen($content),
 				],
 				$userId
 			);
@@ -708,7 +713,7 @@ class CompraDocumentoController extends Controller {
 			return new DataResponse([
 				'success' => false,
 				'message' => 'No se pudo guardar el documento firmado: ' . $e->getMessage(),
-			], Http::STATUS_BAD_REQUEST);
+			], $this->errorStatus($e));
 		}
 	}
 
@@ -802,8 +807,23 @@ class CompraDocumentoController extends Controller {
 		return $file;
 	}
 
-	private function validarArchivoFirmado(string $fileName, string $mime): void {
-		$extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+	private function validarArchivoFirmado(
+		string $fileName,
+		string $declaredMime,
+		string $content,
+		int $reportedSize
+	): array {
+		$normalizedName = basename(str_replace('\\', '/', trim($fileName)));
+		if ($normalizedName === '' || strlen($normalizedName) > 255 || str_contains($fileName, "\0")) {
+			throw new Exception('El nombre del archivo no es válido.');
+		}
+
+		$size = strlen($content);
+		if ($size <= 0 || $reportedSize > self::MAX_SIGNED_FILE_SIZE || $size > self::MAX_SIGNED_FILE_SIZE) {
+			throw new Exception('El archivo firmado debe ser menor o igual a 10 MB.');
+		}
+
+		$extension = strtolower(pathinfo($normalizedName, PATHINFO_EXTENSION));
 
 		$allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
 		$allowedMimes = [
@@ -816,9 +836,61 @@ class CompraDocumentoController extends Controller {
 			throw new Exception('Solo se permiten archivos PDF, JPG o PNG.');
 		}
 
-		if ($mime !== '' && !in_array($mime, $allowedMimes, true)) {
+		if ($declaredMime !== '' && !in_array($declaredMime, $allowedMimes, true)) {
 			throw new Exception('El tipo de archivo no es válido.');
 		}
+
+		$mime = $this->detectDocumentMime($content);
+		if (!in_array($mime, $allowedMimes, true)) {
+			throw new Exception('El contenido del archivo no corresponde a un tipo permitido.');
+		}
+
+		$expectedMime = $this->mimeFromExtension($extension);
+		if ($mime !== $expectedMime) {
+			throw new Exception('La extensión no coincide con el contenido del archivo.');
+		}
+
+		return [
+			'name' => $normalizedName,
+			'extension' => $extension,
+			'mime' => $mime,
+			'size' => $size,
+		];
+	}
+
+	private function assertCanManageOfficialDocuments(array $solicitud, string $userId): void {
+		if (!$this->permisosService->canProcessPurchase($userId)) {
+			throw new Exception('No tienes permisos para administrar documentos de esta solicitud.');
+		}
+
+		if ((string)($solicitud['estado'] ?? '') !== 'autorizada') {
+			throw new Exception('Los documentos oficiales solo pueden modificarse en solicitudes autorizadas.');
+		}
+	}
+
+	private function detectDocumentMime(string $content): string {
+		if (strncmp($content, '%PDF-', 5) === 0) {
+			return 'application/pdf';
+		}
+		if (strncmp($content, "\x89PNG", 4) === 0) {
+			return 'image/png';
+		}
+		if (strncmp($content, "\xFF\xD8\xFF", 3) === 0) {
+			return 'image/jpeg';
+		}
+
+		if (function_exists('finfo_buffer')) {
+			$finfo = new \finfo(FILEINFO_MIME_TYPE);
+			return (string)$finfo->buffer($content);
+		}
+
+		return '';
+	}
+
+	private function errorStatus(\Throwable $e): int {
+		return stripos($e->getMessage(), 'permis') !== false
+			? Http::STATUS_FORBIDDEN
+			: Http::STATUS_BAD_REQUEST;
 	}
 
 	private function mimeFromExtension(string $extension): string {

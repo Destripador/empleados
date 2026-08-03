@@ -111,10 +111,6 @@ class reportetiempoMapper extends QBMapper {
 			];
 		}
 
-		if (empty($empresasBase)) {
-			return $this->crearRespuestaCostosVacia($periodo);
-		}
-
 		$metricasFinancieras = $this->getMetricasHonorariosCostos(
 			array_keys($empresasBase),
 			$inicio,
@@ -277,6 +273,26 @@ class reportetiempoMapper extends QBMapper {
 		}
 		unset($empleado);
 
+		foreach ($this->getReportesInternosPorEmpleado($inicio, $fin, $idEmpleadosExistentes) as $interno) {
+			$idEmpleado = (int)($interno['id_empleado'] ?? 0);
+			if (!isset($directorio[$idEmpleado])) continue;
+			if (!isset($empleados[$idEmpleado])) {
+				$empleados[$idEmpleado] = array_merge($this->crearIdentidadEmpleadoCostos($directorio[$idEmpleado]), [
+					'empresas_count' => 0,
+					'empresas' => [],
+				]);
+			}
+			$minutos = (float)($interno['total_minutos'] ?? 0);
+			$costo = ($minutos / 60) * (float)($directorio[$idEmpleado]['costo_hora'] ?? 0);
+			$actual = $empleados[$idEmpleado];
+			$empleados[$idEmpleado] = array_merge($actual, $this->normalizarMetricasCostosAgregadas(
+				(float)($actual['total_minutos'] ?? 0) + $minutos,
+				(float)($actual['minutos_cargables'] ?? 0),
+				(float)($actual['costo_laboral_real'] ?? 0) + $costo,
+				(float)($actual['costo_cargable_estimado'] ?? 0)
+			));
+		}
+
 		usort(
 			$empresas,
 			static fn (array $primera, array $segunda): int
@@ -300,6 +316,16 @@ class reportetiempoMapper extends QBMapper {
 			}
 		));
 		$kpis = $this->crearKpisCostos($empresas, count($empleados), count($lideres));
+		$totalMinutosEmpleados = array_sum(array_column($empleados, 'total_minutos'));
+		$minutosCargablesEmpleados = array_sum(array_column($empleados, 'minutos_cargables'));
+		$costoLaboralEmpleados = array_sum(array_column($empleados, 'costo_laboral_real'));
+		$costoCargableEmpleados = array_sum(array_column($empleados, 'costo_cargable_estimado'));
+		$kpis = array_merge($kpis, $this->normalizarMetricasCostosAgregadas(
+			(float)$totalMinutosEmpleados,
+			(float)$minutosCargablesEmpleados,
+			(float)$costoLaboralEmpleados,
+			(float)$costoCargableEmpleados
+		));
 
 		return [
 			'periodo' => $periodo,
@@ -309,6 +335,23 @@ class reportetiempoMapper extends QBMapper {
 			// Compatibilidad temporal con consumidores anteriores.
 			'lideres' => $lideres,
 		];
+	}
+
+	private function getReportesInternosPorEmpleado(string $inicio, string $fin, array $ids): array {
+		if ($ids === []) return [];
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('r.id_empleado')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->from($this->getTableName(), 'r')
+			->where($qb->expr()->in('r.id_empleado', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)))
+			->andWhere($qb->expr()->isNull('r.id_cliente'))
+			->andWhere($qb->expr()->gte('r.fecha_registro', $qb->createNamedParameter($inicio)))
+			->andWhere($qb->expr()->lte('r.fecha_registro', $qb->createNamedParameter($fin)))
+			->groupBy('r.id_empleado');
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		return $rows;
 	}
 
 	/**
@@ -414,9 +457,9 @@ class reportetiempoMapper extends QBMapper {
 				'r.fecha_registro',
 				$qb->createNamedParameter($fechaFin)
 			))
-			->andWhere($qb->expr()->neq(
-				'r.id_cliente',
-				$qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)
+			->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull('r.id_cliente'),
+				$qb->expr()->neq('r.id_cliente', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT))
 			))
 			->andWhere($actividadValida)
 			->groupBy('r.id_cliente', 'r.id_empleado');
@@ -1351,15 +1394,22 @@ class reportetiempoMapper extends QBMapper {
 	public function findById($id, int $limit = 20, int $offset = 0, $periodo_inicio = null, $periodo_fin = null, $anio = null): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
+		$qb->select('r.*')
+			->selectAlias('a.nombre', 'actividad_nombre')
+			->selectAlias('a.cargable', 'cargable')
+			->selectAlias('s.id_equipo', 'id_equipo')
+			->selectAlias('e.nombre_dispositivo', 'nombre_dispositivo')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
+			->leftJoin('r', 'soporte_historial', 's', "r.origen = 'soporte_ti' AND s.id_soporte = r.origen_id")
+			->leftJoin('s', 'inventario_computo', 'e', 'e.id_equipo = s.id_equipo')
 			->where(
 				$qb->expr()->eq(
-					'id_empleado',
+					'r.id_empleado',
 					$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
 				)
 			)
-			->orderBy('id_reporte', 'DESC');
+			->orderBy('r.id_reporte', 'DESC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 
@@ -1421,13 +1471,20 @@ class reportetiempoMapper extends QBMapper {
 
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
+		$qb->select('r.*')
+			->selectAlias('a.nombre', 'actividad_nombre')
+			->selectAlias('a.cargable', 'cargable')
+			->selectAlias('s.id_equipo', 'id_equipo')
+			->selectAlias('e.nombre_dispositivo', 'nombre_dispositivo')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
+			->leftJoin('r', 'soporte_historial', 's', "r.origen = 'soporte_ti' AND s.id_soporte = r.origen_id")
+			->leftJoin('s', 'inventario_computo', 'e', 'e.id_equipo = s.id_equipo')
 			->where($qb->expr()->in(
-				'id_empleado',
+				'r.id_empleado',
 				$qb->createNamedParameter($idEmpleados, IQueryBuilder::PARAM_INT_ARRAY)
 			))
-			->orderBy('id_reporte', 'DESC');
+			->orderBy('r.id_reporte', 'DESC');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 
@@ -1528,6 +1585,7 @@ class reportetiempoMapper extends QBMapper {
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
+		$qb->andWhere($qb->expr()->isNotNull('id_cliente'));
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -1653,6 +1711,7 @@ class reportetiempoMapper extends QBMapper {
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
+		$qb->andWhere($qb->expr()->isNotNull('id_cliente'));
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -1683,6 +1742,83 @@ class reportetiempoMapper extends QBMapper {
 			);
 
 		$qb->executeStatement();
+	}
+
+	public function findReportById(int $id): ?array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')->from($this->getTableName())
+			->where($qb->expr()->eq('id_reporte', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
+			->setMaxResults(1);
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+		return $row ?: null;
+	}
+
+	public function findByOrigin(string $origin, int $originId): ?array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')->from($this->getTableName())
+			->where($qb->expr()->eq('origen', $qb->createNamedParameter($origin)))
+			->andWhere($qb->expr()->eq('origen_id', $qb->createNamedParameter($originId, IQueryBuilder::PARAM_INT)))
+			->setMaxResults(1);
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+		return $row ?: null;
+	}
+
+	public function createIntegrated(array $data): int {
+		$now = date('Y-m-d H:i:s');
+		$qb = $this->db->getQueryBuilder();
+		$qb->insert($this->getTableName())->values([
+			'id_empleado' => $qb->createNamedParameter($data['id_empleado'], IQueryBuilder::PARAM_INT),
+			'id_cliente' => $qb->createNamedParameter(null),
+			'id_actividad' => $qb->createNamedParameter($data['id_actividad'], IQueryBuilder::PARAM_INT),
+			'descripcion' => $qb->createNamedParameter($data['descripcion']),
+			'tiempo_registrado' => $qb->createNamedParameter($data['tiempo_registrado']),
+			'fecha_registro' => $qb->createNamedParameter($data['fecha_registro']),
+			'origen' => $qb->createNamedParameter($data['origen']),
+			'origen_id' => $qb->createNamedParameter($data['origen_id'], IQueryBuilder::PARAM_INT),
+			'created_at' => $qb->createNamedParameter($now),
+			'updated_at' => $qb->createNamedParameter($now),
+		])->executeStatement();
+		return (int)$this->db->lastInsertId($this->getTableName());
+	}
+
+	public function updateIntegrated(string $origin, int $originId, array $data): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('id_empleado', $qb->createNamedParameter($data['id_empleado'], IQueryBuilder::PARAM_INT))
+			->set('id_cliente', $qb->createNamedParameter(null))
+			->set('id_actividad', $qb->createNamedParameter($data['id_actividad'], IQueryBuilder::PARAM_INT))
+			->set('descripcion', $qb->createNamedParameter($data['descripcion']))
+			->set('tiempo_registrado', $qb->createNamedParameter($data['tiempo_registrado']))
+			->set('fecha_registro', $qb->createNamedParameter($data['fecha_registro']))
+			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+			->where($qb->expr()->eq('origen', $qb->createNamedParameter($origin)))
+			->andWhere($qb->expr()->eq('origen_id', $qb->createNamedParameter($originId, IQueryBuilder::PARAM_INT)))
+			->executeStatement();
+	}
+
+	public function deleteByOrigin(string $origin, int $originId): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('origen', $qb->createNamedParameter($origin)))
+			->andWhere($qb->expr()->eq('origen_id', $qb->createNamedParameter($originId, IQueryBuilder::PARAM_INT)))
+			->executeStatement();
+	}
+
+	public function countOrphanSupportReports(): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->createFunction('COUNT(*)'))
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'soporte_historial', 's', 's.id_soporte = r.origen_id')
+			->where($qb->expr()->eq('r.origen', $qb->createNamedParameter('soporte_ti')))
+			->andWhere($qb->expr()->isNull('s.id_soporte'));
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+		return $count;
 	}
 
 	public function updateReporte($id_reporte, $id_actividad, $id_empleado, $descripcion, $tiemporegistrado, $fecha): void {

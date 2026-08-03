@@ -13,6 +13,7 @@ use OCA\Empleados\Service\AniversarioSyncService;
 use OCA\Empleados\Db\historialvacacionesMapper;
 use OCA\Empleados\BackgroundJob\RecalcularFestivosVariablesJob;
 use OCA\Empleados\Dashboard\ReportesWidget;
+use OCA\Empleados\Dashboard\SoporteEquipoWidget;
 use OCA\Empleados\Helper\MailHelper;
 use OCA\Empleados\Notification\ComprasNotifier;
 use OCA\Empleados\Notification\ReportesNotifier;
@@ -48,9 +49,10 @@ class Application extends App implements IBootstrap {
 			);
 		});
 		$context->registerDashboardWidget(ReportesWidget::class);
+		$context->registerDashboardWidget(SoporteEquipoWidget::class);
 		$context->registerNotifierService(ReportesNotifier::class);
 		$context->registerNotifierService(ComprasNotifier::class);
-		$context->registerJob(RecalcularFestivosVariablesJob::class);
+		# $context->registerJob(RecalcularFestivosVariablesJob::class);
 		$context->registerService(SeedFestivosOficiales::class, function($c) {
 			return new SeedFestivosOficiales(
 				$c->query(IDBConnection::class),

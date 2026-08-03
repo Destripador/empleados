@@ -14,10 +14,76 @@ class InventarioComputoMapper extends QBMapper {
 		parent::__construct($db, 'inventario_computo', InventarioComputo::class);
 	}
 
-	public function findAll(?string $search = null, ?string $estado = null, ?int $idEmpleado = null): array {
+	public function findAll(
+		?string $search = null,
+		?string $estado = null,
+		?int $idEmpleado = null,
+		?string $asignacion = null,
+		?int $idModelo = null,
+		?int $limit = 25,
+		int $offset = 0
+	): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->selectAlias('c.id_equipo', 'id_equipo')
+		$this->selectEquipoDetalle($qb)
+			->from($this->getTableName(), 'c')
+			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
+			->leftJoin('c', 'empleados', 'e', $qb->expr()->eq('e.Equipo_asignado', 'c.id_equipo'))
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->orderBy('c.id_equipo', 'DESC')
+			->setFirstResult($offset);
+		if ($limit !== null) {
+			$qb->setMaxResults($limit);
+		}
+
+		$this->applyEquipoFilters($qb, $search, $estado, $idEmpleado, $asignacion, $idModelo);
+
+		$result = $qb->executeQuery();
+		$data = $result->fetchAll();
+		$result->closeCursor();
+
+		return $data;
+	}
+
+	public function countAll(?string $search = null, ?string $estado = null, ?int $idEmpleado = null, ?string $asignacion = null, ?int $idModelo = null): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->createFunction('COUNT(DISTINCT c.id_equipo)'))
+			->from($this->getTableName(), 'c')
+			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
+			->leftJoin('c', 'empleados', 'e', $qb->expr()->eq('e.Equipo_asignado', 'c.id_equipo'))
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'));
+
+		$this->applyEquipoFilters($qb, $search, $estado, $idEmpleado, $asignacion, $idModelo);
+		$result = $qb->executeQuery();
+		$total = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $total;
+	}
+
+	public function findAssignedEmployees(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectDistinct('e.Id_empleados AS id_empleado')
+			->addSelect('e.Id_user AS uid', 'u.displayname AS displayname')
+			->from('empleados', 'e')
+			->innerJoin('e', $this->getTableName(), 'c', $qb->expr()->eq('c.id_equipo', 'e.Equipo_asignado'))
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->orderBy('u.displayname', 'ASC')
+			->addOrderBy('e.Id_user', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static fn(array $row): array => [
+			'id_empleado' => (int)$row['id_empleado'],
+			'uid' => (string)$row['uid'],
+			'displayname' => (string)($row['displayname'] ?: $row['uid']),
+		], $rows);
+	}
+
+	private function selectEquipoDetalle(IQueryBuilder $qb): IQueryBuilder {
+		return $qb->selectAlias('c.id_equipo', 'id_equipo')
 			->selectAlias('c.id_empleado', 'id_empleado')
 			->selectAlias('c.id_modelo', 'id_modelo')
 			->selectAlias('c.nombre_dispositivo', 'nombre_dispositivo')
@@ -36,21 +102,10 @@ class InventarioComputoMapper extends QBMapper {
 			->selectAlias('e.Id_empleados', 'empleado_id')
 			->selectAlias('e.Id_user', 'empleado_uid')
 			->selectAlias('e.Numero_empleado', 'numero_empleado')
-			->from($this->getTableName(), 'c')
-			->leftJoin(
-				'c',
-				'inventario_modelos',
-				'm',
-				$qb->expr()->eq('m.id_modelo', 'c.id_modelo')
-			)
-			->leftJoin(
-				'c',
-				'empleados',
-				'e',
-				$qb->expr()->eq('e.Equipo_asignado', 'c.id_equipo')
-			)
-			->orderBy('c.id_equipo', 'DESC');
+			->selectAlias('u.displayname', 'empleado_displayname');
+	}
 
+	private function applyEquipoFilters(IQueryBuilder $qb, ?string $search, ?string $estado, ?int $idEmpleado, ?string $asignacion, ?int $idModelo): void {
 		if ($search !== null && trim($search) !== '') {
 			$like = '%' . $this->db->escapeLikeParameter(trim($search)) . '%';
 
@@ -62,6 +117,7 @@ class InventarioComputoMapper extends QBMapper {
 					$qb->expr()->iLike('m.marca', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
 					$qb->expr()->iLike('m.modelo', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
 					$qb->expr()->iLike('e.Id_user', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('u.displayname', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
 					$qb->expr()->iLike('e.Numero_empleado', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR))
 				)
 			);
@@ -79,20 +135,27 @@ class InventarioComputoMapper extends QBMapper {
 			);
 		}
 
-		$result = $qb->executeQuery();
-		$data = $result->fetchAll();
-		$result->closeCursor();
+		if ($asignacion === 'asignado') {
+			$qb->andWhere($qb->expr()->isNotNull('e.Id_empleados'));
+		} elseif ($asignacion === 'sin_asignar') {
+			$qb->andWhere($qb->expr()->isNull('e.Id_empleados'));
+		}
 
-		return $data;
+		if ($idModelo !== null) {
+			$qb->andWhere($qb->expr()->eq('c.id_modelo', $qb->createNamedParameter($idModelo, IQueryBuilder::PARAM_INT)));
+		}
 	}
 
 	public function findById(int $id): ?array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
+		$this->selectEquipoDetalle($qb)
+			->from($this->getTableName(), 'c')
+			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
+			->leftJoin('c', 'empleados', 'e', $qb->expr()->eq('e.Equipo_asignado', 'c.id_equipo'))
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where(
-				$qb->expr()->eq('id_equipo', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT))
+				$qb->expr()->eq('c.id_equipo', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT))
 			)
 			->setMaxResults(1);
 
@@ -104,7 +167,7 @@ class InventarioComputoMapper extends QBMapper {
 	}
 
 	public function findByEmpleado(int $idEmpleado): array {
-		return $this->findAll(null, null, $idEmpleado);
+		return $this->findAll(null, null, $idEmpleado, null, null, null, 0);
 	}
 
 	public function create(array $data): int {

@@ -22,6 +22,8 @@ use OCA\Empleados\Db\ausenciasMapper;
 use OCA\Empleados\Db\userahorroMapper;
 use OCA\Empleados\Db\ausencias;
 use OCA\Empleados\Db\empleados;
+use OCA\Empleados\Db\contactoemergencia;
+use OCA\Empleados\Db\contactoemergenciaMapper;
 use OCA\Empleados\Db\departamentos;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\Db\userahorro;
@@ -40,6 +42,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 
 use OCA\Empleados\Service\PermisosService;
 use OCA\Empleados\Service\AniversarioSyncService;
+use OCA\Empleados\Service\InventarioMovimientoService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -61,8 +64,10 @@ class EmpleadosController extends BaseController {
     protected $l10n;
     protected $equiposMapper;
     protected $historialvacacionesMapper;
+    protected contactoemergenciaMapper $contactoemergenciaMapper;
     protected PermisosService $permisosService;
     private AniversarioSyncService $aniversarioSyncService;
+    private InventarioMovimientoService $inventarioMovimientoService;
 
     protected IRootFolder $rootFolder;
 
@@ -82,8 +87,10 @@ class EmpleadosController extends BaseController {
         IAvatarManager $avatarManager,
         equiposMapper $equiposMapper,
         historialvacacionesMapper $historialvacacionesMapper,
+        contactoemergenciaMapper $contactoemergenciaMapper,
         PermisosService $permisosService,
-        AniversarioSyncService $aniversarioSyncService
+        AniversarioSyncService $aniversarioSyncService,
+        InventarioMovimientoService $inventarioMovimientoService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -102,9 +109,11 @@ class EmpleadosController extends BaseController {
         $this->rootFolder = $rootFolder;
 
         $this->equiposMapper = $equiposMapper;
+        $this->contactoemergenciaMapper = $contactoemergenciaMapper;
 
         $this->permisosService = $permisosService;
         $this->aniversarioSyncService = $aniversarioSyncService;
+        $this->inventarioMovimientoService = $inventarioMovimientoService;
     }
 
     /**
@@ -341,6 +350,7 @@ class EmpleadosController extends BaseController {
                 $group->removeUser($user);
             }
             
+			$this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
 			$this->empleadosMapper->deleteByIdEmpleado($id_empleados);
             $this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
             $this->organigramaMapper->EliminarPorEmpleado($id_empleados);
@@ -427,17 +437,25 @@ class EmpleadosController extends BaseController {
         $ingresoAnterior = $empBefore[0]['Ingreso'] ?? null;
         $oldUid    = $empBefore[0]['Id_user'] ?? null;
         $oldEquipo = $empBefore[0]['Id_equipo'] ?? null;
+		$equipoComputoAnterior = $this->normalizarEquipoComputoId($empBefore[0]['Equipo_asignado'] ?? null);
+		$equipoComputoNuevo = $this->normalizarEquipoComputoId($equipoasignado);
 
         // 1) Aplica cambios en BD (empleado + ausencias)
-        $this->empleadosMapper->CambiosEmpleado(
-            $id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio,
-            $gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado,
-            $equipo, $sueldo
-        );
-
-        $this->ausenciasMapper->updateAusenciasById(
-            (int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
-        );
+		$this->inventarioMovimientoService->ejecutarCambioAsignacion(
+			(int)$id_empleados,
+			$equipoComputoAnterior,
+			$equipoComputoNuevo,
+			function () use ($id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio, $gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado, $equipo, $sueldo, $id_aniversario, $dias_disponibles): void {
+				$this->empleadosMapper->CambiosEmpleado(
+					$id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio,
+					$gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado,
+					$equipo, $sueldo
+				);
+				$this->ausenciasMapper->updateAusenciasById(
+					(int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
+				);
+			}
+		);
 
         // 1.5) Sincroniza periodos SOLO si cambió el ingreso, y una sola vez
         if (!empty($ingreso) && $ingresoAnterior !== $ingreso) {
@@ -506,12 +524,136 @@ class EmpleadosController extends BaseController {
         return new DataResponse(Http::STATUS_OK);
     }
 
+    #[UseSession]
+    #[NoAdminRequired]
+    public function listarContactosEmergencia(int $id_empleado): DataResponse {
+        $this->requireHumanResourcesAccess();
+		if ($id_empleado <= 0) {
+			return new DataResponse(['message' => 'Identificador de empleado inválido'], Http::STATUS_BAD_REQUEST);
+		}
+        if (!$this->empleadoExiste($id_empleado)) {
+            return new DataResponse(['message' => 'Empleado no encontrado'], Http::STATUS_NOT_FOUND);
+        }
+        return new DataResponse(['contactos' => array_map([$this, 'contactoToArray'], $this->contactoemergenciaMapper->findByEmpleado($id_empleado))]);
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function crearContactoEmergencia(int $id_empleado, string $nombre, string $relacion, string $numero_contacto, string $medio_alternativo = '', string $tipo_ayuda = '', string $notas = '', bool $es_principal = false): DataResponse {
+        $this->requireHumanResourcesAccess();
+		if ($id_empleado <= 0) {
+			return new DataResponse(['message' => 'Identificador de empleado inválido'], Http::STATUS_BAD_REQUEST);
+		}
+        if (!$this->empleadoExiste($id_empleado)) {
+            return new DataResponse(['message' => 'Empleado no encontrado'], Http::STATUS_NOT_FOUND);
+        }
+        $values = $this->validarContacto($nombre, $relacion, $numero_contacto, $medio_alternativo, $tipo_ayuda, $notas);
+        if (isset($values['error'])) return new DataResponse(['message' => $values['error']], Http::STATUS_BAD_REQUEST);
+		$contact = new contactoemergencia();
+		$contact->setIdEmpleado($id_empleado);
+		$this->aplicarContacto($contact, $values, $es_principal);
+		$contact->setOrden(count($this->contactoemergenciaMapper->findByEmpleado($id_empleado)));
+		$contact->setCreatedAt(date('Y-m-d H:i:s'));
+		$saved = $this->contactoemergenciaMapper->saveContact($contact);
+
+		return new DataResponse(['contacto' => $this->contactoToArray($saved)], Http::STATUS_CREATED);
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function actualizarContactoEmergencia(int $id, int $id_empleado, string $nombre, string $relacion, string $numero_contacto, string $medio_alternativo = '', string $tipo_ayuda = '', string $notas = '', bool $es_principal = false): DataResponse {
+        $this->requireHumanResourcesAccess();
+		if ($id <= 0 || $id_empleado <= 0) {
+			return new DataResponse(['message' => 'Identificador inválido'], Http::STATUS_BAD_REQUEST);
+		}
+        $values = $this->validarContacto($nombre, $relacion, $numero_contacto, $medio_alternativo, $tipo_ayuda, $notas);
+        if (isset($values['error'])) return new DataResponse(['message' => $values['error']], Http::STATUS_BAD_REQUEST);
+        try {
+            $contact = $this->contactoemergenciaMapper->findForEmpleado($id, $id_empleado);
+            $this->aplicarContacto($contact, $values, $es_principal);
+            return new DataResponse(['contacto' => $this->contactoToArray($this->contactoemergenciaMapper->saveContact($contact))]);
+        } catch (\OCP\AppFramework\Db\DoesNotExistException) {
+            return new DataResponse(['message' => 'Contacto no encontrado'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function eliminarContactoEmergencia(int $id, int $id_empleado): DataResponse {
+        $this->requireHumanResourcesAccess();
+		if ($id <= 0 || $id_empleado <= 0) {
+			return new DataResponse(['message' => 'Identificador inválido'], Http::STATUS_BAD_REQUEST);
+		}
+        try {
+            $this->contactoemergenciaMapper->delete($this->contactoemergenciaMapper->findForEmpleado($id, $id_empleado));
+            return new DataResponse([], Http::STATUS_OK);
+        } catch (\OCP\AppFramework\Db\DoesNotExistException) {
+            return new DataResponse(['message' => 'Contacto no encontrado'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function marcarContactoEmergenciaPrincipal(int $id, int $id_empleado): DataResponse {
+        $this->requireHumanResourcesAccess();
+		if ($id <= 0 || $id_empleado <= 0) {
+			return new DataResponse(['message' => 'Identificador inválido'], Http::STATUS_BAD_REQUEST);
+		}
+        try {
+            return new DataResponse(['contacto' => $this->contactoToArray($this->contactoemergenciaMapper->setPrincipal($id, $id_empleado))]);
+        } catch (\OCP\AppFramework\Db\DoesNotExistException) {
+            return new DataResponse(['message' => 'Contacto no encontrado'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    private function empleadoExiste(int $idEmpleado): bool {
+        return !empty($this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string)$idEmpleado));
+    }
+
+    private function validarContacto(string ...$fields): array {
+        [$nombre, $relacion, $numero, $alternativo, $ayuda, $notas] = array_map('trim', $fields);
+        if ($nombre === '' || $relacion === '' || $numero === '') return ['error' => 'Nombre, relación y número son obligatorios'];
+        $limits = [200, 120, 80, 255, 255, 2000];
+        foreach ([$nombre, $relacion, $numero, $alternativo, $ayuda, $notas] as $i => $value) {
+            if (mb_strlen($value) > $limits[$i]) return ['error' => 'Uno de los campos excede la longitud permitida'];
+        }
+        return compact('nombre', 'relacion', 'numero', 'alternativo', 'ayuda', 'notas');
+    }
+
+    private function aplicarContacto(contactoemergencia $contact, array $values, bool $principal): void {
+        $contact->setNombre($values['nombre']);
+        $contact->setRelacion($values['relacion']);
+        $contact->setNumeroContacto($values['numero']);
+        $contact->setMedioAlternativo($values['alternativo'] ?: null);
+        $contact->setTipoAyuda($values['ayuda'] ?: null);
+        $contact->setNotas($values['notas'] ?: null);
+        $contact->setEsPrincipal($principal ? 1 : 0);
+        $contact->setUpdatedAt(date('Y-m-d H:i:s'));
+    }
+
+    private function contactoToArray(contactoemergencia $contact): array {
+        return [
+            'id' => $contact->getId(), 'id_empleado' => $contact->getIdEmpleado(),
+            'nombre' => $contact->getNombre(), 'relacion' => $contact->getRelacion(),
+            'numero_contacto' => $contact->getNumeroContacto(), 'medio_alternativo' => $contact->getMedioAlternativo(),
+            'tipo_ayuda' => $contact->getTipoAyuda(), 'notas' => $contact->getNotas(),
+            'es_principal' => (bool)$contact->getEsPrincipal(), 'orden' => $contact->getOrden(),
+        ];
+    }
+
     private function requireHumanResourcesAccess(): void {
         $this->permisosService->requireCanSeeAny([
             'empleados.hr',
             'empleados.admin',
         ]);
     }
+
+	private function normalizarEquipoComputoId(mixed $value): ?int {
+		if ($value === null || $value === '') return null;
+		if (!is_scalar($value)) return null;
+		$id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+		return $id === false ? null : (int)$id;
+	}
 
     /**
      * Convierte fechas de Excel a formato `Y-m-d`.

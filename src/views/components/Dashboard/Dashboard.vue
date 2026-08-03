@@ -137,6 +137,8 @@
 				</div>
 
 				<div class="right-column">
+					<SoporteEquipoDashboardWidget v-if="showEquipmentSupportWidget" class="panel" />
+
 					<div
 						v-if="timeReportsEnabled"
 						class="panel today-panel"
@@ -268,6 +270,10 @@ import Reload from 'vue-material-design-icons/Reload.vue'
 import Laptop from 'vue-material-design-icons/Laptop.vue'
 import ViewList from 'vue-material-design-icons/ViewList.vue'
 
+import inventarioService from '../../../services/inventarioService.js'
+import permissionsMixin from '../../../mixins/permissions.js'
+import SoporteEquipoDashboardWidget from '../../../Dashboard/SoporteEquipoDashboardWidget.vue'
+
 export default {
 	name: 'Dashboard',
 
@@ -285,8 +291,11 @@ export default {
 		OfficeBuilding,
 		Reload,
 		Laptop,
+		SoporteEquipoDashboardWidget,
 		ViewList,
 	},
+
+	mixins: [permissionsMixin],
 
 	inject: {
 		groupuser: { default: () => ({}) },
@@ -303,8 +312,7 @@ export default {
 			areas: [],
 			puestos: [],
 			equipos: [],
-			inventarioEquipos: [],
-			inventarioModelos: [],
+			inventoryTotal: 0,
 			estadoHoy: null,
 		}
 	},
@@ -362,6 +370,11 @@ export default {
 		inventoryEnabled() {
 			return this.isTruthy(this.configuraciones?.modulo_inventario)
 				|| this.isTruthy(this.configuraciones?.modulo_soporte)
+		},
+
+		showEquipmentSupportWidget() {
+			return this.isTruthy(this.configuraciones?.modulo_inventario)
+				&& this.canSeeAny(['inventario', 'soporte'])
 		},
 
 		enabledModules() {
@@ -450,11 +463,11 @@ export default {
 				},
 			]
 
-			if (this.inventoryEnabled && this.isAdmin) {
+			if (this.showEquipmentSupportWidget && this.isAdmin) {
 				base.push({
 					key: 'devices',
 					label: t('empleados', 'Devices'),
-					value: this.inventarioEquipos.length,
+					value: this.inventoryTotal,
 					description: t('empleados', 'IT assets'),
 					icon: Laptop,
 				})
@@ -562,7 +575,7 @@ export default {
 				},
 				{
 					label: t('empleados', 'IT devices'),
-					value: this.inventoryEnabled ? this.inventarioEquipos.length : '-',
+					value: this.showEquipmentSupportWidget ? this.inventoryTotal : '-',
 					description: t('empleados', 'Registered company devices'),
 				},
 			]
@@ -681,8 +694,8 @@ export default {
 				this.puestos = this.extractArray(puestos)
 				this.equipos = this.extractArray(equipos)
 
-				if (this.inventoryEnabled) {
-					await this.loadInventory()
+				if (this.showEquipmentSupportWidget) {
+					await this.loadInventorySummary()
 				}
 			} catch (err) {
 				this.resetAdminData()
@@ -691,18 +704,13 @@ export default {
 			}
 		},
 
-		async loadInventory() {
+		async loadInventorySummary() {
+			if (!this.showEquipmentSupportWidget) return
 			try {
-				const [equipos, modelos] = await Promise.all([
-					axios.get(generateUrl('/apps/empleados/GetInventarioComputo')),
-					axios.get(generateUrl('/apps/empleados/GetInventarioModelos')),
-				])
-
-				this.inventarioEquipos = this.extractArray(equipos, 'data')
-				this.inventarioModelos = this.extractArray(modelos, 'data')
+				const response = await inventarioService.getEquipos({ limit: 1, offset: 0 })
+				this.inventoryTotal = Number(response?.total || 0)
 			} catch (err) {
-				this.inventarioEquipos = []
-				this.inventarioModelos = []
+				this.inventoryTotal = 0
 			}
 		},
 
@@ -764,8 +772,7 @@ export default {
 			this.areas = []
 			this.puestos = []
 			this.equipos = []
-			this.inventarioEquipos = []
-			this.inventarioModelos = []
+			this.inventoryTotal = 0
 		},
 	},
 }

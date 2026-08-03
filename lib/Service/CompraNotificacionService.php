@@ -119,6 +119,52 @@ class CompraNotificacionService {
 		}
 	}
 
+	public function notificarAprobadorActual($solicitud, string $approverUid, string $role): void {
+		$user = $this->userManager->get($approverUid);
+		if ($user === null || !$user->isEnabled()) {
+			$this->logger->warning('No se pudo notificar al aprobador actual de la compra.', [
+				'app' => 'empleados',
+				'user' => $approverUid,
+				'role' => $role,
+			]);
+			return;
+		}
+
+		$idSolicitud = (string)$this->readSolicitudValue(
+			$solicitud,
+			['getIdSolicitud', 'getId'],
+			['id_solicitud', 'id'],
+			''
+		);
+		$folio = (string)$this->readSolicitudValue($solicitud, ['getFolio'], ['folio'], '');
+		$folio = $folio !== '' ? $folio : ($idSolicitud !== '' ? 'Solicitud #' . $idSolicitud : 'Solicitud');
+		$titulo = (string)$this->readSolicitudValue($solicitud, ['getTitulo'], ['titulo'], 'Sin título');
+		$solicitante = (string)$this->readSolicitudValue(
+			$solicitud,
+			['getSolicitanteNombre'],
+			['solicitante_nombre', 'id_user'],
+			'Solicitante'
+		);
+		$monto = (string)$this->readSolicitudValue(
+			$solicitud,
+			['getTotalInclIva', 'getMontoFinal', 'getMontoEstimado'],
+			['total_incl_iva', 'monto_final', 'monto_estimado'],
+			''
+		);
+		$link = $this->urlGenerator->getAbsoluteURL('/index.php/apps/empleados/#/compras');
+
+		$this->sendNextcloudNotification(
+			$approverUid,
+			$idSolicitud,
+			$folio,
+			$titulo,
+			$solicitante,
+			$link,
+			$role
+		);
+		$this->sendMailNotification($user, $folio, $titulo, $solicitante, $monto, $link);
+	}
+
 	private function getApproverUsers(string $excludeUserId): array {
 		$users = [];
 
@@ -153,7 +199,8 @@ class CompraNotificacionService {
 		string $folio,
 		string $titulo,
 		string $solicitante,
-		string $link
+		string $link,
+		string $role = ''
 	): void {
 		try {
 			$notification = $this->notificationManager->createNotification();
@@ -167,6 +214,7 @@ class CompraNotificacionService {
 					'folio' => $folio,
 					'titulo' => $titulo,
 					'solicitante' => $solicitante,
+					'rol' => $role,
 				])
 				->setLink($link);
 
@@ -395,7 +443,61 @@ class CompraNotificacionService {
 			$monto,
 			$aprobadorUserId,
 			$comentario,
+			$link,
+			'Tu solicitud de compra fue autorizada.'
+		);
+	}
+
+	public function notificarSolicitudRechazada($solicitud, string $aprobadorUserId, ?string $comentario = null): void {
+		$requesterUid = (string)$this->readSolicitudValue(
+			$solicitud,
+			['getIdUser'],
+			['id_user', 'created_by'],
+			''
+		);
+		$user = $requesterUid !== '' ? $this->userManager->get($requesterUid) : null;
+		if ($user === null || !$user->isEnabled()) {
+			$this->logger->warning('No se pudo notificar el rechazo de la solicitud de compra.', [
+				'app' => 'empleados',
+				'user' => $requesterUid,
+			]);
+			return;
+		}
+
+		$idSolicitud = (string)$this->readSolicitudValue($solicitud, ['getIdSolicitud'], ['id_solicitud'], '');
+		$folio = (string)$this->readSolicitudValue($solicitud, ['getFolio'], ['folio'], 'Solicitud');
+		$titulo = (string)$this->readSolicitudValue($solicitud, ['getTitulo'], ['titulo'], 'Sin título');
+		$monto = (string)$this->readSolicitudValue(
+			$solicitud,
+			['getTotalInclIva', 'getMontoFinal', 'getMontoEstimado'],
+			['total_incl_iva', 'monto_final', 'monto_estimado'],
+			''
+		);
+		$link = $this->urlGenerator->getAbsoluteURL('/index.php/apps/empleados/#/compras');
+
+		$this->sendNextcloudStatusNotification(
+			$requesterUid,
+			$idSolicitud,
+			'compra_solicitud_rechazada',
+			[
+				'folio' => $folio,
+				'titulo' => $titulo,
+				'aprobador' => $aprobadorUserId,
+				'comentario' => $comentario ?: '',
+			],
 			$link
+		);
+		$this->sendMailStatusNotification(
+			$user,
+			'Solicitud de compra rechazada',
+			sprintf('Tu solicitud de compra fue rechazada: %s', $folio),
+			$folio,
+			$titulo,
+			$monto,
+			$aprobadorUserId,
+			$comentario,
+			$link,
+			'Tu solicitud de compra fue rechazada.'
 		);
 	}
 
@@ -437,7 +539,8 @@ class CompraNotificacionService {
 		string $monto,
 		string $aprobador,
 		?string $comentario,
-		string $link
+		string $link,
+		string $statusText
 	): void {
 		$email = $user->getEMailAddress();
 
@@ -516,8 +619,8 @@ class CompraNotificacionService {
 			$emailTemplate->addHeading($heading);
 
 			$emailTemplate->addBodyText(
-				'Tu solicitud de compra fue autorizada.',
-				'Tu solicitud de compra fue autorizada.'
+				$statusText,
+				$statusText
 			);
 
 			$emailTemplate->addBodyText($detalleHtml, $detallePlain);

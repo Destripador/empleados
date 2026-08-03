@@ -122,36 +122,52 @@
 
 		<br>
 
-		<!-- Emergency contact -->
-		<div class="emergency-contact">
-			<div class="external-label">
-				<label for="Contacto_emergencia" class="labeltype">
-					<Badgeaccountoutline :size="20" />
-					{{ t('empleados', 'Emergency contact name') }}
-				</label>
-				<input
-					id="Contacto_emergencia"
-					v-model="Contacto_emergencia"
-					type="text"
-					:disabled="!show"
-					class="inputtype">
+		<section class="emergency-contacts">
+			<div class="section-heading">
+				<div>
+					<h3>{{ t('empleados', 'Emergency contacts') }}</h3>
+					<p>{{ t('empleados', 'People to contact in case of an emergency.') }}</p>
+				</div>
+				<NcButton v-if="show" type="secondary" @click="openContactDialog()">
+					{{ t('empleados', 'Add contact') }}
+				</NcButton>
 			</div>
-
-			<div class="external-label">
-				<label for="Numero_emergencia" class="labeltype">
-					<Badgeaccountoutline :size="20" />
-					{{ t('empleados', 'Emergency contact number') }}
-				</label>
-				<input
-					id="Numero_emergencia"
-					v-model="Numero_emergencia"
-					type="text"
-					:disabled="!show"
-					class="inputtype">
+			<NcLoadingIcon v-if="loadingContacts" :size="32" />
+			<p v-else-if="contacts.length === 0" class="empty-state">
+				{{ t('empleados', 'No emergency contacts registered.') }}
+			</p>
+			<div v-else class="contact-grid">
+				<article v-for="contact in contacts" :key="contact.id" class="contact-card">
+					<div class="contact-title">
+						<div><strong>{{ contact.nombre }}</strong><span>{{ contact.relacion }}</span></div>
+						<span v-if="contact.es_principal" class="primary-badge">{{ t('empleados', 'Primary contact') }}</span>
+					</div>
+					<dl>
+						<div><dt>{{ t('empleados', 'Contact number') }}</dt><dd>{{ contact.numero_contacto }}</dd></div>
+						<div v-if="contact.tipo_ayuda">
+							<dt>{{ t('empleados', 'Help type') }}</dt><dd>{{ contact.tipo_ayuda }}</dd>
+						</div>
+						<div v-if="contact.medio_alternativo">
+							<dt>{{ t('empleados', 'Alternative contact method') }}</dt><dd>{{ contact.medio_alternativo }}</dd>
+						</div>
+						<div v-if="contact.notas">
+							<dt>{{ t('empleados', 'Notes') }}</dt><dd>{{ contact.notas }}</dd>
+						</div>
+					</dl>
+					<div v-if="show" class="contact-actions">
+						<NcButton type="tertiary" @click="openContactDialog(contact)">
+							{{ t('empleados', 'Edit') }}
+						</NcButton>
+						<NcButton v-if="!contact.es_principal" type="tertiary" @click="markPrimary(contact)">
+							{{ t('empleados', 'Mark as primary') }}
+						</NcButton>
+						<NcButton type="error" @click="confirmDelete(contact)">
+							{{ t('empleados', 'Delete') }}
+						</NcButton>
+					</div>
+				</article>
 			</div>
-
-			<br>
-		</div>
+		</section>
 
 		<br>
 
@@ -165,6 +181,43 @@
 				{{ t('empleados', 'Apply changes') }}
 			</NcButton>
 		</div>
+
+		<NcDialog :open.sync="showContactDialog"
+			is-form
+			:buttons="contactDialogButtons"
+			:name="editingContact ? t('empleados', 'Edit emergency contact') : t('empleados', 'Add emergency contact')"
+			@submit="saveContact">
+			<div class="contact-form">
+				<label>{{ t('empleados', 'Full name') }} *<input v-model="contactForm.nombre"
+					class="inputtype"
+					maxlength="200"
+					required></label>
+				<label>{{ t('empleados', 'Relationship') }} *<input v-model="contactForm.relacion"
+					class="inputtype"
+					maxlength="120"
+					required></label>
+				<label>{{ t('empleados', 'Contact number') }} *<input v-model="contactForm.numero_contacto"
+					class="inputtype"
+					maxlength="80"
+					required></label>
+				<label>{{ t('empleados', 'Alternative contact method') }}<input v-model="contactForm.medio_alternativo" class="inputtype" maxlength="255"></label>
+				<label>{{ t('empleados', 'Help type') }}<input v-model="contactForm.tipo_ayuda"
+					class="inputtype"
+					maxlength="255"
+					:placeholder="t('empleados', 'For example: medical contact or transportation')"></label>
+				<label class="form-wide">{{ t('empleados', 'Notes') }}<textarea v-model="contactForm.notas" class="inputtype contact-notes" maxlength="2000" /></label>
+				<NcCheckboxRadioSwitch v-model="contactForm.es_principal" class="form-wide" type="switch">
+					{{ t('empleados', 'Primary contact') }}
+				</NcCheckboxRadioSwitch>
+				<p v-if="formError" class="form-error form-wide">
+					{{ formError }}
+				</p>
+			</div>
+		</NcDialog>
+		<NcDialog :open.sync="showDeleteDialog"
+			:name="t('empleados', 'Delete emergency contact?')"
+			:message="t('empleados', 'This emergency contact will be permanently deleted.')"
+			:buttons="deleteDialogButtons" />
 	</div>
 </template>
 
@@ -183,8 +236,13 @@ import CakeVariantOutline from 'vue-material-design-icons/CakeVariantOutline.vue
 
 import {
 	NcButton,
+	NcCheckboxRadioSwitch,
+	NcDialog,
+	NcLoadingIcon,
 	NcSelect,
 } from '@nextcloud/vue'
+
+const emptyContact = () => ({ nombre: '', relacion: '', numero_contacto: '', medio_alternativo: '', tipo_ayuda: '', notas: '', es_principal: false })
 
 export default {
 	name: 'PersonalTab',
@@ -195,6 +253,9 @@ export default {
 		CakeVariantOutline,
 		EmailOutline,
 		NcButton,
+		NcCheckboxRadioSwitch,
+		NcDialog,
+		NcLoadingIcon,
 		NcSelect,
 	},
 
@@ -215,6 +276,15 @@ export default {
 
 	data() {
 		return {
+			contacts: [],
+			loadingContacts: false,
+			savingContact: false,
+			showContactDialog: false,
+			showDeleteDialog: false,
+			editingContact: null,
+			deletingContact: null,
+			contactForm: emptyContact(),
+			formError: '',
 			Direccion: '',
 			Estado_civil: '',
 			Telefono_contacto: '',
@@ -238,20 +308,120 @@ export default {
 		}
 	},
 
+	computed: {
+		contactDialogButtons() {
+			return [
+				{ label: t('empleados', 'Cancel'), callback: () => { this.showContactDialog = false } },
+				{ label: t('empleados', 'Save'), type: 'primary', nativeType: 'submit', disabled: this.savingContact },
+			]
+		},
+		deleteDialogButtons() {
+			return [
+				{ label: t('empleados', 'Cancel'), callback: () => { this.showDeleteDialog = false } },
+				{ label: t('empleados', 'Delete'), type: 'error', disabled: this.savingContact, callback: this.deleteContact },
+			]
+		},
+	},
+
 	watch: {
 		data(news) {
 			if (news) {
 				this.setAttr(news)
+				this.loadContacts()
 			}
 		},
 	},
 
 	mounted() {
 		this.setAttr(this.data)
+		this.loadContacts()
 	},
 
 	methods: {
 		t,
+
+		contactsUrl(suffix = '') {
+			return generateUrl(`/apps/empleados/empleados/${this.data.Id_empleados}/contactos-emergencia${suffix}`)
+		},
+
+		async loadContacts() {
+			if (!this.data.Id_empleados) return
+			this.loadingContacts = true
+			try {
+				const response = await axios.get(this.contactsUrl())
+				this.contacts = response?.data?.ocs?.data.contactos || []
+			} catch (error) {
+				showError(t('empleados', 'Could not load emergency contacts: {error}', { error: this.errorMessage(error) }))
+			} finally {
+				this.loadingContacts = false
+			}
+		},
+
+		openContactDialog(contact = null) {
+			this.editingContact = contact
+			this.contactForm = contact ? { ...emptyContact(), ...contact } : emptyContact()
+			this.formError = ''
+			this.showContactDialog = true
+		},
+
+		async saveContact() {
+			if (this.savingContact) return
+			const payload = Object.fromEntries(Object.entries(this.contactForm).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]))
+			if (!payload.nombre || !payload.relacion || !payload.numero_contacto) {
+				this.formError = t('empleados', 'Full name, relationship and contact number are required.')
+				return
+			}
+			this.savingContact = true
+			try {
+				if (this.editingContact) await axios.put(this.contactsUrl(`/${this.editingContact.id}`), payload)
+				else await axios.post(this.contactsUrl(), payload)
+				this.showContactDialog = false
+				showSuccess(t('empleados', 'Emergency contact saved.'))
+				await this.loadContacts()
+			} catch (error) {
+				showError(t('empleados', 'Could not save emergency contact: {error}', { error: this.errorMessage(error) }))
+			} finally {
+				this.savingContact = false
+			}
+		},
+
+		confirmDelete(contact) {
+			this.deletingContact = contact
+			this.showDeleteDialog = true
+		},
+
+		async deleteContact() {
+			if (!this.deletingContact || this.savingContact) return
+			this.savingContact = true
+			try {
+				await axios.delete(this.contactsUrl(`/${this.deletingContact.id}`))
+				this.showDeleteDialog = false
+				showSuccess(t('empleados', 'Emergency contact deleted.'))
+				await this.loadContacts()
+			} catch (error) {
+				showError(t('empleados', 'Could not delete emergency contact: {error}', { error: this.errorMessage(error) }))
+			} finally {
+				this.savingContact = false
+			}
+		},
+
+		async markPrimary(contact) {
+			if (this.savingContact) return
+			this.savingContact = true
+			try {
+				await axios.post(this.contactsUrl(`/${contact.id}/principal`))
+				showSuccess(t('empleados', 'Primary emergency contact updated.'))
+				await this.loadContacts()
+			} catch (error) {
+				showError(t('empleados', 'Could not update primary contact: {error}', { error: this.errorMessage(error) }))
+			} finally {
+				this.savingContact = false
+			}
+		},
+
+		errorMessage(error) {
+			return error?.response?.data?.message || error?.message || String(error)
+		},
 
 		setAttr(data) {
 			this.Direccion = this.checknull(data.Direccion)
@@ -357,21 +527,45 @@ export default {
 	border-color: var(--color-primary-element-light);
 }
 
-.emergency-contact {
-	display: grid;
+.emergency-contacts {
 	grid-column: 1 / -1;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 14px;
 	padding: 18px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
-	background: var(--color-background-hover);
 }
 
-.emergency-contact br,
 .top > br {
 	display: none;
 }
+
+.section-heading,
+.contact-title,
+.contact-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.section-heading h3 { margin: 0; font-size: 18px; }
+.section-heading p { margin: 3px 0 0; color: var(--color-text-maxcontrast); }
+.empty-state { padding: 24px; text-align: center; color: var(--color-text-maxcontrast); }
+.contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.contact-card { min-width: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--border-radius-large); background: var(--color-background-hover); }
+.contact-title > div { display: flex; flex-direction: column; min-width: 0; }
+.contact-title strong { overflow-wrap: anywhere; font-size: 16px; }
+.contact-title span:not(.primary-badge) { color: var(--color-text-maxcontrast); }
+.primary-badge { padding: 3px 8px; border-radius: 12px; background: var(--color-primary-element-light); color: var(--color-primary-element-text); font-size: 12px; white-space: nowrap; }
+.contact-card dl { margin: 14px 0; }
+.contact-card dl > div { margin-top: 8px; }
+.contact-card dt { color: var(--color-text-maxcontrast); font-size: 12px; font-weight: 600; }
+.contact-card dd { margin: 2px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.contact-actions { justify-content: flex-end; flex-wrap: wrap; }
+.contact-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 12px; }
+.contact-form label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; }
+.form-wide { grid-column: 1 / -1; }
+.contact-notes { min-height: 90px; resize: vertical; }
+.form-error { margin: 0; color: var(--color-error); }
 
 .top {
 	display: grid;
@@ -401,7 +595,8 @@ export default {
 
 @media (max-width: 768px) {
 	.top,
-	.emergency-contact {
+	.contact-grid,
+	.contact-form {
 		grid-template-columns: 1fr;
 	}
 
@@ -410,8 +605,11 @@ export default {
 		margin-top: 8px;
 	}
 
-	.emergency-contact {
+	.emergency-contacts {
 		padding: 14px;
 	}
+
+	.section-heading { align-items: flex-start; flex-direction: column; }
+	.form-wide { grid-column: auto; }
 }
 </style>

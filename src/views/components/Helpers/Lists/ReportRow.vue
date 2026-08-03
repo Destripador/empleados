@@ -6,9 +6,11 @@
 			:counter-number="counterText"
 			:details="detailsText"
 			:force-display-actions="true"
-			@click.prevent="edit()">
+			@click.prevent="handleRowClick">
 			<template #subname>
 				{{ subnameText }}
+				<span v-if="isSupportReport" class="origin-badge">{{ t('empleados', 'Support TI') }}</span>
+				<span v-if="isSupportReport" class="billable-badge">{{ t('empleados', 'Non-billable') }}</span>
 			</template>
 
 			<template #indicator>
@@ -33,6 +35,12 @@
 						<DeleteAlert :size="20" />
 					</template>
 					{{ t('empleados', 'Delete') }}
+				</NcActionButton>
+				<NcActionButton v-if="isSupportReport && source.id_equipo" @click="viewSupport">
+					<template #icon>
+						<OpenInNew :size="20" />
+					</template>
+					{{ t('empleados', 'View support') }}
 				</NcActionButton>
 			</template>
 		</NcListItem>
@@ -149,6 +157,7 @@ import {
 	NcTextArea,
 } from '@nextcloud/vue'
 import DeleteAlert from 'vue-material-design-icons/DeleteAlert.vue'
+import OpenInNew from 'vue-material-design-icons/OpenInNew.vue'
 
 const MIN_EDITABLE = 40 // minutos
 
@@ -167,6 +176,7 @@ export default {
 		NcTextField,
 		NcCheckboxRadioSwitch,
 		NcTextArea,
+		OpenInNew,
 	},
 	props: {
 		source: { type: Object, required: true },
@@ -218,9 +228,13 @@ export default {
 			return (this.nowTick - this.createdDate.getTime()) / 60000
 		},
 		editable() {
+			if (this.isSupportReport) return false
 			// editable = antes de 20 min
 			if (this.minutosTranscurridos === null) return false
 			return this.minutosTranscurridos < MIN_EDITABLE
+		},
+		isSupportReport() {
+			return this.source?.origen === 'soporte_ti'
 		},
 		indicatorColor() {
 			// rojo editable, verde bloqueado
@@ -235,7 +249,7 @@ export default {
 			return this.source?.fecha_registro ?? this.source?.fechaRegistro ?? ''
 		},
 		titleText() {
-			return this.source?.clienteNombre || ''
+			return this.source?.clienteNombre || (this.isSupportReport ? t('empleados', 'Internal work') : '')
 		},
 		subnameText() {
 			return this.source?.actividadNombre || ''
@@ -259,6 +273,12 @@ export default {
 
 		onEsc() {
 			this.showDialog = false
+		},
+		handleRowClick() {
+			if (!this.isSupportReport) this.edit()
+		},
+		viewSupport() {
+			this.$router.push({ name: 'Inventario', query: { deviceId: String(this.source.id_equipo) } })
 		},
 
 		async delete() {
@@ -318,6 +338,15 @@ export default {
 
 <style scoped>
 .row { padding: 1px 1px; border-bottom: 1px solid var(--color-border); }
+.origin-badge,
+.billable-badge {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: var(--color-background-dark);
+	font-size: 11px;
+}
 #emptycontent, .emptycontent { margin-top: 1vh; }
 .center-screen {
 	display: flex;

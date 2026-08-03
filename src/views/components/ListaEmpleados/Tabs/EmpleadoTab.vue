@@ -164,7 +164,7 @@
 						</div>
 					</div>
 
-					<div>
+					<div v-if="inventoryEnabled">
 						<div class="divider">
 							<span>{{ t('empleados', 'Systems') }}</span>
 						</div>
@@ -176,6 +176,7 @@
 								</label>
 
 								<NcSelect
+									v-if="show && canAccessInventory"
 									id="Equipo_asignado"
 									v-model="Equipo_asignado"
 									class="equipo-computo-select"
@@ -209,6 +210,35 @@
 										</div>
 									</template>
 								</NcSelect>
+
+								<component
+									:is="canNavigateAssignedEquipment ? 'button' : 'div'"
+									v-if="assignedInventoryEquipo"
+									class="assigned-equipment-card"
+									:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
+									:type="canNavigateAssignedEquipment ? 'button' : null"
+									:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
+									:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(assignedInventoryEquipo) }) : null"
+									@click="openAssignedEquipment">
+									<Laptopaccount :size="32" aria-hidden="true" />
+									<div class="assigned-equipment-content">
+										<div class="assigned-equipment-heading">
+											<strong>{{ equipoOptionTitle(assignedInventoryEquipo) }}</strong>
+											<span v-if="assignedInventoryEquipo.estado" class="equipo-status" :class="`equipo-status--${String(assignedInventoryEquipo.estado).toLowerCase()}`">
+												{{ assignedInventoryEquipo.estado }}
+											</span>
+										</div>
+										<span v-if="assignedInventoryEquipo.nombre_sistema">{{ t('empleados', 'System name') }}: {{ assignedInventoryEquipo.nombre_sistema }}</span>
+										<span v-if="assignedInventoryEquipo.numero_serie">{{ t('empleados', 'Serial number') }}: {{ assignedInventoryEquipo.numero_serie }}</span>
+										<span v-if="assignedEquipmentModel">{{ t('empleados', 'Model') }}: {{ assignedEquipmentModel }}</span>
+										<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
+										<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
+									</div>
+								</component>
+
+								<p v-else class="assigned-equipment-empty">
+									{{ t('empleados', 'No equipment assigned.') }}
+								</p>
 							</div>
 						</div>
 					</div>
@@ -356,6 +386,7 @@ import { generateUrl } from '@nextcloud/router'
 import 'vue-nav-tabs/themes/vue-tabs.css'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
+import permissionsMixin from '../../../../mixins/permissions.js'
 
 // ICONOS
 import Badgeaccountoutline from 'vue-material-design-icons/BadgeAccountOutline.vue'
@@ -403,6 +434,14 @@ export default {
 		NcCheckboxRadioSwitch,
 	},
 
+	mixins: [permissionsMixin],
+
+	inject: {
+		configuraciones: {
+			default: () => ({}),
+		},
+	},
+
 	props: {
 		data: { type: Object, required: true },
 		show: { type: Boolean, required: true },
@@ -442,6 +481,36 @@ export default {
 		}
 	},
 
+	computed: {
+		inventoryEnabled() {
+			return this.isTruthy(this.configuraciones?.modulo_inventario)
+		},
+		canAccessInventory() {
+			return this.canSee('inventario')
+		},
+		assignedEquipmentId() {
+			const value = this.getEquipoAsignadoValue()
+			const id = Number.parseInt(String(value), 10)
+			return Number.isSafeInteger(id) && id > 0 ? id : null
+		},
+		assignedInventoryEquipo() {
+			if (!this.assignedEquipmentId) return null
+			if (this.Equipo_asignado && typeof this.Equipo_asignado === 'object') return this.Equipo_asignado
+			return this.findInventarioEquipo(this.assignedEquipmentId) || {
+				value: this.assignedEquipmentId,
+				id_equipo: this.assignedEquipmentId,
+				label: `${t('empleados', 'Assigned equipment')} #${this.assignedEquipmentId}`,
+			}
+		},
+		assignedEquipmentModel() {
+			if (!this.assignedInventoryEquipo) return ''
+			return [this.assignedInventoryEquipo.marca, this.assignedInventoryEquipo.modelo].filter(Boolean).join(' ')
+		},
+		canNavigateAssignedEquipment() {
+			return this.inventoryEnabled && this.canAccessInventory && Boolean(this.assignedEquipmentId)
+		},
+	},
+
 	watch: {
 		// FIX: la firma correcta es (newVal, oldVal)
 		state(newVal, oldVal) {
@@ -471,7 +540,9 @@ export default {
 					news.state)
 
 				await this.cargarPeriodoActual(news.Id_empleados)
-				await this.getInventarioEquipos(news.Equipo_asignado)
+				if (this.inventoryEnabled && this.canAccessInventory) {
+					await this.getInventarioEquipos(news.Equipo_asignado)
+				}
 			}
 		},
 
@@ -514,11 +585,21 @@ export default {
 			this.data.state)
 
 		await this.cargarPeriodoActual(this.data.Id_empleados)
-		await this.getInventarioEquipos(this.data.Equipo_asignado)
+		if (this.inventoryEnabled && this.canAccessInventory) {
+			await this.getInventarioEquipos(this.data.Equipo_asignado)
+		}
 	},
 
 	methods: {
 		t,
+
+		openAssignedEquipment() {
+			if (!this.canNavigateAssignedEquipment) return
+			this.$router.push({
+				name: 'Inventario',
+				query: { deviceId: String(this.assignedEquipmentId) },
+			})
+		},
 
 		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state) {
 			this.Numero_empleado = this.checknull(NumeroEmpleado)
@@ -705,6 +786,7 @@ export default {
 			this.$bus.emit('show', false)
 		},
 		async getInventarioEquipos(currentEquipoId = null) {
+			if (!this.inventoryEnabled || !this.canAccessInventory) return
 			try {
 				const current = currentEquipoId || this.getEquipoAsignadoValue()
 
@@ -1239,6 +1321,7 @@ export default {
 	.equipo-asignado-field .labeltype {
 		margin-bottom: 6px;
 	}
+
 }
 .equipo-asignado-field {
 	display: grid;
@@ -1254,6 +1337,74 @@ export default {
 .equipo-asignado-field .labeltype {
 	margin-bottom: 0;
 	justify-content: flex-start;
+}
+
+.assigned-equipment-card {
+	display: flex;
+	width: 100%;
+	margin-top: 12px;
+	padding: 16px;
+	gap: 14px;
+	align-items: flex-start;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	text-align: left;
+	grid-column: 2;
+}
+
+.assigned-equipment-card--interactive {
+	cursor: pointer;
+	transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.assigned-equipment-card--interactive:hover {
+	border-color: var(--color-primary-element);
+	background: var(--color-primary-element-light);
+}
+
+.assigned-equipment-card--interactive:focus-visible {
+	border-color: var(--color-primary-element);
+	box-shadow: 0 0 0 2px var(--color-primary-element);
+	outline: none;
+}
+
+.assigned-equipment-content {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.assigned-equipment-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.assigned-equipment-heading strong {
+	overflow-wrap: anywhere;
+	font-size: 15px;
+}
+
+.assigned-equipment-link-hint,
+.assigned-equipment-note,
+.assigned-equipment-empty {
+	margin: 8px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.assigned-equipment-empty {
+	grid-column: 2;
+}
+
+.assigned-equipment-link-hint {
+	color: var(--color-primary-element);
+	font-weight: 600;
 }
 
 .equipo-computo-select .vs__dropdown-toggle {
@@ -1475,5 +1626,12 @@ export default {
 	width: 11px !important;
 	height: 11px !important;
 	margin: 0 !important;
+}
+
+@media (max-width: 768px) {
+	.assigned-equipment-card,
+	.assigned-equipment-empty {
+		grid-column: 1;
+	}
 }
 </style>

@@ -48,6 +48,11 @@ export default {
 		return response.data?.ocs?.data ?? response.data
 	},
 
+	async getHistorialEquipo(id_equipo, params = {}) {
+		const response = await axios.get(appUrl(`/inventario/equipos/${id_equipo}/historial`), { params })
+		return response.data?.ocs?.data ?? response.data
+	},
+
 	async getEquiposEmpleado(id_empleado) {
 		const response = await axios.post(appUrl('/GetInventarioEmpleado'), { id_empleado })
 		return response.data?.ocs?.data ?? response.data

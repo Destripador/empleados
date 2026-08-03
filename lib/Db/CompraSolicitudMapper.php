@@ -88,6 +88,45 @@ class CompraSolicitudMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	public function findPage(?string $idUser, ?string $estado, int $limit, int $offset): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from(self::TABLE)
+			->orderBy('created_at', 'DESC')
+			->addOrderBy('id_solicitud', 'DESC')
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		$this->applyListFilters($qb, $idUser, $estado);
+
+		return $this->findEntities($qb);
+	}
+
+	public function getListSummary(?string $idUser, ?string $estado): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias($qb->createFunction('COUNT(*)'), 'total')
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN estado = 'pendiente_autorizacion' THEN 1 ELSE 0 END), 0)"),
+				'pending'
+			)
+			->selectAlias($qb->createFunction('COALESCE(SUM(monto_estimado), 0)'), 'estimated_amount')
+			->from(self::TABLE);
+
+		$this->applyListFilters($qb, $idUser, $estado);
+
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		return [
+			'total' => (int)($row['total'] ?? 0),
+			'pending' => (int)($row['pending'] ?? 0),
+			'estimated_amount' => (float)($row['estimated_amount'] ?? 0),
+		];
+	}
+
 	public function insertSolicitud(array $data): CompraSolicitud {
 		$qb = $this->db->getQueryBuilder();
 
@@ -160,6 +199,29 @@ class CompraSolicitudMapper extends QBMapper {
 		return $this->find($id);
 	}
 
+	public function cambiarEstadoSiActual(
+		int $id,
+		string $estadoActual,
+		string $estadoNuevo,
+		string $updatedBy,
+		?string $fechaCampo = null
+	): bool {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update(self::TABLE)
+			->set('estado', $qb->createNamedParameter($estadoNuevo, IQueryBuilder::PARAM_STR))
+			->set('updated_by', $qb->createNamedParameter($updatedBy, IQueryBuilder::PARAM_STR))
+			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')));
+
+		if ($fechaCampo !== null) {
+			$qb->set($fechaCampo, $qb->createNamedParameter(date('Y-m-d H:i:s')));
+		}
+
+		$qb->where($qb->expr()->eq('id_solicitud', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('estado', $qb->createNamedParameter($estadoActual, IQueryBuilder::PARAM_STR)));
+
+		return $this->executeStatement($qb) === 1;
+	}
+
 	private function getWritableFields(): array {
 		return [
 			'folio',
@@ -217,6 +279,22 @@ class CompraSolicitudMapper extends QBMapper {
 			'firmado_subido_at',
 			'firmado_subido_by',
 		];
+	}
+
+	private function applyListFilters(IQueryBuilder $qb, ?string $idUser, ?string $estado): void {
+		if ($idUser !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				'id_user',
+				$qb->createNamedParameter($idUser, IQueryBuilder::PARAM_STR)
+			));
+		}
+
+		if ($estado !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				'estado',
+				$qb->createNamedParameter($estado, IQueryBuilder::PARAM_STR)
+			));
+		}
 	}
 
 	private function executeStatement(IQueryBuilder $qb): int {
