@@ -306,15 +306,35 @@
 
 			<div class="compras-layout">
 				<section class="panel-card requests-panel">
-					<div class="panel-header">
+					<div class="requests-header">
 						<div>
 							<p class="section-label">
 								{{ t('empleados', 'Tracking') }}
 							</p>
-							<h3>{{ t('empleados', 'My requests') }}</h3>
-							<p>{{ t('empleados', 'Review the status of your purchase requests.') }}</p>
+							<h2>{{ listTitle }}</h2>
+							<p class="requests-description">
+								{{ listDescription }}
+							</p>
 						</div>
 
+						<div class="header-actions">
+							<NcButton :disabled="loading" :title="t('empleados', 'Refresh')" @click="cargarSolicitudes">
+								<template #icon>
+									<Refresh :size="20" />
+								</template>
+								{{ t('empleados', 'Refresh') }}
+							</NcButton>
+
+							<NcButton v-if="canCreatePurchaseRequest" type="primary" @click="toggleForm">
+								<template #icon>
+									<Plus :size="20" />
+								</template>
+								{{ t('empleados', 'New request') }}
+							</NcButton>
+						</div>
+					</div>
+
+					<div class="filters-toolbar">
 						<div class="filters">
 							<NcSelect v-model="selectedEstadoFiltro"
 								class="status-filter"
@@ -329,168 +349,134 @@
 								{{ t('empleados', 'Show only my requests') }}
 							</NcCheckboxRadioSwitch>
 						</div>
+						<span class="result-count">{{ paginationLabel }}</span>
 					</div>
 
-					<div v-if="loading" class="empty-state">
-						{{ t('empleados', 'Loading...') }}
-					</div>
+					<NcNoteCard v-if="loadError" type="error" class="load-error">
+						<div class="load-error-content">
+							<span>{{ loadError }}</span>
+							<NcButton @click="cargarSolicitudes">
+								{{ t('empleados', 'Try again') }}
+							</NcButton>
+						</div>
+					</NcNoteCard>
 
-					<div v-else class="request-sections">
-						<section v-for="section in requestSections"
-							:key="section.id"
-							class="request-section"
-							:class="{ 'request-section--pending': section.highlight }">
-							<div class="request-section-header">
-								<div>
-									<p class="section-label">
-										{{ section.title }}
-									</p>
-									<h4>{{ section.items.length }} {{ t('empleados', 'request(s)') }}</h4>
-									<p>{{ section.description }}</p>
-								</div>
-							</div>
+					<div class="table-area" :class="{ 'table-area--loading': loading }">
+						<div v-if="loading" class="table-loading" role="status">
+							<NcLoadingIcon :size="32" />
+							<span>{{ t('empleados', 'Loading...') }}</span>
+						</div>
 
-							<NcEmptyContent v-if="section.items.length === 0"
-								:name="section.emptyName"
-								:description="section.emptyDescription">
-								<template #icon>
-									<CartOutline />
-								</template>
-							</NcEmptyContent>
+						<NcEmptyContent v-if="!loading && solicitudes.length === 0"
+							:name="t('empleados', 'No purchase requests found')"
+							:description="t('empleados', 'Try changing the status filter or create a new request.')">
+							<template #icon>
+								<CartOutline />
+							</template>
+						</NcEmptyContent>
 
-							<div v-else class="table-scroll">
-								<table class="compras-table">
-									<thead>
-										<tr>
-											<th>{{ t('empleados', 'Folio') }}</th>
-											<th>{{ t('empleados', 'Title') }}</th>
-											<th>{{ t('empleados', 'Requester') }}</th>
-											<th>{{ t('empleados', 'Amount') }}</th>
-											<th>{{ t('empleados', 'Status') }}</th>
-											<th>{{ t('empleados', 'Date') }}</th>
-											<th>{{ t('empleados', 'Actions') }}</th>
-										</tr>
-									</thead>
+						<div v-else-if="solicitudes.length" class="table-scroll">
+							<table class="compras-table">
+								<thead>
+									<tr>
+										<th>{{ t('empleados', 'Folio') }}</th>
+										<th>{{ t('empleados', 'Title') }}</th>
+										<th>{{ t('empleados', 'Requester') }}</th>
+										<th>{{ t('empleados', 'Amount') }}</th>
+										<th>{{ t('empleados', 'Status') }}</th>
+										<th>{{ t('empleados', 'Document status') }}</th>
+										<th>{{ t('empleados', 'Date') }}</th>
+										<th>{{ t('empleados', 'Actions') }}</th>
+									</tr>
+								</thead>
 
-									<tbody>
-										<tr v-for="item in section.items" :key="item.id_solicitud">
-											<td><strong>{{ item.folio }}</strong></td>
+								<tbody>
+									<tr v-for="item in solicitudes"
+										:key="item.id_solicitud"
+										class="request-row"
+										@click="verDetalle(item.id_solicitud)">
+										<td><strong>{{ item.folio }}</strong></td>
 
-											<td>{{ item.titulo }}</td>
+										<td class="request-title" :title="item.titulo">
+											{{ item.titulo }}
+										</td>
 
-											<td>{{ formatRequesterLabel(item) }}</td>
+										<td>{{ formatRequesterLabel(item) }}</td>
 
-											<td>{{ formatMoney(item.monto_estimado) }}</td>
+										<td>{{ formatMoney(item.monto_estimado, item.moneda) }}</td>
 
-											<td>
-												<div class="status-stack">
-													<span :class="['badge', `estado-${item.estado}`]">
-														{{ formatEstado(item.estado) }}
-													</span>
+										<td>
+											<span :class="['badge', `estado-${item.estado}`]">
+												{{ formatEstado(item.estado) }}
+											</span>
+										</td>
 
-													<span v-if="getEstadoDocumental(item) === 'completo'"
-														class="badge badge-document-ok">
-														{{ t('empleados', 'Complete') }}
-													</span>
+										<td>
+											<span :class="['badge', `document-${getEstadoDocumental(item)}`]">
+												{{ formatEstadoDocumental(item) }}
+											</span>
+										</td>
 
-													<span v-else-if="getEstadoDocumental(item) === 'pendiente_firmado'"
-														class="badge badge-document-pending">
-														{{ t('empleados', 'Pending signed document') }}
-													</span>
+										<td>{{ formatDateTime(item.created_at) }}</td>
 
-													<span v-else-if="getEstadoDocumental(item) === 'pendiente_pdf'"
-														class="badge badge-document-missing">
-														{{ t('empleados', 'Pending PDF') }}
-													</span>
-												</div>
-											</td>
+										<td class="col-actions">
+											<div class="row-actions table-actions" @click.stop>
+												<NcButton :aria-label="t('empleados', 'View request')"
+													:title="t('empleados', 'View request')"
+													@click="verDetalle(item.id_solicitud)">
+													<template #icon>
+														<EyeOutline :size="20" />
+													</template>
+												</NcButton>
 
-											<td>{{ formatDateTime(item.created_at) }}</td>
-
-											<td class="col-actions">
-												<div class="row-actions table-actions">
-													<NcButton :aria-label="t('empleados', 'View request')"
-														:title="t('empleados', 'View request')"
-														@click="verDetalle(item.id_solicitud)">
+												<NcActions :aria-label="t('empleados', 'More actions')"
+													:force-menu="true">
+													<NcActionButton v-if="canEditRequest(item)"
+														@click="editar(item.id_solicitud)">
 														<template #icon>
-															<EyeOutline :size="20" />
+															<PencilOutline :size="20" />
 														</template>
-													</NcButton>
+														{{ t('empleados', 'Edit') }}
+													</NcActionButton>
 
-													<NcActions :aria-label="t('empleados', 'More actions')"
-														:force-menu="true">
-														<NcActionButton v-if="canEditRequest(item)"
-															@click="editar(item.id_solicitud)">
-															<template #icon>
-																<PencilOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Edit') }}
-														</NcActionButton>
+													<NcActionButton v-if="canCancelRequest(item)"
+														@click="cancelar(item.id_solicitud)">
+														<template #icon>
+															<DeleteOutline :size="20" />
+														</template>
+														{{ t('empleados', 'Delete') }}
+													</NcActionButton>
 
-														<NcActionButton v-if="canCancelRequest(item)"
-															@click="cancelar(item.id_solicitud)">
-															<template #icon>
-																<DeleteOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Delete') }}
-														</NcActionButton>
+													<NcActionButton v-if="canSendRequest(item)"
+														@click="enviar(item.id_solicitud)">
+														<template #icon>
+															<SendOutline :size="20" />
+														</template>
+														{{ t('empleados', 'Send') }}
+													</NcActionButton>
+												</NcActions>
+											</div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
 
-														<NcActionButton v-if="canSendRequest(item)"
-															@click="enviar(item.id_solicitud)">
-															<template #icon>
-																<SendOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Send') }}
-														</NcActionButton>
-
-														<NcActionButton v-if="canApproveRequest(item)"
-															@click="autorizar(item.id_solicitud)">
-															<template #icon>
-																<CheckCircleOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Approve') }}
-														</NcActionButton>
-
-														<NcActionButton v-if="canRejectRequest(item)"
-															@click="rechazar(item.id_solicitud)">
-															<template #icon>
-																<CloseCircleOutline :size="20" />
-															</template>
-															{{ t('empleados', 'Reject') }}
-														</NcActionButton>
-													</NcActions>
-												</div>
-											</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
-						</section>
+					<div v-if="totalRequests > 0" class="pagination-bar">
+						<span>{{ paginationLabel }}</span>
+						<div>
+							<NcButton :disabled="loading || currentPage === 1" @click="changePage(currentPage - 1)">
+								{{ t('empleados', 'Previous') }}
+							</NcButton>
+							<NcButton :disabled="loading || currentPage >= totalPages" @click="changePage(currentPage + 1)">
+								{{ t('empleados', 'Next') }}
+							</NcButton>
+						</div>
 					</div>
 				</section>
 				<aside class="purchases-side-panel">
-					<div class="compras-header">
-						<div class="header-title">
-							<p class="section-label">
-								{{ t('empleados', 'Purchases module') }}
-							</p>
-							<h2>{{ t('empleados', 'Purchases') }}</h2>
-							<p class="section-description">
-								{{ t('empleados', 'Manage purchase requests, approvals and tracking from one place.') }}
-							</p>
-						</div>
-
-						<div class="header-actions">
-							<NcButton @click="cargarSolicitudes">
-								{{ t('empleados', 'Refresh') }}
-							</NcButton>
-
-							<NcButton v-if="canCreatePurchaseRequest" type="primary" @click="toggleForm">
-								{{ showForm ? t('empleados', 'Close') : t('empleados', 'New request') }}
-							</NcButton>
-						</div>
-					</div>
-
+					<h3>{{ t('empleados', 'Summary') }}</h3>
 					<div class="stats-grid">
 						<div class="stat-card">
 							<div class="stat-icon">
@@ -498,7 +484,7 @@
 							</div>
 							<div>
 								<span>{{ t('empleados', 'Total requests') }}</span>
-								<strong>{{ totalSolicitudesVisibles }}</strong>
+								<strong>{{ summary.total }}</strong>
 							</div>
 						</div>
 
@@ -508,7 +494,7 @@
 							</div>
 							<div>
 								<span>{{ t('empleados', 'Pending approval') }}</span>
-								<strong>{{ totalPendientes }}</strong>
+								<strong>{{ summary.pending }}</strong>
 							</div>
 						</div>
 
@@ -518,7 +504,7 @@
 							</div>
 							<div>
 								<span>{{ t('empleados', 'Estimated amount') }}</span>
-								<strong>{{ formatMoney(totalListado) }}</strong>
+								<strong>{{ formatMoney(summary.estimatedAmount) }}</strong>
 							</div>
 						</div>
 					</div>
@@ -528,197 +514,25 @@
 				class="purchase-detail-modal"
 				size="large"
 				:name="detalle.solicitud.folio || t('empleados', 'Purchase request detail')"
-				@close="detalle = null">
-				<div class="detail-modal">
-					<div class="details-header">
-						<div class="details-icon">
-							<CartOutline :size="30" />
-						</div>
-						<div class="details-actions">
-							<NcButton @click="abrirDocumento(detalle.solicitud.id_solicitud)">
-								{{ t('empleados', 'View PDF') }}
-							</NcButton>
-
-							<NcButton :disabled="loading || !canSaveOfficialPdf(detalle.solicitud)"
-								@click="guardarDocumento(detalle.solicitud.id_solicitud)">
-								{{ detalle.solicitud.pdf_file_id ? t('empleados', 'Update saved PDF') : t('empleados', 'Save PDF') }}
-							</NcButton>
-
-							<NcButton :disabled="loading || !canUploadSignedDocument(detalle.solicitud)"
-								@click="seleccionarFirmado(detalle.solicitud.id_solicitud)">
-								{{ detalle.solicitud.firmado_file_id ? t('empleados', 'Replace signed document') :
-									t('empleados', 'Upload signed document') }}
-							</NcButton>
-
-							<NcButton v-if="canViewSignedDocument(detalle.solicitud)"
-								@click="abrirDocumentoFirmado(detalle.solicitud.id_solicitud)">
-								{{ t('empleados', 'View signed document') }}
-							</NcButton>
-						</div>
-					</div>
-
-					<div class="details-grid">
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Status') }}</span>
-							<strong>
-								<span :class="['badge', `estado-${detalle.solicitud.estado}`]">
-									{{ formatEstado(detalle.solicitud.estado) }}
-								</span>
-							</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Estimated amount') }}</span>
-							<strong>{{ formatMoney(detalle.solicitud.monto_estimado) }}</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Priority') }}</span>
-							<strong>{{ detalle.solicitud.prioridad }}</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Requester') }}</span>
-							<strong>{{ formatRequesterLabel(detalle.solicitud) }}</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Department') }}</span>
-							<strong>{{ detalle.solicitud.solicitante_depto || '-' }}</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Position') }}</span>
-							<strong>{{ detalle.solicitud.solicitante_cargo || '-' }}</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Direct manager') }}</span>
-							<strong>{{ detalle.solicitud.jefe_directo_nombre || '-' }}</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Purchase use') }}</span>
-							<strong>{{ detalle.solicitud.uso_compra || '-' }}</strong>
-						</div>
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Generated PDF') }}</span>
-							<strong>
-								{{ detalle.solicitud.pdf_file_id ? t('empleados', 'Yes') : t('empleados', 'No') }}
-							</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'PDF generated at') }}</span>
-							<strong>
-								{{ detalle.solicitud.pdf_generado_at ? formatDateTime(detalle.solicitud.pdf_generado_at)
-									: '-' }}
-							</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Signed document') }}</span>
-							<strong>
-								{{ detalle.solicitud.firmado_file_id ? t('empleados', 'Uploaded') : t('empleados','Pending') }}
-							</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Signed uploaded at') }}</span>
-							<strong>
-								{{ detalle.solicitud.firmado_subido_at ?
-									formatDateTime(detalle.solicitud.firmado_subido_at) : '-' }}
-							</strong>
-						</div>
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Document status') }}</span>
-							<strong>
-								{{ formatEstadoDocumental(detalle.solicitud) }}
-							</strong>
-						</div>
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Saved PDF') }}</span>
-							<strong>
-								{{ detalle.solicitud.pdf_nombre || t('empleados', 'Not generated') }}
-							</strong>
-						</div>
-
-						<div class="detail-card">
-							<span>{{ t('empleados', 'Signed document') }}</span>
-							<strong>
-								{{ detalle.solicitud.firmado_nombre || t('empleados', 'Not uploaded') }}
-							</strong>
-						</div>
-					</div>
-
-					<div class="subsection">
-						<div class="section-head">
-							<div>
-								<p class="section-label">
-									{{ t('empleados', 'Items') }}
-								</p>
-								<h3>{{ t('empleados', 'Requested concepts') }}</h3>
-							</div>
-						</div>
-
-						<div class="table-scroll">
-							<table class="compras-table">
-								<thead>
-									<tr>
-										<th>{{ t('empleados', 'Description') }}</th>
-										<th>{{ t('empleados', 'Supplier') }}</th>
-										<th>{{ t('empleados', 'Delivery') }}</th>
-										<th>{{ t('empleados', 'Brand / Model') }}</th>
-										<th>{{ t('empleados', 'Quantity') }}</th>
-										<th>{{ t('empleados', 'Price') }}</th>
-										<th>{{ t('empleados', 'VAT') }}</th>
-										<th>{{ t('empleados', 'Total') }}</th>
-									</tr>
-								</thead>
-
-								<tbody>
-									<tr v-for="concepto in detalle.detalles" :key="concepto.id_detalle">
-										<td>
-											<strong>{{ concepto.descripcion }}</strong>
-											<p class="table-muted">
-												{{ concepto.especificaciones || '' }}
-											</p>
-										</td>
-										<td>{{ concepto.proveedor_nombre || '-' }}</td>
-										<td>{{ concepto.entrega || '-' }}</td>
-										<td>{{ concepto.marca_modelo || '-' }}</td>
-										<td>{{ concepto.cantidad }} {{ concepto.unidad }}</td>
-										<td>{{ formatMoney(concepto.precio_estimado) }}</td>
-										<td>{{ formatMoney(concepto.iva) }}</td>
-										<td>{{ formatMoney(concepto.total || concepto.subtotal) }}</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
-
-					<div class="subsection">
-						<div class="section-head">
-							<div>
-								<p class="section-label">
-									{{ t('empleados', 'History') }}
-								</p>
-								<h3>{{ t('empleados', 'Request activity') }}</h3>
-							</div>
-						</div>
-
-						<ul class="historial-list">
-							<li v-for="evento in detalle.historial" :key="evento.id_historial">
-								<strong>{{ evento.accion }}</strong>
-								<span>{{ evento.estado_anterior || '-' }} → {{ evento.estado_nuevo || '-' }}</span>
-								<small>{{ evento.created_by }} · {{ evento.created_at }}</small>
-								<p v-if="evento.comentario">
-									{{ evento.comentario }}
-								</p>
-							</li>
-						</ul>
-					</div>
-				</div>
+				@close="closeDetalle">
+				<CompraSolicitudDetalle
+					:detail="detalle"
+					:flow="approvalFlow"
+					:flow-loading="approvalFlowLoading"
+					:flow-error="approvalFlowError"
+					:processing="actionModal.loading || loading"
+					:permissions="purchasePermissions"
+					:current-user-id="currentUserId"
+					@export-pdf="abrirDocumento(detalle.solicitud.id_solicitud)"
+					@save-pdf="guardarDocumento(detalle.solicitud.id_solicitud)"
+					@upload-signed="seleccionarFirmado(detalle.solicitud.id_solicitud)"
+					@view-signed="abrirDocumentoFirmado(detalle.solicitud.id_solicitud)"
+					@edit="editarDetalle"
+					@send="enviar(detalle.solicitud.id_solicitud)"
+					@approve="autorizar(detalle.solicitud.id_solicitud)"
+					@reject="rechazar(detalle.solicitud.id_solicitud)"
+					@cancel="cancelar(detalle.solicitud.id_solicitud)"
+					@close="closeDetalle" />
 			</NcModal>
 		</div>
 		<NcModal v-if="actionModal.show"
@@ -772,8 +586,8 @@ import EyeOutline from 'vue-material-design-icons/EyeOutline.vue'
 import PencilOutline from 'vue-material-design-icons/PencilOutline.vue'
 import DeleteOutline from 'vue-material-design-icons/DeleteOutline.vue'
 import SendOutline from 'vue-material-design-icons/SendOutline.vue'
-import CheckCircleOutline from 'vue-material-design-icons/CheckCircleOutline.vue'
-import CloseCircleOutline from 'vue-material-design-icons/CloseCircleOutline.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
+import Refresh from 'vue-material-design-icons/Refresh.vue'
 
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
@@ -793,12 +607,21 @@ import {
 	NcCheckboxRadioSwitch,
 	NcDateTimePicker,
 	NcEmptyContent,
+	NcLoadingIcon,
 	NcModal,
 	NcNoteCard,
 	NcSelect,
 	NcTextArea,
 	NcTextField,
 } from '@nextcloud/vue'
+
+import { buildPurchaseListParams } from '../../../utils/comprasFilters.js'
+import {
+	canApprovePurchaseFlow,
+	canRejectPurchaseFlow,
+	createSingleFlight,
+} from '../../../utils/compraApprovalFlow.js'
+import CompraSolicitudDetalle from './CompraSolicitudDetalle.vue'
 
 import {
 	actualizarSolicitud,
@@ -807,6 +630,7 @@ import {
 	crearSolicitud,
 	enviarAutorizacion,
 	listarSolicitudes,
+	obtenerFlujoSolicitud,
 	obtenerSolicitud,
 	rechazarSolicitud,
 	obtenerContextoCompras,
@@ -833,6 +657,7 @@ export default {
 		NcCheckboxRadioSwitch,
 		NcDateTimePicker,
 		NcEmptyContent,
+		NcLoadingIcon,
 		NcNoteCard,
 		NcSelect,
 		NcTextArea,
@@ -843,9 +668,10 @@ export default {
 		PencilOutline,
 		DeleteOutline,
 		SendOutline,
-		CheckCircleOutline,
-		CloseCircleOutline,
+		Plus,
+		Refresh,
 		NcModal,
+		CompraSolicitudDetalle,
 	},
 
 	data() {
@@ -857,7 +683,21 @@ export default {
 			contextLoaded: false,
 			currentUserId: '',
 			solicitudes: [],
+			loadError: '',
+			requestSequence: 0,
+			page: 1,
+			pageSize: 20,
+			totalRequests: 0,
+			summary: {
+				total: 0,
+				pending: 0,
+				estimatedAmount: 0,
+			},
 			detalle: null,
+			approvalFlow: null,
+			approvalFlowLoading: false,
+			approvalFlowError: '',
+			actionSingleFlight: createSingleFlight(),
 			form: this.getEmptyForm(),
 			priorityOptions: [
 				{ id: 'baja', label: t('empleados', 'Low') },
@@ -926,6 +766,40 @@ export default {
 
 		canProcessPurchaseRequest() {
 			return this.purchasePermissions.can_process_purchase
+		},
+
+		listTitle() {
+			return this.canToggleShowOnlyMine && !this.showOnlyMine
+				? t('empleados', 'Purchase requests')
+				: t('empleados', 'My requests')
+		},
+
+		listDescription() {
+			return this.canToggleShowOnlyMine && !this.showOnlyMine
+				? t('empleados', 'Review purchase requests available to your role.')
+				: t('empleados', 'Review the status of your purchase requests.')
+		},
+
+		totalPages() {
+			return Math.max(1, Math.ceil(this.totalRequests / this.pageSize))
+		},
+
+		currentPage() {
+			return Math.min(this.page, this.totalPages)
+		},
+
+		paginationLabel() {
+			if (this.totalRequests === 0) {
+				return t('empleados', '0 requests')
+			}
+
+			const start = (this.currentPage - 1) * this.pageSize + 1
+			const end = Math.min(this.currentPage * this.pageSize, this.totalRequests)
+			return t('empleados', 'Showing {start}–{end} of {total} requests', {
+				start,
+				end,
+				total: this.totalRequests,
+			})
 		},
 		totalEstimado() {
 			return this.form.detalles.reduce((total, item) => {
@@ -1078,6 +952,7 @@ export default {
 
 			set(value) {
 				this.estadoFiltroId = value?.id || 'todos'
+				this.applyListFilters()
 			},
 		},
 		canToggleShowOnlyMine() {
@@ -1089,115 +964,6 @@ export default {
 			)
 		},
 
-		isShowingOthers() {
-			return this.canToggleShowOnlyMine && !this.showOnlyMine
-		},
-
-		solicitudesPorAlcance() {
-			if (!this.canToggleShowOnlyMine || this.showOnlyMine) {
-				return this.solicitudes.filter((item) => this.isMyRequest(item))
-			}
-
-			return this.solicitudes.filter((item) => !this.isMyRequest(item))
-		},
-
-		solicitudesSinCanceladas() {
-			return this.solicitudesPorAlcance.filter((item) => {
-				return String(item.estado || '') !== 'cancelada'
-			})
-		},
-
-		solicitudesPendientes() {
-			return this.solicitudesSinCanceladas.filter((item) => {
-				return String(item.estado || '') === 'pendiente_autorizacion'
-			})
-		},
-
-		solicitudesFiltradas() {
-			if (this.estadoFiltroId === 'todos') {
-				return this.solicitudesSinCanceladas
-			}
-
-			return this.solicitudesPorAlcance.filter((item) => {
-				return String(item.estado || '') === this.estadoFiltroId
-			})
-		},
-
-		requestSections() {
-			const sectionMap = {
-				todos: {
-					id: 'all',
-					title: t('empleados', 'All statuses'),
-					description: t('empleados', 'All active requests except cancelled requests.'),
-					highlight: false,
-				},
-				borrador: {
-					id: 'draft',
-					title: t('empleados', 'Draft'),
-					description: t('empleados', 'Requests that have not been sent for approval yet.'),
-					highlight: false,
-				},
-				pendiente_autorizacion: {
-					id: 'pending',
-					title: t('empleados', 'Pending approval'),
-					description: this.pendingApprovalDescription,
-					highlight: true,
-				},
-				autorizada: {
-					id: 'approved',
-					title: t('empleados', 'Approved'),
-					description: t('empleados', 'Requests that have already been approved.'),
-					highlight: false,
-				},
-				rechazada: {
-					id: 'rejected',
-					title: t('empleados', 'Rejected'),
-					description: t('empleados', 'Requests that were rejected during approval.'),
-					highlight: false,
-				},
-				cancelada: {
-					id: 'cancelled',
-					title: t('empleados', 'Cancelled requests'),
-					description: t('empleados', 'Cancelled requests are shown only when this status is selected.'),
-					highlight: false,
-				},
-			}
-
-			const section = sectionMap[this.estadoFiltroId] || sectionMap.todos
-
-			return [
-				{
-					...section,
-					items: this.solicitudesFiltradas,
-					emptyName: t('empleados', 'No purchase requests found'),
-					emptyDescription: t('empleados', 'Try changing the status filter or create a new request.'),
-				},
-			]
-		},
-
-		totalPendientes() {
-			return this.solicitudesPendientes.length
-		},
-
-		totalListado() {
-			return this.solicitudesSinCanceladas
-				.filter((item) => !['rechazada'].includes(String(item.estado || '')))
-				.reduce((total, item) => {
-					return total + Number(item.monto_estimado || 0)
-				}, 0)
-		},
-
-		totalSolicitudesVisibles() {
-			return this.solicitudesSinCanceladas.length
-		},
-
-		pendingApprovalDescription() {
-			if (!this.canToggleShowOnlyMine || this.showOnlyMine) {
-				return t('empleados', 'Your requests waiting for approval.')
-			}
-
-			return t('empleados', 'Other users requests waiting for approval.')
-		},
 	},
 
 	async mounted() {
@@ -1417,12 +1183,18 @@ export default {
 		},
 
 		async cargarSolicitudes() {
+			const sequence = ++this.requestSequence
 			this.loading = true
+			this.loadError = ''
 
 			try {
-				const response = await listarSolicitudes({
-					todas: this.canToggleShowOnlyMine ? 1 : 0,
-				})
+				const response = await listarSolicitudes(buildPurchaseListParams({
+					showOnlyMine: this.showOnlyMine,
+					canViewAll: this.canToggleShowOnlyMine,
+					estado: this.estadoFiltroId,
+					page: this.page,
+					pageSize: this.pageSize,
+				}))
 
 				const payload = this.getApiPayload(response)
 
@@ -1430,13 +1202,35 @@ export default {
 					throw new Error(payload.message || t('empleados', 'Could not load requests.'))
 				}
 
-				this.solicitudes = Array.isArray(payload.data) ? payload.data : []
+				if (sequence !== this.requestSequence) return
+
+				const result = payload.data || {}
+				this.solicitudes = Array.isArray(result.items) ? result.items : []
+				this.totalRequests = Number(result.pagination?.total || 0)
+				this.summary = {
+					total: Number(result.summary?.total || 0),
+					pending: Number(result.summary?.pending || 0),
+					estimatedAmount: Number(result.summary?.estimated_amount || 0),
+				}
 			} catch (error) {
+				if (sequence !== this.requestSequence) return
 				console.error(error)
-				showError(this.getErrorMessage(error, t('empleados', 'Error loading requests.')))
+				this.loadError = this.getErrorMessage(error, t('empleados', 'Error loading requests.'))
 			} finally {
-				this.loading = false
+				if (sequence === this.requestSequence) this.loading = false
 			}
+		},
+
+		applyListFilters() {
+			this.page = 1
+			this.cargarSolicitudes()
+		},
+
+		changePage(page) {
+			const nextPage = Math.max(1, Math.min(page, this.totalPages))
+			if (nextPage === this.page) return
+			this.page = nextPage
+			this.cargarSolicitudes()
 		},
 
 		async crear() {
@@ -1480,6 +1274,8 @@ export default {
 
 		async verDetalle(id) {
 			this.loading = true
+			this.approvalFlow = null
+			this.approvalFlowError = ''
 
 			try {
 				const response = await obtenerSolicitud(id)
@@ -1490,12 +1286,54 @@ export default {
 				}
 
 				this.detalle = payload.data
+				await this.cargarFlujoAprobacion(id)
 			} catch (error) {
 				console.error(error)
 				showError(this.getErrorMessage(error, t('empleados', 'Error loading request details.')))
 			} finally {
 				this.loading = false
 			}
+		},
+
+		async cargarFlujoAprobacion(id) {
+			this.approvalFlowLoading = true
+			this.approvalFlowError = ''
+
+			try {
+				const response = await obtenerFlujoSolicitud(id)
+				const payload = this.getApiPayload(response)
+
+				if (!payload.success) {
+					throw new Error(payload.message || t('empleados', 'Could not load the approval flow.'))
+				}
+
+				this.approvalFlow = payload.data
+			} catch (error) {
+				console.error(error)
+				this.approvalFlow = null
+				this.approvalFlowError = this.getErrorMessage(
+					error,
+					t('empleados', 'Could not load the approval flow.'),
+				)
+			} finally {
+				this.approvalFlowLoading = false
+			}
+		},
+
+		closeDetalle() {
+			this.detalle = null
+			this.approvalFlow = null
+			this.approvalFlowError = ''
+			this.approvalFlowLoading = false
+		},
+		editarDetalle() {
+			const id = this.detalle?.solicitud?.id_solicitud
+			if (!id) {
+				return
+			}
+
+			this.closeDetalle()
+			this.editar(id)
 		},
 
 		async enviar(id) {
@@ -1521,12 +1359,12 @@ export default {
 			}
 		},
 
-		formatMoney(value) {
+		formatMoney(value, currency = 'MXN') {
 			const number = Number(value || 0)
 
 			return new Intl.NumberFormat('es-MX', {
 				style: 'currency',
-				currency: 'MXN',
+				currency: currency || 'MXN',
 			}).format(number)
 		},
 
@@ -1817,12 +1655,12 @@ export default {
 				approve: {
 					title: t('empleados', 'Approve purchase request'),
 					description: t('empleados', 'You are about to approve this purchase request.'),
-					note: t('empleados', 'This will move the request to approved status and record the action in the history.'),
+					note: t('empleados', 'This will complete your current approval stage and record the decision in the history.'),
 					noteType: 'info',
 					commentLabel: t('empleados', 'Approval comment'),
 					confirmLabel: t('empleados', 'Approve'),
 					confirmType: 'primary',
-					comentario: t('empleados', 'Approved.'),
+					comentario: '',
 					requireComment: false,
 				},
 				reject: {
@@ -1878,64 +1716,83 @@ export default {
 				return
 			}
 
-			const id = this.actionModal.id
-			const type = this.actionModal.type
-			const comentario = String(this.actionModal.comentario || '').trim()
+			return this.actionSingleFlight.run(async () => {
+				const id = this.actionModal.id
+				const type = this.actionModal.type
+				const comentario = String(this.actionModal.comentario || '').trim()
 
-			this.actionModal.loading = true
-			this.loading = true
+				this.actionModal.loading = true
+				this.loading = true
 
-			try {
-				let response
-				let successMessage
+				try {
+					let response
+					let successMessage
 
-				if (type === 'approve') {
-					response = await autorizarSolicitud(id, comentario || t('empleados', 'Approved.'))
-					successMessage = t('empleados', 'Request approved')
-				} else if (type === 'reject') {
-					response = await rechazarSolicitud(id, comentario)
-					successMessage = t('empleados', 'Request rejected')
-				} else if (type === 'cancel') {
-					response = await cancelarSolicitud(
-						id,
-						comentario || t('empleados', 'Request cancelled from purchases module.'),
-					)
-					successMessage = t('empleados', 'Purchase request cancelled')
-				} else {
-					throw new Error(t('empleados', 'Invalid action.'))
+					if (type === 'approve') {
+						response = await autorizarSolicitud(id, comentario)
+						successMessage = t('empleados', 'Approval recorded')
+					} else if (type === 'reject') {
+						response = await rechazarSolicitud(id, comentario)
+						successMessage = t('empleados', 'Request rejected')
+					} else if (type === 'cancel') {
+						response = await cancelarSolicitud(
+							id,
+							comentario || t('empleados', 'Request cancelled from purchases module.'),
+						)
+						successMessage = t('empleados', 'Purchase request cancelled')
+					} else {
+						throw new Error(t('empleados', 'Invalid action.'))
+					}
+
+					const payload = this.getApiPayload(response)
+
+					if (!payload.success) {
+						throw new Error(payload.message || t('empleados', 'Could not complete action.'))
+					}
+
+					if (type === 'cancel' && this.detalle?.solicitud?.id_solicitud === id) {
+						this.closeDetalle()
+					}
+
+					await this.cargarSolicitudes()
+
+					if (type !== 'cancel' && this.detalle?.solicitud?.id_solicitud === id) {
+						await this.verDetalle(id)
+					}
+
+					this.actionModal = this.getEmptyActionModal()
+					showSuccess(successMessage)
+				} catch (error) {
+					console.error(error)
+					showError(this.getErrorMessage(error, t('empleados', 'Error completing action.')))
+
+					if (['approve', 'reject'].includes(type)
+						&& this.detalle?.solicitud?.id_solicitud === id) {
+						await this.verDetalle(id)
+						if (!canApprovePurchaseFlow(this.approvalFlow)
+							&& !canRejectPurchaseFlow(this.approvalFlow)) {
+							this.actionModal = this.getEmptyActionModal()
+						}
+					}
+				} finally {
+					this.actionModal.loading = false
+					this.loading = false
 				}
-
-				const payload = this.getApiPayload(response)
-
-				if (!payload.success) {
-					throw new Error(payload.message || t('empleados', 'Could not complete action.'))
-				}
-
-				if (type === 'cancel' && this.detalle?.solicitud?.id_solicitud === id) {
-					this.detalle = null
-				}
-
-				await this.cargarSolicitudes()
-
-				if (type !== 'cancel' && this.detalle?.solicitud?.id_solicitud === id) {
-					await this.verDetalle(id)
-				}
-
-				this.actionModal = this.getEmptyActionModal()
-				showSuccess(successMessage)
-			} catch (error) {
-				console.error(error)
-				showError(this.getErrorMessage(error, t('empleados', 'Error completing action.')))
-			} finally {
-				this.actionModal.loading = false
-				this.loading = false
-			}
+			})
 		},
 		autorizar(id) {
+			if (!canApprovePurchaseFlow(this.approvalFlow)) {
+				showError(t('empleados', 'You can no longer approve this request.'))
+				return
+			}
 			this.openActionModal('approve', id)
 		},
 
 		rechazar(id) {
+			if (!canRejectPurchaseFlow(this.approvalFlow)) {
+				showError(t('empleados', 'You can no longer reject this request.'))
+				return
+			}
 			this.openActionModal('reject', id)
 		},
 
@@ -2148,7 +2005,7 @@ export default {
 			this.showOnlyMine = Boolean(value)
 			this.hasSavedShowOnlyMinePreference = true
 			this.saveShowOnlyMine(this.showOnlyMine)
-			this.cargarSolicitudes()
+			this.applyListFilters()
 		},
 
 		isMyRequest(item) {
@@ -2197,16 +2054,6 @@ export default {
 		canSendRequest(item) {
 			return String(item?.estado || '') === 'borrador'
 				&& (this.purchasePermissions.can_select_requester || this.isMyRequest(item))
-		},
-
-		canApproveRequest(item) {
-			return this.purchasePermissions.can_approve
-				&& String(item?.estado || '') === 'pendiente_autorizacion'
-		},
-
-		canRejectRequest(item) {
-			return this.purchasePermissions.can_approve
-				&& String(item?.estado || '') === 'pendiente_autorizacion'
 		},
 
 		async guardarDocumento(id) {
@@ -2320,7 +2167,7 @@ export default {
 
 .compras-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 380px;
+	grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
 	gap: 16px;
 	align-items: start;
 	width: 100%;
@@ -2335,6 +2182,11 @@ export default {
 	flex-direction: column;
 	gap: 16px;
 	min-width: 0;
+}
+
+.purchases-side-panel h3 {
+	margin: 0;
+	font-size: 18px;
 }
 
 .compras-header {
@@ -2366,6 +2218,83 @@ export default {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: flex-start;
+	gap: 8px;
+}
+
+.requests-header,
+.filters-toolbar,
+.pagination-bar,
+.load-error-content {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.requests-header {
+	align-items: flex-start;
+	margin-bottom: 18px;
+}
+
+.requests-header h2 {
+	margin: 0;
+	font-size: 28px;
+	line-height: 1.2;
+}
+
+.requests-description {
+	margin: 5px 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.filters-toolbar {
+	margin-bottom: 16px;
+	padding: 12px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.result-count,
+.pagination-bar {
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.load-error {
+	margin-bottom: 14px;
+}
+
+.load-error-content {
+	width: 100%;
+}
+
+.table-area {
+	position: relative;
+	min-height: 120px;
+}
+
+.table-loading {
+	position: absolute;
+	z-index: 2;
+	top: 16px;
+	left: 50%;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	background: var(--color-main-background);
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+	transform: translateX(-50%);
+}
+
+.pagination-bar {
+	margin-top: 16px;
+}
+
+.pagination-bar > div {
+	display: flex;
 	gap: 8px;
 }
 
@@ -2479,6 +2408,10 @@ export default {
 	border-radius: var(--border-radius-large);
 }
 
+.table-area--loading .table-scroll {
+	opacity: 0.55;
+}
+
 .compras-table {
 	width: 100%;
 	border-collapse: collapse;
@@ -2502,6 +2435,15 @@ export default {
 
 .compras-table tbody tr:hover {
 	background: var(--color-background-hover);
+}
+
+.request-row {
+	cursor: pointer;
+}
+
+.request-title {
+	max-width: 260px;
+	overflow-wrap: anywhere;
 }
 
 .compras-table tbody tr:last-child td {
@@ -2543,6 +2485,24 @@ export default {
 .estado-cancelada {
 	background: #ececec;
 	color: #555;
+}
+
+.document-completo {
+	border: 1px solid rgba(22, 163, 74, 0.25);
+	background: rgba(22, 163, 74, 0.12);
+	color: #15803d;
+}
+
+.document-pendiente_firmado {
+	border: 1px solid rgba(234, 179, 8, 0.28);
+	background: rgba(234, 179, 8, 0.14);
+	color: #8a5700;
+}
+
+.document-pendiente_pdf {
+	border: 1px solid rgba(100, 116, 139, 0.25);
+	background: rgba(100, 116, 139, 0.14);
+	color: #475569;
 }
 
 .empty-state {
@@ -3221,24 +3181,30 @@ export default {
 }
 
 /* Responsive */
-@media (max-width: 980px) {
+	@media (max-width: 980px) {
 	.compras-page {
 		padding: 14px;
 	}
 
-	.compras-header,
-	.panel-header,
+		.compras-header,
+		.panel-header,
+		.requests-header,
+		.filters-toolbar,
 	.section-head,
 	.details-header {
 		align-items: stretch;
 		flex-direction: column;
 	}
 
-	.header-actions,
+		.header-actions,
 	.filters,
 	.details-actions {
-		justify-content: flex-start;
-	}
+			justify-content: flex-start;
+		}
+
+		.result-count {
+			align-self: flex-start;
+		}
 
 	.stats-grid,
 	.details-grid {

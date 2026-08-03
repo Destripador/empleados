@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace OCA\Empleados\Service;
 
 use Exception;
+use OCA\Empleados\Db\CompraAutorizacion;
+use OCA\Empleados\Db\CompraAutorizacionMapper;
 use OCA\Empleados\Db\CompraDetalleMapper;
 use OCA\Empleados\Db\CompraHistorialMapper;
 use OCA\Empleados\Db\CompraSolicitudMapper;
 use OCA\Empleados\Db\empleadosMapper;
+use OCP\IDBConnection;
+use OCP\IUserManager;
+use Throwable;
 
 class CompraSolicitudService {
 
@@ -25,6 +30,9 @@ class CompraSolicitudService {
 	private CompraPermisosService $permisosService;
 	private empleadosMapper $empleadosMapper;
 	private CompraNotificacionService $notificacionService;
+	private CompraAutorizacionMapper $autorizacionMapper;
+	private IDBConnection $db;
+	private IUserManager $userManager;
 
 	public function __construct(
 		CompraSolicitudMapper $solicitudMapper,
@@ -33,7 +41,10 @@ class CompraSolicitudService {
 		CompraFolioService $folioService,
 		CompraPermisosService $permisosService,
 		empleadosMapper $empleadosMapper,
-		CompraNotificacionService $notificacionService
+		CompraNotificacionService $notificacionService,
+		CompraAutorizacionMapper $autorizacionMapper,
+		IDBConnection $db,
+		IUserManager $userManager
 	) {
 		$this->solicitudMapper = $solicitudMapper;
 		$this->detalleMapper = $detalleMapper;
@@ -42,14 +53,44 @@ class CompraSolicitudService {
 		$this->permisosService = $permisosService;
 		$this->empleadosMapper = $empleadosMapper;
 		$this->notificacionService = $notificacionService;
+		$this->autorizacionMapper = $autorizacionMapper;
+		$this->db = $db;
+		$this->userManager = $userManager;
 	}
 
-	public function listar(string $userId, bool $todas = false, int $limit = 50, int $offset = 0): array {
-		if ($todas && $this->permisosService->canViewAll($userId)) {
-			return $this->solicitudMapper->findAll($limit, $offset);
+	public function listar(
+		string $userId,
+		bool $todas = false,
+		int $limit = 50,
+		int $offset = 0,
+		?string $estado = null
+	): array {
+		$estados = [
+			self::ESTADO_BORRADOR,
+			self::ESTADO_PENDIENTE_AUTORIZACION,
+			self::ESTADO_AUTORIZADA,
+			self::ESTADO_RECHAZADA,
+			self::ESTADO_CANCELADA,
+		];
+
+		if ($estado !== null && !in_array($estado, $estados, true)) {
+			throw new Exception('El estado solicitado no es válido.');
 		}
 
-		return $this->solicitudMapper->findByUser($userId, $limit, $offset);
+		$idUser = $todas && $this->permisosService->canViewAll($userId)
+			? null
+			: $userId;
+		$summary = $this->solicitudMapper->getListSummary($idUser, $estado);
+
+		return [
+			'items' => $this->solicitudMapper->findPage($idUser, $estado, $limit, $offset),
+			'pagination' => [
+				'total' => $summary['total'],
+				'limit' => $limit,
+				'offset' => $offset,
+			],
+			'summary' => $summary,
+		];
 	}
 
 	public function listarPendientesAutorizacion(string $userId, int $limit = 100, int $offset = 0): array {
@@ -60,17 +101,49 @@ class CompraSolicitudService {
 		return $this->solicitudMapper->findByEstado(self::ESTADO_PENDIENTE_AUTORIZACION, $limit, $offset);
 	}
 
-	public function obtenerDetalle(int $idSolicitud, string $userId): array {
+	public function obtenerDetalle(int $idSolicitud, string $userId, bool $includeHistory = true): array {
 		$solicitud = $this->solicitudMapper->find($idSolicitud);
+		$resolved = $this->resolveApprovalStages($solicitud);
+		$isPending = (string)$solicitud->getEstado() === self::ESTADO_PENDIENTE_AUTORIZACION;
+		$isHierarchyApprover = $isPending
+			&& in_array($userId, array_column($resolved['stages'], 'uid'), true);
+		if (
+			$isHierarchyApprover
+			&& !$this->autorizacionMapper->hasAssignments($idSolicitud)
+		) {
+			$this->transactional(fn(): array => $this->ensureApprovalFlow($solicitud));
+		}
 
-		if (!$this->permisosService->canViewSolicitud($userId, (string)$solicitud->getIdUser())) {
+		if (
+			!$this->permisosService->canViewSolicitud($userId, (string)$solicitud->getIdUser())
+			&& !$isHierarchyApprover
+			&& !$this->autorizacionMapper->isAssigned($idSolicitud, $userId)
+		) {
 			throw new Exception('No tienes permisos para ver esta solicitud.');
 		}
 
 		return [
 			'solicitud' => $solicitud,
 			'detalles' => $this->detalleMapper->findBySolicitud($idSolicitud),
-			'historial' => $this->historialMapper->findBySolicitud($idSolicitud),
+			'historial' => $includeHistory ? $this->historialMapper->findBySolicitud($idSolicitud) : [],
+		];
+	}
+
+	public function obtenerHistorial(
+		int $idSolicitud,
+		string $userId,
+		int $limit = 10,
+		int $offset = 0
+	): array {
+		$this->obtenerDetalle($idSolicitud, $userId, false);
+
+		return [
+			'items' => $this->historialMapper->findPageBySolicitud($idSolicitud, $limit, $offset),
+			'pagination' => [
+				'total' => $this->historialMapper->countBySolicitud($idSolicitud),
+				'limit' => $limit,
+				'offset' => $offset,
+			],
 		];
 	}
 
@@ -154,18 +227,18 @@ class CompraSolicitudService {
 
 		$this->detalleMapper->replaceBySolicitud($idSolicitud, $detallesNormalizados);
 
-		$this->historialMapper->insertHistorial(
+		$this->registrarHistorial(
 			$idSolicitud,
 			'creada',
 			null,
 			self::ESTADO_BORRADOR,
 			'Solicitud creada.',
+			$userId,
 			[
 				'total_excl_iva' => $totales['total_excl_iva'],
 				'iva' => $totales['iva'],
 				'total_incl_iva' => $totales['total_incl_iva'],
-			],
-			$userId
+			]
 		);
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
@@ -263,13 +336,12 @@ class CompraSolicitudService {
 			$this->detalleMapper->replaceBySolicitud($idSolicitud, $detallesNormalizados);
 		}
 
-		$this->historialMapper->insertHistorial(
+		$this->registrarHistorial(
 			$idSolicitud,
 			'editada',
 			self::ESTADO_BORRADOR,
 			self::ESTADO_BORRADOR,
 			'Solicitud editada.',
-			null,
 			$userId
 		);
 
@@ -287,92 +359,161 @@ class CompraSolicitudService {
 			throw new Exception('Solo se pueden enviar solicitudes en borrador.');
 		}
 
-		$this->solicitudMapper->cambiarEstado(
-			$idSolicitud,
-			self::ESTADO_PENDIENTE_AUTORIZACION,
-			$userId,
-			'fecha_envio'
-		);
+		$current = $this->transactional(function () use ($solicitud, $idSolicitud, $userId): ?CompraAutorizacion {
+			if (!$this->solicitudMapper->cambiarEstadoSiActual(
+				$idSolicitud,
+				self::ESTADO_BORRADOR,
+				self::ESTADO_PENDIENTE_AUTORIZACION,
+				$userId,
+				'fecha_envio'
+			)) {
+				throw new Exception('La solicitud cambió de estado mientras se enviaba.');
+			}
 
-		$this->historialMapper->insertHistorial(
-			$idSolicitud,
-			'enviada_autorizacion',
-			self::ESTADO_BORRADOR,
-			self::ESTADO_PENDIENTE_AUTORIZACION,
-			'Solicitud enviada a autorización.',
-			null,
-			$userId
-		);
+			$flow = $this->ensureApprovalFlow($solicitud);
+			$this->registrarHistorial(
+				$idSolicitud,
+				'enviada_autorizacion',
+				self::ESTADO_BORRADOR,
+				self::ESTADO_PENDIENTE_AUTORIZACION,
+				'Solicitud enviada a autorización.',
+				$userId,
+				[
+					'flujo' => $flow['stages'],
+					'requiere_revision' => $flow['requires_review'],
+					'incidencias' => $flow['issues'],
+				]
+			);
 
-		$this->notificacionService->notificarPendienteAutorizacion($solicitud, $userId);
+			return $this->autorizacionMapper->findCurrent($idSolicitud);
+		});
+
+		if ($current !== null) {
+			$this->notificacionService->notificarAprobadorActual(
+				$solicitud,
+				(string)$current->getIdAutorizador(),
+				(string)$current->getRol()
+			);
+		}
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
 	}
 
 	public function autorizar(int $idSolicitud, string $userId, ?string $comentario = null): array {
-		if (!$this->permisosService->canApprove($userId)) {
-			throw new Exception('No tienes permisos para autorizar solicitudes.');
-		}
-
 		$solicitud = $this->solicitudMapper->find($idSolicitud);
+		$outcome = $this->transactional(function () use ($solicitud, $idSolicitud, $userId, $comentario): array {
+			if ((string)$solicitud->getEstado() !== self::ESTADO_PENDIENTE_AUTORIZACION) {
+				throw new Exception('Solo se pueden autorizar solicitudes pendientes de autorización.');
+			}
 
-		if ((string)$solicitud->getEstado() !== self::ESTADO_PENDIENTE_AUTORIZACION) {
-			throw new Exception('Solo se pueden autorizar solicitudes pendientes de autorización.');
+			$flow = $this->ensureApprovalFlow($solicitud);
+			$current = $this->autorizacionMapper->findCurrent($idSolicitud);
+			if ($current === null) {
+				throw new Exception($flow['requires_review']
+					? 'La solicitud requiere revisión de su estructura de aprobación.'
+					: 'La solicitud ya no tiene una etapa pendiente.');
+			}
+			if ((string)$current->getIdAutorizador() !== $userId) {
+				throw new Exception('No tienes permiso: solamente el aprobador actual puede autorizar esta etapa.');
+			}
+			if (!$this->autorizacionMapper->resolvePending(
+				(int)$current->getIdAutorizacion(),
+				'aprobada',
+				$comentario
+			)) {
+				throw new Exception('La etapa ya fue procesada por otra petición.');
+			}
+
+			$next = $this->autorizacionMapper->findCurrent($idSolicitud);
+			$final = $next === null && !$flow['requires_review'];
+			$estadoNuevo = $final ? self::ESTADO_AUTORIZADA : self::ESTADO_PENDIENTE_AUTORIZACION;
+			if ($final && !$this->solicitudMapper->cambiarEstadoSiActual(
+				$idSolicitud,
+				self::ESTADO_PENDIENTE_AUTORIZACION,
+				self::ESTADO_AUTORIZADA,
+				$userId,
+				'fecha_autorizacion'
+			)) {
+				throw new Exception('La solicitud cambió de estado durante la autorización.');
+			}
+
+			$this->registrarHistorial(
+				$idSolicitud,
+				$final ? 'autorizada' : 'etapa_autorizada',
+				self::ESTADO_PENDIENTE_AUTORIZACION,
+				$estadoNuevo,
+				$comentario ?: ($final ? 'Solicitud autorizada.' : 'Etapa de autorización completada.'),
+				$userId,
+				$this->stageMetadata($current)
+			);
+
+			return ['final' => $final, 'next' => $next];
+		});
+
+		if ($outcome['final']) {
+			$this->notificacionService->notificarSolicitudAutorizada($solicitud, $userId, $comentario);
+		} elseif ($outcome['next'] instanceof CompraAutorizacion) {
+			$this->notificacionService->notificarAprobadorActual(
+				$solicitud,
+				(string)$outcome['next']->getIdAutorizador(),
+				(string)$outcome['next']->getRol()
+			);
 		}
-
-		$this->solicitudMapper->cambiarEstado(
-			$idSolicitud,
-			self::ESTADO_AUTORIZADA,
-			$userId,
-			'fecha_autorizacion'
-		);
-
-		$this->historialMapper->insertHistorial(
-			$idSolicitud,
-			'autorizada',
-			self::ESTADO_PENDIENTE_AUTORIZACION,
-			self::ESTADO_AUTORIZADA,
-			$comentario ?: 'Solicitud autorizada.',
-			null,
-			$userId
-		);
-
-		$this->notificacionService->notificarSolicitudAutorizada(
-			$solicitud,
-			$userId,
-			$comentario
-		);
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
 	}
 
 	public function rechazar(int $idSolicitud, string $userId, ?string $comentario = null): array {
-		if (!$this->permisosService->canApprove($userId)) {
-			throw new Exception('No tienes permisos para rechazar solicitudes.');
+		$comentario = trim((string)$comentario);
+		if ($comentario === '') {
+			throw new Exception('El comentario es obligatorio para rechazar la solicitud.');
 		}
 
 		$solicitud = $this->solicitudMapper->find($idSolicitud);
+		$this->transactional(function () use ($solicitud, $idSolicitud, $userId, $comentario): void {
+			if ((string)$solicitud->getEstado() !== self::ESTADO_PENDIENTE_AUTORIZACION) {
+				throw new Exception('Solo se pueden rechazar solicitudes pendientes de autorización.');
+			}
 
-		if ((string)$solicitud->getEstado() !== self::ESTADO_PENDIENTE_AUTORIZACION) {
-			throw new Exception('Solo se pueden rechazar solicitudes pendientes de autorización.');
-		}
+			$flow = $this->ensureApprovalFlow($solicitud);
+			$current = $this->autorizacionMapper->findCurrent($idSolicitud);
+			if ($current === null) {
+				throw new Exception($flow['requires_review']
+					? 'La solicitud requiere revisión de su estructura de aprobación.'
+					: 'La solicitud ya no tiene una etapa pendiente.');
+			}
+			if ((string)$current->getIdAutorizador() !== $userId) {
+				throw new Exception('No tienes permiso: solamente el aprobador actual puede rechazar esta etapa.');
+			}
+			if (!$this->autorizacionMapper->resolvePending(
+				(int)$current->getIdAutorizacion(),
+				'rechazada',
+				$comentario
+			)) {
+				throw new Exception('La etapa ya fue procesada por otra petición.');
+			}
+			if (!$this->solicitudMapper->cambiarEstadoSiActual(
+				$idSolicitud,
+				self::ESTADO_PENDIENTE_AUTORIZACION,
+				self::ESTADO_RECHAZADA,
+				$userId
+			)) {
+				throw new Exception('La solicitud cambió de estado durante el rechazo.');
+			}
 
-		$this->solicitudMapper->cambiarEstado(
-			$idSolicitud,
-			self::ESTADO_RECHAZADA,
-			$userId,
-			null
-		);
+			$this->autorizacionMapper->cancelPendingBySolicitud($idSolicitud);
+			$this->registrarHistorial(
+				$idSolicitud,
+				'rechazada',
+				self::ESTADO_PENDIENTE_AUTORIZACION,
+				self::ESTADO_RECHAZADA,
+				$comentario ?: 'Solicitud rechazada.',
+				$userId,
+				$this->stageMetadata($current)
+			);
+		});
 
-		$this->historialMapper->insertHistorial(
-			$idSolicitud,
-			'rechazada',
-			self::ESTADO_PENDIENTE_AUTORIZACION,
-			self::ESTADO_RECHAZADA,
-			$comentario ?: 'Solicitud rechazada.',
-			null,
-			$userId
-		);
+		$this->notificacionService->notificarSolicitudRechazada($solicitud, $userId, $comentario);
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
 	}
@@ -427,23 +568,19 @@ class CompraSolicitudService {
 			return $total + (float)($detalle['iva'] ?? 0);
 		}, 0.0);
 
-		if (array_key_exists('total_excl_iva', $data) && $data['total_excl_iva'] !== '') {
-			$totalExclIva = (float)$data['total_excl_iva'];
-		} elseif ($fallback !== null && $totalExclIva <= 0 && $fallback['total_excl_iva'] !== null) {
+		// Los totales son derivados de conceptos normalizados en backend. Nunca se
+		// aceptan los montos calculados que envía el navegador.
+		if ($detalles === [] && $fallback !== null && $fallback['total_excl_iva'] !== null) {
 			$totalExclIva = (float)$fallback['total_excl_iva'];
 		}
 
-		if (array_key_exists('iva', $data) && $data['iva'] !== '') {
-			$iva = (float)$data['iva'];
-		} elseif ($fallback !== null && $iva <= 0 && $fallback['iva'] !== null) {
+		if ($detalles === [] && $fallback !== null && $fallback['iva'] !== null) {
 			$iva = (float)$fallback['iva'];
 		}
 
 		$totalInclIva = $totalExclIva + $iva;
 
-		if (array_key_exists('total_incl_iva', $data) && $data['total_incl_iva'] !== '') {
-			$totalInclIva = (float)$data['total_incl_iva'];
-		} elseif ($fallback !== null && $totalInclIva <= 0 && $fallback['total_incl_iva'] !== null) {
+		if ($detalles === [] && $fallback !== null && $fallback['total_incl_iva'] !== null) {
 			$totalInclIva = (float)$fallback['total_incl_iva'];
 		}
 
@@ -511,24 +648,73 @@ class CompraSolicitudService {
 
 		$estadoAnterior = (string)$solicitud->getEstado();
 
-		$this->solicitudMapper->cambiarEstado(
-			$idSolicitud,
-			self::ESTADO_CANCELADA,
-			$userId,
-			'fecha_cierre'
-		);
-
-		$this->historialMapper->insertHistorial(
-			$idSolicitud,
-			'cancelada',
-			$estadoAnterior,
-			self::ESTADO_CANCELADA,
-			$comentario ?: 'Solicitud cancelada.',
-			null,
-			$userId
-		);
+		$this->transactional(function () use ($idSolicitud, $estadoAnterior, $userId, $comentario): void {
+			if (!$this->solicitudMapper->cambiarEstadoSiActual(
+				$idSolicitud,
+				$estadoAnterior,
+				self::ESTADO_CANCELADA,
+				$userId,
+				'fecha_cierre'
+			)) {
+				throw new Exception('La solicitud cambió de estado mientras se cancelaba.');
+			}
+			$this->autorizacionMapper->cancelPendingBySolicitud($idSolicitud);
+			$this->registrarHistorial(
+				$idSolicitud,
+				'cancelada',
+				$estadoAnterior,
+				self::ESTADO_CANCELADA,
+				$comentario ?: 'Solicitud cancelada.',
+				$userId
+			);
+		});
 
 		return $this->obtenerDetalle($idSolicitud, $userId);
+	}
+
+	public function resolverAprobadorActual(int $idSolicitud): ?array {
+		$current = $this->autorizacionMapper->findCurrent($idSolicitud);
+		return $current?->jsonSerialize();
+	}
+
+	public function obtenerFlujo(int $idSolicitud, string $userId): array {
+		$solicitud = $this->solicitudMapper->find($idSolicitud);
+		$resolved = $this->resolveApprovalStages($solicitud);
+		$isPendingHierarchyApprover = (string)$solicitud->getEstado() === self::ESTADO_PENDIENTE_AUTORIZACION
+			&& in_array($userId, array_column($resolved['stages'], 'uid'), true);
+		$allowed = $this->permisosService->canViewSolicitud($userId, (string)$solicitud->getIdUser())
+			|| $isPendingHierarchyApprover
+			|| $this->autorizacionMapper->isAssigned($idSolicitud, $userId);
+		if (!$allowed) {
+			throw new Exception('No tienes permisos para consultar el flujo de esta solicitud.');
+		}
+
+		if (
+			(string)$solicitud->getEstado() === self::ESTADO_PENDIENTE_AUTORIZACION
+			&& !$this->autorizacionMapper->hasAssignments($idSolicitud)
+		) {
+			$this->transactional(fn(): array => $this->ensureApprovalFlow($solicitud));
+		}
+
+		$stages = array_map(
+			static fn(CompraAutorizacion $stage): array => $stage->jsonSerialize(),
+			$this->autorizacionMapper->findBySolicitud($idSolicitud)
+		);
+		$current = $this->resolverAprobadorActual($idSolicitud);
+		$canResolve = (string)$solicitud->getEstado() === self::ESTADO_PENDIENTE_AUTORIZACION
+			&& $current !== null
+			&& (string)$current['id_autorizador'] === $userId;
+
+		return [
+			'id_solicitud' => $idSolicitud,
+			'estado' => (string)$solicitud->getEstado(),
+			'aprobador_actual' => $current,
+			'etapas' => $stages,
+			'can_approve' => $canResolve,
+			'can_reject' => $canResolve,
+			'requiere_revision' => $resolved['requires_review'],
+			'incidencias' => $resolved['issues'],
+		];
 	}
 
 	public function contexto(string $userId): array {
@@ -548,6 +734,123 @@ class CompraSolicitudService {
 
 			'requester' => $this->getRequesterData($userId),
 		];
+	}
+
+	private function ensureApprovalFlow($solicitud): array {
+		$idSolicitud = (int)$solicitud->getIdSolicitud();
+		$resolved = $this->resolveApprovalStages($solicitud);
+		if (!$this->autorizacionMapper->hasAssignments($idSolicitud)) {
+			foreach ($resolved['stages'] as $stage) {
+				$this->autorizacionMapper->insertStage($idSolicitud, $stage);
+			}
+		}
+
+		return $resolved;
+	}
+
+	private function resolveApprovalStages($solicitud): array {
+		$idEmpleado = trim((string)$solicitud->getIdEmpleado());
+		$employeeRows = $idEmpleado !== ''
+			? $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado($idEmpleado)
+			: $this->empleadosMapper->GetMyEmployeeInfo((string)$solicitud->getIdUser());
+		$employee = $employeeRows[0] ?? null;
+		if ($employee === null) {
+			return [
+				'stages' => [],
+				'issues' => ['No se encontró la estructura laboral del solicitante.'],
+				'requires_review' => true,
+			];
+		}
+
+		$roles = [
+			'gerente' => trim((string)($employee['Id_gerente'] ?? $employee['id_gerente'] ?? '')),
+			'socio' => trim((string)($employee['Id_socio'] ?? $employee['id_socio'] ?? '')),
+		];
+		$stages = [];
+		$issues = [];
+		$stageByUid = [];
+
+		foreach ($roles as $role => $uid) {
+			if ($uid === '') {
+				$issues[] = sprintf('El solicitante no tiene %s asignado.', $role);
+				continue;
+			}
+
+			$user = $this->userManager->get($uid);
+			if ($user === null || !$user->isEnabled()) {
+				$issues[] = sprintf('El %s asignado (%s) no existe o está deshabilitado.', $role, $uid);
+				continue;
+			}
+
+			if (isset($stageByUid[$uid])) {
+				$index = $stageByUid[$uid];
+				$stages[$index]['rol'] = 'gerente_socio';
+				continue;
+			}
+
+			$approverRows = $this->empleadosMapper->GetMyEmployeeInfo($uid);
+			$approver = $approverRows[0] ?? [];
+			$stageByUid[$uid] = count($stages);
+			$stages[] = [
+				'uid' => $uid,
+				'id_empleado' => $approver['Id_empleados'] ?? $approver['id_empleados'] ?? null,
+				'nombre' => $user->getDisplayName() ?: $uid,
+				'rol' => $role,
+				'nivel' => count($stages) + 1,
+			];
+		}
+
+		return [
+			'stages' => $stages,
+			'issues' => $issues,
+			'requires_review' => $issues !== [] || $stages === [],
+		];
+	}
+
+	private function registrarHistorial(
+		int $idSolicitud,
+		string $accion,
+		?string $estadoAnterior,
+		?string $estadoNuevo,
+		?string $comentario,
+		string $actorUid,
+		array $metadata = []
+	): void {
+		$user = $this->userManager->get($actorUid);
+		$metadata = array_merge($metadata, [
+			'actor_uid' => $actorUid,
+			'actor_nombre' => $user?->getDisplayName() ?: $actorUid,
+		]);
+		$this->historialMapper->insertHistorial(
+			$idSolicitud,
+			$accion,
+			$estadoAnterior,
+			$estadoNuevo,
+			$comentario,
+			$metadata,
+			$actorUid
+		);
+	}
+
+	private function stageMetadata(CompraAutorizacion $stage): array {
+		return [
+			'aprobador_uid' => (string)$stage->getIdAutorizador(),
+			'aprobador_nombre' => (string)$stage->getAutorizadorNombre(),
+			'rol' => (string)$stage->getRol(),
+			'nivel' => (int)$stage->getNivel(),
+		];
+	}
+
+	private function transactional(callable $operation) {
+		$this->db->beginTransaction();
+		try {
+			$result = $operation();
+			$this->db->commit();
+			return $result;
+		} catch (Throwable $e) {
+			$this->db->rollBack();
+			throw $e;
+		}
 	}
 
 	private function getRequesterData(string $userId): array {

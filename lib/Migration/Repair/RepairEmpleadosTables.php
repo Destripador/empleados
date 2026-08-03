@@ -22,6 +22,9 @@ final class RepairEmpleadosTables implements IRepairStep {
 
         // 1) Crear tablas que falten (NO destructivo)
         $this->ensureTableEmpleados($output, $platform);
+        $this->ensureTableContactosEmergencia($output, $platform);
+		$this->ensureTableInventarioMovimientos($output, $platform);
+		$this->ensureSupportTimeIntegrationSchema($output, $platform);
         $this->ensureTablePuestos($output, $platform);
         $this->ensureTableDepartamentos($output, $platform);
         $this->ensureTableEmpleadosConf($output, $platform);
@@ -95,7 +98,7 @@ final class RepairEmpleadosTables implements IRepairStep {
         }
     }
 
-    private function tableExistsAny(string $base): bool {
+	private function tableExistsAny(string $base): bool {
         // detecta con y sin prefijo
         return $this->tableExistsExact($base) || $this->tableExistsExact($this->tn($base));
     }
@@ -167,6 +170,98 @@ final class RepairEmpleadosTables implements IRepairStep {
     }
 
     /* ----------------- creadores por tabla (NO destructivos; usan tn()) ----------------- */
+
+    private function ensureTableContactosEmergencia(IOutput $output, string $p): void {
+        $base = 'emp_cont_emer'; $phys = $this->tn($base);
+        if ($this->tableExistsAny($base)) return;
+        try {
+            if ($p === 'mysql') {
+                $this->db->executeStatement("CREATE TABLE `$phys` (`id` BIGINT UNSIGNED AUTO_INCREMENT NOT NULL, `id_empleado` INT NOT NULL, `nombre` VARCHAR(200) NOT NULL, `relacion` VARCHAR(120) NOT NULL, `numero_contacto` VARCHAR(80) NOT NULL, `medio_alternativo` VARCHAR(255) NULL, `tipo_ayuda` VARCHAR(255) NULL, `notas` LONGTEXT NULL, `es_principal` SMALLINT DEFAULT 0 NOT NULL, `principal_empleado` INT NULL, `orden` INT DEFAULT 0 NOT NULL, `created_at` VARCHAR(32) NOT NULL, `updated_at` VARCHAR(32) NOT NULL, PRIMARY KEY (`id`), UNIQUE (`principal_empleado`))");
+            } elseif ($p === 'postgresql') {
+                $this->db->executeStatement("CREATE TABLE \"$phys\" (\"id\" BIGSERIAL PRIMARY KEY, \"id_empleado\" INT NOT NULL, \"nombre\" VARCHAR(200) NOT NULL, \"relacion\" VARCHAR(120) NOT NULL, \"numero_contacto\" VARCHAR(80) NOT NULL, \"medio_alternativo\" VARCHAR(255) NULL, \"tipo_ayuda\" VARCHAR(255) NULL, \"notas\" TEXT NULL, \"es_principal\" SMALLINT DEFAULT 0 NOT NULL, \"principal_empleado\" INT NULL UNIQUE, \"orden\" INT DEFAULT 0 NOT NULL, \"created_at\" VARCHAR(32) NOT NULL, \"updated_at\" VARCHAR(32) NOT NULL)");
+            } else {
+                $this->db->executeStatement("CREATE TABLE \"$phys\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"id_empleado\" INT NOT NULL, \"nombre\" VARCHAR(200) NOT NULL, \"relacion\" VARCHAR(120) NOT NULL, \"numero_contacto\" VARCHAR(80) NOT NULL, \"medio_alternativo\" VARCHAR(255) NULL, \"tipo_ayuda\" VARCHAR(255) NULL, \"notas\" TEXT NULL, \"es_principal\" SMALLINT DEFAULT 0 NOT NULL, \"principal_empleado\" INT NULL UNIQUE, \"orden\" INT DEFAULT 0 NOT NULL, \"created_at\" VARCHAR(32) NOT NULL, \"updated_at\" VARCHAR(32) NOT NULL)");
+            }
+            $this->ensureIndex($output, $p, $base, 'emp_cont_empleado_idx', 'id_empleado');
+            $this->ensureIndex($output, $p, $base, 'emp_cont_principal_idx', 'es_principal');
+            $output->info('Creada tabla de contactos de emergencia.');
+        } catch (\Throwable $e) {
+            $output->warning('No fue posible crear contactos de emergencia: ' . $e->getMessage());
+        }
+    }
+
+	private function ensureTableInventarioMovimientos(IOutput $output, string $p): void {
+		$base = 'inv_movimientos'; $phys = $this->tn($base);
+		if ($this->tableExistsAny($base)) return;
+		try {
+			if ($p === 'mysql') {
+				$this->db->executeStatement("CREATE TABLE `$phys` (`id` BIGINT UNSIGNED AUTO_INCREMENT NOT NULL, `id_equipo` INT UNSIGNED NOT NULL, `tipo_movimiento` VARCHAR(40) NOT NULL, `actor_uid` VARCHAR(255) NOT NULL, `actor_nombre` VARCHAR(255) NOT NULL, `empleado_anterior_uid` VARCHAR(255) NULL, `empleado_anterior_nombre` VARCHAR(255) NULL, `empleado_nuevo_uid` VARCHAR(255) NULL, `empleado_nuevo_nombre` VARCHAR(255) NULL, `estado_anterior` VARCHAR(80) NULL, `estado_nuevo` VARCHAR(80) NULL, `descripcion` LONGTEXT NULL, `cambios` LONGTEXT NULL, `fecha` DATETIME NOT NULL, PRIMARY KEY (`id`))");
+				$this->db->executeStatement("CREATE INDEX `inv_mov_equipo_fecha` ON `$phys` (`id_equipo`, `fecha`)");
+			} elseif ($p === 'postgresql') {
+				$this->db->executeStatement("CREATE TABLE \"$phys\" (\"id\" BIGSERIAL PRIMARY KEY, \"id_equipo\" INT NOT NULL, \"tipo_movimiento\" VARCHAR(40) NOT NULL, \"actor_uid\" VARCHAR(255) NOT NULL, \"actor_nombre\" VARCHAR(255) NOT NULL, \"empleado_anterior_uid\" VARCHAR(255) NULL, \"empleado_anterior_nombre\" VARCHAR(255) NULL, \"empleado_nuevo_uid\" VARCHAR(255) NULL, \"empleado_nuevo_nombre\" VARCHAR(255) NULL, \"estado_anterior\" VARCHAR(80) NULL, \"estado_nuevo\" VARCHAR(80) NULL, \"descripcion\" TEXT NULL, \"cambios\" TEXT NULL, \"fecha\" TIMESTAMP NOT NULL)");
+				$this->db->executeStatement("CREATE INDEX \"inv_mov_equipo_fecha\" ON \"$phys\" (\"id_equipo\", \"fecha\")");
+			} else {
+				$this->db->executeStatement("CREATE TABLE \"$phys\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"id_equipo\" INT NOT NULL, \"tipo_movimiento\" VARCHAR(40) NOT NULL, \"actor_uid\" VARCHAR(255) NOT NULL, \"actor_nombre\" VARCHAR(255) NOT NULL, \"empleado_anterior_uid\" VARCHAR(255) NULL, \"empleado_anterior_nombre\" VARCHAR(255) NULL, \"empleado_nuevo_uid\" VARCHAR(255) NULL, \"empleado_nuevo_nombre\" VARCHAR(255) NULL, \"estado_anterior\" VARCHAR(80) NULL, \"estado_nuevo\" VARCHAR(80) NULL, \"descripcion\" TEXT NULL, \"cambios\" TEXT NULL, \"fecha\" TEXT NOT NULL)");
+				$this->db->executeStatement("CREATE INDEX \"inv_mov_equipo_fecha\" ON \"$phys\" (\"id_equipo\", \"fecha\")");
+			}
+			$output->info('Creada tabla de movimientos de inventario.');
+		} catch (\Throwable $e) {
+			$output->warning('No fue posible crear movimientos de inventario: ' . $e->getMessage());
+		}
+	}
+
+	private function columnExists(string $tableBase, string $column): bool {
+		try {
+			$schema = $this->db->createSchema();
+			return $schema->hasTable($this->tn($tableBase))
+				&& $schema->getTable($this->tn($tableBase))->hasColumn($column);
+		} catch (\Throwable) {
+			return false;
+		}
+	}
+
+	private function ensureSupportTimeIntegrationSchema(IOutput $output, string $platform): void {
+		$definitions = [
+			'soporte_historial' => [
+				'duracion_minutos' => $platform === 'mysql' ? 'INT UNSIGNED NULL' : 'INTEGER NULL',
+			],
+			'empleados_rep_tiempos' => [
+				'origen' => 'VARCHAR(40) NULL',
+				'origen_id' => $platform === 'mysql' ? 'INT UNSIGNED NULL' : 'INTEGER NULL',
+			],
+			'empleados_actividades' => ['clave_sistema' => 'VARCHAR(64) NULL'],
+		];
+
+		foreach ($definitions as $table => $columns) {
+			if (!$this->tableExistsAny($table)) continue;
+			foreach ($columns as $column => $definition) {
+				if ($this->columnExists($table, $column)) continue;
+				$quotedTable = $platform === 'mysql' ? '`' . $this->tn($table) . '`' : '"' . $this->tn($table) . '"';
+				$quotedColumn = $platform === 'mysql' ? '`' . $column . '`' : '"' . $column . '"';
+				$this->db->executeStatement("ALTER TABLE $quotedTable ADD COLUMN $quotedColumn $definition");
+				$output->info("Agregada columna $table.$column.");
+			}
+		}
+
+		$this->ensureCompositeIndex($output, $platform, 'empleados_rep_tiempos', 'emp_rep_origen_idx', ['origen', 'origen_id'], false);
+		$this->ensureCompositeIndex($output, $platform, 'empleados_rep_tiempos', 'emp_rep_origen_unique', ['origen', 'origen_id'], true);
+		$this->ensureCompositeIndex($output, $platform, 'empleados_actividades', 'emp_actividad_clave_unique', ['clave_sistema'], true);
+	}
+
+	private function ensureCompositeIndex(IOutput $output, string $platform, string $table, string $name, array $columns, bool $unique): void {
+		$physical = $this->tn($table);
+		try {
+			$schema = $this->db->createSchema();
+			if ($schema->hasTable($physical) && $schema->getTable($physical)->hasIndex($name)) return;
+			$quote = static fn(string $value): string => $platform === 'mysql' ? '`' . $value . '`' : '"' . $value . '"';
+			$sql = 'CREATE ' . ($unique ? 'UNIQUE ' : '') . 'INDEX ' . $quote($name)
+				. ' ON ' . $quote($physical) . ' (' . implode(', ', array_map($quote, $columns)) . ')';
+			$this->db->executeStatement($sql);
+			$output->info("Creado índice $name en $physical.");
+		} catch (\Throwable $e) {
+			$output->warning("No fue posible asegurar el índice $name: " . $e->getMessage());
+		}
+	}
 
     private function ensureTableEmpleados(IOutput $output, string $p): void {
         $base = 'empleados'; $phys = $this->tn($base);

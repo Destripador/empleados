@@ -17,6 +17,7 @@ class SoporteHistorial extends Entity {
 	protected ?string $usuario_soporte = null;
 	protected ?string $created_at = null;
 	protected ?string $updated_at = null;
+	protected ?int $duracion_minutos = null;
 
 	public function __construct() {
 		$this->addType('id_soporte', 'integer');
@@ -28,6 +29,7 @@ class SoporteHistorial extends Entity {
 		$this->addType('usuario_soporte', 'string');
 		$this->addType('created_at', 'string');
 		$this->addType('updated_at', 'string');
+		$this->addType('duracion_minutos', 'integer');
 	}
 
 	public function read(): array {
@@ -41,6 +43,7 @@ class SoporteHistorial extends Entity {
 			'usuario_soporte' => $this->usuario_soporte,
 			'created_at' => $this->created_at,
 			'updated_at' => $this->updated_at,
+			'duracion_minutos' => $this->duracion_minutos,
 		];
 	}
 }

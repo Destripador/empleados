@@ -44,6 +44,37 @@ class CompraHistorialMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	public function findPageBySolicitud(int $idSolicitud, int $limit, int $offset): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from(self::TABLE)
+			->where($qb->expr()->eq(
+				'id_solicitud',
+				$qb->createNamedParameter($idSolicitud, IQueryBuilder::PARAM_INT)
+			))
+			->orderBy('created_at', 'DESC')
+			->addOrderBy('id_historial', 'DESC')
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		return $this->findEntities($qb);
+	}
+
+	public function countBySolicitud(int $idSolicitud): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->createFunction('COUNT(*)'))
+			->from(self::TABLE)
+			->where($qb->expr()->eq(
+				'id_solicitud',
+				$qb->createNamedParameter($idSolicitud, IQueryBuilder::PARAM_INT)
+			));
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $count;
+	}
+
 	public function insertHistorial(
 		int $idSolicitud,
 		string $accion,

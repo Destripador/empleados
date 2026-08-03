@@ -237,6 +237,15 @@ class reportetiempoController extends BaseController {
 	#[NoAdminRequired]
 	public function deleteReport($id): DataResponse {
 		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+		$reporte = $this->reportetiempoMapper->findReportById((int)$id);
+		if ($reporte === null) {
+			return new DataResponse(['message' => 'Reporte no encontrado.'], Http::STATUS_NOT_FOUND);
+		}
+		if (($reporte['origen'] ?? null) === 'soporte_ti') {
+			return new DataResponse([
+				'message' => 'Este reporte fue generado por un soporte de TI. Modifica el registro de soporte para actualizar el tiempo.',
+			], Http::STATUS_CONFLICT);
+		}
 
 		$this->reportetiempoMapper->deleteById((int)$id);
 
@@ -257,6 +266,15 @@ class reportetiempoController extends BaseController {
 		$fecharegistrada
 	): DataResponse {
 		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+		$reporte = $this->reportetiempoMapper->findReportById($id_reporte);
+		if ($reporte === null) {
+			return new DataResponse(['message' => 'Reporte no encontrado.'], Http::STATUS_NOT_FOUND);
+		}
+		if (($reporte['origen'] ?? null) === 'soporte_ti') {
+			return new DataResponse([
+				'message' => 'Este reporte fue generado por un soporte de TI. Modifica el registro de soporte para actualizar el tiempo.',
+			], Http::STATUS_CONFLICT);
+		}
 
 		$empleado = $this->empleadosMapper->GetMyEmployeeInfo(
 			$this->userSession->getUser()->getUID()
@@ -799,9 +817,9 @@ class reportetiempoController extends BaseController {
 			->setColWidth(6, 18)
 			->setColWidth(7, 18)
 			->setColWidth(8, 35)
-			->mergeCells('A1:H1')
-			->mergeCells('A2:H2')
-			->autoFilter('A6:H2000')
+			->mergeCells('A1:M1')
+			->mergeCells('A2:M2')
+			->autoFilter('A6:M2000')
 			->freezePanes('A7');
 
 		$tmpFile = tempnam(sys_get_temp_dir(), 'reportetiempo_') . '.xlsx';
@@ -2227,6 +2245,10 @@ class reportetiempoController extends BaseController {
 			$this->headerCell('Costo'),
 			$this->headerCell('Fecha'),
 			$this->headerCell('Creado'),
+			$this->headerCell('Origen'),
+			$this->headerCell('ID soporte'),
+			$this->headerCell('Clasificación'),
+			$this->headerCell('Dispositivo'),
 		];
 
 		foreach ($empleadosData as $empleado) {
@@ -2283,6 +2305,10 @@ class reportetiempoController extends BaseController {
 					$this->moneyCell($costo),
 					$this->bodyCell((string)($reporte['fecha_registro'] ?? '')),
 					$this->bodyCell((string)($reporte['created_at'] ?? '')),
+					$this->bodyCell(($reporte['origen'] ?? null) === 'soporte_ti' ? 'Soporte TI' : 'Manual'),
+					$this->bodyCell((string)($reporte['origen_id'] ?? '')),
+					$this->bodyCell((int)($reporte['cargable'] ?? 0) === 1 ? 'Cargable' : 'No cargable'),
+					$this->bodyCell((string)($reporte['nombre_dispositivo'] ?? '')),
 				];
 			}
 		}

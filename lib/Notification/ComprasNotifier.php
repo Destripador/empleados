@@ -47,6 +47,10 @@ class ComprasNotifier implements INotifier {
 			return $this->prepareCompraAutorizada($notification, $l);
 		}
 
+		if ($notification->getSubject() === 'compra_solicitud_rechazada') {
+			return $this->prepareCompraRechazada($notification, $l);
+		}
+
 		throw new UnknownNotificationException();
 	}
 
@@ -113,6 +117,22 @@ class ComprasNotifier implements INotifier {
 			);
 		}
 
+		$notification->setIcon($this->getAppIconUrl());
+
+		return $notification;
+	}
+
+	private function prepareCompraRechazada(INotification $notification, IL10N $l): INotification {
+		$params = $notification->getSubjectParameters();
+		$folio = (string)($params['folio'] ?? 'Solicitud');
+		$titulo = (string)($params['titulo'] ?? $l->t('No title'));
+		$aprobador = (string)($params['aprobador'] ?? $l->t('an approver'));
+		$comentario = (string)($params['comentario'] ?? '');
+
+		$notification->setParsedSubject($l->t('Purchase request rejected'));
+		$notification->setParsedMessage($comentario !== ''
+			? $l->t('%s - %s was rejected by %s. Comment: %s', [$folio, $titulo, $aprobador, $comentario])
+			: $l->t('%s - %s was rejected by %s.', [$folio, $titulo, $aprobador]));
 		$notification->setIcon($this->getAppIconUrl());
 
 		return $notification;

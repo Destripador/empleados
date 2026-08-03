@@ -18,6 +18,16 @@ export async function obtenerSolicitud(id) {
 	return response.data
 }
 
+export async function obtenerFlujoSolicitud(id) {
+	const response = await axios.get(generateUrl(`${BASE_URL}/${id}/flujo`))
+	return response.data
+}
+
+export async function obtenerHistorialSolicitud(id, params = {}) {
+	const response = await axios.get(generateUrl(`${BASE_URL}/${id}/historial`), { params })
+	return response.data
+}
+
 export async function crearSolicitud(payload) {
 	const response = await axios.post(generateUrl(BASE_URL), payload)
 	return response.data

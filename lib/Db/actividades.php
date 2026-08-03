@@ -14,6 +14,7 @@ class actividades extends Entity {
 	protected ?string $tiempo_estimado = null; // horas decimales
 	protected ?string $tiempo_real = null; // horas decimales
 	protected ?bool $cargable = false;
+	protected ?string $clave_sistema = null;
 
 	public function __construct() {
 		$this->addType('id_actividad', 'integer');
@@ -22,6 +23,7 @@ class actividades extends Entity {
 		$this->addType('tiempo_estimado', 'float');
 		$this->addType('tiempo_real', 'float');
 		$this->addType('cargable', 'bool');
+		$this->addType('clave_sistema', 'string');
 	}
 
 	public function read(): array {
@@ -32,6 +34,7 @@ class actividades extends Entity {
 			'Tiempo_estimado'=> $this->tiempo_estimado,
 			'Tiempo_real' => $this->tiempo_real,
 			'Cargable' => $this->cargable,
+			'Clave_sistema' => $this->clave_sistema,
 		];
 	}
 }

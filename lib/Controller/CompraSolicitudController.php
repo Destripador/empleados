@@ -45,13 +45,20 @@ class CompraSolicitudController extends Controller {
 			$todas = $this->toBool($this->request->getParam('todas', false));
 			$limit = (int)$this->request->getParam('limit', 50);
 			$offset = (int)$this->request->getParam('offset', 0);
+			$estado = trim((string)$this->request->getParam('estado', ''));
 
 			$limit = max(1, min($limit, 200));
 			$offset = max(0, $offset);
 
 			return new DataResponse([
 				'success' => true,
-				'data' => $this->service->listar($userId, $todas, $limit, $offset),
+				'data' => $this->service->listar(
+					$userId,
+					$todas,
+					$limit,
+					$offset,
+					$estado !== '' ? $estado : null
+				),
 			]);
 		} catch (Exception $e) {
 			return $this->errorResponse($e);
@@ -87,11 +94,31 @@ class CompraSolicitudController extends Controller {
 	 */
 	public function show(int $id): DataResponse {
 		try {
-			$this->requireModuleAccess();
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->service->obtenerDetalle($id, $this->getUserId(), false),
+			]);
+		} catch (Exception $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	/**
+	 * @NoAdminRequired
+	 */
+	public function history(int $id): DataResponse {
+		try {
+			$limit = max(1, min((int)$this->request->getParam('limit', 10), 50));
+			$offset = max(0, (int)$this->request->getParam('offset', 0));
 
 			return new DataResponse([
 				'success' => true,
-				'data' => $this->service->obtenerDetalle($id, $this->getUserId()),
+				'data' => $this->service->obtenerHistorial(
+					$id,
+					$this->getUserId(),
+					$limit,
+					$offset
+				),
 			]);
 		} catch (Exception $e) {
 			return $this->errorResponse($e);
@@ -165,12 +192,6 @@ class CompraSolicitudController extends Controller {
 		try {
 			$userId = $this->getUserId();
 
-			$this->requireModuleAccess();
-
-			if (!$this->permisosService->canApprove($userId)) {
-				throw new Exception('No tienes permisos para aprobar solicitudes de compra.');
-			}
-
 			$payload = $this->getPayload();
 
 			return new DataResponse([
@@ -192,12 +213,6 @@ class CompraSolicitudController extends Controller {
 	public function reject(int $id): DataResponse {
 		try {
 			$userId = $this->getUserId();
-
-			$this->requireModuleAccess();
-
-			if (!$this->permisosService->canApprove($userId)) {
-				throw new Exception('No tienes permisos para rechazar solicitudes de compra.');
-			}
 
 			$payload = $this->getPayload();
 
@@ -246,6 +261,20 @@ class CompraSolicitudController extends Controller {
 			return new DataResponse([
 				'success' => true,
 				'data' => $this->service->contexto($this->getUserId()),
+			]);
+		} catch (Exception $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	/**
+	 * @NoAdminRequired
+	 */
+	public function flow(int $id): DataResponse {
+		try {
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->service->obtenerFlujo($id, $this->getUserId()),
 			]);
 		} catch (Exception $e) {
 			return $this->errorResponse($e);

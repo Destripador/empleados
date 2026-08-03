@@ -77,6 +77,9 @@ final class RepairConfigCommand extends Command {
 			'razon_social', 'nombre_contacto', 'telefono', 'correo',
 			'ubicacion', 'especial', 'cliente_padre', 'estado',
 		],
+		'soporte_historial' => ['id_soporte', 'id_equipo', 'duracion_minutos'],
+		'empleados_rep_tiempos' => ['id_reporte', 'id_empleado', 'origen', 'origen_id'],
+		'empleados_actividades' => ['id_actividad', 'nombre', 'cargable', 'clave_sistema'],
 	];
 
 	public function __construct(

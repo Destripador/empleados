@@ -394,14 +394,19 @@ export default {
 					const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null
 
 					const esAusencia = Number(idCliente) === 99999 || Number(idActividad) === 99999
+					const esSoporte = r.origen === 'soporte_ti'
 
-					const clienteNombre = esAusencia
-						? t('empleados', 'Módulo de Ausencia')
-						: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
+					const clienteNombre = esSoporte
+						? t('empleados', 'Internal work')
+						: esAusencia
+							? t('empleados', 'Módulo de Ausencia')
+							: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
 
-					const actividadNombre = esAusencia
-						? t('empleados', 'Ausencia')
-						: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())
+					const actividadNombre = esSoporte
+						? (r.actividad_nombre || t('empleados', 'Support TI'))
+						: esAusencia
+							? t('empleados', 'Ausencia')
+							: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())
 
 					return {
 						...r,
@@ -411,6 +416,7 @@ export default {
 						clienteNombre,
 						actividadNombre,
 						esAusencia,
+						esSoporte,
 					}
 				})
 		},

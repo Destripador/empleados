@@ -11,6 +11,7 @@ use OCA\Empleados\Db\SoporteHistorialMapper;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\InventarioMovimientoService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -26,6 +27,7 @@ class InventarioController extends BaseController {
 	private InventarioComputoMapper $computoMapper;
 	private SoporteHistorialMapper $soporteMapper;
 	private PermisosService $permisosService;
+	private InventarioMovimientoService $movimientoService;
 
 	public function __construct(
 		IRequest $request,
@@ -36,7 +38,8 @@ class InventarioController extends BaseController {
 		InventarioModeloMapper $modelosMapper,
 		InventarioComputoMapper $computoMapper,
 		SoporteHistorialMapper $soporteMapper,
-		PermisosService $permisosService
+		PermisosService $permisosService,
+		InventarioMovimientoService $movimientoService
 	) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -44,6 +47,7 @@ class InventarioController extends BaseController {
 		$this->computoMapper = $computoMapper;
 		$this->soporteMapper = $soporteMapper;
 		$this->permisosService = $permisosService;
+		$this->movimientoService = $movimientoService;
 	}
 
 	private function requireInventarioAccess(): void {
@@ -52,14 +56,6 @@ class InventarioController extends BaseController {
 
 	private function requireInventarioAdminAccess(): void {
 		$this->permisosService->requireCanSee('inventario.admin');
-	}
-
-	private function requireSoporteAccess(): void {
-		$this->permisosService->requireCanSee('soporte');
-	}
-
-	private function requireSoporteAdminAccess(): void {
-		$this->permisosService->requireCanSee('soporte.admin');
 	}
 
 	/************************ MODELOS ************************/
@@ -191,13 +187,39 @@ class InventarioController extends BaseController {
 
 	#[UseSession]
 	#[NoAdminRequired]
-	public function GetInventarioComputo(?string $search = null, ?string $estado = null, ?int $id_empleado = null): DataResponse {
+	public function GetInventarioComputo(
+		?string $search = null,
+		?string $estado = null,
+		?int $id_empleado = null,
+		?string $asignacion = null,
+		?int $id_modelo = null,
+		int $limit = 25,
+		int $offset = 0
+	): DataResponse {
 		try {
-			$this->requireInventarioAccess();
+			if (!$this->permisosService->canSee('inventario')) {
+				return new DataResponse(['success' => false, 'message' => 'No tienes permiso para consultar equipos.'], Http::STATUS_FORBIDDEN);
+			}
+			if ($limit <= 0 || $offset < 0 || ($id_empleado !== null && $id_empleado <= 0) || ($id_modelo !== null && $id_modelo <= 0)) {
+				return new DataResponse(['success' => false, 'message' => 'Parámetros de inventario inválidos.'], Http::STATUS_BAD_REQUEST);
+			}
+			if ($asignacion !== null && !in_array($asignacion, ['', 'asignado', 'sin_asignar'], true)) {
+				return new DataResponse(['success' => false, 'message' => 'Filtro de asignación inválido.'], Http::STATUS_BAD_REQUEST);
+			}
+
+			$limit = min(100, $limit);
+			$items = $this->computoMapper->findAll($search, $estado, $id_empleado, $asignacion, $id_modelo, $limit, $offset);
+			$total = $this->computoMapper->countAll($search, $estado, $id_empleado, $asignacion, $id_modelo);
 
 			return new DataResponse([
 				'success' => true,
-				'data' => $this->computoMapper->findAll($search, $estado, $id_empleado),
+				'data' => $items,
+				'total' => $total,
+				'limit' => $limit,
+				'offset' => $offset,
+				'filter_options' => [
+					'empleados' => $this->computoMapper->findAssignedEmployees(),
+				],
 			], Http::STATUS_OK);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
@@ -232,7 +254,19 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function GetInventarioEquipo(int $id_equipo): DataResponse {
 		try {
-			$this->requireInventarioAccess();
+			if (!$this->permisosService->canSee('inventario')) {
+				return new DataResponse([
+					'success' => false,
+					'message' => 'No tienes permiso para consultar inventario.',
+				], Http::STATUS_FORBIDDEN);
+			}
+
+			if ($id_equipo <= 0) {
+				return new DataResponse([
+					'success' => false,
+					'message' => 'Identificador de equipo inválido.',
+				], Http::STATUS_BAD_REQUEST);
+			}
 
 			$equipo = $this->computoMapper->findById($id_equipo);
 
@@ -281,7 +315,7 @@ class InventarioController extends BaseController {
 		try {
 			$this->requireInventarioAdminAccess();
 
-			$id = $this->computoMapper->create([
+			$id = $this->movimientoService->crearEquipo([
 				'id_empleado' => $id_empleado,
 				'id_modelo' => $id_modelo,
 				'nombre_dispositivo' => $nombre_dispositivo,
@@ -315,7 +349,11 @@ class InventarioController extends BaseController {
 		try {
 			$this->requireInventarioAdminAccess();
 
-			$this->computoMapper->updateById($id_equipo, [
+			if ($id_equipo <= 0) {
+				return new DataResponse(['success' => false, 'message' => 'Identificador de equipo inválido.'], Http::STATUS_BAD_REQUEST);
+			}
+
+			$actualizado = $this->movimientoService->actualizarEquipo($id_equipo, [
 				'id_empleado' => $id_empleado,
 				'id_modelo' => $id_modelo,
 				'nombre_dispositivo' => $nombre_dispositivo,
@@ -327,7 +365,7 @@ class InventarioController extends BaseController {
 
 			return new DataResponse([
 				'success' => true,
-				'message' => 'Equipo actualizado correctamente.',
+				'message' => $actualizado ? 'Equipo actualizado correctamente.' : 'El equipo no tenía cambios.',
 			], Http::STATUS_OK);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
@@ -340,14 +378,55 @@ class InventarioController extends BaseController {
 		try {
 			$this->requireInventarioAdminAccess();
 
-			$this->computoMapper->deleteById($id_equipo);
+			if ($id_equipo <= 0) {
+				return new DataResponse(['success' => false, 'message' => 'Identificador de equipo inválido.'], Http::STATUS_BAD_REQUEST);
+			}
+
+			$this->movimientoService->darDeBaja($id_equipo);
 
 			return new DataResponse([
 				'success' => true,
-				'message' => 'Equipo eliminado correctamente.',
+				'message' => 'Equipo dado de baja correctamente.',
 			], Http::STATUS_OK);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetInventarioHistorial(int $id_equipo, int $limit = 25, int $offset = 0): DataResponse {
+		if (!$this->permisosService->canSee('inventario')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para consultar inventario.'], Http::STATUS_FORBIDDEN);
+		}
+		if ($id_equipo <= 0 || $limit <= 0 || $offset < 0) {
+			return new DataResponse(['success' => false, 'message' => 'Parámetros de paginación inválidos.'], Http::STATUS_BAD_REQUEST);
+		}
+		try {
+			return new DataResponse(['success' => true] + $this->movimientoService->listarHistorial($id_equipo, $limit, $offset), Http::STATUS_OK);
+		} catch (\RuntimeException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function CrearInventarioNota(int $id_equipo, string $descripcion): DataResponse {
+		if (!$this->permisosService->canSeeAny(['inventario.admin', 'soporte'])) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para agregar notas de inventario.'], Http::STATUS_FORBIDDEN);
+		}
+		if ($id_equipo <= 0) {
+			return new DataResponse(['success' => false, 'message' => 'Identificador de equipo inválido.'], Http::STATUS_BAD_REQUEST);
+		}
+		try {
+			return new DataResponse([
+				'success' => true,
+				'data' => $this->movimientoService->registrarNota($id_equipo, $descripcion),
+			], Http::STATUS_CREATED);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		} catch (\RuntimeException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
 		}
 	}
 
@@ -356,9 +435,10 @@ class InventarioController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetSoporteEquipo(int $id_equipo): DataResponse {
+		if (!$this->permisosService->canSee('soporte')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para consultar soporte.'], Http::STATUS_FORBIDDEN);
+		}
 		try {
-			$this->requireSoporteAccess();
-
 			return new DataResponse([
 				'success' => true,
 				'data' => $this->soporteMapper->findByEquipo($id_equipo),
@@ -376,24 +456,34 @@ class InventarioController extends BaseController {
 		?string $detalles = null,
 		?string $fecha = null,
 		?string $usuario_actual = null,
-		?string $usuario_soporte = null
+		?string $usuario_soporte = null,
+		?string $categoria = null,
+		?string $prioridad = null,
+		mixed $duracion_minutos = null
 	): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para registrar soporte.'], Http::STATUS_FORBIDDEN);
+		}
 		try {
-			$this->requireSoporteAdminAccess();
-
-			$id = $this->soporteMapper->create([
-				'id_equipo' => $id_equipo,
-				'accion' => $accion,
-				'detalles' => $detalles,
-				'fecha' => $fecha,
-				'usuario_actual' => $usuario_actual,
-				'usuario_soporte' => $usuario_soporte,
-			]);
+			$soporte = $this->movimientoService->registrarSoporte(
+				$id_equipo,
+				(string)$detalles,
+				$categoria,
+				$prioridad,
+				$accion,
+				$duracion_minutos,
+				$fecha,
+			);
 
 			return new DataResponse([
 				'success' => true,
-				'id_soporte' => $id,
+				'id_soporte' => $soporte['id_soporte'],
+				'data' => $soporte,
 			], Http::STATUS_OK);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		} catch (\RuntimeException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
 		}
@@ -407,23 +497,34 @@ class InventarioController extends BaseController {
 		?string $detalles = null,
 		?string $fecha = null,
 		?string $usuario_actual = null,
-		?string $usuario_soporte = null
+		?string $usuario_soporte = null,
+		mixed $duracion_minutos = null,
+		?string $categoria = null,
+		?string $prioridad = null
 	): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para actualizar soporte.'], Http::STATUS_FORBIDDEN);
+		}
 		try {
-			$this->requireSoporteAdminAccess();
-
-			$this->soporteMapper->updateById($id_soporte, [
-				'accion' => $accion,
+			$accionNormalizada = $categoria !== null
+				? strtolower(trim($categoria)) . ' · ' . strtolower(trim((string)($prioridad ?: 'media')))
+				: $accion;
+			$data = $this->movimientoService->actualizarSoporte($id_soporte, [
+				'accion' => $accionNormalizada,
 				'detalles' => $detalles,
 				'fecha' => $fecha,
-				'usuario_actual' => $usuario_actual,
-				'usuario_soporte' => $usuario_soporte,
+				'duracion_minutos' => $duracion_minutos,
 			]);
 
 			return new DataResponse([
 				'success' => true,
 				'message' => 'Registro de soporte actualizado correctamente.',
+				'data' => $data,
 			], Http::STATUS_OK);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		} catch (\RuntimeException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
 		}
@@ -432,15 +533,18 @@ class InventarioController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function EliminarSoporteEquipo(int $id_soporte): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para eliminar soporte.'], Http::STATUS_FORBIDDEN);
+		}
 		try {
-			$this->requireSoporteAdminAccess();
-
-			$this->soporteMapper->deleteById($id_soporte);
+			$this->movimientoService->eliminarSoporte($id_soporte);
 
 			return new DataResponse([
 				'success' => true,
 				'message' => 'Registro de soporte eliminado correctamente.',
 			], Http::STATUS_OK);
+		} catch (\RuntimeException $e) {
+			return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
 		}
