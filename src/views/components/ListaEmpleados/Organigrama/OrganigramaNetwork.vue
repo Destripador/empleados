@@ -101,7 +101,7 @@ export default {
 			connectionSourceId: null,
 			connectionPending: false,
 			viewMode: 'network',
-			ringRadii: [0, 0, 0, 0, 0],
+			ringRadii: [0, 0, 0, 0, 0, 0],
 			espacioPorEmpleado: 70,
 			radioMinimoEntreAnillos: 300,
 		}
@@ -135,6 +135,7 @@ export default {
 				t('empleados', 'Socios'),
 				t('empleados', 'Gerentes'),
 				t('empleados', 'Supervisores'),
+				t('empleados', 'Analistas'),
 				t('empleados', 'Staff'),
 			]
 		},
@@ -241,7 +242,7 @@ export default {
 		// Entre más gente en un nivel, más grande su circunferencia, para que
 		// siempre haya "espacioPorEmpleado" px de separación entre avatares.
 		calcularRadios(niveles) {
-			const conteoPorNivel = [0, 0, 0, 0, 0]
+			const conteoPorNivel = [0, 0, 0, 0, 0, 0]
 			Object.values(niveles).forEach(nivel => {
 				conteoPorNivel[nivel] = (conteoPorNivel[nivel] || 0) + 1
 			})
@@ -387,8 +388,8 @@ export default {
 
 					const etiqueta = this.ringLabels[nivel]
 					if (etiqueta) {
-						ctx.font = '11px sans-serif'
-						ctx.fillStyle = 'rgba(150, 150, 150, 0.5)'
+						ctx.font = 'bold 26px sans-serif'
+						ctx.fillStyle = 'rgba(120, 120, 120, .4)'
 						ctx.textAlign = 'center'
 						ctx.setLineDash([])
 						ctx.fillText(etiqueta, 0, -radio - 6)

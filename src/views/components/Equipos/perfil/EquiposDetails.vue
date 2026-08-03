@@ -304,12 +304,15 @@ export default {
 			if (this.show) {
 				try {
 					const response = await axios.get(generateUrl('/apps/empleados/GetConfigurations'))
-					this.optionsGestor = response?.data?.ocs?.data.Users
+					const data = response?.data || {}
+
+					this.optionsGestor = data.Users || []
 					this.equipo_nombre = this.data.Nombre
-					// Si el backend guarda el ID del líder, preseleccionamos:
-					// Puede llegar como string (uid) o como objeto, normalizamos:
+
 					const current = this.data.Id_jefe_equipo
-					this.selected_user = current || null
+					this.selected_user = this.optionsGestor.find(
+						opt => String(opt.id) === String(current),
+					) || null
 				} catch (err) {
 					showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
 				}
