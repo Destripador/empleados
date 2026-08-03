@@ -32,7 +32,7 @@
 						<strong :title="nodeData.name">{{ nodeData.name }}</strong>
 						<span class="employee-node__uid" :title="nodeData.uid">{{ nodeData.uid }}</span>
 						<span class="employee-node__level">
-							{{ t('empleados', 'Level {n}', { n: nodeData.depth }) }}
+							{{ nodeData }}
 						</span>
 					</div>
 
