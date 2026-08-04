@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace OCA\Empleados\Controller;
 
 use OCA\Empleados\Service\CompraSolicitudService;
+use OCA\Empleados\Service\PdfService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
 use Throwable;
-
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 use OCA\Empleados\Db\CompraSolicitudMapper;
 use OCP\AppFramework\Http\DataResponse;
@@ -44,6 +42,7 @@ class CompraDocumentoController extends Controller {
 	private IClientService $clientService;
 	private CompraPermisosService $permisosService;
 	private IAppData $appData;
+	private PdfService $pdfService;
 
 	public function __construct(
 		string $appName,
@@ -56,7 +55,8 @@ class CompraDocumentoController extends Controller {
 		CompraPermisosService $permisosService,
 		IURLGenerator $urlGenerator,
 		IClientService $clientService,
-		IAppData $appData
+		IAppData $appData,
+		PdfService $pdfService
 	) {
 		parent::__construct($appName, $request);
 
@@ -69,6 +69,7 @@ class CompraDocumentoController extends Controller {
 		$this->urlGenerator = $urlGenerator;
 		$this->clientService = $clientService;
 		$this->appData = $appData;
+		$this->pdfService = $pdfService;
 	}
 
 	/**
@@ -151,7 +152,7 @@ class CompraDocumentoController extends Controller {
 	<meta charset="utf-8">
 	<title>' . $this->e($folio) . '</title>
 	<style>
-		@page { size: Letter; margin: 12mm; }
+		@page { margin: 15mm; }
 		* { box-sizing: border-box; }
 		body { margin: 0; color: #111827; background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.25; }
 		.header { width: 100%; border-bottom: 3px solid #111827; padding-bottom: 10px; margin-bottom: 12px; }
@@ -165,15 +166,18 @@ class CompraDocumentoController extends Controller {
 		.meta-row { width: 100%; border-collapse: collapse; }
 		.meta-row td { border-top: 1px solid #111827; padding: 4px 6px; font-size: 9pt; }
 		.meta-row td:first-child { width: 72px; background: #f3f4f6; color: #4b5563; font-weight: bold; text-transform: uppercase; }
-		.section { margin-top: 10px; border: 1px solid #111827; page-break-inside: avoid; }
+		.section { margin-top: 10px; border: 1px solid #111827; }
 		.section-title { padding: 5px 7px; background: #111827; color: #fff; font-size: 8.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; }
 		.grid { width: 100%; border-collapse: collapse; }
-		.grid td { width: 25%; min-height: 34px; padding: 6px 7px; border-top: 1px solid #111827; border-right: 1px solid #111827; vertical-align: top; }
+		.grid td { width: 25%; padding: 6px 7px; border-top: 1px solid #111827; border-right: 1px solid #111827; vertical-align: top; }
 		.grid td:last-child { border-right: 0; }
 		.grid.two td { width: 50%; }
 		.label { display: block; margin-bottom: 3px; color: #4b5563; font-size: 7.5pt; font-weight: bold; text-transform: uppercase; }
 		.value { display: block; font-size: 9.5pt; font-weight: bold; white-space: pre-wrap; word-break: break-word; }
-		table.items { width: 100%; border-collapse: collapse; }
+		table.items { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+		table.items thead { display: table-header-group; }
+		table.items tbody { display: table-row-group; }
+		table.items tr { page-break-inside: auto; }
 		table.items th, table.items td { padding: 5px 6px; border-top: 1px solid #111827; border-right: 1px solid #111827; vertical-align: top; text-align: left; }
 		table.items th:last-child, table.items td:last-child { border-right: 0; }
 		table.items th { background: #f3f4f6; font-size: 7.5pt; font-weight: bold; text-transform: uppercase; }
@@ -513,18 +517,6 @@ class CompraDocumentoController extends Controller {
 	}
 
 	private function generarPdfSolicitud(int $id, string $userId, ?array $detail = null): array {
-		$autoload = __DIR__ . '/../../vendor/autoload.php';
-
-		if (!file_exists($autoload)) {
-			throw new Exception('No está instalada la librería dompdf en la app empleados.');
-		}
-
-		require_once $autoload;
-
-		if (!class_exists(\Dompdf\Dompdf::class)) {
-			throw new Exception('La clase Dompdf no está disponible.');
-		}
-
 		$data = $detail ?? $this->service->obtenerDetalle($id, $userId);
 		$solicitud = $data['solicitud']->jsonSerialize();
 
@@ -532,20 +524,7 @@ class CompraDocumentoController extends Controller {
 		$fileName = $this->safeFilename('Solicitud-compra-' . $folio . '.pdf');
 
 		$html = $this->renderDocumentoHtml($data);
-
-		$options = new \Dompdf\Options();
-		$options->set('isRemoteEnabled', false);
-		$options->set('isHtml5ParserEnabled', true);
-		$options->set('defaultFont', 'DejaVu Sans');
-		$options->set('tempDir', sys_get_temp_dir());
-		$options->set('fontCache', sys_get_temp_dir());
-
-		$dompdf = new \Dompdf\Dompdf($options);
-		$dompdf->setPaper('letter', 'portrait');
-		$dompdf->loadHtml($html, 'UTF-8');
-		$dompdf->render();
-
-		$pdf = $dompdf->output();
+		$pdf = $this->pdfService->generate($html, 'A4', 'P');
 
 		return [
 			'pdf' => $pdf,

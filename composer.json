@@ -31,12 +31,16 @@
 	"require": {
 		"php": "^8.1",
 		"bamarni/composer-bin-plugin": "^1.8",
-		"dompdf/dompdf": "^3.1",
+		"mpdf/mpdf": "^8.2",
+		"mpdf/psr-log-aware-trait": "^3.0",
 		"nesbot/carbon": "^3.10"
 	},
 	"require-dev": {
 		"nextcloud/ocp": "dev-stable29",
 		"roave/security-advisories": "dev-latest"
+	},
+	"replace": {
+		"psr/log": "*"
 	},
 	"config": {
 		"allow-plugins": {

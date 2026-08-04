@@ -14,7 +14,6 @@ use OCA\Empleados\Db\historialvacacionesMapper;
 use OCA\Empleados\BackgroundJob\RecalcularFestivosVariablesJob;
 use OCA\Empleados\Dashboard\ReportesWidget;
 use OCA\Empleados\Dashboard\SoporteEquipoWidget;
-use OCA\Empleados\Helper\MailHelper;
 use OCA\Empleados\Notification\ComprasNotifier;
 use OCA\Empleados\Notification\ReportesNotifier;
 use OCP\AppFramework\App;
@@ -22,9 +21,6 @@ use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\BackgroundJob\IJobList;
-use OCP\IL10N;
-use OCP\IURLGenerator;
-use OCP\Mail\IMailer;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'empleados';
@@ -34,20 +30,18 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function register(IRegistrationContext $context): void {
-		$context->registerService(MailHelper::class, function($c) {
-			return new MailHelper(
-				$c->query(IMailer::class),
-				$c->query(IL10N::class),
-				'servicios.torreon@mail.com',
-				$c->query(IURLGenerator::class)
-			);
-		});
+		$autoloadPath = __DIR__ . '/../../vendor/autoload.php';
+
+		if (is_file($autoloadPath)) {
+			require_once $autoloadPath;
+		}
 
 		$context->registerService(AniversarioSyncService::class, function($c) {
 			return new AniversarioSyncService(
 				$c->query(historialvacacionesMapper::class)
 			);
 		});
+
 		$context->registerDashboardWidget(ReportesWidget::class);
 		$context->registerDashboardWidget(SoporteEquipoWidget::class);
 		$context->registerNotifierService(ReportesNotifier::class);
