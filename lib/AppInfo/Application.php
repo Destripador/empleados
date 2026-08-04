@@ -46,7 +46,6 @@ class Application extends App implements IBootstrap {
 		$context->registerDashboardWidget(SoporteEquipoWidget::class);
 		$context->registerNotifierService(ReportesNotifier::class);
 		$context->registerNotifierService(ComprasNotifier::class);
-
 		$context->registerService(SeedFestivosOficiales::class, function($c) {
 			return new SeedFestivosOficiales(
 				$c->query(IDBConnection::class),

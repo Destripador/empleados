@@ -18,6 +18,12 @@
 
 		<!-- main contacts details -->
 		<PuestosDetails :data="data_puestos" :people-area="peopleArea" />
+		<FloatingHelpButton
+			:open.sync="modalMensajePuestos"
+			:title="t('empleados', 'Puestos information')"
+			:icon="AccountGroup">
+			<MensajePuestos />
+		</FloatingHelpButton>
 	</NcAppContent>
 </template>
 
@@ -25,12 +31,16 @@
 // agregados
 import PuestosFullList from './PuestosFullList.vue'
 import PuestosDetails from './perfil/PuestosDetails.vue'
+import FloatingHelpButton from '../Helpers/FloatingHelpButton.vue'
+import MensajePuestos from './MensajePuestos.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import mitt from 'mitt'
 import { translate as t } from '@nextcloud/l10n'
+
+import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
 import {
 	NcEmptyContent,
@@ -47,6 +57,8 @@ export default {
 		NcLoadingIcon,
 		PuestosDetails,
 		// ContactsList,
+		FloatingHelpButton,
+		MensajePuestos,
 	},
 
 	data() {
@@ -58,6 +70,8 @@ export default {
 			puestosList: [],
 			data_puestos: {},
 			peopleArea: {},
+			modalMensajePuestos: false,
+			AccountGroup,
 		}
 	},
 

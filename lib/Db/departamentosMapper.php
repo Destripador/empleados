@@ -15,7 +15,7 @@ class departamentosMapper extends QBMapper {
 	public function GetAreasList(): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('d.Id_departamento', 'd.Id_padre', 'd.Nombre')
+		$qb->select('d.Id_departamento', 'd.Id_padre', 'd.Nombre', 'd.created_at', 'd.updated_at')
 			->selectAlias($qb->createFunction('COUNT(e.Id_empleados)'), 'cantidad_empleados')
 			->from($this->getTableName(), 'd')
 			->leftJoin('d', 'empleados', 'e', 'd.Id_departamento = e.Id_departamento')

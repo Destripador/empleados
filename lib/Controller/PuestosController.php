@@ -100,7 +100,7 @@ class PuestosController extends BaseController {
 
         foreach ($puestos as $puesto) {
             $books[] = [
-                $puesto['Id_puesto'],
+                $puesto['Id_puestos'],
                 $puesto['Nombre'],
                 $puesto['Nivel'],
                 $puesto['created_at'],
