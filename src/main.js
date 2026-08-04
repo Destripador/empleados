@@ -7,7 +7,11 @@ import mitt from 'mitt'
 
 import { loadTranslations, translate as t, translatePlural as n } from '@nextcloud/l10n'
 import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
+import { generateFilePath, generateUrl } from '@nextcloud/router'
+
+// eslint-disable-next-line no-unused-vars
+/* global __webpack_public_path__: writable */
+__webpack_public_path__ = generateFilePath('empleados', '', 'js/')
 
 Vue.use(Router)
 

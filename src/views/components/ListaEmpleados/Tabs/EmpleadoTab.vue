@@ -170,19 +170,23 @@
 						</div>
 						<div class="flexible">
 							<div class="box1Inside equipo-asignado-field">
-								<label for="Equipo_asignado" class="labeltype">
+								<label for="Equipos_asignados" class="labeltype">
 									<Laptopaccount :size="20" />
-									{{ t('empleados', 'Assigned equipment') }}
+									{{ t('empleados', 'Assigned devices') }}
 								</label>
 
 								<NcSelect
-									v-if="show && canAccessInventory"
-									id="Equipo_asignado"
-									v-model="Equipo_asignado"
+									v-if="show && canModifyInventory"
+									id="Equipos_asignados"
+									v-model="Equipos_asignados"
 									class="equipo-computo-select"
-									:disabled="!show"
+									:disabled="cargandoEquipos"
 									:options="inventarioEquipos"
-									:input-label="t('empleados', 'Assigned equipment')"
+									:multiple="true"
+									:close-on-select="false"
+									track-by="id_equipo"
+									label="label"
+									:input-label="t('empleados', 'Assigned devices')"
 									:label-outside="true"
 									:placeholder="t('empleados', 'Select assigned equipment')">
 									<template #selected-option="option">
@@ -211,32 +215,41 @@
 									</template>
 								</NcSelect>
 
-								<component
-									:is="canNavigateAssignedEquipment ? 'button' : 'div'"
-									v-if="assignedInventoryEquipo"
-									class="assigned-equipment-card"
-									:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
-									:type="canNavigateAssignedEquipment ? 'button' : null"
-									:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
-									:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(assignedInventoryEquipo) }) : null"
-									@click="openAssignedEquipment">
-									<Laptopaccount :size="32" aria-hidden="true" />
-									<div class="assigned-equipment-content">
-										<div class="assigned-equipment-heading">
-											<strong>{{ equipoOptionTitle(assignedInventoryEquipo) }}</strong>
-											<span v-if="assignedInventoryEquipo.estado" class="equipo-status" :class="`equipo-status--${String(assignedInventoryEquipo.estado).toLowerCase()}`">
-												{{ assignedInventoryEquipo.estado }}
-											</span>
+								<p v-if="cargandoEquipos" class="assigned-equipment-empty">
+									{{ t('empleados', 'Loading assigned equipment…') }}
+								</p>
+								<p v-else-if="errorEquipos" class="assigned-equipment-empty">
+									{{ errorEquipos }}
+								</p>
+								<template v-else>
+									<component
+										:is="canNavigateAssignedEquipment ? 'button' : 'div'"
+										v-for="equipoAsignado in Equipos_asignados"
+										:key="equipoAsignado.id_equipo"
+										class="assigned-equipment-card"
+										:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
+										:type="canNavigateAssignedEquipment ? 'button' : null"
+										:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
+										:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(equipoAsignado) }) : null"
+										@click="openAssignedEquipment(equipoAsignado)">
+										<Laptopaccount :size="32" aria-hidden="true" />
+										<div class="assigned-equipment-content">
+											<div class="assigned-equipment-heading">
+												<strong>{{ equipoOptionTitle(equipoAsignado) }}</strong>
+												<span v-if="equipoAsignado.estado" class="equipo-status" :class="`equipo-status--${String(equipoAsignado.estado).toLowerCase()}`">
+													{{ equipoAsignado.estado }}
+												</span>
+											</div>
+											<span v-if="equipoAsignado.nombre_sistema">{{ t('empleados', 'System name') }}: {{ equipoAsignado.nombre_sistema }}</span>
+											<span v-if="equipoAsignado.numero_serie">{{ t('empleados', 'Serial number') }}: {{ equipoAsignado.numero_serie }}</span>
+											<span v-if="equipoModel(equipoAsignado)">{{ t('empleados', 'Model') }}: {{ equipoModel(equipoAsignado) }}</span>
+											<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
+											<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
 										</div>
-										<span v-if="assignedInventoryEquipo.nombre_sistema">{{ t('empleados', 'System name') }}: {{ assignedInventoryEquipo.nombre_sistema }}</span>
-										<span v-if="assignedInventoryEquipo.numero_serie">{{ t('empleados', 'Serial number') }}: {{ assignedInventoryEquipo.numero_serie }}</span>
-										<span v-if="assignedEquipmentModel">{{ t('empleados', 'Model') }}: {{ assignedEquipmentModel }}</span>
-										<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
-										<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
-									</div>
-								</component>
+									</component>
+								</template>
 
-								<p v-else class="assigned-equipment-empty">
+								<p v-if="!cargandoEquipos && !errorEquipos && Equipos_asignados.length === 0" class="assigned-equipment-empty">
 									{{ t('empleados', 'No equipment assigned.') }}
 								</p>
 							</div>
@@ -463,7 +476,7 @@ export default {
 			Fondo_clave: '',
 			Fondo_ahorro: '',
 			Numero_cuenta: '',
-			Equipo_asignado: '',
+			Equipos_asignados: [],
 			Sueldo: '',
 			Equipo: '',
 			areaSend: '',
@@ -475,6 +488,8 @@ export default {
 			Vacaciones: '',
 			state: false,
 			inventarioEquipos: [],
+			cargandoEquipos: false,
+			errorEquipos: '',
 			diasDerechoOriginal: '',
 			guardandoDias: false,
 			cargandoPeriodo: false,
@@ -488,26 +503,11 @@ export default {
 		canAccessInventory() {
 			return this.canSee('inventario')
 		},
-		assignedEquipmentId() {
-			const value = this.getEquipoAsignadoValue()
-			const id = Number.parseInt(String(value), 10)
-			return Number.isSafeInteger(id) && id > 0 ? id : null
-		},
-		assignedInventoryEquipo() {
-			if (!this.assignedEquipmentId) return null
-			if (this.Equipo_asignado && typeof this.Equipo_asignado === 'object') return this.Equipo_asignado
-			return this.findInventarioEquipo(this.assignedEquipmentId) || {
-				value: this.assignedEquipmentId,
-				id_equipo: this.assignedEquipmentId,
-				label: `${t('empleados', 'Assigned equipment')} #${this.assignedEquipmentId}`,
-			}
-		},
-		assignedEquipmentModel() {
-			if (!this.assignedInventoryEquipo) return ''
-			return [this.assignedInventoryEquipo.marca, this.assignedInventoryEquipo.modelo].filter(Boolean).join(' ')
+		canModifyInventory() {
+			return this.canSee('inventario.admin') || this.isAdminUser()
 		},
 		canNavigateAssignedEquipment() {
-			return this.inventoryEnabled && this.canAccessInventory && Boolean(this.assignedEquipmentId)
+			return this.inventoryEnabled && this.canAccessInventory
 		},
 	},
 
@@ -533,7 +533,6 @@ export default {
 					news.Fondo_ahorro,
 					news.Numero_cuenta,
 					news.Id_equipo,
-					news.Equipo_asignado,
 					news.Sueldo,
 					news.dias_disponibles,
 					news.id_aniversario,
@@ -541,7 +540,7 @@ export default {
 
 				await this.cargarPeriodoActual(news.Id_empleados)
 				if (this.inventoryEnabled && this.canAccessInventory) {
-					await this.getInventarioEquipos(news.Equipo_asignado)
+					await this.getInventarioEquipos(news.Id_empleados)
 				}
 			}
 		},
@@ -578,7 +577,6 @@ export default {
 			this.data.Fondo_ahorro,
 			this.data.Numero_cuenta,
 			this.data.Id_equipo,
-			this.data.Equipo_asignado,
 			this.data.Sueldo,
 			this.data.dias_disponibles,
 			this.data.id_aniversario,
@@ -586,22 +584,22 @@ export default {
 
 		await this.cargarPeriodoActual(this.data.Id_empleados)
 		if (this.inventoryEnabled && this.canAccessInventory) {
-			await this.getInventarioEquipos(this.data.Equipo_asignado)
+			await this.getInventarioEquipos(this.data.Id_empleados)
 		}
 	},
 
 	methods: {
 		t,
 
-		openAssignedEquipment() {
+		openAssignedEquipment(equipo) {
 			if (!this.canNavigateAssignedEquipment) return
 			this.$router.push({
 				name: 'Inventario',
-				query: { deviceId: String(this.assignedEquipmentId) },
+				query: { deviceId: String(equipo.id_equipo) },
 			})
 		},
 
-		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, EquipoAsignado, Sueldo, state) {
+		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, Sueldo, Vacaciones, Aniversario, state) {
 			this.Numero_empleado = this.checknull(NumeroEmpleado)
 			this.Ingreso = this.checknull(Ingreso)
 			this.area = Area
@@ -612,8 +610,9 @@ export default {
 			this.Fondo_ahorro = this.checknull(FondoAhorro)
 			this.Numero_cuenta = this.checknull(NumeroCuenta)
 			this.Equipo = this.checknull(Equipo)
-			this.Equipo_asignado = this.checknull(EquipoAsignado)
 			this.Sueldo = this.checknull(Sueldo)
+			this.Vacaciones = this.checknull(Vacaciones)
+			this.Aniversario = this.checknull(Aniversario)
 
 			// Mapeo de estado: '1' = puede solicitar; '0'/'2' = solo lectura
 			if (state === '0' || state === '2') {
@@ -754,12 +753,19 @@ export default {
 					fondoclave: this.checknull(this.Fondo_clave),
 					fondoahorro: this.checknull(this.Fondo_ahorro),
 					numerocuenta: this.checknull(this.Numero_cuenta),
-					equipoasignado: this.getEquipoAsignadoValue(),
+					equipoasignado: '',
 					equipo: this.Equipo.value,
 					sueldo: this.checknull(this.Sueldo),
 					id_aniversario: this.checknull(this.Aniversario),
 					dias_disponibles: this.checknull(this.Vacaciones),
 				})
+				if (this.inventoryEnabled && this.canModifyInventory) {
+					const response = await axios.put(generateUrl(`/apps/empleados/inventario/empleados/${this.data.Id_empleados}/equipos`), {
+						equipos: this.Equipos_asignados.map(equipoAsignado => equipoAsignado.id_equipo),
+					})
+					this.Equipos_asignados = this.normalizeInventarioEquiposResponse(response, 'equipos')
+					showSuccess(t('empleados', 'Equipment assigned successfully'), { close: true })
+				}
 				this.GetAllEquipo(this.Equipo.value)
 				this.$bus.emit('getall')
 				this.$bus.emit('show', false)
@@ -785,19 +791,19 @@ export default {
 			this.$bus.emit('send-data', data)
 			this.$bus.emit('show', false)
 		},
-		async getInventarioEquipos(currentEquipoId = null) {
+		async getInventarioEquipos(idEmpleado) {
 			if (!this.inventoryEnabled || !this.canAccessInventory) return
+			this.cargandoEquipos = true
+			this.errorEquipos = ''
 			try {
-				const current = currentEquipoId || this.getEquipoAsignadoValue()
+				const [optionsResponse, assignedResponse] = await Promise.all([
+					axios.get(generateUrl('/apps/empleados/GetInventarioEquiposSelect'), {
+						params: { employee: idEmpleado, onlyAvailable: true },
+					}),
+					axios.get(generateUrl(`/apps/empleados/inventario/empleados/${idEmpleado}/equipos`)),
+				])
 
-				const response = await axios.get(generateUrl('/apps/empleados/GetInventarioEquiposSelect'), {
-					params: {
-						current,
-						onlyAvailable: true,
-					},
-				})
-
-				const data = this.normalizeInventarioEquiposResponse(response)
+				const data = this.normalizeInventarioEquiposResponse(optionsResponse)
 
 				this.inventarioEquipos = data.map(equipo => ({
 					value: equipo.value || equipo.id_equipo,
@@ -813,36 +819,25 @@ export default {
 					empleado_uid: equipo.empleado_uid || null,
 				}))
 
-				const selected = this.findInventarioEquipo(current)
-
-				if (selected) {
-					this.Equipo_asignado = selected
-				} else if (current) {
-					this.Equipo_asignado = {
-						value: current,
-						label: `${t('empleados', 'Assigned equipment')} #${current}`,
-						id_equipo: current,
-					}
-				} else {
-					this.Equipo_asignado = ''
-				}
+				this.Equipos_asignados = this.normalizeInventarioEquiposResponse(assignedResponse, 'equipos')
+					.map(equipo => this.findInventarioEquipo(equipo.id_equipo) || equipo)
 			} catch (err) {
-				showError(t('empleados', 'No se pudo cargar el inventario de equipos [{error}]', {
-					error: String(err),
-					close: true,
-				}))
+				this.errorEquipos = t('empleados', 'Could not load assigned equipment')
+				showError(this.errorEquipos)
+			} finally {
+				this.cargandoEquipos = false
 			}
 		},
 
-		normalizeInventarioEquiposResponse(response) {
+		normalizeInventarioEquiposResponse(response, key = 'data') {
 			const payload = response?.data?.ocs?.data || response?.data || response
 
 			if (Array.isArray(payload)) {
 				return payload
 			}
 
-			if (Array.isArray(payload?.data)) {
-				return payload.data
+			if (Array.isArray(payload?.[key])) {
+				return payload[key]
 			}
 
 			if (Array.isArray(payload?.ocs?.data)) {
@@ -875,16 +870,8 @@ export default {
 			|| String(equipo.label) === String(id)
 			}) || ''
 		},
-		getEquipoAsignadoValue() {
-			if (!this.Equipo_asignado) {
-				return ''
-			}
-
-			if (typeof this.Equipo_asignado === 'object') {
-				return this.Equipo_asignado.value || ''
-			}
-
-			return this.Equipo_asignado
+		equipoModel(equipo) {
+			return [equipo.marca, equipo.modelo].filter(Boolean).join(' ')
 		},
 		equipoOptionTitle(option) {
 			if (!option) {

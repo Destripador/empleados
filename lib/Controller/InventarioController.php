@@ -232,18 +232,13 @@ class InventarioController extends BaseController {
 		try {
 			$this->requireInventarioAccess();
 
-			$current = $this->request->getParam('current', null);
+			$employee = $this->request->getParam('employee', null);
 			$onlyAvailable = (string)$this->request->getParam('onlyAvailable', 'true') !== 'false';
-
-			$currentEquipoId = null;
-
-			if ($current !== null && $current !== '') {
-				$currentEquipoId = (int)$current;
-			}
+			$idEmpleado = $employee !== null && $employee !== '' ? (int)$employee : null;
 
 			return new DataResponse([
 				'success' => true,
-				'data' => $this->computoMapper->findAllForSelect($currentEquipoId, $onlyAvailable),
+				'data' => $this->computoMapper->findAllForSelect($idEmpleado, $onlyAvailable),
 			], Http::STATUS_OK);
 		} catch (\Throwable $e) {
 			return $this->errorResponse($e);
@@ -303,6 +298,86 @@ class InventarioController extends BaseController {
 
 	#[UseSession]
 	#[NoAdminRequired]
+	public function GetEquiposEmpleado(int $id_empleado): DataResponse {
+		if (!$this->permisosService->canSee('inventario')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para consultar equipos.'], Http::STATUS_FORBIDDEN);
+		}
+		try {
+			if ($id_empleado <= 0) {
+				return new DataResponse(['success' => false, 'message' => 'Identificador de empleado inválido.'], Http::STATUS_BAD_REQUEST);
+			}
+			if ($this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string)$id_empleado) === []) {
+				return new DataResponse(['success' => false, 'message' => 'Empleado no encontrado.'], Http::STATUS_NOT_FOUND);
+			}
+			return new DataResponse([
+				'success' => true,
+				'equipos' => $this->computoMapper->findByEmpleado($id_empleado),
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function AsignarEquipoEmpleado(int $id_equipo, int $id_empleado): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para asignar equipos.'], Http::STATUS_FORBIDDEN);
+		}
+		try {
+			$anterior = $this->computoMapper->findById($id_equipo);
+			$sinCambios = $anterior !== null && (int)($anterior['id_empleado'] ?? 0) === $id_empleado;
+			$this->movimientoService->asignarEquipo($id_equipo, $id_empleado);
+			return new DataResponse([
+				'success' => true,
+				'equipos' => $this->computoMapper->findByEmpleado($id_empleado),
+				'message' => $sinCambios ? 'El equipo ya estaba asignado al empleado.' : 'Equipo asignado correctamente.',
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->assignmentErrorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function DesasignarEquipoEmpleado(int $id_equipo): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para desasignar equipos.'], Http::STATUS_FORBIDDEN);
+		}
+		try {
+			$anterior = $this->computoMapper->findById($id_equipo);
+			$sinCambios = $anterior !== null && empty($anterior['id_empleado']);
+			$idEmpleadoAnterior = (int)($anterior['id_empleado'] ?? 0);
+			$this->movimientoService->desasignarEquipo($id_equipo);
+			return new DataResponse([
+				'success' => true,
+				'equipos' => $idEmpleadoAnterior > 0 ? $this->computoMapper->findByEmpleado($idEmpleadoAnterior) : [],
+				'message' => $sinCambios ? 'El equipo ya estaba desasignado.' : 'Equipo desasignado correctamente.',
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->assignmentErrorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function SincronizarEquiposEmpleado(int $id_empleado, array $equipos = []): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para actualizar asignaciones.'], Http::STATUS_FORBIDDEN);
+		}
+		try {
+			$this->movimientoService->sincronizarEquiposEmpleado($id_empleado, $equipos);
+			return new DataResponse([
+				'success' => true,
+				'equipos' => $this->computoMapper->findByEmpleado($id_empleado),
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->assignmentErrorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
 	public function CrearInventarioEquipo(
 		?int $id_empleado = null,
 		?int $id_modelo = null,
@@ -353,15 +428,18 @@ class InventarioController extends BaseController {
 				return new DataResponse(['success' => false, 'message' => 'Identificador de equipo inválido.'], Http::STATUS_BAD_REQUEST);
 			}
 
-			$actualizado = $this->movimientoService->actualizarEquipo($id_equipo, [
-				'id_empleado' => $id_empleado,
+			$data = [
 				'id_modelo' => $id_modelo,
 				'nombre_dispositivo' => $nombre_dispositivo,
 				'nombre_sistema' => $nombre_sistema,
 				'numero_serie' => $numero_serie,
 				'estado' => $estado ?: 'activo',
 				'info' => $info,
-			]);
+			];
+			if ($this->request->getParam('id_empleado', '__missing__') !== '__missing__') {
+				$data['id_empleado'] = $id_empleado;
+			}
+			$actualizado = $this->movimientoService->actualizarEquipo($id_equipo, $data);
 
 			return new DataResponse([
 				'success' => true,
@@ -555,6 +633,16 @@ class InventarioController extends BaseController {
 			'success' => false,
 			'message' => $e->getMessage(),
 		], Http::STATUS_INTERNAL_SERVER_ERROR);
+	}
+
+	private function assignmentErrorResponse(\Throwable $e): DataResponse {
+		$status = match (true) {
+			$e instanceof \InvalidArgumentException => Http::STATUS_BAD_REQUEST,
+			$e instanceof \DomainException => Http::STATUS_CONFLICT,
+			$e instanceof \RuntimeException => Http::STATUS_NOT_FOUND,
+			default => Http::STATUS_INTERNAL_SERVER_ERROR,
+		};
+		return new DataResponse(['success' => false, 'message' => $e->getMessage()], $status);
 	}
 
 	private function toBool($value): bool {

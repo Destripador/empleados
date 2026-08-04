@@ -85,9 +85,19 @@
 					:name="t('empleados', 'IT Management')" />
 
 				<NcAppNavigationList :aria-labelledby="t('empleados', 'IT Management')">
-					<NcAppNavigationItem :name="t('empleados', 'Inventory and support')" :to="{ name: 'Inventario' }">
+					<NcAppNavigationItem
+						:name="t('empleados', 'Inventory and support')"
+						:to="{ name: 'Inventario' }"
+						exact>
 						<template #icon>
 							<Laptop :size="20" />
+						</template>
+					</NcAppNavigationItem>
+					<NcAppNavigationItem v-if="canSeeMaintenance"
+						:name="t('empleados', 'Maintenance calendar')"
+						:to="{ name: 'Mantenimientos' }">
+						<template #icon>
+							<CalendarMonth :size="20" />
 						</template>
 					</NcAppNavigationItem>
 				</NcAppNavigationList>
@@ -214,6 +224,7 @@ import CalendarBlank from 'vue-material-design-icons/CalendarBlank.vue'
 import Laptop from 'vue-material-design-icons/Laptop.vue'
 import CartOutline from 'vue-material-design-icons/CartOutline.vue'
 import Cash from 'vue-material-design-icons/Cash.vue'
+import CalendarMonth from 'vue-material-design-icons/CalendarMonth.vue'
 
 import {
 	NcAppNavigation,
@@ -249,6 +260,7 @@ export default {
 		Laptop,
 		CartOutline,
 		Cash,
+		CalendarMonth,
 	},
 
 	mixins: [permissionsMixin],
@@ -293,6 +305,11 @@ export default {
 		canSeeInventory() {
 			return this.canSee('inventario')
 				|| this.canSee('soporte')
+		},
+
+		canSeeMaintenance() {
+			return this.isModuleEnabled('modulo_inventario')
+				&& this.canSee('inventario')
 		},
 
 		reportTimesEnabled() {

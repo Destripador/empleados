@@ -169,7 +169,7 @@ class empleadosMapper extends QBMapper {
 		string $Fondo_clave, 
 		string $Fondo_ahorro, 
 		string $Numero_cuenta, 
-		string $Equipo_asignado, 
+		string $_Equipo_asignado,
 		string $Sueldo, 
 		string $Fecha_nacimiento, 
 		string $Estado, 
@@ -196,7 +196,6 @@ class empleadosMapper extends QBMapper {
 			if(empty($Fondo_clave) && $Fondo_clave != 0){ $Fondo_clave = null; }
 			if(empty($Fondo_ahorro) && $Fondo_ahorro != 0){ $Fondo_ahorro = null; }
 			if(empty($Numero_cuenta) && $Numero_cuenta != 0){ $Numero_cuenta = null; }
-			if(empty($Equipo_asignado) && $Equipo_asignado != 0){ $Equipo_asignado = null; }
 			if(empty($Sueldo) && $Sueldo != 0){ $Sueldo = null; }
 			if(empty($Fecha_nacimiento) && $Fecha_nacimiento != 0){ $Fecha_nacimiento = null; }
 			if(empty($Estado) && $Estado != 0){ $Estado = null; }
@@ -222,7 +221,7 @@ class empleadosMapper extends QBMapper {
 				->set('Fondo_clave', $query->createNamedParameter($Fondo_clave))
 				->set('Fondo_ahorro', $query->createNamedParameter($Fondo_ahorro))
 				->set('Numero_cuenta', $query->createNamedParameter($Numero_cuenta))
-				->set('Equipo_asignado', $query->createNamedParameter($Equipo_asignado))
+				// Equipo_asignado es heredado; inventario_computo.id_empleado es la relación oficial.
 				->set('Sueldo', $query->createNamedParameter($Sueldo))
 				->set('Fecha_nacimiento', $query->createNamedParameter($Fecha_nacimiento))
 				->set('Estado', $query->createNamedParameter($Estado))
@@ -338,7 +337,7 @@ class empleadosMapper extends QBMapper {
 		$Fondo_clave, 
 		$Fondo_ahorro, 
 		$Numero_cuenta, 
-		$Equipo_asignado,
+		$_Equipo_asignado,
 		$Id_equipo,
 		$Sueldo): void {
 
@@ -354,7 +353,6 @@ class empleadosMapper extends QBMapper {
 			if(empty($Fondo_clave) && $Fondo_clave != 0){ $Fondo_clave = null; }
 			if(empty($Fondo_ahorro) && $Fondo_ahorro != 0){ $Fondo_ahorro = null; }
 			if(empty($Numero_cuenta) && $Numero_cuenta != 0){ $Numero_cuenta = null; }
-			if(empty($Equipo_asignado) && $Equipo_asignado != 0){ $Equipo_asignado = null; }
 			if(empty($Id_equipo) && $Id_equipo != 0){ $Id_equipo = null; }
 			if(empty($Sueldo) && $Sueldo != 0){ $Sueldo = null; }
 	
@@ -369,7 +367,7 @@ class empleadosMapper extends QBMapper {
 				->set('Fondo_clave', $query->createNamedParameter($Fondo_clave))
 				->set('Fondo_ahorro', $query->createNamedParameter($Fondo_ahorro))
 				->set('Numero_cuenta', $query->createNamedParameter($Numero_cuenta))
-				->set('Equipo_asignado', $query->createNamedParameter($Equipo_asignado))
+				// Equipo_asignado es heredado; inventario_computo.id_empleado se actualiza mediante los endpoints de inventario.
 				->set('Id_equipo', $query->createNamedParameter($Id_equipo))
 				->set('Sueldo', $query->createNamedParameter($Sueldo))
 				->set('updated_at', $query->createNamedParameter($timestamp))

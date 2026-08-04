@@ -292,6 +292,18 @@ class PermisosService {
 		return $this->canSee('compras.accounting', $uid);
 	}
 
+	public function canManageInventory(?string $uid = null): bool {
+		return $this->canSee('inventario.admin', $uid);
+	}
+
+	public function canWorkMaintenance(?string $uid = null): bool {
+		return $this->canManageInventory($uid) || $this->canSee('inventario.technician', $uid);
+	}
+
+	public function canViewInventory(?string $uid = null): bool {
+		return $this->canWorkMaintenance($uid) || $this->canSee('inventario.view', $uid);
+	}
+
 	public function canManagePermissionsCatalog(?string $uid = null): bool {
 		return $this->isAdmin($uid);
 	}
@@ -358,6 +370,60 @@ class PermisosService {
 
 	public function getEnabledCatalog(): array {
 		return $this->getCatalog();
+	}
+
+	/**
+	 * Devuelve los UIDs de usuarios pertenecientes a los grupos que conceden
+	 * exactamente el permiso indicado. La relación permiso-grupo siempre se
+	 * obtiene del catálogo habilitado, nunca de nombres de grupo codificados.
+	 *
+	 * @return string[]
+	 */
+	public function getUsersWithPermission(string $permissionKey): array {
+		$permissionKey = trim($permissionKey);
+		if ($permissionKey === '' || !str_contains($permissionKey, '.')) {
+			return [];
+		}
+
+		[$module, $permissionName] = array_map('trim', explode('.', $permissionKey, 2));
+		if ($module === '' || $permissionName === '' || !$this->isModuleEnabled($module)) {
+			return [];
+		}
+
+		$uids = [];
+		foreach ($this->getCatalog() as $permission) {
+			if ((string)$permission['module'] !== $module || (string)$permission['permission'] !== $permissionName) {
+				continue;
+			}
+
+			$group = $this->groupManager->get((string)$permission['group_id']);
+			if ($group === null) {
+				continue;
+			}
+
+			foreach ($group->getUsers() as $user) {
+				$uid = trim((string)$user->getUID());
+				if ($uid !== '') {
+					$uids[$uid] = true;
+				}
+			}
+		}
+
+		// Los administradores globales reciben los permisos de la aplicación por
+		// la misma regla usada en canUsePermission(), aunque no pertenezcan al
+		// grupo configurable de administración del inventario.
+		if ($permissionName === 'admin') {
+			foreach ($this->userManager->search('', null, null) as $user) {
+				$uid = trim((string)$user->getUID());
+				if ($uid !== '' && $this->groupManager->isAdmin($uid)) {
+					$uids[$uid] = true;
+				}
+			}
+		}
+
+		$items = array_keys($uids);
+		sort($items, SORT_NATURAL | SORT_FLAG_CASE);
+		return $items;
 	}
 
 	/*

@@ -116,6 +116,21 @@ export default new Router({
 			name: 'Inventario',
 		},
 		{
+			path: '/Inventario/Mantenimientos',
+			name: 'Mantenimientos',
+			component: () => import('../views/components/Inventario/Mantenimientos/MantenimientosView.vue'),
+		},
+		{
+			path: '/Inventario/Mantenimientos/Grupos/:id',
+			name: 'MantenimientoGrupo',
+			component: () => import('../views/components/Inventario/Mantenimientos/MantenimientoGrupoDetail.vue'),
+		},
+		{
+			path: '/Inventario/Mantenimientos/:id',
+			name: 'MantenimientoDetalle',
+			component: () => import('../views/components/Inventario/Mantenimientos/MantenimientoDetail.vue'),
+		},
+		{
 			path: '/compras',
 			name: 'compras',
 			component: MisSolicitudesCompras,

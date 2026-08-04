@@ -34,6 +34,8 @@ class InventarioMovimientoService {
 
 	public function crearEquipo(array $data): int {
 		return $this->transactional(function () use ($data): int {
+			$idEmpleado = empty($data['id_empleado']) ? null : (int)$data['id_empleado'];
+			$data['id_empleado'] = null;
 			$idEquipo = $this->computoMapper->create($data);
 			$nuevo = $this->computoMapper->findById($idEquipo) ?? array_merge($data, ['id_equipo' => $idEquipo]);
 			$this->registrarMovimiento(
@@ -44,6 +46,9 @@ class InventarioMovimientoService {
 				'Equipo registrado en inventario.',
 				$this->construirDiff([], $nuevo),
 			);
+			if ($idEmpleado !== null) {
+				$this->asignarEquipoDentroTransaccion($idEquipo, $idEmpleado);
+			}
 
 			return $idEquipo;
 		});
@@ -52,6 +57,30 @@ class InventarioMovimientoService {
 	public function actualizarEquipo(int $idEquipo, array $data): bool {
 		$anterior = $this->computoMapper->findById($idEquipo);
 		if ($anterior === null) throw new \RuntimeException('Equipo no encontrado.');
+		$empleadoAnterior = empty($anterior['id_empleado']) ? null : (int)$anterior['id_empleado'];
+		$empleadoNuevo = array_key_exists('id_empleado', $data)
+			? (empty($data['id_empleado']) ? null : (int)$data['id_empleado'])
+			: $empleadoAnterior;
+		if ($empleadoAnterior !== $empleadoNuevo) {
+			if ($empleadoAnterior !== null && $empleadoNuevo !== null) {
+				throw new \DomainException('Desasigna el equipo antes de asignarlo a otro empleado.');
+			}
+			unset($data['id_empleado']);
+			return $this->transactional(function () use ($idEquipo, $anterior, $data, $empleadoNuevo): bool {
+				$nuevo = array_merge($anterior, $data);
+				$cambios = $this->construirDiff($anterior, $nuevo);
+				if ($cambios !== []) {
+					$this->computoMapper->updateById($idEquipo, $nuevo);
+					$this->registrarMovimiento($idEquipo, $this->resolverTipoMovimiento($anterior, $nuevo), $anterior, $nuevo, 'Equipo actualizado.', $cambios);
+				}
+				if ($empleadoNuevo === null) {
+					$this->desasignarEquipoDentroTransaccion($idEquipo);
+				} else {
+					$this->asignarEquipoDentroTransaccion($idEquipo, $empleadoNuevo);
+				}
+				return true;
+			});
+		}
 		$nuevo = array_merge($anterior, $data);
 		$cambios = $this->construirDiff($anterior, $nuevo);
 		if ($cambios === []) return false;
@@ -80,37 +109,125 @@ class InventarioMovimientoService {
 		return $this->actualizarEquipo($idEquipo, $equipo);
 	}
 
-	public function ejecutarCambioAsignacion(
-		int $idEmpleado,
-		?int $equipoAnterior,
-		?int $equipoNuevo,
-		callable $actualizacion
-	): void {
-		$this->transactional(function () use ($idEmpleado, $equipoAnterior, $equipoNuevo, $actualizacion): void {
-			$actualizacion();
-			if ($equipoAnterior === $equipoNuevo) return;
-			$empleado = $this->empleadoSnapshot($idEmpleado);
+	public function asignarEquipo(int $idEquipo, int $idEmpleado): void {
+		$this->transactional(fn() => $this->asignarEquipoDentroTransaccion($idEquipo, $idEmpleado));
+	}
 
-			if ($equipoAnterior !== null && $this->computoMapper->findById($equipoAnterior) !== null) {
-				$this->registrarMovimientoDesdeSnapshots(
-					$equipoAnterior,
-					InventarioMovimiento::TIPO_DESASIGNACION,
-					$empleado,
-					null,
-					'Equipo desasignado del empleado.',
-				);
-			}
+	public function desasignarEquipo(int $idEquipo): void {
+		$this->transactional(fn() => $this->desasignarEquipoDentroTransaccion($idEquipo));
+	}
 
-			if ($equipoNuevo !== null && $this->computoMapper->findById($equipoNuevo) !== null) {
-				$this->registrarMovimientoDesdeSnapshots(
-					$equipoNuevo,
-					InventarioMovimiento::TIPO_ASIGNACION,
-					null,
-					$empleado,
-					'Equipo asignado al empleado.',
-				);
-			}
+	public function sincronizarEquiposEmpleado(int $idEmpleado, array $idsEquipos): void {
+		$this->transactional(function () use ($idEmpleado, $idsEquipos): void {
+			$this->sincronizarEquiposEmpleadoDentroTransaccion($idEmpleado, $idsEquipos);
 		});
+	}
+
+	public function ejecutarDesasignacionEmpleado(int $idEmpleado, callable $actualizacion): void {
+		$this->transactional(function () use ($idEmpleado, $actualizacion): void {
+			$this->sincronizarEquiposEmpleadoDentroTransaccion($idEmpleado, []);
+			$actualizacion();
+		});
+	}
+
+	private function asignarEquipoDentroTransaccion(int $idEquipo, int $idEmpleado): void {
+		if ($idEquipo <= 0 || $idEmpleado <= 0) {
+			throw new \InvalidArgumentException('Identificador de equipo o empleado inválido.');
+		}
+		if ($this->empleadoSnapshot($idEmpleado) === null) {
+			throw new \RuntimeException('Empleado no encontrado.');
+		}
+		$equipo = $this->computoMapper->findById($idEquipo);
+		if ($equipo === null) {
+			throw new \RuntimeException('Equipo no encontrado.');
+		}
+		if (in_array(strtolower(trim((string)($equipo['estado'] ?? ''))), ['baja', 'inactivo', 'inactive'], true)) {
+			throw new \InvalidArgumentException('No se puede asignar un equipo dado de baja o inactivo.');
+		}
+		$currentEmployee = empty($equipo['id_empleado']) ? null : (int)$equipo['id_empleado'];
+		if ($currentEmployee === $idEmpleado) {
+			return;
+		}
+		if ($currentEmployee !== null) {
+			throw new \DomainException('Este equipo ya está asignado a otro empleado.');
+		}
+
+		$nuevo = $equipo;
+		$nuevo['id_empleado'] = $idEmpleado;
+		if (!$this->computoMapper->updateEmpleado($idEquipo, $idEmpleado, null)) {
+			throw new \DomainException('Este equipo ya está asignado a otro empleado.');
+		}
+		$this->registrarMovimiento(
+			$idEquipo,
+			InventarioMovimiento::TIPO_ASIGNACION,
+			$equipo,
+			$nuevo,
+			'Equipo asignado al empleado.',
+			['id_empleado' => ['anterior' => null, 'nuevo' => $idEmpleado]],
+		);
+	}
+
+	private function desasignarEquipoDentroTransaccion(int $idEquipo): void {
+		if ($idEquipo <= 0) {
+			throw new \InvalidArgumentException('Identificador de equipo inválido.');
+		}
+		$equipo = $this->computoMapper->findById($idEquipo);
+		if ($equipo === null) {
+			throw new \RuntimeException('Equipo no encontrado.');
+		}
+		$currentEmployee = empty($equipo['id_empleado']) ? null : (int)$equipo['id_empleado'];
+		if ($currentEmployee === null) {
+			return;
+		}
+
+		$nuevo = $equipo;
+		$nuevo['id_empleado'] = null;
+		if (!$this->computoMapper->updateEmpleado($idEquipo, null, $currentEmployee)) {
+			throw new \RuntimeException('La asignación del equipo cambió durante la operación.');
+		}
+		$this->registrarMovimiento(
+			$idEquipo,
+			InventarioMovimiento::TIPO_DESASIGNACION,
+			$equipo,
+			$nuevo,
+			'Equipo desasignado del empleado.',
+			['id_empleado' => ['anterior' => $currentEmployee, 'nuevo' => null]],
+		);
+	}
+
+	private function sincronizarEquiposEmpleadoDentroTransaccion(int $idEmpleado, array $idsEquipos): void {
+		if ($idEmpleado <= 0 || $this->empleadoSnapshot($idEmpleado) === null) {
+			throw new \RuntimeException('Empleado no encontrado.');
+		}
+		$solicitados = [];
+		foreach ($idsEquipos as $idEquipo) {
+			if ($idEquipo === null || $idEquipo === '') {
+				continue;
+			}
+			if ((!is_int($idEquipo) && !(is_string($idEquipo) && ctype_digit($idEquipo))) || (int)$idEquipo <= 0) {
+				throw new \InvalidArgumentException('La lista de equipos contiene identificadores inválidos.');
+			}
+			$solicitados[(int)$idEquipo] = (int)$idEquipo;
+		}
+
+		$actuales = array_column($this->computoMapper->findByEmpleado($idEmpleado), 'id_equipo');
+		$actuales = array_map('intval', $actuales);
+		$porAsignar = array_values(array_diff($solicitados, $actuales));
+		$porDesasignar = array_values(array_diff($actuales, $solicitados));
+
+		foreach ($porAsignar as $idEquipo) {
+			$this->asignarEquipoDentroTransaccion($idEquipo, $idEmpleado);
+		}
+		foreach ($porDesasignar as $idEquipo) {
+			$equipo = $this->computoMapper->findById($idEquipo);
+			if ($equipo !== null && (int)($equipo['id_empleado'] ?? 0) === $idEmpleado) {
+				$this->desasignarEquipoDentroTransaccion($idEquipo);
+			}
+		}
+	}
+
+	public function obtenerEquiposEmpleado(int $idEmpleado): array {
+		return $this->computoMapper->findByEmpleado($idEmpleado);
 	}
 
 	public function listarHistorial(int $idEquipo, int $limit = 25, int $offset = 0): array {
