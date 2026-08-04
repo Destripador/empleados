@@ -15,7 +15,7 @@ class puestosMapper extends QBMapper {
     public function GetPuestosList(): array {
         $qb = $this->db->getQueryBuilder();
 
-        $qb->select('d.Id_puestos', 'd.Nombre', 'd.Nivel')
+        $qb->select('d.Id_puestos', 'd.Nombre', 'd.Nivel', 'd.created_at', 'd.updated_at')
             ->selectAlias($qb->createFunction('COUNT(e.Id_empleados)'), 'cantidad_empleados')
             ->from($this->getTableName(), 'd')
             ->leftJoin('d', 'empleados', 'e', 'd.Id_puestos = e.Id_puesto')

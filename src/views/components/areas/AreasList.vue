@@ -19,6 +19,12 @@
 
 		<!-- main contacts details -->
 		<AreasDetails :data="data_areas" :people-area="peopleArea" />
+		<FloatingHelpButton
+			:open.sync="modalMensajeAreas"
+			:title="t('empleados', 'Areas information')"
+			:icon="AccountGroup">
+			<MensajeAreas />
+		</FloatingHelpButton>
 	</NcAppContent>
 </template>
 
@@ -26,12 +32,16 @@
 // agregados
 import AreasFullList from './AreasFullList.vue'
 import AreasDetails from './perfil/AreasDetails.vue'
+import FloatingHelpButton from '../Helpers/FloatingHelpButton.vue'
+import MensajeAreas from './MensajeAreas.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import mitt from 'mitt'
 import { translate as t } from '@nextcloud/l10n'
+
+import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
 import {
 	NcEmptyContent,
@@ -47,6 +57,8 @@ export default {
 		NcAppContent,
 		NcLoadingIcon,
 		AreasDetails,
+		FloatingHelpButton,
+		MensajeAreas,
 	},
 
 	data() {
@@ -58,6 +70,8 @@ export default {
 			areasList: [],
 			data_areas: {},
 			peopleArea: {},
+			modalMensajeAreas: false,
+			AccountGroup,
 		}
 	},
 

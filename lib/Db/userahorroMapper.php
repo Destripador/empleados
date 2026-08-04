@@ -104,4 +104,13 @@ class userahorroMapper extends QBMapper {
 
 		return $users;
 	}
+
+	public function deleteByIdEmpleado(int $id_empleado): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->delete($this->getTableName())
+			->where($qb->expr()->eq('id_user', $qb->createNamedParameter($id_empleado)));
+
+		$qb->executeStatement();
+	}
 }

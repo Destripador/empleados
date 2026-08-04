@@ -15,7 +15,7 @@ class equiposMapper extends QBMapper {
 	public function GetEquiposList(): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('d.Id_equipo', 'd.Id_jefe_equipo', 'd.Nombre')
+		$qb->select('d.Id_equipo', 'd.Id_jefe_equipo', 'd.Nombre', 'd.created_at', 'd.updated_at')
 			->selectAlias($qb->createFunction('COUNT(e.Id_empleados)'), 'cantidad_empleados')
 			->from($this->getTableName(), 'd')
 			->leftJoin('d', 'empleados', 'e', 'd.Id_equipo = e.Id_equipo')

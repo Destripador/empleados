@@ -128,12 +128,37 @@ class equiposController extends BaseController {
     public function ExportListEquipos(): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
         $equipos = $this->equiposMapper->GetEquiposList();
-        $books = [['Id_equipo', 'Nombre', 'created_at', 'updated_at']];
+
+        $books = [[
+            'Id_equipo',
+            'Nombre',
+            'Id_jefe_equipo',
+            'Nombre_jefe',
+            'created_at',
+            'updated_at',
+        ]];
 
         foreach ($equipos as $equipo) {
+            $uidJefe = $equipo['Id_jefe_equipo'] ?? null;
+
+            $idJefeNumerico = '';
+            $nombreJefe = '';
+
+            if (!empty($uidJefe)) {
+                $nombreJefe = $uidJefe; // lo que antes salía en Id_jefe_equipo
+
+                $empleadoJefe = $this->empleadosMapper->GetMyEmployeeInfo($uidJefe);
+
+                if (!empty($empleadoJefe)) {
+                    $idJefeNumerico = $empleadoJefe[0]['Id_empleados'] ?? '';
+                }
+            }
+
             $books[] = [
                 $equipo['Id_equipo'],
                 $equipo['Nombre'],
+                $idJefeNumerico,
+                $nombreJefe,
                 $equipo['created_at'],
                 $equipo['updated_at'],
             ];

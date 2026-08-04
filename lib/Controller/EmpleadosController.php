@@ -20,6 +20,7 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\historialvacacionesMapper;
 use OCA\Empleados\Db\ausenciasMapper;
 use OCA\Empleados\Db\userahorroMapper;
+use OCA\Empleados\Db\empleadosorganigramaMapper;
 use OCA\Empleados\Db\ausencias;
 use OCA\Empleados\Db\empleados;
 use OCA\Empleados\Db\contactoemergencia;
@@ -64,6 +65,7 @@ class EmpleadosController extends BaseController {
     protected $l10n;
     protected $equiposMapper;
     protected $historialvacacionesMapper;
+    protected $empleadosorganigramaMapper;
     protected contactoemergenciaMapper $contactoemergenciaMapper;
     protected PermisosService $permisosService;
     private AniversarioSyncService $aniversarioSyncService;
@@ -88,6 +90,7 @@ class EmpleadosController extends BaseController {
         equiposMapper $equiposMapper,
         historialvacacionesMapper $historialvacacionesMapper,
         contactoemergenciaMapper $contactoemergenciaMapper,
+        empleadosorganigramaMapper $empleadosorganigramaMapper,
         PermisosService $permisosService,
         AniversarioSyncService $aniversarioSyncService,
         InventarioMovimientoService $inventarioMovimientoService
@@ -114,6 +117,7 @@ class EmpleadosController extends BaseController {
         $this->permisosService = $permisosService;
         $this->aniversarioSyncService = $aniversarioSyncService;
         $this->inventarioMovimientoService = $inventarioMovimientoService;
+        $this->empleadosorganigramaMapper = $empleadosorganigramaMapper;
     }
 
     /**
@@ -230,6 +234,15 @@ class EmpleadosController extends BaseController {
 
     /**
      * Activa un empleado y crea sus carpetas en Nextcloud.
+     *
+     * IMPORTANTE: este método está pensado para dar de alta por PRIMERA VEZ
+     * a un usuario de Nextcloud que nunca ha tenido registro de empleado
+     * (pestaña "Users without employee record" en el frontend).
+     *
+     * Para reactivar a alguien que YA tuvo un registro de empleado
+     * (pestaña "Deactivated employees"), el frontend debe usar
+     * ActivarUsuario($id_empleados), que solo actualiza el Estado
+     * sin volver a insertar filas.
      */
     #[UseSession]
     #[NoAdminRequired]
@@ -275,6 +288,18 @@ class EmpleadosController extends BaseController {
                 // Obtén la conexión a través del contenedor de Nextcloud
                 $connection = \OC::$server->get(IDBConnection::class);
                 $idEmpleado = $connection->lastInsertId('empleados');
+
+                // -----------------------------------------------------------
+                // FIX duplicados: si el motor de BD (p.ej. SQLite) recicla el
+                // Id_empleados que se acaba de asignar (porque venía de un
+                // empleado eliminado previamente), puede quedar algún residuo
+                // huérfano en ausencias o user_ahorro con ese mismo id.
+                // Lo limpiamos antes de insertar para garantizar que nunca
+                // quede más de una fila por Id_empleados. Si no hay residuos,
+                // estos DELETE simplemente no afectan ninguna fila.
+                // -----------------------------------------------------------
+                $this->ausenciasMapper->deleteByIdEmpleado((int)$idEmpleado);
+                $this->userahorroMapper->deleteByIdEmpleado((int)$idEmpleado);
 
                 // Generar un nuevo registro de ausencias
                 // y asociarlo al empleado recién creado
@@ -351,9 +376,10 @@ class EmpleadosController extends BaseController {
             }
             
 			$this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
-			$this->empleadosMapper->deleteByIdEmpleado($id_empleados);
+            $this->empleadosMapper->deleteByIdEmpleado($id_empleados);
             $this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
-            $this->organigramaMapper->EliminarPorEmpleado($id_empleados);
+            $this->empleadosorganigramaMapper->EliminarPorEmpleado($id_empleados);
+            $this->userahorroMapper->deleteByIdEmpleado($id_empleados);
 
 			return new DataResponse(Http::STATUS_OK);
 		}

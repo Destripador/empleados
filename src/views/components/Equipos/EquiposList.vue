@@ -1,4 +1,4 @@
-<template id="EmployeeList">
+<template>
 	<NcAppContent v-if="loading" :name="t('empleados', 'Loading')">
 		<NcEmptyContent class="empty-content" :name="t('empleados', 'Loading')">
 			<template #icon>
@@ -8,7 +8,6 @@
 	</NcAppContent>
 
 	<NcAppContent v-else :name="t('empleados', 'Loading')">
-		<!-- contacts list -->
 		<template #list>
 			<EquiposFullList
 				:list="EquiposList"
@@ -17,10 +16,16 @@
 				:reload-bus="reloadBus" />
 		</template>
 
-		<!-- main contacts details -->
 		<EquiposDetails
 			:data="data_Equipos"
 			:people-area="peopleArea" />
+
+		<FloatingHelpButton
+			:open.sync="modalMensajeEquipos"
+			:title="t('empleados', 'Team information')"
+			:icon="AccountGroup">
+			<MensajeEquipos />
+		</FloatingHelpButton>
 	</NcAppContent>
 </template>
 
@@ -28,12 +33,16 @@
 // agregados
 import EquiposFullList from './EquiposFullList.vue'
 import EquiposDetails from './perfil/EquiposDetails.vue'
+import FloatingHelpButton from '../Helpers/FloatingHelpButton.vue'
+import MensajeEquipos from './MensajeEquipos.vue'
 
 import { showError /* showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import mitt from 'mitt'
 import { translate as t } from '@nextcloud/l10n'
+
+import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
 import {
 	NcEmptyContent,
@@ -49,6 +58,8 @@ export default {
 		NcAppContent,
 		NcLoadingIcon,
 		EquiposDetails,
+		FloatingHelpButton,
+		MensajeEquipos,
 	},
 
 	data() {
@@ -60,6 +71,8 @@ export default {
 			EquiposList: [],
 			data_Equipos: {},
 			peopleArea: {},
+			modalMensajeEquipos: false,
+			AccountGroup,
 		}
 	},
 
