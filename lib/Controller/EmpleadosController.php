@@ -335,7 +335,10 @@ class EmpleadosController extends BaseController {
 	public function DesactivarEmpleado(int $id_empleados): DataResponse {
         $this->requireHumanResourcesAccess();
 		try{
-			$this->empleadosMapper->DesactivarByIdEmpleado($id_empleados);
+			$this->inventarioMovimientoService->ejecutarDesasignacionEmpleado(
+				$id_empleados,
+				fn() => $this->empleadosMapper->DesactivarByIdEmpleado($id_empleados),
+			);
 			return new DataResponse(Http::STATUS_OK);
 		}
 		catch(Exception $e){
@@ -370,11 +373,21 @@ class EmpleadosController extends BaseController {
             // Verificar si el grupo "empleados" existe
             $group = $this->groupManager->get("empleados");
 
-            // Verificar si el usuario ya pertenece al grupo
-            if ($group->inGroup($user)) {
+			$this->inventarioMovimientoService->ejecutarDesasignacionEmpleado(
+				$id_empleados,
+				function () use ($id_empleados): void {
+					$this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
+					$this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
+					$this->organigramaMapper->EliminarPorEmpleado($id_empleados);
+					$this->empleadosMapper->deleteByIdEmpleado($id_empleados);
+				},
+			);
+
+            // La relación de inventario y el empleado ya quedaron confirmados antes de modificar el grupo externo.
+            if ($user !== null && $group !== null && $group->inGroup($user)) {
                 $group->removeUser($user);
             }
-            
+
 			$this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
             $this->empleadosMapper->deleteByIdEmpleado($id_empleados);
             $this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
@@ -472,14 +485,14 @@ class EmpleadosController extends BaseController {
 			$equipoComputoAnterior,
 			$equipoComputoNuevo,
 			function () use ($id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio, $gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado, $equipo, $sueldo, $id_aniversario, $dias_disponibles): void {
-				$this->empleadosMapper->CambiosEmpleado(
-					$id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio,
-					$gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado,
-					$equipo, $sueldo
-				);
-				$this->ausenciasMapper->updateAusenciasById(
-					(int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
-				);
+		$this->empleadosMapper->CambiosEmpleado(
+			$id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio,
+			$gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado,
+			$equipo, $sueldo
+		);
+		$this->ausenciasMapper->updateAusenciasById(
+			(int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
+		);
 			}
 		);
 

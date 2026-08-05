@@ -21,6 +21,7 @@ class empleados extends Entity {
 	protected string $fondoclave = '';
 	protected string $fondoahorro = '';
 	protected string $numerocuenta = '';
+	// Campo heredado pendiente de eliminación; no es la fuente oficial de asignaciones.
 	protected string $equipoasignado = '';
 	protected string $idequipo = '';
 	protected string $sueldo = '';

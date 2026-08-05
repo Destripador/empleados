@@ -7,6 +7,15 @@
 				<h2>{{ pageTitle }}</h2>
 				<p>{{ pageSubtitle }}</p>
 			</div>
+			<NcButton
+				v-if="maintenanceCapabilities.moduleEnabled && maintenanceCapabilities.canViewMaintenance"
+				type="secondary"
+				@click="$router.push({ name: 'Mantenimientos' })">
+				<template #icon>
+					<CalendarMonth :size="20" />
+				</template>
+				{{ t('empleados', 'Maintenance calendar') }}
+			</NcButton>
 
 			<NcActions
 				class="inventario-actions"
@@ -799,11 +808,14 @@ import Upload from 'vue-material-design-icons/Upload.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import AccountOutline from 'vue-material-design-icons/AccountOutline.vue'
 import FilterOff from 'vue-material-design-icons/FilterOff.vue'
+import CalendarMonth from 'vue-material-design-icons/CalendarMonth.vue'
 
 import inventarioService from '../../../services/inventarioService.js'
 import { parseInventoryDeviceId } from '../../../utils/inventoryRoute.js'
 import { formatSupportDuration, isValidSupportDate } from '../../../utils/supportDuration.js'
 import SupportDurationFields from '../../../components/Inventario/SupportDurationFields.vue'
+import permissionsMixin from '../../../mixins/permissions.js'
+import { maintenanceCapabilities } from '../../../utils/mantenimientoFormatters.js'
 
 function localDateTimeValue() {
 	const now = new Date()
@@ -827,6 +839,7 @@ export default {
 		NcActionButton,
 		NcAvatar,
 		AccountOutline,
+		CalendarMonth,
 		Check,
 		Close,
 		Database,
@@ -843,6 +856,8 @@ export default {
 		Wrench,
 		SupportDurationFields,
 	},
+	mixins: [permissionsMixin],
+	inject: { configuraciones: { default: () => ({}) } },
 
 	data() {
 		return {
@@ -919,6 +934,9 @@ export default {
 	},
 
 	computed: {
+		maintenanceCapabilities() {
+			return maintenanceCapabilities(this.permissions, this.configuraciones)
+		},
 		validSupportForm() {
 			return this.formSoporte.detalles.trim() !== ''
 				&& Number.isInteger(this.formSoporte.duracion_minutos)
