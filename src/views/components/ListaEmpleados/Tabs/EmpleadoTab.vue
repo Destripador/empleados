@@ -1,379 +1,461 @@
 <template>
 	<div class="well">
-		<div class="top">
-			<div class="main">
-				<div class="box1">
-					<div>
-						<div class="divider">
-							<span>{{ t('empleados', 'Work information') }}</span>
-						</div>
-						<div class="flexible">
-							<!-- Employee number -->
-							<div class="box1Inside">
-								<label for="Numero_empleado" class="labeltype">
-									<Badgeaccountoutline :size="20" />
-									{{ t('empleados', 'Employee No.') }}
-								</label>
-								<input id="Numero_empleado"
-									v-model="Numero_empleado"
-									type="text"
-									:disabled="!show"
-									class="inputtype">
-							</div>
+		<div class="empleado-view-switch-wrapper">
+			<div class="empleado-view-switch">
+				<button
+					type="button"
+					class="empleado-switch-btn"
+					:class="{ active: viewMode === 'information' }"
+					:aria-pressed="viewMode === 'information' ? 'true' : 'false'"
+					@click="setViewMode('information')">
+					{{ t('empleados', 'Information') }}
+				</button>
+				<button
+					type="button"
+					class="empleado-switch-btn"
+					:class="{ active: viewMode === 'onboarding' }"
+					:aria-pressed="viewMode === 'onboarding' ? 'true' : 'false'"
+					@click="setViewMode('onboarding')">
+					{{ t('empleados', 'Boarding') }}
+				</button>
+			</div>
+		</div>
 
-							<!-- Salary -->
-							<div class="box1Inside">
-								<label for="Sueldo" class="labeltype">
-									<Cash :size="20" />
-									{{ t('empleados', 'Salary') }}
-								</label>
-								<input id="Sueldo"
-									v-model="Sueldo"
-									type="text"
-									:disabled="!show"
-									class="inputtype">
+		<div class="empleado-content">
+			<div v-if="viewMode === 'information'" class="top">
+				<div class="main">
+					<div class="box1">
+						<div>
+							<div class="divider">
+								<span>{{ t('empleados', 'Work information') }}</span>
 							</div>
+							<div class="flexible">
+								<!-- Employee number -->
+								<div class="box1Inside">
+									<label for="Numero_empleado" class="labeltype">
+										<Badgeaccountoutline :size="20" />
+										{{ t('empleados', 'Employee No.') }}
+									</label>
+									<input id="Numero_empleado"
+										v-model="Numero_empleado"
+										type="text"
+										:disabled="!show"
+										class="inputtype">
+								</div>
 
-							<!-- Bank account -->
-							<div class="box1Inside">
-								<label for="Numero_cuenta" class="labeltype">
-									<Bank :size="20" />
-									{{ t('empleados', 'Bank account') }}
-								</label>
-								<input id="Numero_cuenta"
-									v-model="Numero_cuenta"
-									type="text"
-									:disabled="!show"
-									class="inputtype">
-							</div>
-						</div>
-						<div class="flexible top">
-							<!-- Start date -->
-							<div class="box1Inside">
-								<label for="Ingreso" class="labeltype">
-									<Calendarrange :size="20" />
-									{{ t('empleados', 'Start date') }}
-								</label>
-								<input id="Ingreso"
-									v-model="Ingreso"
-									type="date"
-									:disabled="!show"
-									class="inputtype">
-							</div>
+								<!-- Salary -->
+								<div class="box1Inside">
+									<label for="Sueldo" class="labeltype">
+										<Cash :size="20" />
+										{{ t('empleados', 'Salary') }}
+									</label>
+									<input id="Sueldo"
+										v-model="Sueldo"
+										type="text"
+										:disabled="!show"
+										class="inputtype">
+								</div>
 
-							<!-- Anniversary -->
-							<div class="box1Inside">
-								<label for="Aniversario" class="labeltype">
-									<PartyPopper :size="20" />
-									{{ t('empleados', 'Anniversary') }}
-								</label>
-								<input
-									id="Aniversario"
-									:value="cargandoPeriodo ? '…' : Aniversario"
-									type="text"
-									disabled
-									class="inputtype">
+								<!-- Bank account -->
+								<div class="box1Inside">
+									<label for="Numero_cuenta" class="labeltype">
+										<Bank :size="20" />
+										{{ t('empleados', 'Bank account') }}
+									</label>
+									<input id="Numero_cuenta"
+										v-model="Numero_cuenta"
+										type="text"
+										:disabled="!show"
+										class="inputtype">
+								</div>
 							</div>
+							<div class="flexible top">
+								<!-- Start date -->
+								<div class="box1Inside">
+									<label for="Ingreso" class="labeltype">
+										<Calendarrange :size="20" />
+										{{ t('empleados', 'Start date') }}
+									</label>
+									<input id="Ingreso"
+										v-model="Ingreso"
+										type="date"
+										:disabled="!show"
+										class="inputtype">
+								</div>
 
-							<!-- Vacation -->
-							<div class="box1Inside">
-								<label for="Vacaciones" class="labeltype">
-									<BagSuitcase :size="20" />
-									{{ t('empleados', 'Vacation') }}
-								</label>
-								<div class="stepper-wrapper">
-									<div v-if="show" class="stepper-arrows">
-										<button type="button"
-											class="stepper-btn"
-											:disabled="cargandoPeriodo"
-											@click="incrementarVacaciones(1)">
-											<ChevronUp :size="11" fill-color="currentColor" />
-										</button>
-										<button type="button"
-											class="stepper-btn"
-											:disabled="cargandoPeriodo"
-											@click="incrementarVacaciones(-1)">
-											<ChevronDown :size="11" fill-color="currentColor" />
-										</button>
+								<!-- Anniversary -->
+								<div class="box1Inside">
+									<label for="Aniversario" class="labeltype">
+										<PartyPopper :size="20" />
+										{{ t('empleados', 'Anniversary') }}
+									</label>
+									<input
+										id="Aniversario"
+										:value="cargandoPeriodo ? '…' : Aniversario"
+										type="text"
+										disabled
+										class="inputtype">
+								</div>
+
+								<!-- Vacation -->
+								<div class="box1Inside">
+									<label for="Vacaciones" class="labeltype">
+										<BagSuitcase :size="20" />
+										{{ t('empleados', 'Vacation') }}
+									</label>
+									<div class="stepper-wrapper">
+										<div v-if="show" class="stepper-arrows">
+											<button type="button"
+												class="stepper-btn"
+												:disabled="cargandoPeriodo"
+												@click="incrementarVacaciones(1)">
+												<ChevronUp :size="11" fill-color="currentColor" />
+											</button>
+											<button type="button"
+												class="stepper-btn"
+												:disabled="cargandoPeriodo"
+												@click="incrementarVacaciones(-1)">
+												<ChevronDown :size="11" fill-color="currentColor" />
+											</button>
+										</div>
+										<input id="Vacaciones"
+											v-model.number="Vacaciones"
+											type="number"
+											step="1"
+											min="0"
+											:disabled="!show || cargandoPeriodo"
+											:placeholder="cargandoPeriodo ? '…' : ''"
+											class="inputtype stepper-input">
 									</div>
-									<input id="Vacaciones"
-										v-model.number="Vacaciones"
-										type="number"
-										step="1"
-										min="0"
-										:disabled="!show || cargandoPeriodo"
-										:placeholder="cargandoPeriodo ? '…' : ''"
-										class="inputtype stepper-input">
+								</div>
+
+								<!-- Save vacation days -->
+								<div
+									v-if="show"
+									class="topRefresh MarginRight">
+									<NcButton
+										type="primary"
+										:disabled="guardandoDias || cargandoPeriodo || String(Vacaciones) === String(diasDerechoOriginal)"
+										@click="GuardarDiasDerecho()">
+										<template #icon>
+											<NcLoadingIcon v-if="guardandoDias" :size="20" />
+											<ContentSaveOutline v-else :size="20" />
+										</template>
+										{{ t('empleados', 'Save') }}
+									</NcButton>
+								</div>
+							</div>
+						</div>
+
+						<div>
+							<div class="divider">
+								<span>{{ t('empleados', 'Savings fund') }}</span>
+							</div>
+							<div class="flexible">
+								<div class="box1Inside">
+									<label for="Fondo_clave" class="labeltype">
+										<Piggybankoutline :size="20" />
+										{{ t('empleados', 'Fund key') }}
+									</label>
+									<input id="Fondo_clave"
+										v-model="Fondo_clave"
+										type="text"
+										:disabled="!show"
+										class="inputtype">
+								</div>
+
+								<div class="box1Inside">
+									<label for="Fondo_ahorro" class="labeltype">
+										<Piggybankoutline :size="20" />
+										{{ t('empleados', 'Savings fund') }}
+									</label>
+									<input id="Fondo_ahorro"
+										v-model="Fondo_ahorro"
+										type="text"
+										:disabled="!show"
+										class="inputtype">
+								</div>
+
+								<div class="topRefresh MarginRight">
+									<NcCheckboxRadioSwitch
+										v-model="state"
+										type="switch">
+										{{ state ? t('empleados', 'Can request') : t('empleados', 'Read-only mode') }}
+									</NcCheckboxRadioSwitch>
+								</div>
+							</div>
+						</div>
+
+						<div v-if="inventoryEnabled">
+							<div class="divider">
+								<span>{{ t('empleados', 'Systems') }}</span>
+							</div>
+							<div class="flexible">
+								<div class="box1Inside equipo-asignado-field">
+									<label for="Equipo_asignado" class="labeltype">
+										<Laptopaccount :size="20" />
+										{{ t('empleados', 'Assigned equipment') }}
+									</label>
+
+									<NcSelect
+										v-if="show && canAccessInventory"
+										id="Equipo_asignado"
+										v-model="Equipo_asignado"
+										class="equipo-computo-select"
+										:disabled="!show"
+										:options="inventarioEquipos"
+										:input-label="t('empleados', 'Assigned equipment')"
+										:label-outside="true"
+										:placeholder="t('empleados', 'Select assigned equipment')">
+										<template #selected-option="option">
+											<div class="equipo-selected-option">
+												<strong>{{ equipoOptionTitle(option) }}</strong>
+												<span>{{ equipoOptionSubtitle(option) }}</span>
+											</div>
+										</template>
+
+										<template #option="option">
+											<div class="equipo-dropdown-option">
+												<div class="equipo-dropdown-main">
+													<strong>{{ equipoOptionTitle(option) }}</strong>
+													<span
+														v-if="option.estado"
+														class="equipo-status"
+														:class="`equipo-status--${String(option.estado).toLowerCase()}`">
+														{{ option.estado }}
+													</span>
+												</div>
+
+												<div class="equipo-dropdown-subtitle">
+													{{ equipoOptionSubtitle(option) }}
+												</div>
+											</div>
+										</template>
+									</NcSelect>
+
+									<component
+										:is="canNavigateAssignedEquipment ? 'button' : 'div'"
+										v-if="assignedInventoryEquipo"
+										class="assigned-equipment-card"
+										:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
+										:type="canNavigateAssignedEquipment ? 'button' : null"
+										:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
+										:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(assignedInventoryEquipo) }) : null"
+										@click="openAssignedEquipment">
+										<Laptopaccount :size="32" aria-hidden="true" />
+										<div class="assigned-equipment-content">
+											<div class="assigned-equipment-heading">
+												<strong>{{ equipoOptionTitle(assignedInventoryEquipo) }}</strong>
+												<span v-if="assignedInventoryEquipo.estado" class="equipo-status" :class="`equipo-status--${String(assignedInventoryEquipo.estado).toLowerCase()}`">
+													{{ assignedInventoryEquipo.estado }}
+												</span>
+											</div>
+											<span v-if="assignedInventoryEquipo.nombre_sistema">{{ t('empleados', 'System name') }}: {{ assignedInventoryEquipo.nombre_sistema }}</span>
+											<span v-if="assignedInventoryEquipo.numero_serie">{{ t('empleados', 'Serial number') }}: {{ assignedInventoryEquipo.numero_serie }}</span>
+											<span v-if="assignedEquipmentModel">{{ t('empleados', 'Model') }}: {{ assignedEquipmentModel }}</span>
+											<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
+											<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
+										</div>
+									</component>
+
+									<p v-else class="assigned-equipment-empty">
+										{{ t('empleados', 'No equipment assigned.') }}
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="box2">
+						<div class="divider">
+							<span>{{ t('empleados', 'Employment structure') }}</span>
+						</div>
+
+						<div>
+							<!-- Organization Chart -->
+							<div class="box2" :style="show ? { display: 'none' } : {}">
+								<div class="box-chart">
+									<OrganizationChart :datasource="generateChar(data.uid, gerente, socio)">
+										<template slot-scope="{ nodeData }">
+											<div class="title">
+												{{ nodeData.title }}
+											</div>
+											<div class="content">
+												<div class="center">
+													<div class="avatar-chart mini-top">
+														<NcAvatar v-if="nodeData.name == '?'"
+															display-name="?"
+															:size="40" />
+														<NcAvatar v-else
+															:user="nodeData.name"
+															:display-name="nodeData.name"
+															:size="40" />
+													</div>
+													<div class="name-chart">
+														{{ nodeData.name }}
+													</div>
+												</div>
+											</div>
+										</template>
+									</OrganizationChart>
 								</div>
 							</div>
 
-							<!-- Save vacation days -->
-							<div
-								v-if="show"
-								class="topRefresh MarginRight">
-								<NcButton
-									type="primary"
-									:disabled="guardandoDias || cargandoPeriodo || String(Vacaciones) === String(diasDerechoOriginal)"
-									@click="GuardarDiasDerecho()">
-									<template #icon>
-										<NcLoadingIcon v-if="guardandoDias" :size="20" />
-										<ContentSaveOutline v-else :size="20" />
-									</template>
-									{{ t('empleados', 'Save') }}
-								</NcButton>
-							</div>
-						</div>
-					</div>
+							<!-- Department and Position -->
+							<div class="main">
+								<div class="label-input-trabajo">
+									<NcSelect id="Id_departamento"
+										v-model="area"
+										class="container__select"
+										:disabled="!show"
+										:options="optionsarea"
+										:input-label="t('empleados','Department')" />
+								</div>
 
-					<div>
-						<div class="divider">
-							<span>{{ t('empleados', 'Savings fund') }}</span>
-						</div>
-						<div class="flexible">
-							<div class="box1Inside">
-								<label for="Fondo_clave" class="labeltype">
-									<Piggybankoutline :size="20" />
-									{{ t('empleados', 'Fund key') }}
-								</label>
-								<input id="Fondo_clave"
-									v-model="Fondo_clave"
-									type="text"
-									:disabled="!show"
-									class="inputtype">
+								<div class="label-input-trabajo">
+									<NcSelect id="Id_puesto"
+										v-model="puesto"
+										class="container__select_puesto"
+										:disabled="!show"
+										:options="optionspuesto"
+										:input-label="t('empleados','Position')" />
+								</div>
 							</div>
 
-							<div class="box1Inside">
-								<label for="Fondo_ahorro" class="labeltype">
-									<Piggybankoutline :size="20" />
-									{{ t('empleados', 'Savings fund') }}
-								</label>
-								<input id="Fondo_ahorro"
-									v-model="Fondo_ahorro"
-									type="text"
-									:disabled="!show"
-									class="inputtype">
+							<!-- Partner and Manager -->
+							<div v-if="show" class="main">
+								<div class="label-input-trabajo">
+									<NcSelect v-model="socio"
+										class="select"
+										:disabled="!show"
+										:options="EmpleadosList"
+										:user-select="true"
+										:input-label="t('empleados','Partner')" />
+								</div>
+
+								<div class="label-input-trabajo">
+									<NcSelect v-model="gerente"
+										class="select"
+										:disabled="!show"
+										:options="EmpleadosList"
+										:user-select="true"
+										:input-label="t('empleados','Manager')" />
+								</div>
 							</div>
 
-							<div class="topRefresh MarginRight">
-								<NcCheckboxRadioSwitch
-									v-model="state"
-									type="switch">
-									{{ state ? t('empleados', 'Can request') : t('empleados', 'Read-only mode') }}
-								</NcCheckboxRadioSwitch>
+							<!-- Team -->
+							<div v-if="show" class="main">
+								<div class="label-input-puesto">
+									<NcSelect v-model="Equipo"
+										class="select"
+										:disabled="!show"
+										:options="optionsequipos"
+										:input-label="t('empleados','Team')" />
+								</div>
 							</div>
-						</div>
-					</div>
-
-					<div v-if="inventoryEnabled">
-						<div class="divider">
-							<span>{{ t('empleados', 'Systems') }}</span>
-						</div>
-						<div class="flexible">
-							<div class="box1Inside equipo-asignado-field">
-								<label for="Equipo_asignado" class="labeltype">
-									<Laptopaccount :size="20" />
-									{{ t('empleados', 'Assigned equipment') }}
-								</label>
-
-								<NcSelect
-									v-if="show && canAccessInventory"
-									id="Equipo_asignado"
-									v-model="Equipo_asignado"
-									class="equipo-computo-select"
-									:disabled="!show"
-									:options="inventarioEquipos"
-									:input-label="t('empleados', 'Assigned equipment')"
-									:label-outside="true"
-									:placeholder="t('empleados', 'Select assigned equipment')">
-									<template #selected-option="option">
-										<div class="equipo-selected-option">
-											<strong>{{ equipoOptionTitle(option) }}</strong>
-											<span>{{ equipoOptionSubtitle(option) }}</span>
-										</div>
-									</template>
-
-									<template #option="option">
-										<div class="equipo-dropdown-option">
-											<div class="equipo-dropdown-main">
-												<strong>{{ equipoOptionTitle(option) }}</strong>
-												<span
-													v-if="option.estado"
-													class="equipo-status"
-													:class="`equipo-status--${String(option.estado).toLowerCase()}`">
-													{{ option.estado }}
-												</span>
+							<div v-else class="">
+								<div v-if="!Equipo == '' || !Equipo == null">
+									<div class="rst-title">
+										<div class="title_flex">
+											<div class="subtitle_flex">
+												<NcAvatar :user="Equipo.jefe" :display-name="Equipo.jefe" :size="20" />
 											</div>
-
-											<div class="equipo-dropdown-subtitle">
-												{{ equipoOptionSubtitle(option) }}
+											<div>
+												<h1> {{ Equipo.label }} </h1>
 											</div>
 										</div>
-									</template>
-								</NcSelect>
-
-								<component
-									:is="canNavigateAssignedEquipment ? 'button' : 'div'"
-									v-if="assignedInventoryEquipo"
-									class="assigned-equipment-card"
-									:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
-									:type="canNavigateAssignedEquipment ? 'button' : null"
-									:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
-									:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(assignedInventoryEquipo) }) : null"
-									@click="openAssignedEquipment">
-									<Laptopaccount :size="32" aria-hidden="true" />
-									<div class="assigned-equipment-content">
-										<div class="assigned-equipment-heading">
-											<strong>{{ equipoOptionTitle(assignedInventoryEquipo) }}</strong>
-											<span v-if="assignedInventoryEquipo.estado" class="equipo-status" :class="`equipo-status--${String(assignedInventoryEquipo.estado).toLowerCase()}`">
-												{{ assignedInventoryEquipo.estado }}
-											</span>
-										</div>
-										<span v-if="assignedInventoryEquipo.nombre_sistema">{{ t('empleados', 'System name') }}: {{ assignedInventoryEquipo.nombre_sistema }}</span>
-										<span v-if="assignedInventoryEquipo.numero_serie">{{ t('empleados', 'Serial number') }}: {{ assignedInventoryEquipo.numero_serie }}</span>
-										<span v-if="assignedEquipmentModel">{{ t('empleados', 'Model') }}: {{ assignedEquipmentModel }}</span>
-										<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
-										<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
 									</div>
-								</component>
-
-								<p v-else class="assigned-equipment-empty">
-									{{ t('empleados', 'No equipment assigned.') }}
-								</p>
+									<div class="rst">
+										<ul class="team-list">
+											<NcListItem
+												v-for="(item) in peopleEquipo.equipo"
+												:key="item.Id_empleados"
+												:name="item.displayname ? item.displayname : item.Id_user"
+												@click.prevent="showDetails(item)">
+												<template #icon>
+													<NcAvatar disable-menu
+														:size="44"
+														:user="item.Id_user"
+														:display-name="item.Id_user" />
+												</template>
+											</NcListItem>
+										</ul>
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<div class="box2">
-					<div class="divider">
-						<span>{{ t('empleados', 'Employment structure') }}</span>
-					</div>
-
-					<div>
-						<!-- Organization Chart -->
-						<div class="box2" :style="show ? { display: 'none' } : {}">
-							<div class="box-chart">
-								<OrganizationChart :datasource="generateChar(data.uid, gerente, socio)">
-									<template slot-scope="{ nodeData }">
-										<div class="title">
-											{{ nodeData.title }}
-										</div>
-										<div class="content">
-											<div class="center">
-												<div class="avatar-chart mini-top">
-													<NcAvatar v-if="nodeData.name == '?'"
-														display-name="?"
-														:size="40" />
-													<NcAvatar v-else
-														:user="nodeData.name"
-														:display-name="nodeData.name"
-														:size="40" />
-												</div>
-												<div class="name-chart">
-													{{ nodeData.name }}
-												</div>
-											</div>
-										</div>
-									</template>
-								</OrganizationChart>
-							</div>
-						</div>
-
-						<!-- Department and Position -->
-						<div class="main">
-							<div class="label-input-trabajo">
-								<NcSelect id="Id_departamento"
-									v-model="area"
-									class="container__select"
-									:disabled="!show"
-									:options="optionsarea"
-									:input-label="t('empleados','Department')" />
-							</div>
-
-							<div class="label-input-trabajo">
-								<NcSelect id="Id_puesto"
-									v-model="puesto"
-									class="container__select_puesto"
-									:disabled="!show"
-									:options="optionspuesto"
-									:input-label="t('empleados','Position')" />
-							</div>
-						</div>
-
-						<!-- Partner and Manager -->
-						<div v-if="show" class="main">
-							<div class="label-input-trabajo">
-								<NcSelect v-model="socio"
-									class="select"
-									:disabled="!show"
-									:options="EmpleadosList"
-									:user-select="true"
-									:input-label="t('empleados','Partner')" />
-							</div>
-
-							<div class="label-input-trabajo">
-								<NcSelect v-model="gerente"
-									class="select"
-									:disabled="!show"
-									:options="EmpleadosList"
-									:user-select="true"
-									:input-label="t('empleados','Manager')" />
-							</div>
-						</div>
-
-						<!-- Team -->
-						<div v-if="show" class="main">
-							<div class="label-input-puesto">
-								<NcSelect v-model="Equipo"
-									class="select"
-									:disabled="!show"
-									:options="optionsequipos"
-									:input-label="t('empleados','Team')" />
-							</div>
-						</div>
-						<div v-else class="">
-							<div v-if="!Equipo == '' || !Equipo == null">
-								<div class="rst-title">
-									<div class="title_flex">
-										<div class="subtitle_flex">
-											<NcAvatar :user="Equipo.jefe" :display-name="Equipo.jefe" :size="20" />
-										</div>
-										<div>
-											<h1> {{ Equipo.label }} </h1>
-										</div>
-									</div>
-								</div>
-								<div class="rst">
-									<ul class="team-list">
-										<NcListItem
-											v-for="(item) in peopleEquipo.equipo"
-											:key="item.Id_empleados"
-											:name="item.displayname ? item.displayname : item.Id_user"
-											@click.prevent="showDetails(item)">
-											<template #icon>
-												<NcAvatar disable-menu
-													:size="44"
-													:user="item.Id_user"
-													:display-name="item.Id_user" />
-											</template>
-										</NcListItem>
-									</ul>
-								</div>
-							</div>
-						</div>
-					</div>
+				<br>
+				<div class="div-center">
+					<NcButton
+						v-if="show"
+						aria-label="Guardar"
+						type="primary"
+						@click="CambiosEmpleado()">
+						{{ t('empleados', 'Apply changes') }}
+					</NcButton>
 				</div>
 			</div>
 
-			<br>
-			<div class="div-center">
-				<NcButton
-					v-if="show"
-					aria-label="Guardar"
-					type="primary"
-					@click="CambiosEmpleado()">
-					{{ t('empleados', 'Apply changes') }}
-				</NcButton>
+			<div v-else class="top">
+				<div class="boarding-header">
+					<div class="divider boarding-divider">
+						<span>{{ boardingOn === 1 ? t('empleados', 'OnBoarding') : t('empleados', 'OffBoarding') }}</span>
+					</div>
+
+					<div class="boarding-toggle-wrapper">
+						<div class="boarding-toggle" :class="{ 'boarding-toggle--off': boardingOn === 0 }">
+							<span class="boarding-toggle-thumb" aria-hidden="true" />
+							<button
+								type="button"
+								class="boarding-toggle-btn"
+								:class="{ active: boardingOn === 1 }"
+								:aria-pressed="boardingOn === 1 ? 'true' : 'false'"
+								:disabled="boardingLoading"
+								@click="setBoardingOn(1)">
+								{{ t('empleados', 'On') }}
+							</button>
+							<button
+								type="button"
+								class="boarding-toggle-btn"
+								:class="{ active: boardingOn === 0 }"
+								:aria-pressed="boardingOn === 0 ? 'true' : 'false'"
+								:disabled="boardingLoading"
+								@click="setBoardingOn(0)">
+								{{ t('empleados', 'Off') }}
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<NcEmptyContent v-if="boardingLoading" :name="t('empleados', 'Loading')">
+					<template #icon>
+						<NcLoadingIcon :size="20" />
+					</template>
+				</NcEmptyContent>
+
+				<template v-else>
+					<ul v-if="boardingItemsFiltered.length" class="onboarding-checklist">
+						<li
+							v-for="item in boardingItemsFiltered"
+							:key="item.id_empleado_boarding"
+							class="onboarding-item"
+							:class="{ 'onboarding-item--done': isChecked(item) }">
+							<NcCheckboxRadioSwitch
+								:checked="isChecked(item)"
+								:disabled="boardingSavingId === item.id_empleado_boarding"
+								@update:checked="value => toggleItemStatus(item, value)">
+								{{ item.nombre }}
+							</NcCheckboxRadioSwitch>
+							<NcLoadingIcon v-if="boardingSavingId === item.id_empleado_boarding" :size="16" />
+						</li>
+					</ul>
+					<p v-else class="boarding-empty">
+						{{ t('empleados', 'No items in this checklist yet.') }}
+					</p>
+				</template>
 			</div>
 		</div>
 	</div>
@@ -400,6 +482,8 @@ import Cash from 'vue-material-design-icons/Cash.vue'
 import ContentSaveOutline from 'vue-material-design-icons/ContentSaveOutline.vue'
 import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import AccountArrowRightOutline from 'vue-material-design-icons/AccountArrowRightOutline.vue'
+import AccountArrowLeftOutline from 'vue-material-design-icons/AccountArrowLeftOutline.vue'
 
 import {
 	NcAvatar,
@@ -408,6 +492,7 @@ import {
 	NcListItem,
 	NcCheckboxRadioSwitch,
 	NcLoadingIcon,
+	NcEmptyContent,
 } from '@nextcloud/vue'
 
 export default {
@@ -426,7 +511,10 @@ export default {
 		ContentSaveOutline,
 		ChevronUp,
 		ChevronDown,
+		AccountArrowRightOutline,
+		AccountArrowLeftOutline,
 		NcLoadingIcon,
+		NcEmptyContent,
 		OrganizationChart,
 		NcButton,
 		NcSelect,
@@ -451,6 +539,7 @@ export default {
 
 	data() {
 		return {
+			viewMode: 'information',
 			area: '',
 			puesto: '',
 			gerente: null,
@@ -478,6 +567,12 @@ export default {
 			diasDerechoOriginal: '',
 			guardandoDias: false,
 			cargandoPeriodo: false,
+			// Checklist de OnBoarding / OffBoarding
+			boardingOn: 1, // 1 = OnBoarding, 0 = OffBoarding
+			boardingItems: [],
+			boardingLoading: false,
+			boardingInitialized: false,
+			boardingSavingId: null,
 		}
 	},
 
@@ -508,6 +603,9 @@ export default {
 		},
 		canNavigateAssignedEquipment() {
 			return this.inventoryEnabled && this.canAccessInventory && Boolean(this.assignedEquipmentId)
+		},
+		boardingItemsFiltered() {
+			return this.boardingItems.filter(item => Number(item.on) === this.boardingOn)
 		},
 	},
 
@@ -542,6 +640,14 @@ export default {
 				await this.cargarPeriodoActual(news.Id_empleados)
 				if (this.inventoryEnabled && this.canAccessInventory) {
 					await this.getInventarioEquipos(news.Equipo_asignado)
+				}
+
+				// Nuevo empleado: el checklist anterior ya no aplica
+				this.boardingItems = []
+				this.boardingInitialized = false
+				if (this.viewMode === 'onboarding') {
+					this.boardingInitialized = true
+					await this.cargarBoardingChecklist()
 				}
 			}
 		},
@@ -592,6 +698,62 @@ export default {
 
 	methods: {
 		t,
+
+		setViewMode(viewMode) {
+			this.viewMode = viewMode
+			if (viewMode === 'onboarding' && !this.boardingInitialized) {
+				this.boardingInitialized = true
+				this.cargarBoardingChecklist()
+			}
+		},
+
+		setBoardingOn(on) {
+			this.boardingOn = on
+		},
+
+		isChecked(item) {
+			return Number(item.status) === 1
+		},
+
+		async cargarBoardingChecklist() {
+			const idEmpleado = this.data?.Id_empleados
+			if (!idEmpleado) return
+
+			this.boardingLoading = true
+			try {
+				// Asegura que existan los registros del checklist a partir del catálogo (alta y baja)
+				await Promise.all([
+					axios.post(generateUrl('/apps/empleados/generarChecklistEmpleado'), { id_empleado: idEmpleado, on: 1 }),
+					axios.post(generateUrl('/apps/empleados/generarChecklistEmpleado'), { id_empleado: idEmpleado, on: 0 }),
+				])
+
+				const response = await axios.post(generateUrl('/apps/empleados/getChecklistEmpleado'), {
+					id_empleado: idEmpleado,
+				})
+				const data = response?.data?.ocs?.data
+				this.boardingItems = Array.isArray(data) ? data : []
+			} catch (err) {
+				showError(t('empleados', 'No se pudo cargar el checklist [{error}]', { error: String(err), close: true }))
+			} finally {
+				this.boardingLoading = false
+			}
+		},
+
+		async toggleItemStatus(item, checked) {
+			const nuevoStatus = checked ? 1 : 0
+			this.boardingSavingId = item.id_empleado_boarding
+			try {
+				await axios.post(generateUrl('/apps/empleados/marcarStatusBoarding'), {
+					id_empleado_boarding: item.id_empleado_boarding,
+					status: nuevoStatus,
+				})
+				item.status = nuevoStatus
+			} catch (err) {
+				showError(t('empleados', 'No se pudo actualizar el ítem [{error}]', { error: String(err), close: true }))
+			} finally {
+				this.boardingSavingId = null
+			}
+		},
 
 		openAssignedEquipment() {
 			if (!this.canNavigateAssignedEquipment) return
@@ -1632,6 +1794,225 @@ export default {
 	.assigned-equipment-card,
 	.assigned-equipment-empty {
 		grid-column: 1;
+	}
+}
+
+.empleado-content {
+	/* ya no necesita ser relative/flotante: el switch va arriba, centrado */
+}
+
+/* Switch Information / OnBoarding — arriba, centrado */
+.empleado-view-switch-wrapper {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 8px;
+}
+
+.empleado-view-switch {
+	display: inline-flex;
+	gap: 2px;
+	padding: 4px;
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+}
+
+.empleado-switch-btn,
+.empleado-switch-btn:hover,
+.empleado-switch-btn:focus,
+.empleado-switch-btn:focus-visible,
+.empleado-switch-btn:active {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 7px 18px;
+	border-radius: 999px;
+	font-size: 12.5px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--color-text-maxcontrast);
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.empleado-switch-btn:hover:not(.active) {
+	color: var(--color-main-text);
+}
+
+.empleado-switch-btn.active,
+.empleado-switch-btn.active:hover,
+.empleado-switch-btn.active:focus,
+.empleado-switch-btn.active:active {
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text, #fff);
+	box-shadow: 0 2px 10px rgba(52, 120, 246, 0.35);
+}
+
+@media (max-width: 600px) {
+	.empleado-view-switch {
+		width: 100%;
+	}
+
+	.empleado-switch-btn {
+		flex: 1;
+		padding: 7px 8px;
+	}
+}
+
+/* Encabezado del checklist: título a la izquierda, toggle a la derecha */
+.boarding-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: nowrap;
+}
+
+.boarding-divider {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 22px 0 14px;
+}
+
+.boarding-toggle-wrapper {
+	display: flex;
+	flex-shrink: 0;
+	padding-top: 34px;
+}
+
+/* Toggle deslizante, minimalista — todo forzado con !important porque
+   los estilos globales de botón de Nextcloud (incluyendo :hover/:focus/:active)
+   traen su propio background/box-shadow que si no, se cuela encima */
+.boarding-toggle {
+	position: relative;
+	display: inline-flex !important;
+	flex-shrink: 0;
+	width: 76px !important;
+	height: 20px !important;
+	padding: 2px !important;
+	margin: 0 !important;
+	background: var(--color-background-darker, var(--color-background-hover)) !important;
+	border: 1px solid var(--color-border) !important;
+	border-radius: 999px !important;
+	box-sizing: border-box;
+}
+
+.boarding-toggle-thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: calc(50% - 2px);
+	height: calc(100% - 4px);
+	border-radius: 999px;
+	background: var(--color-primary-element);
+	transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	pointer-events: none;
+}
+
+.boarding-toggle--off .boarding-toggle-thumb {
+	transform: translateX(100%);
+}
+
+.boarding-toggle-btn,
+.boarding-toggle-btn:hover,
+.boarding-toggle-btn:focus,
+.boarding-toggle-btn:focus-visible,
+.boarding-toggle-btn:active {
+	all: unset;
+	position: relative;
+	z-index: 1;
+	box-sizing: border-box;
+	display: flex !important;
+	flex: 1 1 0;
+	align-items: center;
+	justify-content: center;
+	height: 100% !important;
+	min-height: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 999px !important;
+	outline: 0 !important;
+	box-shadow: none !important;
+	font-size: 9.5px !important;
+	font-weight: 700 !important;
+	line-height: 1 !important;
+	color: var(--color-text-maxcontrast);
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+	transition: color 0.18s ease;
+}
+
+.boarding-toggle-btn:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.boarding-toggle-btn:hover:not(:disabled):not(.active) {
+	color: var(--color-main-text) !important;
+}
+
+.boarding-toggle-btn.active,
+.boarding-toggle-btn.active:hover,
+.boarding-toggle-btn.active:focus {
+	color: var(--color-primary-element-text, #fff) !important;
+}
+
+/* Checklist funcional */
+.onboarding-checklist {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 0;
+	margin: 4px 0 0;
+	list-style: none;
+}
+
+.onboarding-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 4px 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 14px;
+	transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.onboarding-item--done {
+	background: var(--color-background-dark);
+	border-color: var(--color-border);
+}
+
+.onboarding-item--done :deep(.checkbox-radio-switch__label) {
+	color: var(--color-text-maxcontrast);
+	text-decoration: line-through;
+}
+
+.boarding-empty {
+	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+@media (max-width: 600px) {
+	.boarding-header {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.boarding-toggle-wrapper {
+		align-self: flex-end;
+		padding-top: 0;
+		margin-top: 8px;
 	}
 }
 </style>

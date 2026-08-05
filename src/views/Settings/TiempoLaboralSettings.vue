@@ -206,6 +206,78 @@
 				</div>
 			</div>
 
+			<!-- ── Boarding catalog ── -->
+			<div class="settings-card">
+				<div class="card-header">
+					<div class="card-title-wrap">
+						<div class="card-icon">
+							<AccountArrowRightOutline :size="20" />
+						</div>
+						<div>
+							<p class="card-eyebrow">
+								{{ t('empleados', 'Checklist') }}
+							</p>
+							<h3>{{ t('empleados', 'Boarding') }}</h3>
+						</div>
+					</div>
+					<NcActions>
+						<NcActionButton :close-after-click="true" @click="showAddBoardingItem">
+							<template #icon>
+								<Plus :size="20" />
+							</template>
+							{{ t('empleados', 'Add item') }}
+						</NcActionButton>
+					</NcActions>
+				</div>
+
+				<div class="card-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>{{ t('empleados', 'Name') }}</th>
+								<th class="col-center">
+									{{ t('empleados', 'Type') }}
+								</th>
+								<th class="col-actions" />
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="BoardingCatalogo.length === 0">
+								<td colspan="3" class="empty-row">
+									{{ t('empleados', 'No boarding items defined yet.') }}
+								</td>
+							</tr>
+							<tr v-for="item in BoardingCatalogo" :key="item.id_boarding">
+								<td class="col-name">
+									{{ item.nombre }}
+								</td>
+								<td class="col-center">
+									<span :class="Number(item.on) === 1 ? 'pill pill--yes' : 'pill pill--no'">
+										{{ Number(item.on) === 1 ? t('empleados', 'OnBoarding') : t('empleados', 'OffBoarding') }}
+									</span>
+								</td>
+								<td class="col-actions">
+									<NcActions>
+										<NcActionButton :close-after-click="true" @click="editBoardingItem(item)">
+											<template #icon>
+												<Pencil :size="20" />
+											</template>
+											{{ t('empleados', 'Edit') }}
+										</NcActionButton>
+										<NcActionButton :close-after-click="true" @click="deleteBoardingItem(item.id_boarding)">
+											<template #icon>
+												<Delete :size="20" />
+											</template>
+											{{ t('empleados', 'Delete') }}
+										</NcActionButton>
+									</NcActions>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
 			<!-- ── Holidays ── -->
 			<div class="settings-card">
 				<div class="card-header">
@@ -459,6 +531,44 @@
 				</div>
 			</div>
 		</NcModal>
+
+		<!-- ── Modal: Add/Edit boarding item ── -->
+		<NcModal
+			v-if="modalAddBoarding"
+			:name="editingBoardingItem ? t('empleados', 'Edit boarding item') : t('empleados', 'Add boarding item')"
+			@close="closeModalBoarding">
+			<div class="modal-body">
+				<div class="modal-header-section">
+					<p class="card-eyebrow">
+						{{ t('empleados', 'Checklist') }}
+					</p>
+					<h2>{{ editingBoardingItem ? t('empleados', 'Edit boarding item') : t('empleados', 'New boarding item') }}</h2>
+					<p>{{ t('empleados', 'Items appear in the employee\'s OnBoarding or OffBoarding checklist.') }}</p>
+				</div>
+				<div class="form-grid">
+					<NcTextField class="span-2" :label="t('empleados', 'Item name')" :value.sync="nombreBoarding" />
+					<div class="switch-card span-2">
+						<NcCheckboxRadioSwitch v-model="onBoardingItem" type="switch" />
+						<div>
+							<p class="switch-label">
+								{{ onBoardingItem ? t('empleados', 'OnBoarding') : t('empleados', 'OffBoarding') }}
+							</p>
+							<p class="switch-desc">
+								{{ t('empleados', 'Whether this item belongs to the onboarding or offboarding checklist.') }}
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="modal-actions">
+					<NcButton @click="closeModalBoarding">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="!nombreBoarding" @click="guardarBoardingItem">
+						{{ t('empleados', 'Save') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
 	</div>
 </template>
 
@@ -471,6 +581,7 @@ import Pencil from 'vue-material-design-icons/Pencil.vue'
 import CalendarStar from 'vue-material-design-icons/CalendarStar.vue'
 import CalendarMultiple from 'vue-material-design-icons/CalendarMultiple.vue'
 import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
+import AccountArrowRightOutline from 'vue-material-design-icons/AccountArrowRightOutline.vue'
 
 import {
 	NcActions,
@@ -503,6 +614,7 @@ export default {
 		CalendarStar,
 		CalendarMultiple,
 		FileDocumentOutline,
+		AccountArrowRightOutline,
 	},
 
 	data() {
@@ -532,6 +644,13 @@ export default {
 			editingFestivo: null,
 			festivoNombre: '',
 			festivoFecha: '',
+
+			// ── Boarding catalog ──
+			BoardingCatalogo: [],
+			modalAddBoarding: false,
+			editingBoardingItem: null,
+			nombreBoarding: '',
+			onBoardingItem: true,
 		}
 	},
 
@@ -539,6 +658,7 @@ export default {
 		this.getAniversarios()
 		this.getTipo()
 		this.getFestivos()
+		this.getBoardingCatalogo()
 	},
 
 	methods: {
@@ -892,6 +1012,71 @@ export default {
 				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
 			}
 		},
+
+		// ────────────────────────────────────────────
+		// Boarding catalog
+		// ────────────────────────────────────────────
+		async getBoardingCatalogo() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/getBoarding'))
+				this.BoardingCatalogo = response?.data?.ocs?.data ?? response?.data ?? []
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		showAddBoardingItem() {
+			this.editingBoardingItem = null
+			this.nombreBoarding = ''
+			this.onBoardingItem = true
+			this.modalAddBoarding = true
+		},
+
+		editBoardingItem(item) {
+			this.editingBoardingItem = item
+			this.nombreBoarding = item.nombre
+			this.onBoardingItem = Number(item.on) === 1
+			this.modalAddBoarding = true
+		},
+
+		closeModalBoarding() {
+			this.modalAddBoarding = false
+			this.editingBoardingItem = null
+			this.nombreBoarding = ''
+			this.onBoardingItem = true
+		},
+
+		async guardarBoardingItem() {
+			try {
+				if (this.editingBoardingItem) {
+					await axios.post(generateUrl('/apps/empleados/modificarBoarding'), {
+						id_boarding: this.editingBoardingItem.id_boarding,
+						nombre: this.nombreBoarding,
+						on: this.onBoardingItem ? 1 : 0,
+					})
+				} else {
+					await axios.post(generateUrl('/apps/empleados/crearBoarding'), {
+						nombre: this.nombreBoarding,
+						on: this.onBoardingItem ? 1 : 0,
+					})
+				}
+				showSuccess(t('empleados', 'Boarding item saved'))
+				this.closeModalBoarding()
+				this.getBoardingCatalogo()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
+
+		async deleteBoardingItem(id) {
+			try {
+				await axios.post(generateUrl('/apps/empleados/deleteBoarding'), { id_boarding: id })
+				showSuccess(t('empleados', 'Boarding item deleted'))
+				this.getBoardingCatalogo()
+			} catch (err) {
+				showError(t('empleados', 'An exception occurred [{error}]', { error: String(err) }))
+			}
+		},
 	},
 }
 </script>
@@ -937,9 +1122,10 @@ export default {
 /* ── Cards grid ── */
 .settings-grid {
 	display: grid;
-	grid-template-columns: 0.8fr 1fr 1fr;
+	grid-template-columns: 0.85fr 1.15fr;
+	grid-auto-rows: 1fr;
 	gap: 16px;
-	align-items: start;
+	align-items: stretch;
 
 	@media (max-width: 1024px) {
 		grid-template-columns: 1fr;
@@ -950,6 +1136,7 @@ export default {
 .settings-card {
 	display: flex;
 	flex-direction: column;
+	height: 100%;
 	border-radius: var(--border-radius-large);
 	border: 1px solid var(--color-border);
 	background: var(--color-main-background);
