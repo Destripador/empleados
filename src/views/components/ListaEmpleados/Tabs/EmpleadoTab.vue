@@ -190,78 +190,112 @@
 							<div class="divider">
 								<span>{{ t('empleados', 'Systems') }}</span>
 							</div>
-							<div class="flexible">
-								<div class="box1Inside equipo-asignado-field">
-									<label for="Equipo_asignado" class="labeltype">
-										<Laptopaccount :size="20" />
-										{{ t('empleados', 'Assigned equipment') }}
-									</label>
 
-									<NcSelect
-										v-if="show && canAccessInventory"
-										id="Equipo_asignado"
-										v-model="Equipo_asignado"
-										class="equipo-computo-select"
-										:disabled="!show"
-										:options="inventarioEquipos"
-										:input-label="t('empleados', 'Assigned equipment')"
-										:label-outside="true"
-										:placeholder="t('empleados', 'Select assigned equipment')">
-										<template #selected-option="option">
-											<div class="equipo-selected-option">
+							<div class="equipo-asignado-field">
+								<label for="Equipos_asignados" class="labeltype">
+									<Laptopaccount :size="20" />
+									{{ t('empleados', 'Assigned equipment') }}
+								</label>
+
+								<NcLoadingIcon v-if="cargandoEquipos" :size="24" />
+
+								<NcSelect v-else-if="show && canModifyInventory"
+									id="Equipos_asignados"
+									v-model="Equipos_asignados"
+									class="equipo-computo-select"
+									:options="inventarioEquipos"
+									:multiple="true"
+									:close-on-select="false"
+									:clearable="true"
+									:input-label="t('empleados', 'Assigned equipment')"
+									:label-outside="true"
+									:placeholder="t('empleados', 'Select assigned equipment')">
+									<template #selected-option="option">
+										<div class="equipo-selected-option">
+											<strong>{{ equipoOptionTitle(option) }}</strong>
+										</div>
+									</template>
+
+									<template #option="option">
+										<div class="equipo-dropdown-option">
+											<div class="equipo-dropdown-main">
 												<strong>{{ equipoOptionTitle(option) }}</strong>
-												<span>{{ equipoOptionSubtitle(option) }}</span>
-											</div>
-										</template>
 
-										<template #option="option">
-											<div class="equipo-dropdown-option">
-												<div class="equipo-dropdown-main">
-													<strong>{{ equipoOptionTitle(option) }}</strong>
-													<span
-														v-if="option.estado"
-														class="equipo-status"
-														:class="`equipo-status--${String(option.estado).toLowerCase()}`">
-														{{ option.estado }}
-													</span>
-												</div>
-
-												<div class="equipo-dropdown-subtitle">
-													{{ equipoOptionSubtitle(option) }}
-												</div>
-											</div>
-										</template>
-									</NcSelect>
-
-									<component
-										:is="canNavigateAssignedEquipment ? 'button' : 'div'"
-										v-if="assignedInventoryEquipo"
-										class="assigned-equipment-card"
-										:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
-										:type="canNavigateAssignedEquipment ? 'button' : null"
-										:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
-										:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(assignedInventoryEquipo) }) : null"
-										@click="openAssignedEquipment">
-										<Laptopaccount :size="32" aria-hidden="true" />
-										<div class="assigned-equipment-content">
-											<div class="assigned-equipment-heading">
-												<strong>{{ equipoOptionTitle(assignedInventoryEquipo) }}</strong>
-												<span v-if="assignedInventoryEquipo.estado" class="equipo-status" :class="`equipo-status--${String(assignedInventoryEquipo.estado).toLowerCase()}`">
-													{{ assignedInventoryEquipo.estado }}
+												<span v-if="option.estado"
+													class="equipo-status"
+													:class="`equipo-status--${String(option.estado).toLowerCase()}`">
+													{{ option.estado }}
 												</span>
 											</div>
-											<span v-if="assignedInventoryEquipo.nombre_sistema">{{ t('empleados', 'System name') }}: {{ assignedInventoryEquipo.nombre_sistema }}</span>
-											<span v-if="assignedInventoryEquipo.numero_serie">{{ t('empleados', 'Serial number') }}: {{ assignedInventoryEquipo.numero_serie }}</span>
-											<span v-if="assignedEquipmentModel">{{ t('empleados', 'Model') }}: {{ assignedEquipmentModel }}</span>
-											<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
-											<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
+
+											<div class="equipo-dropdown-subtitle">
+												{{ equipoOptionSubtitle(option) }}
+											</div>
+										</div>
+									</template>
+								</NcSelect>
+
+								<p v-if="errorEquipos" class="assigned-equipment-error">
+									{{ errorEquipos }}
+								</p>
+
+								<div v-if="Equipos_asignados.length > 0" class="assigned-equipment-list">
+									<component :is="canNavigateAssignedEquipment ? 'button' : 'div'"
+										v-for="equipo in Equipos_asignados"
+										:key="equipo.id_equipo || equipo.value"
+										class="assigned-equipment-card"
+										:class="{
+											'assigned-equipment-card--interactive': canNavigateAssignedEquipment,
+										}"
+										:type="canNavigateAssignedEquipment ? 'button' : null"
+										:title="canNavigateAssignedEquipment
+											? t('empleados', 'Open this device in IT Inventory')
+											: null"
+										:aria-label="canNavigateAssignedEquipment
+											? t('empleados', 'Open {device} in IT Inventory', {
+												device: equipoOptionTitle(equipo),
+											})
+											: null"
+										@click="openAssignedEquipment(equipo)">
+										<Laptopaccount :size="32" aria-hidden="true" />
+
+										<div class="assigned-equipment-content">
+											<div class="assigned-equipment-heading">
+												<strong>{{ equipoOptionTitle(equipo) }}</strong>
+
+												<span v-if="equipo.estado"
+													class="equipo-status"
+													:class="`equipo-status--${String(equipo.estado).toLowerCase()}`">
+													{{ equipo.estado }}
+												</span>
+											</div>
+
+											<span v-if="equipo.nombre_sistema">
+												{{ t('empleados', 'System name') }}:
+												{{ equipo.nombre_sistema }}
+											</span>
+
+											<span v-if="equipo.numero_serie">
+												{{ t('empleados', 'Serial number') }}:
+												{{ equipo.numero_serie }}
+											</span>
+
+											<span v-if="equipoModel(equipo)">
+												{{ t('empleados', 'Model') }}:
+												{{ equipoModel(equipo) }}
+											</span>
+
+											<span v-if="canNavigateAssignedEquipment"
+												class="assigned-equipment-link-hint">
+												{{ t('empleados', 'Open in IT Inventory') }}
+											</span>
 										</div>
 									</component>
-
-									<p v-else class="assigned-equipment-empty">
-										{{ t('empleados', 'No equipment assigned.') }}
-									</p>
 								</div>
+
+								<p v-else-if="!cargandoEquipos" class="assigned-equipment-empty">
+									{{ t('empleados', 'No equipment assigned.') }}
+								</p>
 							</div>
 						</div>
 					</div>
@@ -552,7 +586,7 @@ export default {
 			Fondo_clave: '',
 			Fondo_ahorro: '',
 			Numero_cuenta: '',
-			Equipos_asignados: [],
+			Equipo_asignado: null,
 			Sueldo: '',
 			Equipo: '',
 			areaSend: '',
@@ -575,6 +609,7 @@ export default {
 			boardingLoading: false,
 			boardingInitialized: false,
 			boardingSavingId: null,
+			Equipos_asignados: [],
 		}
 	},
 
@@ -941,41 +976,118 @@ export default {
 			this.$bus.emit('show', false)
 		},
 		async getInventarioEquipos(idEmpleado) {
-			if (!this.inventoryEnabled || !this.canAccessInventory) return
+			if (!this.inventoryEnabled || !this.canAccessInventory) {
+				return
+			}
+
 			this.cargandoEquipos = true
 			this.errorEquipos = ''
+
 			try {
 				const [optionsResponse, assignedResponse] = await Promise.all([
-					axios.get(generateUrl('/apps/empleados/GetInventarioEquiposSelect'), {
-						params: { employee: idEmpleado, onlyAvailable: true },
-					}),
-					axios.get(generateUrl(`/apps/empleados/inventario/empleados/${idEmpleado}/equipos`)),
+					axios.get(
+						generateUrl('/apps/empleados/GetInventarioEquiposSelect'),
+						{
+							params: {
+								employee: idEmpleado,
+								onlyAvailable: true,
+							},
+						},
+					),
+
+					axios.get(
+						generateUrl(
+							`/apps/empleados/inventario/empleados/${idEmpleado}/equipos`,
+						),
+					),
 				])
 
-				const data = this.normalizeInventarioEquiposResponse(optionsResponse)
+				const availableData = this.normalizeInventarioEquiposResponse(
+					optionsResponse,
+				)
 
-				this.inventarioEquipos = data.map(equipo => ({
-					value: equipo.value || equipo.id_equipo,
-					label: equipo.label || this.inventarioEquipoLabel(equipo),
-					id_equipo: equipo.id_equipo || equipo.value,
-					nombre_dispositivo: equipo.nombre_dispositivo || '',
-					nombre_sistema: equipo.nombre_sistema || '',
-					numero_serie: equipo.numero_serie || '',
-					estado: equipo.estado || '',
-					marca: equipo.marca || '',
-					modelo: equipo.modelo || '',
-					empleado_id: equipo.empleado_id || null,
-					empleado_uid: equipo.empleado_uid || null,
-				}))
+				const assignedData = this.normalizeInventarioEquiposResponse(
+					assignedResponse,
+					'equipos',
+				)
 
-				this.Equipos_asignados = this.normalizeInventarioEquiposResponse(assignedResponse, 'equipos')
-					.map(equipo => this.findInventarioEquipo(equipo.id_equipo) || equipo)
+				const availableEquipos = availableData
+					.map(equipo => this.normalizeInventarioEquipo(equipo))
+					.filter(Boolean)
+
+				const assignedEquipos = assignedData
+					.map(equipo => this.normalizeInventarioEquipo(equipo))
+					.filter(Boolean)
+
+				/*
+				 * Incluye:
+				 * - equipos disponibles;
+				 * - equipos que ya pertenecen al empleado.
+				 *
+				 * Esto evita que una asignación existente desaparezca del select
+				 * cuando onlyAvailable excluye equipos ocupados.
+				 */
+				const equiposMap = new Map()
+
+				availableEquipos.forEach((equipo) => {
+					equiposMap.set(String(equipo.id_equipo), equipo)
+				})
+
+				assignedEquipos.forEach((equipo) => {
+					equiposMap.set(String(equipo.id_equipo), {
+						...equiposMap.get(String(equipo.id_equipo)),
+						...equipo,
+					})
+				})
+
+				this.inventarioEquipos = Array.from(equiposMap.values())
+
+				this.Equipos_asignados = assignedEquipos.map((equipo) => {
+					return this.findInventarioEquipo(equipo.id_equipo) || equipo
+				})
 			} catch (err) {
-				this.errorEquipos = t('empleados', 'Could not load assigned equipment')
+				this.Equipos_asignados = []
+				this.errorEquipos = t(
+					'empleados',
+					'Could not load assigned equipment',
+				)
+
 				showError(this.errorEquipos)
 			} finally {
 				this.cargandoEquipos = false
 			}
+		},
+
+		normalizeInventarioEquipo(equipo) {
+			if (!equipo || typeof equipo !== 'object') {
+				return null
+			}
+
+			const id = equipo.id_equipo ?? equipo.value
+
+			if (id === null || id === undefined || id === '') {
+				return null
+			}
+
+			const normalized = {
+				...equipo,
+				value: id,
+				id_equipo: id,
+				nombre_dispositivo: equipo.nombre_dispositivo || '',
+				nombre_sistema: equipo.nombre_sistema || '',
+				numero_serie: equipo.numero_serie || '',
+				estado: equipo.estado || '',
+				marca: equipo.marca || '',
+				modelo: equipo.modelo || '',
+				empleado_id: equipo.empleado_id ?? null,
+				empleado_uid: equipo.empleado_uid ?? null,
+			}
+
+			normalized.label = equipo.label
+				|| this.inventarioEquipoLabel(normalized)
+				|| `${t('empleados', 'Equipment')} #${id}`
+
+			return normalized
 		},
 
 		normalizeInventarioEquiposResponse(response, key = 'data') {
@@ -1987,6 +2099,24 @@ export default {
 		align-self: flex-end;
 		padding-top: 0;
 		margin-top: 8px;
+	}
+}
+
+.assigned-equipment-list {
+	display: grid;
+	grid-column: 2;
+	width: 100%;
+	gap: 10px;
+	margin-top: 12px;
+}
+
+.assigned-equipment-list .assigned-equipment-card {
+	grid-column: auto;
+	margin-top: 0;
+}
+@media (max-width: 768px) {
+	.assigned-equipment-list {
+		grid-column: 1;
 	}
 }
 </style>

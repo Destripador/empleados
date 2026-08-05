@@ -2149,5 +2149,7 @@
     "Change the assigned technician?": "¿Cambiar el técnico asignado?",
     "Save checklist changes before completing.": "Guarda los cambios del checklist antes de completar."
   },
-  "pluralForm": "nplurals=2; plural=(n != 1);"
+  "pluralForm": "nplurals=2; plural=(n != 1);",
+  "Client work": "Trabajo clientes",
+  "Internal work": "Trabajo interno"
 }
