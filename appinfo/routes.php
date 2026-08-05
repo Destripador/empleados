@@ -235,6 +235,22 @@ return [
 		['name' => 'festivos#exportarFestivos',  'url' => '/exportarFestivos',  'verb' => 'GET'],
 		['name' => 'festivos#vaciarFestivos',    'url' => '/vaciarFestivos',    'verb' => 'GET'],
 
+		/****************************** BOARDING ***************************************/
+		// Boarding (catálogo)
+		['name' => 'boarding#getBoarding',       'url' => '/getBoarding',        'verb' => 'GET'],
+		['name' => 'boarding#findById',          'url' => '/getBoardingItem',    'verb' => 'POST'],
+		['name' => 'boarding#findByOn',          'url' => '/getBoardingByOn',    'verb' => 'POST'],
+		['name' => 'boarding#crearBoarding',     'url' => '/crearBoarding',      'verb' => 'POST'],
+		['name' => 'boarding#modificarBoarding', 'url' => '/modificarBoarding',  'verb' => 'POST'],
+		['name' => 'boarding#deleteById',        'url' => '/deleteBoarding',     'verb' => 'POST'],
+
+		// Empleados Boarding (pivote / checklist por empleado)
+		['name' => 'empleadosBoarding#getChecklist',       'url' => '/getChecklistEmpleado',      'verb' => 'POST'],
+		['name' => 'empleadosBoarding#generarChecklist',   'url' => '/generarChecklistEmpleado',  'verb' => 'POST'],
+		['name' => 'empleadosBoarding#marcarStatus',       'url' => '/marcarStatusBoarding',      'verb' => 'POST'],
+		['name' => 'empleadosBoarding#deleteById',         'url' => '/deleteBoardingEmpleado',    'verb' => 'POST'],
+		['name' => 'empleadosBoarding#deleteByEmpleado',   'url' => '/deleteBoardingByEmpleado',  'verb' => 'POST'],
+
 		/************************** REPORTE DE TIEMPOS ************************************/
 		['name' => 'reportetiempo#crearReporte', 'url' => '/crearReporte', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetReportesAll', 'url' => '/GetReportesAll', 'verb' => 'GET'],
