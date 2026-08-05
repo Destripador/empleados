@@ -30,6 +30,36 @@
 
 				<div class="summary-card">
 					<div class="summary-label">
+						{{ t('empleados', 'Client work hours') }}
+					</div>
+					<div class="summary-value">
+						{{ resumenFmt.horas_cliente }}
+					</div>
+				</div>
+
+				<div class="summary-card">
+					<div class="summary-label">
+						{{ t('empleados', 'Internal work hours') }}
+					</div>
+					<div class="summary-value">
+						{{ resumenFmt.horas_internas }}
+					</div>
+					<div class="summary-meta">
+						{{ resumenFmt.porcentaje_interno }} {{ t('empleados', 'of reported work') }}
+					</div>
+				</div>
+
+				<div class="summary-card">
+					<div class="summary-label">
+						{{ t('empleados', 'Internal labor cost') }}
+					</div>
+					<div class="summary-value">
+						{{ resumenFmt.costo_laboral_interno }}
+					</div>
+				</div>
+
+				<div class="summary-card">
+					<div class="summary-label">
 						{{ t('empleados', 'Employees with reports') }}
 					</div>
 					<div class="summary-value">
@@ -108,10 +138,10 @@
 					<small>{{ decisionFmt.topActividadDetalle }}</small>
 				</article>
 
-				<article class="decision-card muted">
+				<article class="decision-card">
 					<span>{{ t('empleados', 'Billable hours') }}</span>
-					<strong>{{ t('empleados', 'Pending field') }}</strong>
-					<small>{{ t('empleados', 'Add a billable/facturable flag to reports to separate chargeable time from internal work.') }}</small>
+					<strong>{{ resumenFmt.horas_cargables }}</strong>
+					<small>{{ t('empleados', 'Internal work is always non-billable.') }}</small>
 				</article>
 			</section>
 
@@ -479,7 +509,12 @@ export default {
 
 			return {
 				horas_reportadas: num2.format(kpis.horas_reportadas || 0),
+				horas_cliente: `${num2.format(kpis.horas_cliente || 0)} h`,
+				horas_internas: `${num2.format(kpis.horas_internas || 0)} h`,
+				horas_cargables: `${num2.format(kpis.horas_cargables || 0)} h`,
+				porcentaje_interno: `${num2.format(kpis.porcentaje_interno || 0)}%`,
 				costo_total: money.format(kpis.costo_total || 0),
+				costo_laboral_interno: money.format(kpis.costo_laboral_interno || 0),
 				empleados_con_reportes: int.format(kpis.empleados_con_reportes || 0),
 				total_reportes: int.format(kpis.total_reportes || 0),
 				proyectos_activos: int.format(kpis.proyectos_activos || 0),

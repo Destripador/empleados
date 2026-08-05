@@ -57,6 +57,21 @@
 							</div>
 
 							<div class="filters-grid">
+								<NcSelect
+									v-model="filter_tipo_trabajo"
+									:input-label="t('empleados', 'Work type')"
+									:options="workTypeFilterOptions"
+									class="filter-control" />
+								<NcSelect
+									v-model="filter_origen"
+									:input-label="t('empleados', 'Origin')"
+									:options="originFilterOptions"
+									class="filter-control" />
+								<NcSelect
+									v-model="filter_cargable"
+									:input-label="t('empleados', 'Billable classification')"
+									:options="billableFilterOptions"
+									class="filter-control" />
 								<NcDateTimePicker
 									v-model="filter_fecha_inicio"
 									class="filter-control"
@@ -165,7 +180,20 @@
 						ref="trapFocus"
 						type="text"
 						style="position:absolute;opacity:0;height:0;width:0;pointer-events:none;">
+					<span class="field-label">{{ t('empleados', 'Work type') }}</span>
+					<div class="radios work-type-radios">
+						<NcCheckboxRadioSwitch v-model="work_type" value="cliente" type="radio">
+							{{ t('empleados', 'Client work') }}
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch v-model="work_type" value="interno" type="radio">
+							{{ t('empleados', 'Internal work') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+					<p v-if="work_type === 'interno'" class="internal-hint">
+						{{ t('empleados', 'Internal activities are non-billable') }}
+					</p>
 					<NcSelect
+						v-if="work_type === 'cliente'"
 						v-model="activity_selected"
 						:input-label="t('empleados', 'Proyect')"
 						:options="actividades"
@@ -209,7 +237,7 @@
 					<NcSelect
 						v-model="listas_selected"
 						:input-label="t('empleados', 'Activity')"
-						:options="listas"
+						:options="availableActivities"
 						class="fit" />
 					<br>
 					<NcTextArea
@@ -288,6 +316,7 @@ export default {
 			type_time: 'minutos',
 			time_activity: 0,
 			time: new Date(),
+			work_type: 'cliente',
 			listas: [],
 			actividades: [],
 			activity_selected: null,
@@ -297,10 +326,39 @@ export default {
 			filter_fecha_fin: null,
 			filter_cliente: null,
 			filter_actividad: null,
+			filter_tipo_trabajo: null,
+			filter_origen: null,
+			filter_cargable: null,
 			filter_busqueda: '',
 		}
 	},
 	computed: {
+		workTypeFilterOptions() {
+			return [
+				{ id: 'todos', label: t('empleados', 'All') },
+				{ id: 'cliente', label: t('empleados', 'Client work') },
+				{ id: 'interno', label: t('empleados', 'Internal work') },
+				{ id: 'ausencia', label: t('empleados', 'Absences') },
+			]
+		},
+		originFilterOptions() {
+			const origins = new Set(this.historial.map(report => report.origen || 'legado'))
+			return Array.from(origins).map(origin => ({
+				id: origin,
+				label: origin === 'manual_interno'
+					? t('empleados', 'Manual internal report')
+					: origin === 'soporte_ti' ? t('empleados', 'Support TI') : origin,
+			}))
+		},
+		billableFilterOptions() {
+			return [
+				{ id: '1', label: t('empleados', 'Billable') },
+				{ id: '0', label: t('empleados', 'Non-billable') },
+			]
+		},
+		availableActivities() {
+			return this.listas.filter(activity => (activity.tipo_actividad || 'cliente') === this.work_type)
+		},
 		isFormValid() {
 			const clienteId = this.activity_selected?.id
 			const actividadId = this.listas_selected?.id
@@ -309,8 +367,7 @@ export default {
 			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
 
 			return Boolean(
-				clienteId !== null
-				&& clienteId !== undefined
+				(this.work_type === 'interno' || (clienteId !== null && clienteId !== undefined))
 				&& actividadId !== null
 				&& actividadId !== undefined
 				&& Number.isFinite(tiempo)
@@ -325,6 +382,10 @@ export default {
 
 			const clienteId = this.getOptionId(this.filter_cliente)
 			const actividadId = this.getOptionId(this.filter_actividad)
+			const selectedWorkType = this.getOptionId(this.filter_tipo_trabajo)
+			const workType = selectedWorkType === 'todos' ? null : selectedWorkType
+			const origin = this.getOptionId(this.filter_origen)
+			const billable = this.getOptionId(this.filter_cargable)
 			const busqueda = String(this.filter_busqueda || '').trim().toLowerCase()
 
 			return this.historial.filter((reporte) => {
@@ -345,6 +406,10 @@ export default {
 				if (actividadId !== null && Number(this.getReportActivityId(reporte)) !== Number(actividadId)) {
 					return false
 				}
+
+				if (workType !== null && reporte.tipo_trabajo !== workType) return false
+				if (origin !== null && (reporte.origen || 'legado') !== origin) return false
+				if (billable !== null && Number(reporte.cargable || 0) !== Number(billable)) return false
 
 				if (busqueda) {
 					const texto = [
@@ -370,10 +435,12 @@ export default {
 				this.filter_fecha_fin,
 				this.filter_cliente,
 				this.filter_actividad,
+				this.getOptionId(this.filter_tipo_trabajo) === 'todos' ? null : this.filter_tipo_trabajo,
+				this.filter_origen,
+				this.filter_cargable,
 				String(this.filter_busqueda || '').trim(),
 			].filter(Boolean).length
 		},
-
 		totalHorasFiltradas() {
 			const totalMinutos = this.historialFiltrado.reduce((total, reporte) => {
 				return total + Number(reporte.tiempo_registrado || 0)
@@ -509,6 +576,12 @@ export default {
 			return `${formatter.format(this.quincenaActual.start)} - ${formatter.format(this.quincenaActual.end)}`
 		},
 	},
+	watch: {
+		work_type() {
+			this.activity_selected = null
+			if (this.listas_selected && (this.listas_selected.tipo_actividad || 'cliente') !== this.work_type) this.listas_selected = null
+		},
+	},
 	async mounted() {
 		this.loading = true
 		try {
@@ -562,10 +635,12 @@ export default {
 						const idCliente = r.id_cliente ?? r.idCliente ?? r.Id_cliente ?? null
 						const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null
 
-						const esAusencia = Number(idCliente) === 99999
+						const tipoTrabajo = r.tipo_trabajo || (Number(idCliente) === 99999 ? 'ausencia' : (idCliente == null ? 'interno' : 'cliente'))
+						const esAusencia = tipoTrabajo === 'ausencia'
+						const esInterno = tipoTrabajo === 'interno'
 						const esSoporte = r.origen === 'soporte_ti'
 						const tipoAusenciaTexto = String(r.descripcion || '').trim()
-						const clienteNombre = esSoporte
+						const clienteNombre = esInterno
 							? t('empleados', 'Internal work')
 							: esAusencia
 								? `${t('empleados', 'Absence -')} ${tipoAusenciaTexto || t('empleados', 'Vacation')}`
@@ -584,6 +659,8 @@ export default {
 							actividadNombre,
 							esAusencia,
 							esSoporte,
+							esInterno,
+							tipo_trabajo: tipoTrabajo,
 						}
 					})
 
@@ -596,7 +673,7 @@ export default {
 
 		async GetActividades() {
 			try {
-				await axios.get(generateUrl('/apps/empleados/GetActividades'))
+				await axios.get(generateUrl('/apps/empleados/GetActividades'), { params: { manual: 1 } })
 					.then(
 						(response) => {
 							if (response?.data?.ocs?.meta?.status !== 'ok') {
@@ -621,7 +698,7 @@ export default {
 							this.loading = false
 						},
 						(err) => {
-							showError(err)
+							showError(this.backendError(err))
 						},
 					)
 			} catch (err) {
@@ -671,7 +748,7 @@ export default {
 							this.loading = false
 						},
 						(err) => {
-							showError(err)
+							showError(this.backendError(err))
 						},
 					)
 			} catch (err) {
@@ -687,7 +764,8 @@ export default {
 
 			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
 			const payload = {
-				id_cliente: this.activity_selected.id,
+				tipo_trabajo: this.work_type,
+				id_cliente: this.work_type === 'interno' ? null : this.activity_selected.id,
 				id_actividad: this.listas_selected.id,
 				tiemporegistrado: Number(this.time_activity),
 				descripcion: String(this.description_activity || '').trim(),
@@ -698,11 +776,11 @@ export default {
 			try {
 				await axios.post(generateUrl('/apps/empleados/crearReporte'), payload).then(
 					() => {
-						showSuccess(t('empleados', 'Área creada exitosamente'))
+						showSuccess(t('empleados', 'Report created successfully'))
 						this.gethistorial()
 						this.closeModal()
 					},
-					(err) => { showError(err) },
+					(err) => { showError(this.backendError(err)) },
 				)
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
@@ -733,6 +811,7 @@ export default {
 			this.type_time = 'minutos'
 			this.time_activity = 0
 			this.time = new Date()
+			this.work_type = 'cliente'
 			this.activity_selected = null
 			this.listas_selected = null
 		},
@@ -746,6 +825,12 @@ export default {
 			}
 
 			return option
+		},
+		backendError(error) {
+			return error?.response?.data?.ocs?.data?.message
+				|| error?.response?.data?.message
+				|| error?.message
+				|| String(error)
 		},
 
 		getReportClientId(reporte) {
@@ -793,6 +878,9 @@ export default {
 			this.filter_fecha_fin = null
 			this.filter_cliente = null
 			this.filter_actividad = null
+			this.filter_tipo_trabajo = null
+			this.filter_origen = null
+			this.filter_cargable = null
 			this.filter_busqueda = ''
 		},
 

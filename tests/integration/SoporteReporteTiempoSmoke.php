@@ -122,7 +122,12 @@ try {
 	assertSupport($report !== null && (int)$report['id_reporte'] === $idReport, 'crear soporte crea reporte relacionado');
 	assertSupport((int)$report['id_empleado'] === (int)$employee['Id_empleados'], 'reporte pertenece al técnico autenticado');
 	assertSupport((int)$report['id_empleado'] !== $deviceEmployeeId, 'reporte no pertenece al empleado dueño del equipo');
-	assertSupport((int)$report['tiempo_registrado'] === 75 && $report['id_cliente'] === null, 'duración y cliente interno son correctos');
+	assertSupport(
+		(int)$report['tiempo_registrado'] === 75
+		&& $report['id_cliente'] === null
+		&& ($report['tipo_trabajo'] ?? null) === reportetiempo::TIPO_INTERNO,
+		'duración, cliente nulo y tipo interno son correctos',
+	);
 	assertSupport($report['fecha_registro'] === '2026-08-01', 'fecha del reporte corresponde a la fecha del soporte');
 
 	$activity = $activities->findById((int)$report['id_actividad']);
@@ -143,7 +148,8 @@ try {
 	))[0];
 	assertSupport(
 		(float)$employeeCostAfter['total_minutos'] - (float)$employeeCostBefore['total_minutos'] === 75.0
-		&& (float)$employeeCostAfter['minutos_cargables'] === (float)$employeeCostBefore['minutos_cargables'],
+		&& (float)$employeeCostAfter['minutos_cargables'] === (float)$employeeCostBefore['minutos_cargables']
+		&& (float)$employeeCostAfter['minutos_internos'] - (float)($employeeCostBefore['minutos_internos'] ?? 0) === 75.0,
 		'soporte aumenta costo laboral y ocupación sin aumentar tiempo cargable'
 	);
 	$reportController = $server->get(reportetiempoController::class);

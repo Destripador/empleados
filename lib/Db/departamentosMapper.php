@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Db;
 
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 class departamentosMapper extends QBMapper {
@@ -75,5 +76,46 @@ class departamentosMapper extends QBMapper {
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_departamento)));
 
 		$qb->executeStatement();
+	}
+
+	/**
+	 * Devuelve la jerarquía completa de departamentos.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function findHierarchy(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'd.Id_departamento',
+			'd.Id_padre',
+			'd.Nombre'
+		)
+			->from($this->getTableName(), 'd')
+			->orderBy('d.Id_departamento', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * Devuelve los datos mínimos de un departamento o null si no existe.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	public function findDepartmentRow(int $id): ?array {
+		$qb = $this->db->getQueryBuilder();
+		$result = $qb->select('d.Id_departamento', 'd.Id_padre', 'd.Nombre')
+			->from($this->getTableName(), 'd')
+			->where($qb->expr()->eq('d.Id_departamento', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
+			->setMaxResults(1)
+			->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		return $row === false ? null : $row;
 	}
 }

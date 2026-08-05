@@ -374,25 +374,21 @@ class EmpleadosController extends BaseController {
             $group = $this->groupManager->get("empleados");
 
 			$this->inventarioMovimientoService->ejecutarDesasignacionEmpleado(
-				$id_empleados,
-				function () use ($id_empleados): void {
-					$this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
-					$this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
-					$this->organigramaMapper->EliminarPorEmpleado($id_empleados);
-					$this->empleadosMapper->deleteByIdEmpleado($id_empleados);
-				},
-			);
+                $id_empleados,
+                function () use ($id_empleados): void {
+                    $this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
+                    $this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
+                    $this->empleadosorganigramaMapper
+                        ->EliminarPorEmpleado($id_empleados);
+                    $this->userahorroMapper->deleteByIdEmpleado($id_empleados);
+                    $this->empleadosMapper->deleteByIdEmpleado($id_empleados);
+                }
+            );
 
             // La relación de inventario y el empleado ya quedaron confirmados antes de modificar el grupo externo.
             if ($user !== null && $group !== null && $group->inGroup($user)) {
                 $group->removeUser($user);
             }
-
-			$this->contactoemergenciaMapper->deleteByEmpleado($id_empleados);
-            $this->empleadosMapper->deleteByIdEmpleado($id_empleados);
-            $this->ausenciasMapper->deleteByIdEmpleado($id_empleados);
-            $this->empleadosorganigramaMapper->EliminarPorEmpleado($id_empleados);
-            $this->userahorroMapper->deleteByIdEmpleado($id_empleados);
 
 			return new DataResponse(Http::STATUS_OK);
 		}
@@ -451,103 +447,125 @@ class EmpleadosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function CambiosEmpleado(
-        $id_empleados, 
-        $numeroempleado, 
-        $ingreso, 
-        $area, 
-        $puesto, 
-        $socio, 
-        $gerente, 
-        $fondoclave, 
-        $fondoahorro, 
-        $numerocuenta, 
-        $equipoasignado, // equipo de cómputo
-        $equipo,         // grupo de trabajo
+        $id_empleados,
+        $numeroempleado,
+        $ingreso,
+        $area,
+        $puesto,
+        $socio,
+        $gerente,
+        $fondoclave,
+        $fondoahorro,
+        $numerocuenta,
+        $equipoasignado,
+        $equipo,
         $sueldo,
         $id_aniversario,
         $dias_disponibles
     ): DataResponse {
         $this->requireHumanResourcesAccess();
-        $empBefore = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string)$id_empleados);
+
+        $empBefore = $this->empleadosMapper
+            ->GetMyEmployeeInfoByIdEmpleado((string)$id_empleados);
+
         if (!$empBefore) {
             throw new \RuntimeException("Empleado $id_empleados no existe");
         }
 
         $ingresoAnterior = $empBefore[0]['Ingreso'] ?? null;
-        $oldUid    = $empBefore[0]['Id_user'] ?? null;
+        $oldUid = $empBefore[0]['Id_user'] ?? null;
         $oldEquipo = $empBefore[0]['Id_equipo'] ?? null;
-		$equipoComputoAnterior = $this->normalizarEquipoComputoId($empBefore[0]['Equipo_asignado'] ?? null);
-		$equipoComputoNuevo = $this->normalizarEquipoComputoId($equipoasignado);
 
-        // 1) Aplica cambios en BD (empleado + ausencias)
-		$this->inventarioMovimientoService->ejecutarCambioAsignacion(
-			(int)$id_empleados,
-			$equipoComputoAnterior,
-			$equipoComputoNuevo,
-			function () use ($id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio, $gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado, $equipo, $sueldo, $id_aniversario, $dias_disponibles): void {
-		$this->empleadosMapper->CambiosEmpleado(
-			$id_empleados, $numeroempleado, $ingreso, $area, $puesto, $socio,
-			$gerente, $fondoclave, $fondoahorro, $numerocuenta, $equipoasignado,
-			$equipo, $sueldo
-		);
-		$this->ausenciasMapper->updateAusenciasById(
-			(int)$id_empleados, (int)$id_aniversario, (float)$dias_disponibles
-		);
-			}
-		);
+        // Actualiza la información laboral del empleado.
+        // Los equipos de cómputo se sincronizan mediante el endpoint
+        // /inventario/empleados/{id_empleado}/equipos.
+        $this->empleadosMapper->CambiosEmpleado(
+            $id_empleados,
+            $numeroempleado,
+            $ingreso,
+            $area,
+            $puesto,
+            $socio,
+            $gerente,
+            $fondoclave,
+            $fondoahorro,
+            $numerocuenta,
+            $equipoasignado,
+            $equipo,
+            $sueldo
+        );
 
-        // 1.5) Sincroniza periodos SOLO si cambió el ingreso, y una sola vez
+        $this->ausenciasMapper->updateAusenciasById(
+            (int)$id_empleados,
+            (int)$id_aniversario,
+            (float)$dias_disponibles
+        );
+
+        // Sincroniza periodos solamente cuando cambia la fecha de ingreso.
         if (!empty($ingreso) && $ingresoAnterior !== $ingreso) {
             try {
-                $this->aniversarioSyncService->sincronizarPeriodos($id_empleados, $ingreso);
+                $this->aniversarioSyncService->sincronizarPeriodos(
+                    (int)$id_empleados,
+                    (string)$ingreso
+                );
             } catch (\Exception $e) {
-                return new DataResponse("Error al sincronizar periodos: " . $e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
+                return new DataResponse(
+                    'Error al sincronizar periodos: ' . $e->getMessage(),
+                    Http::STATUS_INTERNAL_SERVER_ERROR
+                );
             }
         }
 
-        // 2) Si no cambió el equipo o está vacío → no tocar grupos
+        // Si no cambió el grupo de trabajo, termina.
         if (empty($equipo) || (string)$oldEquipo === (string)$equipo) {
             return new DataResponse(Http::STATUS_OK);
         }
 
-        // 3) Obtiene datos del equipo destino
         $team = $this->equiposMapper->getById((string)$equipo);
         $groupName = $team['Nombre'] ?? $team['nombre'] ?? null;
+
         if (!$groupName) {
-            throw new \RuntimeException("El equipo $equipo no tiene nombre de grupo");
+            throw new \RuntimeException(
+                "El equipo $equipo no tiene nombre de grupo"
+            );
         }
 
         $group = $this->groupManager->get($groupName);
+
         if (!$group) {
-            throw new \RuntimeException("El grupo '$groupName' no existe");
+            throw new \RuntimeException(
+                "El grupo '$groupName' no existe"
+            );
         }
 
-        // 4) Busca el usuario
-        $uid = $oldUid;
-        if (empty($uid)) {
+        if (empty($oldUid)) {
             return new DataResponse(Http::STATUS_OK);
         }
 
-        $user = $this->userManager->get($uid);
+        $user = $this->userManager->get($oldUid);
+
         if (!$user) {
-            throw new \RuntimeException("Usuario '$uid' no existe en Nextcloud");
+            throw new \RuntimeException(
+                "Usuario '$oldUid' no existe en Nextcloud"
+            );
         }
 
-        // 5) Quita del grupo anterior si cambió
+        // Quita al usuario del grupo laboral anterior.
         if (!empty($oldEquipo) && (string)$oldEquipo !== (string)$equipo) {
             $oldTeam = $this->equiposMapper->getById((string)$oldEquipo);
             $oldGroupName = $oldTeam['Nombre'] ?? $oldTeam['nombre'] ?? null;
+
             if ($oldGroupName) {
                 $oldGroup = $this->groupManager->get($oldGroupName);
+
                 if ($oldGroup && $oldGroup->inGroup($user)) {
                     $oldGroup->removeUser($user);
                 }
             }
         }
 
-        // 6) Añade al nuevo grupo
-        $userGroups = $this->groupManager->getUserGroupIds($user);
-        if (!in_array($groupName, $userGroups, true)) {
+        // Añade al usuario al grupo laboral nuevo.
+        if (!$group->inGroup($user)) {
             $group->addUser($user);
         }
 
@@ -686,13 +704,6 @@ class EmpleadosController extends BaseController {
             'empleados.admin',
         ]);
     }
-
-	private function normalizarEquipoComputoId(mixed $value): ?int {
-		if ($value === null || $value === '') return null;
-		if (!is_scalar($value)) return null;
-		$id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-		return $id === false ? null : (int)$id;
-	}
 
     /**
      * Convierte fechas de Excel a formato `Y-m-d`.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\AppInfo;
 
 use OCA\Empleados\Command\SeedFestivosOficiales;
+use OCA\Empleados\Listener\MovimientoArchivoListener;
 use OCP\IDBConnection;
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
 use OCA\Empleados\Cron\RecordatorioPrimaVacacional;
@@ -21,6 +22,11 @@ use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\BackgroundJob\IJobList;
+use OCP\Files\Events\Node\NodeCopiedEvent;
+use OCP\Files\Events\Node\NodeCreatedEvent;
+use OCP\Files\Events\Node\NodeDeletedEvent;
+use OCP\Files\Events\Node\NodeRenamedEvent;
+use OCP\Files\Events\Node\NodeWrittenEvent;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'empleados';
@@ -35,6 +41,12 @@ class Application extends App implements IBootstrap {
 		if (is_file($autoloadPath)) {
 			require_once $autoloadPath;
 		}
+
+		$context->registerEventListener(NodeCreatedEvent::class, MovimientoArchivoListener::class);
+		$context->registerEventListener(NodeWrittenEvent::class, MovimientoArchivoListener::class);
+		$context->registerEventListener(NodeRenamedEvent::class, MovimientoArchivoListener::class);
+		$context->registerEventListener(NodeCopiedEvent::class, MovimientoArchivoListener::class);
+		$context->registerEventListener(NodeDeletedEvent::class, MovimientoArchivoListener::class);
 
 		$context->registerService(AniversarioSyncService::class, function($c) {
 			return new AniversarioSyncService(

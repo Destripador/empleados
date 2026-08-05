@@ -9,8 +9,8 @@
 			@click.prevent="handleRowClick">
 			<template #subname>
 				{{ subnameText }}
-				<span v-if="isSupportReport" class="origin-badge">{{ t('empleados', 'Support TI') }}</span>
-				<span v-if="isSupportReport" class="billable-badge">{{ t('empleados', 'Non-billable') }}</span>
+				<span v-if="isInternalReport" class="origin-badge">{{ originLabel }}</span>
+				<span v-if="isInternalReport" class="billable-badge">{{ t('empleados', 'Non-billable') }}</span>
 			</template>
 
 			<template #indicator>
@@ -64,7 +64,7 @@
 						<NcSelect
 							v-model="activity_selected"
 							:input-label="t('empleados', 'Proyect')"
-							:options="listas"
+							:options="editActivities"
 							class="fit"
 							:open="false"
 							:disabled="true" />
@@ -110,7 +110,7 @@
 						<NcSelect
 							v-model="listas_selected"
 							:input-label="t('empleados', 'Activity')"
-							:options="listas"
+							:options="editActivities"
 							class="fit"
 							:disabled="!editable" />
 						<br>
@@ -228,13 +228,34 @@ export default {
 			return (this.nowTick - this.createdDate.getTime()) / 60000
 		},
 		editable() {
-			if (this.isSupportReport) return false
+			if (this.isAutomaticReport || this.isAbsenceReport) return false
 			// editable = antes de 20 min
 			if (this.minutosTranscurridos === null) return false
 			return this.minutosTranscurridos < MIN_EDITABLE
 		},
 		isSupportReport() {
 			return this.source?.origen === 'soporte_ti'
+		},
+		isAbsenceReport() {
+			return this.source?.tipo_trabajo === 'ausencia'
+				|| Number(this.source?.id_cliente) === 99999
+				|| Number(this.source?.id_actividad) === 99999
+		},
+		isAutomaticReport() {
+			const origin = String(this.source?.origen || '')
+			return origin !== '' && !['manual', 'manual_interno'].includes(origin)
+		},
+		isInternalReport() {
+			return this.source?.tipo_trabajo === 'interno' || (this.source?.id_cliente == null && this.source?.tipo_trabajo !== 'ausencia')
+		},
+		originLabel() {
+			if (this.isSupportReport) return t('empleados', 'Support TI')
+			if (this.source?.origen === 'manual_interno' || !this.source?.origen) return t('empleados', 'Manual internal report')
+			return String(this.source.origen)
+		},
+		editActivities() {
+			const type = this.isInternalReport ? 'interno' : 'cliente'
+			return this.listas.filter(activity => (activity.tipo_actividad || 'cliente') === type)
 		},
 		indicatorColor() {
 			// rojo editable, verde bloqueado
@@ -249,10 +270,15 @@ export default {
 			return this.source?.fecha_registro ?? this.source?.fechaRegistro ?? ''
 		},
 		titleText() {
-			return this.source?.clienteNombre || (this.isSupportReport ? t('empleados', 'Internal work') : '')
+			return this.isInternalReport
+				? `${t('empleados', 'Internal work')} · ${this.source?.actividadNombre || ''}`
+				: (this.source?.clienteNombre || '')
 		},
 		subnameText() {
-			return this.source?.actividadNombre || ''
+			if (!this.isInternalReport) return this.source?.actividadNombre || ''
+			const activity = this.listas.find(item => Number(item.id) === Number(this.source?.id_actividad))
+			const areas = (activity?.areas || []).map(area => area.nombre).filter(Boolean).join(', ')
+			return areas ? `${t('empleados', 'Specific areas')}: ${areas}` : t('empleados', 'Entire company')
 		},
 	},
 	mounted() {
@@ -275,7 +301,7 @@ export default {
 			this.showDialog = false
 		},
 		handleRowClick() {
-			if (!this.isSupportReport) this.edit()
+			if (!this.isAutomaticReport && !this.isAbsenceReport) this.edit()
 		},
 		viewSupport() {
 			this.$router.push({ name: 'Inventario', query: { deviceId: String(this.source.id_equipo) } })
@@ -291,7 +317,7 @@ export default {
 						this.$bus.emit('gethistorial')
 						this.closeEdit()
 					},
-					(err) => { showError(err) },
+					(err) => { showError(this.backendError(err)) },
 				)
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
@@ -301,7 +327,7 @@ export default {
 		edit() {
 			this.activity_selected = this.source.clienteNombre
 			this.listas_selected = this.source.actividadNombre
-			this.id_activity = this.source.id_cliente
+			this.id_activity = this.source.id_actividad
 			this.description_activity = this.source.descripcion
 			this.time_activity = this.source.tiempo_registrado
 			this.type_time = 'minutos'
@@ -313,6 +339,8 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/modificarReporte'), {
 					id_reporte: parseInt(this.source.id),
 					id_actividad: this.listas_selected.id ?? this.id_activity,
+					tipo_trabajo: this.source.tipo_trabajo || (this.isInternalReport ? 'interno' : 'cliente'),
+					id_cliente: this.isInternalReport ? null : this.source.id_cliente,
 					tiemporegistrado: Number(this.time_activity ?? 0),
 					descripcion: this.description_activity,
 					tipo: this.type_time,
@@ -323,7 +351,7 @@ export default {
 						this.$bus.emit('gethistorial')
 						this.closeEdit()
 					},
-					(err) => { showError(err) },
+					(err) => { showError(this.backendError(err)) },
 				)
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
@@ -331,6 +359,12 @@ export default {
 		},
 		closeEdit() {
 			this.ShowEdit = false
+		},
+		backendError(error) {
+			return error?.response?.data?.ocs?.data?.message
+				|| error?.response?.data?.message
+				|| error?.message
+				|| String(error)
 		},
 	},
 }

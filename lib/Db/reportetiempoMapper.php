@@ -162,7 +162,10 @@ class reportetiempoMapper extends QBMapper {
 							'empresas_count' => 0,
 							'total_minutos' => 0.0,
 							'minutos_cargables' => 0.0,
+							'minutos_internos' => 0.0,
+							'horas_internas' => 0.0,
 							'costo_laboral_real' => 0.0,
+							'costo_laboral_interno' => 0.0,
 							'costo_cargable_real' => 0.0,
 							'empresas' => [],
 						]
@@ -279,6 +282,12 @@ class reportetiempoMapper extends QBMapper {
 			if (!isset($empleados[$idEmpleado])) {
 				$empleados[$idEmpleado] = array_merge($this->crearIdentidadEmpleadoCostos($directorio[$idEmpleado]), [
 					'empresas_count' => 0,
+					'total_minutos' => 0.0,
+					'minutos_cargables' => 0.0,
+					'minutos_internos' => 0.0,
+					'horas_internas' => 0.0,
+					'costo_laboral_real' => 0.0,
+					'costo_laboral_interno' => 0.0,
 					'empresas' => [],
 				]);
 			}
@@ -291,6 +300,18 @@ class reportetiempoMapper extends QBMapper {
 				(float)($actual['costo_laboral_real'] ?? 0) + $costo,
 				(float)($actual['costo_cargable_estimado'] ?? 0)
 			));
+			$empleados[$idEmpleado]['minutos_internos'] = round(
+				(float)($actual['minutos_internos'] ?? 0) + $minutos,
+				2
+			);
+			$empleados[$idEmpleado]['horas_internas'] = round(
+				$empleados[$idEmpleado]['minutos_internos'] / 60,
+				2
+			);
+			$empleados[$idEmpleado]['costo_laboral_interno'] = round(
+				(float)($actual['costo_laboral_interno'] ?? 0) + $costo,
+				2
+			);
 		}
 
 		usort(
@@ -320,12 +341,17 @@ class reportetiempoMapper extends QBMapper {
 		$minutosCargablesEmpleados = array_sum(array_column($empleados, 'minutos_cargables'));
 		$costoLaboralEmpleados = array_sum(array_column($empleados, 'costo_laboral_real'));
 		$costoCargableEmpleados = array_sum(array_column($empleados, 'costo_cargable_estimado'));
+		$minutosInternosEmpleados = array_sum(array_column($empleados, 'minutos_internos'));
+		$costoInternoEmpleados = array_sum(array_column($empleados, 'costo_laboral_interno'));
 		$kpis = array_merge($kpis, $this->normalizarMetricasCostosAgregadas(
 			(float)$totalMinutosEmpleados,
 			(float)$minutosCargablesEmpleados,
 			(float)$costoLaboralEmpleados,
 			(float)$costoCargableEmpleados
 		));
+		$kpis['minutos_internos'] = round((float)$minutosInternosEmpleados, 2);
+		$kpis['horas_internas'] = round((float)$minutosInternosEmpleados / 60, 2);
+		$kpis['costo_laboral_interno'] = round((float)$costoInternoEmpleados, 2);
 
 		return [
 			'periodo' => $periodo,
@@ -344,7 +370,7 @@ class reportetiempoMapper extends QBMapper {
 			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
 			->from($this->getTableName(), 'r')
 			->where($qb->expr()->in('r.id_empleado', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)))
-			->andWhere($qb->expr()->isNull('r.id_cliente'))
+				->andWhere($this->internalWorkExpression($qb, 'r'))
 			->andWhere($qb->expr()->gte('r.fecha_registro', $qb->createNamedParameter($inicio)))
 			->andWhere($qb->expr()->lte('r.fecha_registro', $qb->createNamedParameter($fin)))
 			->groupBy('r.id_empleado');
@@ -457,10 +483,7 @@ class reportetiempoMapper extends QBMapper {
 				'r.fecha_registro',
 				$qb->createNamedParameter($fechaFin)
 			))
-			->andWhere($qb->expr()->orX(
-				$qb->expr()->isNull('r.id_cliente'),
-				$qb->expr()->neq('r.id_cliente', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT))
-			))
+				->andWhere($this->clientWorkExpression($qb, 'r'))
 			->andWhere($actividadValida)
 			->groupBy('r.id_cliente', 'r.id_empleado');
 
@@ -1317,13 +1340,16 @@ class reportetiempoMapper extends QBMapper {
 				'total_minutos' => 0.0,
 				'minutos_cargables' => 0.0,
 				'minutos_no_cargables' => 0.0,
+				'minutos_internos' => 0.0,
 				'horas_totales' => 0.0,
 				'horas_cargables' => 0.0,
 				'horas_no_cargables' => 0.0,
+				'horas_internas' => 0.0,
 				'porcentaje_cargable' => 0.0,
 				'costo_total_estimado' => 0.0,
 				'costo_cargable_estimado' => 0.0,
 				'costo_laboral_real' => 0.0,
+				'costo_laboral_interno' => 0.0,
 				'honorario_proyectado_acumulado' => 0.0,
 				'ingreso_periodo' => 0.0,
 				'honorario_cobrado_periodo' => 0.0,
@@ -1422,7 +1448,7 @@ class reportetiempoMapper extends QBMapper {
 		$rows = $result->fetchAll();
 		$result->closeCursor();
 
-		return $rows;
+		return $this->normalizeWorkTypes($rows);
 	}
 
 	/**
@@ -1508,13 +1534,21 @@ class reportetiempoMapper extends QBMapper {
 		array $idEmpleados = []
 	): array {
 		$qb = $this->db->getQueryBuilder();
+		$client = "(r.tipo_trabajo = 'cliente' OR (r.tipo_trabajo IS NULL AND r.id_cliente IS NOT NULL AND r.id_cliente <> 99999 AND (r.id_actividad IS NULL OR r.id_actividad <> 99999)))";
+		$internal = "(r.tipo_trabajo = 'interno' OR (r.tipo_trabajo IS NULL AND r.id_cliente IS NULL AND (r.id_actividad IS NULL OR r.id_actividad <> 99999)))";
+		$absence = "(r.tipo_trabajo = 'ausencia' OR (r.tipo_trabajo IS NULL AND (r.id_cliente = 99999 OR r.id_actividad = 99999)))";
 
-		$qb->selectAlias($qb->createFunction('COALESCE(SUM(tiempo_registrado), 0)'), 'total_minutos')
+		$qb->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias($qb->createFunction("COALESCE(SUM(CASE WHEN $client THEN r.tiempo_registrado ELSE 0 END), 0)"), 'minutos_cliente')
+			->selectAlias($qb->createFunction("COALESCE(SUM(CASE WHEN $internal THEN r.tiempo_registrado ELSE 0 END), 0)"), 'minutos_internos')
+			->selectAlias($qb->createFunction("COALESCE(SUM(CASE WHEN $absence THEN r.tiempo_registrado ELSE 0 END), 0)"), 'minutos_ausencia')
+			->selectAlias($qb->createFunction("COALESCE(SUM(CASE WHEN $client AND a.cargable = 1 THEN r.tiempo_registrado ELSE 0 END), 0)"), 'minutos_cargables')
 			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
-			->selectAlias($qb->createFunction('COUNT(DISTINCT id_empleado)'), 'empleados_con_reportes')
-			->selectAlias($qb->createFunction('COUNT(DISTINCT id_cliente)'), 'proyectos_activos')
-			->selectAlias($qb->createFunction('COUNT(DISTINCT id_actividad)'), 'actividades')
-			->from($this->getTableName());
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_empleado)'), 'empleados_con_reportes')
+			->selectAlias($qb->createFunction("COUNT(DISTINCT CASE WHEN $client THEN r.id_cliente ELSE NULL END)"), 'proyectos_activos')
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_actividad)'), 'actividades')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad');
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
@@ -1526,6 +1560,11 @@ class reportetiempoMapper extends QBMapper {
 		$totalMinutos = (float)($row['total_minutos'] ?? 0);
 		$totalHoras = $totalMinutos / 60;
 		$totalReportes = (int)($row['total_reportes'] ?? 0);
+		$clientMinutes = (float)($row['minutos_cliente'] ?? 0);
+		$internalMinutes = (float)($row['minutos_internos'] ?? 0);
+		$absenceMinutes = (float)($row['minutos_ausencia'] ?? 0);
+		$billableMinutes = (float)($row['minutos_cargables'] ?? 0);
+		$workedMinutes = $clientMinutes + $internalMinutes;
 
 		return [
 			'total_minutos' => $totalMinutos,
@@ -1535,6 +1574,17 @@ class reportetiempoMapper extends QBMapper {
 			'empleados_con_reportes' => (int)($row['empleados_con_reportes'] ?? 0),
 			'proyectos_activos' => (int)($row['proyectos_activos'] ?? 0),
 			'actividades' => (int)($row['actividades'] ?? 0),
+			'minutos_cliente' => $clientMinutes,
+			'minutos_internos' => $internalMinutes,
+			'minutos_ausencia' => $absenceMinutes,
+			'minutos_cargables' => $billableMinutes,
+			'minutos_no_cargables' => max(0, $totalMinutos - $billableMinutes),
+			'horas_cliente' => $clientMinutes / 60,
+			'horas_internas' => $internalMinutes / 60,
+			'horas_ausencia' => $absenceMinutes / 60,
+			'horas_cargables' => $billableMinutes / 60,
+			'horas_no_cargables' => max(0, $totalMinutos - $billableMinutes) / 60,
+			'porcentaje_interno' => $workedMinutes > 0 ? ($internalMinutes / $workedMinutes) * 100 : 0,
 		];
 	}
 
@@ -1543,9 +1593,15 @@ class reportetiempoMapper extends QBMapper {
 	 */
 	public function getHorasPorEmpleado($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
 		$qb = $this->db->getQueryBuilder();
+		$internal = "(tipo_trabajo = 'interno' OR (tipo_trabajo IS NULL AND id_cliente IS NULL AND (id_actividad IS NULL OR id_actividad <> 99999)))";
+		$client = "(tipo_trabajo = 'cliente' OR (tipo_trabajo IS NULL AND id_cliente IS NOT NULL AND id_cliente <> 99999 AND (id_actividad IS NULL OR id_actividad <> 99999)))";
+		$absence = "(tipo_trabajo = 'ausencia' OR (tipo_trabajo IS NULL AND (id_cliente = 99999 OR id_actividad = 99999)))";
 
 		$qb->select('id_empleado')
 			->selectAlias($qb->createFunction('SUM(tiempo_registrado)'), 'total_minutos')
+			->selectAlias($qb->createFunction("SUM(CASE WHEN $client THEN tiempo_registrado ELSE 0 END)"), 'minutos_cliente')
+			->selectAlias($qb->createFunction("SUM(CASE WHEN $internal THEN tiempo_registrado ELSE 0 END)"), 'minutos_internos')
+			->selectAlias($qb->createFunction("SUM(CASE WHEN $absence THEN tiempo_registrado ELSE 0 END)"), 'minutos_ausencia')
 			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
 			->from($this->getTableName())
 			->groupBy('id_empleado')
@@ -1564,10 +1620,87 @@ class reportetiempoMapper extends QBMapper {
 			return [
 				'id_empleado' => (int)($row['id_empleado'] ?? 0),
 				'total_minutos' => $totalMinutos,
-				'horas' => $totalMinutos / 60,
+					'horas' => $totalMinutos / 60,
+					'minutos_cliente' => (float)($row['minutos_cliente'] ?? 0),
+					'minutos_internos' => (float)($row['minutos_internos'] ?? 0),
+					'minutos_ausencia' => (float)($row['minutos_ausencia'] ?? 0),
 				'total_reportes' => (int)($row['total_reportes'] ?? 0),
 			];
 		}, $rows);
+	}
+
+	/**
+	 * Desglose multidimensional de trabajo interno. La agregación se realiza en PHP
+	 * para evitar funciones de fecha específicas de MariaDB, PostgreSQL o SQLite.
+	 */
+	public function getTrabajoInternoAgrupado($periodo_inicio = null, $periodo_fin = null, $anio = null, array $idEmpleados = []): array {
+		$idEmpleados = array_values(array_unique(array_filter(array_map('intval', $idEmpleados))));
+		$empty = [
+			'por_area' => [],
+			'por_empleado' => [],
+			'por_actividad' => [],
+			'por_mes' => [],
+			'por_origen' => [],
+		];
+		if ($idEmpleados === []) return $empty;
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('r.id_empleado', 'r.id_actividad', 'r.fecha_registro', 'r.origen', 'r.tiempo_registrado')
+			->selectAlias('a.nombre', 'actividad_nombre')
+			->selectAlias('e.Id_user', 'uid')
+			->selectAlias('e.Id_departamento', 'id_departamento')
+			->selectAlias('e.Sueldo', 'costo_hora')
+			->selectAlias('u.displayname', 'empleado_nombre')
+			->selectAlias('d.Nombre', 'area_nombre')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
+			->leftJoin('r', 'empleados', 'e', 'e.Id_empleados = r.id_empleado')
+			->leftJoin('e', 'users', 'u', 'u.uid = e.Id_user')
+			->leftJoin('e', 'departamentos', 'd', 'd.Id_departamento = e.Id_departamento')
+			->where($this->internalWorkExpression($qb, 'r'))
+			->andWhere($qb->expr()->in('r.id_empleado', $qb->createNamedParameter($idEmpleados, IQueryBuilder::PARAM_INT_ARRAY)));
+
+		if ($anio !== null && $periodo_inicio !== null && $periodo_fin !== null) {
+			$startMonth = max(1, min(12, (int)$periodo_inicio));
+			$endMonth = max(1, min(12, (int)$periodo_fin));
+			if ($startMonth > $endMonth) [$startMonth, $endMonth] = [$endMonth, $startMonth];
+			$start = sprintf('%04d-%02d-01', (int)$anio, $startMonth);
+			$end = (new \DateTimeImmutable(sprintf('%04d-%02d-01', (int)$anio, $endMonth)))
+				->modify('last day of this month')->format('Y-m-d');
+			$qb->andWhere($qb->expr()->gte('r.fecha_registro', $qb->createNamedParameter($start)))
+				->andWhere($qb->expr()->lte('r.fecha_registro', $qb->createNamedParameter($end)));
+		}
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+		$groups = $empty;
+		$append = static function (array &$target, string $key, array $identity, float $minutes, float $cost): void {
+			if (!isset($target[$key])) $target[$key] = array_merge($identity, ['minutos' => 0.0, 'horas' => 0.0, 'costo_laboral' => 0.0, 'reportes' => 0]);
+			$target[$key]['minutos'] += $minutes;
+			$target[$key]['horas'] = $target[$key]['minutos'] / 60;
+			$target[$key]['costo_laboral'] += $cost;
+			$target[$key]['reportes']++;
+		};
+
+		foreach ($rows as $row) {
+			$minutes = (float)($row['tiempo_registrado'] ?? 0);
+			$cost = ($minutes / 60) * (float)($row['costo_hora'] ?? 0);
+			$employeeId = (int)($row['id_empleado'] ?? 0);
+			$activityId = (int)($row['id_actividad'] ?? 0);
+			$areaId = (int)($row['id_departamento'] ?? 0);
+			$origin = trim((string)($row['origen'] ?? '')) ?: 'legado';
+			$month = substr((string)($row['fecha_registro'] ?? ''), 0, 7);
+			$append($groups['por_area'], (string)$areaId, ['id_area' => $areaId, 'nombre' => (string)($row['area_nombre'] ?? 'Sin área')], $minutes, $cost);
+			$append($groups['por_empleado'], (string)$employeeId, ['id_empleado' => $employeeId, 'nombre' => (string)($row['empleado_nombre'] ?? $row['uid'] ?? '')], $minutes, $cost);
+			$append($groups['por_actividad'], (string)$activityId, ['id_actividad' => $activityId, 'nombre' => (string)($row['actividad_nombre'] ?? '')], $minutes, $cost);
+			$append($groups['por_mes'], $month, ['mes' => $month], $minutes, $cost);
+			$append($groups['por_origen'], $origin, ['origen' => $origin], $minutes, $cost);
+		}
+
+		foreach ($groups as &$items) $items = array_values($items);
+		unset($items);
+		return $groups;
 	}
 
 	/**
@@ -1585,7 +1718,7 @@ class reportetiempoMapper extends QBMapper {
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
-		$qb->andWhere($qb->expr()->isNotNull('id_cliente'));
+		$qb->andWhere($this->clientWorkExpression($qb));
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -1711,7 +1844,7 @@ class reportetiempoMapper extends QBMapper {
 
 		$this->aplicarFiltroPeriodo($qb, $periodo_inicio, $periodo_fin, $anio);
 		$this->aplicarFiltroEmpleados($qb, $idEmpleados);
-		$qb->andWhere($qb->expr()->isNotNull('id_cliente'));
+		$qb->andWhere($this->clientWorkExpression($qb));
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -1779,6 +1912,7 @@ class reportetiempoMapper extends QBMapper {
 			'fecha_registro' => $qb->createNamedParameter($data['fecha_registro']),
 			'origen' => $qb->createNamedParameter($data['origen']),
 			'origen_id' => $qb->createNamedParameter($data['origen_id'], IQueryBuilder::PARAM_INT),
+			'tipo_trabajo' => $qb->createNamedParameter(reportetiempo::TIPO_INTERNO),
 			'created_at' => $qb->createNamedParameter($now),
 			'updated_at' => $qb->createNamedParameter($now),
 		])->executeStatement();
@@ -1794,6 +1928,7 @@ class reportetiempoMapper extends QBMapper {
 			->set('descripcion', $qb->createNamedParameter($data['descripcion']))
 			->set('tiempo_registrado', $qb->createNamedParameter($data['tiempo_registrado']))
 			->set('fecha_registro', $qb->createNamedParameter($data['fecha_registro']))
+			->set('tipo_trabajo', $qb->createNamedParameter(reportetiempo::TIPO_INTERNO))
 			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
 			->where($qb->expr()->eq('origen', $qb->createNamedParameter($origin)))
 			->andWhere($qb->expr()->eq('origen_id', $qb->createNamedParameter($originId, IQueryBuilder::PARAM_INT)))
@@ -1821,7 +1956,7 @@ class reportetiempoMapper extends QBMapper {
 		return $count;
 	}
 
-	public function updateReporte($id_reporte, $id_actividad, $id_empleado, $descripcion, $tiemporegistrado, $fecha): void {
+	public function updateReporte($id_reporte, $id_actividad, $id_empleado, $descripcion, $tiemporegistrado, $fecha, $idCliente = null, ?string $workType = null, ?string $origin = null): void {
 		$timestamp = date('Y-m-d H:i:s');
 
 		$query = $this->db->getQueryBuilder();
@@ -1831,6 +1966,10 @@ class reportetiempoMapper extends QBMapper {
 			->set('descripcion', $query->createNamedParameter($descripcion))
 			->set('tiempo_registrado', $query->createNamedParameter($tiemporegistrado))
 			->set('fecha_registro', $query->createNamedParameter($fecha))
+			->set('id_cliente', $query->createNamedParameter($idCliente))
+			->set('tipo_trabajo', $query->createNamedParameter($workType))
+			->set('origen', $query->createNamedParameter($origin))
+			->set('origen_id', $query->createNamedParameter(null))
 			->set('updated_at', $query->createNamedParameter($timestamp))
 			->where(
 				$query->expr()->eq(
@@ -1844,11 +1983,10 @@ class reportetiempoMapper extends QBMapper {
 					$query->createNamedParameter($id_empleado)
 				)
 			)
-			->andWhere('TIMESTAMPDIFF(MINUTE, created_at, NOW()) < 40')
 			->executeStatement();
 
 		if ($result === 0) {
-			throw new \Exception('Update bloqueado: el reporte ya tiene más de 40 minutos y no se puede modificar.');
+			throw new \Exception('No fue posible actualizar el reporte solicitado.');
 		}
 	}
 
@@ -1906,5 +2044,49 @@ class reportetiempoMapper extends QBMapper {
 			->andWhere($qb->expr()->gte('fecha_registro', $qb->createNamedParameter($fecha_de)))
 			->andWhere($qb->expr()->lte('fecha_registro', $qb->createNamedParameter($fecha_hasta)));
 		$qb->executeStatement();
+	}
+
+	private function internalWorkExpression(IQueryBuilder $qb, string $alias = ''): mixed {
+		$prefix = $alias === '' ? '' : $alias . '.';
+		return $qb->expr()->orX(
+			$qb->expr()->eq($prefix . 'tipo_trabajo', $qb->createNamedParameter(reportetiempo::TIPO_INTERNO)),
+			$qb->expr()->andX(
+				$qb->expr()->isNull($prefix . 'tipo_trabajo'),
+				$qb->expr()->isNull($prefix . 'id_cliente'),
+				$qb->expr()->orX(
+					$qb->expr()->isNull($prefix . 'id_actividad'),
+					$qb->expr()->neq($prefix . 'id_actividad', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)),
+				),
+			),
+		);
+	}
+
+	private function clientWorkExpression(IQueryBuilder $qb, string $alias = ''): mixed {
+		$prefix = $alias === '' ? '' : $alias . '.';
+		return $qb->expr()->orX(
+			$qb->expr()->eq($prefix . 'tipo_trabajo', $qb->createNamedParameter(reportetiempo::TIPO_CLIENTE)),
+			$qb->expr()->andX(
+				$qb->expr()->isNull($prefix . 'tipo_trabajo'),
+				$qb->expr()->isNotNull($prefix . 'id_cliente'),
+				$qb->expr()->neq($prefix . 'id_cliente', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)),
+				$qb->expr()->orX(
+					$qb->expr()->isNull($prefix . 'id_actividad'),
+					$qb->expr()->neq($prefix . 'id_actividad', $qb->createNamedParameter(99999, IQueryBuilder::PARAM_INT)),
+				),
+			),
+		);
+	}
+
+	private function normalizeWorkTypes(array $rows): array {
+		foreach ($rows as &$row) {
+			$type = trim((string)($row['tipo_trabajo'] ?? ''));
+			if ($type !== '') continue;
+			if ((int)($row['id_cliente'] ?? 0) === 99999 || (int)($row['id_actividad'] ?? 0) === 99999) $type = reportetiempo::TIPO_AUSENCIA;
+			elseif (($row['id_cliente'] ?? null) === null || ($row['origen'] ?? null) === 'soporte_ti') $type = reportetiempo::TIPO_INTERNO;
+			else $type = reportetiempo::TIPO_CLIENTE;
+			$row['tipo_trabajo'] = $type;
+		}
+		unset($row);
+		return $rows;
 	}
 }
