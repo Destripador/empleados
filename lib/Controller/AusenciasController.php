@@ -1798,42 +1798,44 @@ class AusenciasController extends BaseController {
     public function RechazarAusencia(): DataResponse {
         $id = (int) $this->request->getParam('id');
         $rol = (string) $this->request->getParam('rol');
-
+        $motivo = trim((string) $this->request->getParam('motivo', ''));
+ 
         if ($id <= 0 || empty($rol)) {
             return new DataResponse(['success' => false, 'message' => 'Parámetros inválidos'], Http::STATUS_BAD_REQUEST);
         }
-
+ 
         try {
             $detalle = $this->historialausenciasMapper->GetDetalleById($id);
             if (empty($detalle)) {
                 return new DataResponse(['success' => false, 'message' => 'Ausencia no encontrada'], Http::STATUS_NOT_FOUND);
             }
             $ausencia = $detalle[0];
-
+ 
             if ((int) $ausencia['a_gerente'] === 2 || (int) $ausencia['a_gerente'] === 3) {
                 return new DataResponse(['success' => false, 'message' => 'Esta solicitud ya estaba cerrada'], Http::STATUS_BAD_REQUEST);
             }
-
+ 
             $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
             $empleadoInfo = !empty($reg) ? $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado']) : [];
-
+ 
             $user = $this->userSession->getUser();
             $uid = $user->getUID();
             $isPrivileged = $this->groupManager->isInGroup($uid, 'admin') || $this->groupManager->isInGroup($uid, 'recursos_humanos');
-
+ 
            $autorizado = match ($rol) {
                 'gerente' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_gerente'] === $uid,
                 'socio' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_socio'] === $uid,
                 default => false,
             };
-
+ 
             if (!$autorizado) {
                 return new DataResponse(['success' => false, 'message' => 'Sin permiso para rechazar'], Http::STATUS_FORBIDDEN);
             }
-
-            $this->historialausenciasMapper->RechazarTodo($id);
+ 
+            $this->historialausenciasMapper->RechazarTodo($id, $motivo !== '' ? $motivo : null);
             $this->revertirEfectosAusencia($ausencia);
-
+            $this->notificarAusenciaRechazada($ausencia, $motivo);
+ 
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(
@@ -1954,6 +1956,67 @@ class AusenciasController extends BaseController {
         $this->activityManager->publish($event);
     }
 
+    /**
+     * Envía un correo al empleado informando que su ausencia fue rechazada.
+     */
+    private function notificarAusenciaRechazada(array $ausencia, string $motivo = ''): void {
+        $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+        if (empty($reg)) {
+            return;
+        }
+
+        $idEmpleado = (int) $reg[0]['id_empleado'];
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $idEmpleado);
+        if (empty($empleadoInfo) || empty($empleadoInfo[0]['Id_user'])) {
+            return;
+        }
+
+        $uidEmpleado = $empleadoInfo[0]['Id_user'];
+        $userEmpleado = $this->userManager->get($uidEmpleado);
+        if (!$userEmpleado) {
+            return;
+        }
+
+        $mail = $userEmpleado->getEMailAddress();
+        if (!$mail) {
+            return;
+        }
+
+        $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+
+        $cuerpo = [
+            'Hola ' . $userEmpleado->getDisplayName() . '',
+            'Tu solicitud de "' . $nombreTipo . '" ha sido rechazada.',
+            'Fecha de inicio: ' . $ausencia['fecha_de'] . '  - Fecha de finalización: ' . $ausencia['fecha_hasta'] . '',
+        ];
+
+        if (trim($motivo) !== '') {
+            $cuerpo[] = 'Motivo: ' . $motivo;
+        }
+
+        $cuerpo[] = '';
+
+        $this->mailHelper->enviarCorreo(
+            $mail,
+            'Solicitud rechazada',
+            $cuerpo
+        );
+
+        $event = $this->activityManager->generateEvent();
+        $event->setApp('empleados');
+        $event->setType('empleados');
+        $event->setObject('empleados', (int) $ausencia['id_historial_ausencias'] ?? 0, 'Ausencia rechazada');
+        $event->setAffectedUser($uidEmpleado);
+        $event->setSubject(
+            'ausencia_rechazada',
+            [
+                'nombre' => (string) $uidEmpleado,
+                'tipo_ausencia' => (string) $nombreTipo
+            ]
+        );
+        $this->activityManager->publish($event);
+    }
 
     /**
      * Exportar Reporte.

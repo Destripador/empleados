@@ -42,11 +42,19 @@
 				</div>
 
 				<div v-if="ausencia.notas" class="info-item info-item--full">
-					<span class="info-item__label">{{ t('empleados', 'Comments') }}</span>
+					<span class="info-item__label">{{ t('empleados', 'Comments from requester') }}</span>
 					<p class="info-item__value info-item__notes">
 						{{ ausencia.notas }}
 					</p>
 				</div>
+			</div>
+
+			<!-- Motivo de rechazo, solo si la ausencia fue rechazada -->
+			<div v-if="statusKey === 'rejected'" class="detalle-ausencia__motivo-rechazo">
+				<span class="info-item__label">{{ t('empleados', 'Comments from the approver:') }}</span>
+				<p class="info-item__value info-item__notes">
+					{{ ausencia.motivo_rechazo || '' }}
+				</p>
 			</div>
 
 			<!-- Estatus de aprobación por rol -->
@@ -113,11 +121,32 @@
 					:text="esRechazoDeJefe
 						? t('empleados', 'Are you sure you want to reject this absence?')
 						: t('empleados', 'Are you sure you want to cancel this absence? This action cannot be undone.')" />
+
+				<!-- Solo al rechazar: mostramos el comentario original del solicitante y permitimos agregar un motivo -->
+				<template v-if="esRechazoDeJefe">
+					<div v-if="ausencia.notas" class="confirm-motivo__original">
+						<span class="info-item__label">{{ t('empleados', 'Comments from requester') }}</span>
+						<p class="info-item__notes">{{ ausencia.notas }}</p>
+					</div>
+
+					<div class="confirm-motivo">
+						<label class="info-item__label" for="motivo-rechazo">
+							{{ t('empleados', 'Add reason (optional)') }}
+						</label>
+						<textarea
+							id="motivo-rechazo"
+							v-model="motivoRechazo"
+							class="confirm-motivo__textarea"
+							rows="3"
+							:placeholder="t('empleados', 'Explain why this absence is being rejected...')" />
+					</div>
+				</template>
+
 				<div class="detalle-ausencia__confirm-actions">
 					<NcButton class="btn-cancel" @click="ejecutarCancelacion">
 						{{ esRechazoDeJefe ? t('empleados', 'Yes, reject it') : t('empleados', 'Yes, cancel it') }}
 					</NcButton>
-					<NcButton type="secondary" @click="showConfirm = false">
+					<NcButton type="secondary" @click="cancelarConfirm">
 						{{ t('empleados', 'Go back') }}
 					</NcButton>
 				</div>
@@ -180,6 +209,7 @@ export default {
 			showConfirm: false,
 			procesando: false,
 			showAprobaciones: false,
+			motivoRechazo: '',
 		}
 	},
 
@@ -366,10 +396,11 @@ export default {
 
 		async rechazar() {
 			const rol = this.ausencia.es_gerente ? 'gerente' : this.ausencia.es_socio ? 'socio' : 'capital_humano'
+			const motivo = this.motivoRechazo.trim()
 
 			this.procesando = true
 			try {
-				const response = await axios.post(generateUrl('/apps/empleados/RechazarAusencia'), { id: this.idHistorial, rol })
+				const response = await axios.post(generateUrl('/apps/empleados/RechazarAusencia'), { id: this.idHistorial, rol, motivo })
 				if (response.data?.ocs?.data?.success) {
 					showSuccess(t('empleados', 'Absence rejected'))
 					this.$emit('rejected')
@@ -384,7 +415,13 @@ export default {
 		},
 
 		confirmCancel() {
+			this.motivoRechazo = ''
 			this.showConfirm = true
+		},
+
+		cancelarConfirm() {
+			this.showConfirm = false
+			this.motivoRechazo = ''
 		},
 
 		// Decide qué endpoint disparar según quién esté ejecutando la acción
@@ -395,6 +432,7 @@ export default {
 			} else {
 				await this.cancelAbsence()
 			}
+			this.motivoRechazo = ''
 		},
 
 		async cancelAbsence() {
@@ -489,6 +527,12 @@ export default {
 	color: var(--color-text-lighter);
 }
 
+.detalle-ausencia__motivo-rechazo {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
 /* ── Actions ─────────────────────────────────── */
 .detalle-ausencia__actions {
 	display: flex;
@@ -519,6 +563,38 @@ export default {
 	display: flex;
 	gap: 10px;
 	justify-content: flex-end;
+}
+
+.confirm-motivo__original {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 10px 12px;
+	background: var(--color-background-hover);
+	border-radius: var(--border-radius, 8px);
+}
+
+.confirm-motivo {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.confirm-motivo__textarea {
+	width: 100%;
+	resize: vertical;
+	padding: 8px 10px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius, 8px);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font-family: inherit;
+	font-size: 0.9rem;
+}
+
+.confirm-motivo__textarea:focus {
+	outline: none;
+	border-color: var(--color-primary-element, #0082c9);
 }
 
 .detalle-ausencia__aprobaciones {

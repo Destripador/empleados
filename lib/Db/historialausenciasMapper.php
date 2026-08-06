@@ -301,14 +301,20 @@ class historialausenciasMapper extends QBMapper {
 
 	/**
 	 * Marca los 3 roles como rechazados de una sola vez (se usa cuando cualquiera rechaza).
+	 * Si se recibe un $motivo, se guarda en la columna motivo_rechazo.
 	 */
-	public function RechazarTodo(int $id): void {
+	public function RechazarTodo(int $id, ?string $motivo = null): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->getTableName())
 			->set('a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
 			->set('a_socio', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
-			->set('a_capital_humano', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
-			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+			->set('a_capital_humano', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT));
+
+		if ($motivo !== null && $motivo !== '') {
+			$qb->set('motivo_rechazo', $qb->createNamedParameter($motivo));
+		}
+
+		$qb->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
 		$qb->executeStatement();
 	}
 

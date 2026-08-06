@@ -299,7 +299,24 @@
 											<strong>{{ empleadoAsignadoName(equipo) }}</strong>
 											<small>{{ equipo.empleado_uid }}</small>
 										</div>
+										<NcButton
+											v-if="canAssignEmployee"
+											size="small"
+											type="tertiary"
+											:aria-label="t('empleados', 'Unassign device')"
+											@click="unassignEmployee(equipo)">
+											<template #icon><Close :size="16" /></template>
+										</NcButton>
 									</div>
+									<button
+										v-else-if="canAssignEmployee"
+										type="button"
+										class="employee-cell employee-cell--empty employee-cell--assignable"
+										:aria-label="t('empleados', 'Assign employee to this device')"
+										@click="openAssignEmployeeModal(equipo)">
+										<span class="neutral-avatar"><AccountOutline :size="22" /></span>
+										<strong>{{ t('empleados', 'Unassigned') }}</strong>
+									</button>
 									<div v-else class="employee-cell employee-cell--empty">
 										<span class="neutral-avatar"><AccountOutline :size="22" /></span>
 										<strong>{{ t('empleados', 'Unassigned') }}</strong>
@@ -770,6 +787,54 @@
 				</div>
 			</div>
 		</NcModal>
+		<!-- MODAL ASIGNAR EMPLEADO -->
+		<NcModal
+			v-if="showAssignModal"
+			class="inventario-nc-modal"
+			:name="t('empleados', 'Assign employee')"
+			@close="closeAssignModal">
+			<div class="inventario-modal">
+				<p v-if="assignEquipo" class="modal-context">
+					{{ displayValue(assignEquipo.nombre_dispositivo) }} -
+					{{ displayValue(assignEquipo.numero_serie) }}
+				</p>
+
+				<p class="modal-context">
+					{{ t('empleados', 'Seleccione un empleado para asignarlo:') }}
+				</p>
+
+				<div class="select-field">
+					<label>{{ t('empleados', 'Employee') }}</label>
+					<select v-model="assignSelectedEmpleado" :disabled="loadingEmpleadosActivos">
+						<option value="">
+							{{ loadingEmpleadosActivos ? t('empleados', 'Loading…') : t('empleados', 'Select an employee') }}
+						</option>
+						<option
+							v-for="empleado in empleadosActivos"
+							:key="empleado.id_empleado"
+							:value="String(empleado.id_empleado)">
+							{{ empleado.displayname }}
+						</option>
+					</select>
+				</div>
+
+				<div class="inventario-modal-actions">
+					<NcButton @click="closeAssignModal">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+
+					<NcButton
+						type="primary"
+						:disabled="assigning || !assignSelectedEmpleado"
+						@click="confirmAssignEmployee">
+						<template #icon>
+							<NcLoadingIcon v-if="assigning" :size="20" />
+						</template>
+						{{ t('empleados', 'Accept') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
 	</NcAppContent>
 </template>
 
@@ -897,6 +962,12 @@ export default {
 			historyLimit: 20,
 			historyLoading: false,
 			historyError: '',
+			showAssignModal: false,
+			assignEquipo: null,
+			assignSelectedEmpleado: '',
+			assigning: false,
+			empleadosActivos: [],
+			loadingEmpleadosActivos: false,
 
 			formModelo: {
 				marca: '',
@@ -956,6 +1027,10 @@ export default {
 					icon: 'Wrench',
 				},
 			]
+		},
+
+		canAssignEmployee() {
+			return this.canSee('inventario.admin') || this.isAdminUser()
 		},
 
 		summaryItems() {
@@ -1668,6 +1743,31 @@ export default {
 			this.modelosCatalogo = this.normalizeCollection(res)
 		},
 
+		async loadEmpleadosActivos(force = false) {
+			if (!force && this.empleadosActivos.length > 0) {
+				return
+			}
+
+			this.loadingEmpleadosActivos = true
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/GetEmpleadosList'))
+				const payload = response?.data?.ocs?.data?.Empleados
+					?? response?.data?.Empleados
+					?? []
+
+				this.empleadosActivos = payload.map(empleado => ({
+					id_empleado: empleado.Id_empleados,
+					displayname: empleado.displayname || empleado.Id_user,
+				}))
+			} catch (error) {
+				showError(t('empleados', 'Could not load the employee list: {error}', {
+					error: String(error),
+				}))
+			} finally {
+				this.loadingEmpleadosActivos = false
+			}
+		},
+
 		modeloLabel(modelo) {
 			return [
 				modelo.marca,
@@ -2116,6 +2216,51 @@ export default {
 			return t('empleados', 'Unassigned')
 		},
 
+		async openAssignEmployeeModal(equipo) {
+			this.assignEquipo = equipo
+			this.assignSelectedEmpleado = ''
+			this.showAssignModal = true
+			await this.loadEmpleadosActivos()
+		},
+
+		closeAssignModal() {
+			this.showAssignModal = false
+			this.assignEquipo = null
+			this.assignSelectedEmpleado = ''
+		},
+
+		async confirmAssignEmployee() {
+			if (!this.assignSelectedEmpleado || !this.assignEquipo || this.assigning) return
+			this.assigning = true
+			try {
+				await axios.post(
+					generateUrl(`/apps/empleados/inventario/equipos/${this.assignEquipo.id_equipo}/asignar`),
+					{ id_empleado: Number(this.assignSelectedEmpleado) },
+				)
+				showSuccess(t('empleados', 'Device assigned successfully.'))
+				this.closeAssignModal()
+				await this.reload()
+			} catch (error) {
+				const msg = error?.response?.data?.message || String(error)
+				showError(t('empleados', 'Error assigning device: {error}', { error: msg }))
+			} finally {
+				this.assigning = false
+			}
+		},
+
+		async unassignEmployee(equipo) {
+			try {
+				await axios.delete(
+					generateUrl(`/apps/empleados/inventario/equipos/${equipo.id_equipo}/asignacion`),
+				)
+				showSuccess(t('empleados', 'Device unassigned successfully.'))
+				await this.reload()
+			} catch (error) {
+				const msg = error?.response?.data?.message || String(error)
+				showError(t('empleados', 'Error unassigning device: {error}', { error: msg }))
+			}
+		},
+
 		getSelectedEquipoUser() {
 			if (!this.selectedEquipo) {
 				return ''
@@ -2392,6 +2537,27 @@ export default {
 .employee-cell > div {
 	display: grid;
 	min-width: 0;
+}
+
+.employee-cell--assignable {
+	border: none;
+	background: transparent;
+	padding: 0;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	border-radius: var(--border-radius-large, 8px);
+	transition: background-color 120ms ease;
+}
+
+.employee-cell--assignable:hover,
+.employee-cell--assignable:focus-visible {
+	background-color: var(--color-background-hover);
+}
+
+.employee-cell--assignable:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .employee-cell strong,

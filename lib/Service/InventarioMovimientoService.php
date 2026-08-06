@@ -525,4 +525,34 @@ class InventarioMovimientoService {
 			throw $e;
 		}
 	}
+
+	public function ejecutarCambioAsignacion(
+		int $idEmpleado,
+		?int $equipoAnterior,
+		?int $equipoNuevo,
+		callable $actualizacion
+	): void {
+		$this->transactional(function () use ($idEmpleado, $equipoAnterior, $equipoNuevo, $actualizacion): void {
+			// 1) Aplica los cambios de datos del empleado (los que vienen en el callback)
+			$actualizacion();
+
+			// 2) Si el equipo de cómputo no cambió, no hay nada más que hacer
+			if ($equipoAnterior === $equipoNuevo) {
+				return;
+			}
+
+			// 3) Si tenía un equipo asignado y cambió, lo desasigna
+			if ($equipoAnterior !== null) {
+				$equipo = $this->computoMapper->findById($equipoAnterior);
+				if ($equipo !== null && (int)($equipo['id_empleado'] ?? 0) === $idEmpleado) {
+					$this->desasignarEquipoDentroTransaccion($equipoAnterior);
+				}
+			}
+
+			// 4) Si se especificó un equipo nuevo, lo asigna
+			if ($equipoNuevo !== null) {
+				$this->asignarEquipoDentroTransaccion($equipoNuevo, $idEmpleado);
+			}
+		});
+	}
 }

@@ -36,6 +36,10 @@ class ActivityProvider implements IProvider {
         switch ($subjectID) {
             case 'ausencia_registrada':
                 return '{nombre} ha solicitado "{tipo_ausencia}"';
+            case 'ausencia_aprobada':
+                return 'La solicitud de "{tipo_ausencia}" de {nombre} fue aprobada';
+            case 'ausencia_rechazada':
+                return 'La solicitud de "{tipo_ausencia}" de {nombre} fue rechazada';
             case 'test':
                 return '{nombre} ha realizado una prueba actualizado';
             // Puedes seguir agregando casos aquí.

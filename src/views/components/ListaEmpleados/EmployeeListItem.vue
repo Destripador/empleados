@@ -3,6 +3,7 @@
 		<ListItem
 			:key="source.Id_empleados"
 			class="list-item-style envelope"
+			:class="{ 'envelope--inactive': source.isInactive }"
 			:name="source.uid"
 			@click.prevent="showDetails(source)">
 			<template #icon>
@@ -15,9 +16,11 @@
 			</template>
 			<template v-if="source.displayname" #name>
 				{{ source.displayname }}
+				<span v-if="source.isInactive" class="inactive-badge">{{ t('empleados', 'Inactive') }}</span>
 			</template>
 			<template v-else #name>
 				{{ source.uid }}
+				<span v-if="source.isInactive" class="inactive-badge">{{ t('empleados', 'Inactive') }}</span>
 			</template>
 		</ListItem>
 	</div>
@@ -28,6 +31,7 @@ import {
 	NcListItem as ListItem,
 	NcAvatar as BaseAvatar,
 } from '@nextcloud/vue'
+import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'EmployeeListItem',
@@ -46,6 +50,7 @@ export default {
 		},
 	},
 	methods: {
+		t,
 		showDetails(data) {
 			this.$bus.emit('send-data', data)
 			this.$bus.emit('show', false)
@@ -57,6 +62,9 @@ export default {
 <style lang="scss" scoped>
 .envelope {
 	.app-content-list-item-icon { height: 40px; }
+	&--inactive {
+		opacity: 0.55;
+	}
 	&__subtitle {
 		display: flex;
 		gap: 4px;
@@ -67,6 +75,18 @@ export default {
 			text-overflow: ellipsis;
 		}
 	}
+}
+.inactive-badge {
+	display: inline-flex;
+	align-items: center;
+	margin-left: 6px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background-color: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
 }
 .list-item-style { list-style: none; }
 </style>
