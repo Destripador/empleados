@@ -185,85 +185,6 @@
 								</div>
 							</div>
 						</div>
-
-						<div v-if="inventoryEnabled">
-							<div class="divider">
-								<span>{{ t('empleados', 'Systems') }}</span>
-							</div>
-							<div class="flexible">
-								<div class="box1Inside equipo-asignado-field">
-									<label for="Equipo_asignado" class="labeltype">
-										<Laptopaccount :size="20" />
-										{{ t('empleados', 'Assigned equipment') }}
-									</label>
-
-									<NcSelect
-										v-if="show && canAccessInventory"
-										id="Equipo_asignado"
-										v-model="Equipo_asignado"
-										class="equipo-computo-select"
-										:disabled="!show"
-										:options="inventarioEquipos"
-										:input-label="t('empleados', 'Assigned equipment')"
-										:label-outside="true"
-										:placeholder="t('empleados', 'Select assigned equipment')">
-										<template #selected-option="option">
-											<div class="equipo-selected-option">
-												<strong>{{ equipoOptionTitle(option) }}</strong>
-												<span>{{ equipoOptionSubtitle(option) }}</span>
-											</div>
-										</template>
-
-										<template #option="option">
-											<div class="equipo-dropdown-option">
-												<div class="equipo-dropdown-main">
-													<strong>{{ equipoOptionTitle(option) }}</strong>
-													<span
-														v-if="option.estado"
-														class="equipo-status"
-														:class="`equipo-status--${String(option.estado).toLowerCase()}`">
-														{{ option.estado }}
-													</span>
-												</div>
-
-												<div class="equipo-dropdown-subtitle">
-													{{ equipoOptionSubtitle(option) }}
-												</div>
-											</div>
-										</template>
-									</NcSelect>
-
-									<component
-										:is="canNavigateAssignedEquipment ? 'button' : 'div'"
-										v-if="assignedInventoryEquipo"
-										class="assigned-equipment-card"
-										:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
-										:type="canNavigateAssignedEquipment ? 'button' : null"
-										:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
-										:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(assignedInventoryEquipo) }) : null"
-										@click="openAssignedEquipment">
-										<Laptopaccount :size="32" aria-hidden="true" />
-										<div class="assigned-equipment-content">
-											<div class="assigned-equipment-heading">
-												<strong>{{ equipoOptionTitle(assignedInventoryEquipo) }}</strong>
-												<span v-if="assignedInventoryEquipo.estado" class="equipo-status" :class="`equipo-status--${String(assignedInventoryEquipo.estado).toLowerCase()}`">
-													{{ assignedInventoryEquipo.estado }}
-												</span>
-											</div>
-											<span v-if="assignedInventoryEquipo.nombre_sistema">{{ t('empleados', 'System name') }}: {{ assignedInventoryEquipo.nombre_sistema }}</span>
-											<span v-if="assignedInventoryEquipo.numero_serie">{{ t('empleados', 'Serial number') }}: {{ assignedInventoryEquipo.numero_serie }}</span>
-											<span v-if="assignedEquipmentModel">{{ t('empleados', 'Model') }}: {{ assignedEquipmentModel }}</span>
-											<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
-											<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
-										</div>
-									</component>
-
-									<p v-else class="assigned-equipment-empty">
-										{{ t('empleados', 'No equipment assigned.') }}
-									</p>
-								</div>
-							</div>
-						</div>
 					</div>
 
 					<div class="box2">
@@ -353,14 +274,6 @@
 										:input-label="t('empleados','Team')" />
 								</div>
 							</div>
-<<<<<<< HEAD
-							<div v-else class="">
-								<div v-if="!Equipo == '' || !Equipo == null">
-									<div class="rst-title">
-										<div class="title_flex">
-											<div class="subtitle_flex">
-												<NcAvatar :user="Equipo.jefe" :display-name="Equipo.jefe" :size="20" />
-=======
 						</div>
 					</div>
 
@@ -406,32 +319,11 @@
 													:class="`equipo-status--${String(option.estado).toLowerCase()}`">
 													{{ option.estado }}
 												</span>
->>>>>>> origin/main
 											</div>
 											<div>
 												<h1> {{ Equipo.label }} </h1>
 											</div>
 										</div>
-<<<<<<< HEAD
-									</div>
-									<div class="rst">
-										<ul class="team-list">
-											<NcListItem
-												v-for="(item) in peopleEquipo.equipo"
-												:key="item.Id_empleados"
-												:name="item.displayname ? item.displayname : item.Id_user"
-												@click.prevent="showDetails(item)">
-												<template #icon>
-													<NcAvatar disable-menu
-														:size="44"
-														:user="item.Id_user"
-														:display-name="item.Id_user" />
-												</template>
-											</NcListItem>
-										</ul>
-									</div>
-								</div>
-=======
 									</template>
 								</NcSelect>
 
@@ -472,7 +364,6 @@
 								<p v-if="!cargandoEquipos && !errorEquipos && Equipos_asignados.length === 0" class="assigned-equipment-empty">
 									{{ t('empleados', 'No equipment assigned.') }}
 								</p>
->>>>>>> origin/main
 							</div>
 						</div>
 					</div>
@@ -1000,12 +891,9 @@ export default {
 					dias_disponibles: this.checknull(this.Vacaciones),
 				})
 				if (this.inventoryEnabled && this.canModifyInventory) {
-					const response = await axios.put(generateUrl(`/apps/empleados/inventario/empleados/${this.data.Id_empleados}/equipos`), {
-						equipos: this.Equipos_asignados.map(equipoAsignado => equipoAsignado.id_equipo),
-					})
-					this.Equipos_asignados = this.normalizeInventarioEquiposResponse(response, 'equipos')
-					showSuccess(t('empleados', 'Equipment assigned successfully'), { close: true })
+					await this.sincronizarEquiposAtomico()
 				}
+
 				this.GetAllEquipo(this.Equipo.value)
 				this.$bus.emit('getall')
 				this.$bus.emit('show', false)
@@ -1013,6 +901,17 @@ export default {
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepción [03] [{error}]', { error: String(err), close: true }))
 			}
+		},
+
+		async sincronizarEquiposAtomico() {
+			const deseados = this.Equipos_asignados.map(e => Number(e.id_equipo))
+
+			await axios.put(generateUrl(`/apps/empleados/inventario/empleados/${this.data.Id_empleados}/equipos`), {
+				equipos: deseados,
+			})
+
+			await this.getInventarioEquipos(this.data.Id_empleados)
+			showSuccess(t('empleados', 'Equipment assigned successfully'), { close: true })
 		},
 
 		async cambioEstado(state) {
