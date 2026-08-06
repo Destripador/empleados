@@ -7,6 +7,12 @@ namespace OCA\Empleados\Db;
 use OCP\AppFramework\Db\Entity;
 
 class ReporteTiempo extends Entity {
+	public const TIPO_CLIENTE = 'cliente';
+	public const TIPO_INTERNO = 'interno';
+	public const TIPO_AUSENCIA = 'ausencia';
+	public const TIPOS_TRABAJO_VALIDOS = [self::TIPO_CLIENTE, self::TIPO_INTERNO, self::TIPO_AUSENCIA];
+	public const ORIGEN_MANUAL = 'manual';
+	public const ORIGEN_MANUAL_INTERNO = 'manual_interno';
 
 	protected ?int $idReporte = null;
 	protected ?int $idEmpleado = null;
@@ -23,6 +29,7 @@ class ReporteTiempo extends Entity {
 	protected ?bool $cargable = null;
 	protected ?int $idEquipo = null;
 	protected ?string $nombreDispositivo = null;
+	protected ?string $tipoTrabajo = null;
 
 	public function __construct() {
 		$this->addType('idReporte', 'integer');
@@ -40,6 +47,7 @@ class ReporteTiempo extends Entity {
 		$this->addType('cargable', 'bool');
 		$this->addType('idEquipo', 'integer');
 		$this->addType('nombreDispositivo', 'string');
+		$this->addType('tipoTrabajo', 'string');
 	}
 
 	public function read(): array {
@@ -58,7 +66,8 @@ class ReporteTiempo extends Entity {
 			'actividad_nombre'  => $this->actividadNombre,
 			'cargable'          => $this->cargable,
 			'id_equipo'         => $this->idEquipo,
-			'nombre_dispositivo' => $this->nombreDispositivo,
+				'nombre_dispositivo' => $this->nombreDispositivo,
+				'tipo_trabajo'      => $this->tipoTrabajo,
 		];
 	}
 }

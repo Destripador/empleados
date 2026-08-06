@@ -20,7 +20,7 @@
 					</p>
 					<h2>{{ activityName }}</h2>
 					<p class="subtitle">
-						{{ t('empleados', 'Time report activity catalog item') }}
+						{{ activityTypeLabel }} · {{ scopeLabel }}
 					</p>
 				</div>
 
@@ -86,6 +86,16 @@
 					<div class="detail-content">
 						<span>{{ t('empleados', 'Time unit') }}</span>
 						<strong>{{ t('empleados', 'Minutes (stored)') }}</strong>
+					</div>
+				</div>
+
+				<div v-if="areaNames" class="detail-card detail-card-wide">
+					<div class="field-icon">
+						<TextBoxOutline :size="20" />
+					</div>
+					<div class="detail-content">
+						<span>{{ t('empleados', 'Specific areas') }}</span>
+						<strong>{{ areaNames }}</strong>
 					</div>
 				</div>
 
@@ -205,6 +215,20 @@ export default {
 			if (this.realTime > this.estimatedTime) return t('empleados', 'Above estimate')
 			if (this.realTime < this.estimatedTime) return t('empleados', 'Below estimate')
 			return t('empleados', 'On estimate')
+		},
+		activityTypeLabel() {
+			if (this.activity?.clave_sistema) return t('empleados', 'System activity')
+			return (this.activity?.tipo_actividad || 'cliente') === 'interno'
+				? t('empleados', 'Internal activity')
+				: t('empleados', 'Client activity')
+		},
+		scopeLabel() {
+			return this.activity?.alcance === 'areas'
+				? t('empleados', 'Specific areas')
+				: t('empleados', 'Entire company')
+		},
+		areaNames() {
+			return (this.activity?.areas || []).map(area => area.nombre).filter(Boolean).join(', ')
 		},
 	},
 

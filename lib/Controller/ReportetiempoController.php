@@ -13,7 +13,9 @@ use OCA\Empleados\Db\reportetiempo;
 use OCA\Empleados\Db\reportetiempoMapper;
 use OCA\Empleados\Db\historialausenciasMapper;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\ReporteTiempoRules;
 use OCA\Empleados\Service\VacacionesCalculoService;
+use OCA\Empleados\Exception\ReporteTiempoRuleException;
 use OCA\Empleados\UploadException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -216,6 +218,9 @@ class reportetiempoController extends BaseController {
 		$empleado = $this->empleadosMapper->GetMyEmployeeInfo(
 			$this->userSession->getUser()->getUID()
 		);
+		if ($empleado === []) {
+			return new DataResponse(['message' => 'El usuario autenticado no tiene un empleado asociado.'], Http::STATUS_FORBIDDEN);
+		}
 
 		return new DataResponse(
 			$this->reportetiempoMapper->findById(
@@ -241,10 +246,13 @@ class reportetiempoController extends BaseController {
 		if ($reporte === null) {
 			return new DataResponse(['message' => 'Reporte no encontrado.'], Http::STATUS_NOT_FOUND);
 		}
-		if (($reporte['origen'] ?? null) === 'soporte_ti') {
+		if (ReporteTiempoRules::isAutomatic($reporte)) {
 			return new DataResponse([
-				'message' => 'Este reporte fue generado por un soporte de TI. Modifica el registro de soporte para actualizar el tiempo.',
+				'message' => 'Este reporte fue generado por otro módulo. Modifícalo desde el módulo que lo generó.',
 			], Http::STATUS_CONFLICT);
+		}
+		if (ReporteTiempoRules::normalizeExistingType($reporte) === reportetiempo::TIPO_AUSENCIA) {
+			return new DataResponse(['message' => 'Las ausencias deben modificarse desde el módulo de ausencias.'], Http::STATUS_CONFLICT);
 		}
 
 		$this->reportetiempoMapper->deleteById((int)$id);
@@ -263,38 +271,67 @@ class reportetiempoController extends BaseController {
 		$tiemporegistrado,
 		$descripcion,
 		string $tipo,
-		$fecharegistrada
+		$fecharegistrada,
+		?string $tipo_trabajo = null,
+		mixed $id_cliente = null,
 	): DataResponse {
 		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
 		$reporte = $this->reportetiempoMapper->findReportById($id_reporte);
 		if ($reporte === null) {
 			return new DataResponse(['message' => 'Reporte no encontrado.'], Http::STATUS_NOT_FOUND);
 		}
-		if (($reporte['origen'] ?? null) === 'soporte_ti') {
+		if (ReporteTiempoRules::isAutomatic($reporte)) {
 			return new DataResponse([
-				'message' => 'Este reporte fue generado por un soporte de TI. Modifica el registro de soporte para actualizar el tiempo.',
+				'message' => 'Este reporte fue generado por otro módulo. Modifícalo desde el módulo que lo generó.',
+			], Http::STATUS_CONFLICT);
+		}
+		if (ReporteTiempoRules::normalizeExistingType($reporte) === reportetiempo::TIPO_AUSENCIA) {
+			return new DataResponse(['message' => 'Las ausencias deben modificarse desde el módulo de ausencias.'], Http::STATUS_CONFLICT);
+		}
+		if (!$this->isWithinManualEditWindow($reporte)) {
+			return new DataResponse([
+				'message' => 'El reporte ya tiene más de 40 minutos y no se puede modificar.',
 			], Http::STATUS_CONFLICT);
 		}
 
 		$empleado = $this->empleadosMapper->GetMyEmployeeInfo(
 			$this->userSession->getUser()->getUID()
 		);
+		if ($empleado === []) {
+			return new DataResponse(['message' => 'El usuario autenticado no tiene un empleado asociado.'], Http::STATUS_FORBIDDEN);
+		}
 
 		$tipo = strtolower(trim($tipo));
 
 		if ($tipo === 'horas') {
 			$tiemporegistrado *= 60;
 		}
-
-		$fecha = (new \DateTimeImmutable($fecharegistrada))->format('Y-m-d');
+		if (!is_numeric($tiemporegistrado) || (float)$tiemporegistrado <= 0) {
+			return new DataResponse(['message' => 'El tiempo registrado debe ser mayor que cero.'], Http::STATUS_BAD_REQUEST);
+		}
+		try {
+			$fecha = (new \DateTimeImmutable((string)$fecharegistrada))->format('Y-m-d');
+		} catch (\Throwable) {
+			return new DataResponse(['message' => 'La fecha no es válida.'], Http::STATUS_BAD_REQUEST);
+		}
+		$activityRows = $this->actividadesMapper->findById((int)$id_actividad);
+		if ($activityRows === []) return new DataResponse(['message' => 'La actividad seleccionada no existe.'], Http::STATUS_NOT_FOUND);
+		$workType = $tipo_trabajo === null ? ReporteTiempoRules::normalizeExistingType($reporte) : strtolower(trim($tipo_trabajo));
+		$effectiveClient = $tipo_trabajo === null ? ($reporte['id_cliente'] ?? null) : $id_cliente;
+		try {
+			[$effectiveClient, $origin] = ReporteTiempoRules::validateManual(
+				$workType, $effectiveClient, $activityRows[0], $this->employeeDepartmentId($empleado[0] ?? []),
+			);
+		} catch (ReporteTiempoRuleException $e) {
+			return new DataResponse(['message' => $e->getMessage()], $e->getHttpStatus());
+		}
+		if ($effectiveClient !== null && $this->clientesMapper->findById($effectiveClient) === []) {
+			return new DataResponse(['message' => 'El cliente seleccionado no existe.'], Http::STATUS_NOT_FOUND);
+		}
 
 		$this->reportetiempoMapper->updateReporte(
-			$id_reporte,
-			$id_actividad,
-			(int)$empleado[0]['Id_empleados'],
-			$descripcion,
-			$tiemporegistrado,
-			$fecha
+			$id_reporte, $id_actividad, (int)$empleado[0]['Id_empleados'], $descripcion,
+			$tiemporegistrado, $fecha, $effectiveClient, $workType, $origin,
 		);
 
 		return new DataResponse('ok', Http::STATUS_OK);
@@ -306,34 +343,61 @@ class reportetiempoController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function crearReporte(
-		$id_cliente,
+		?int $id_cliente,
 		$id_actividad,
 		$tiemporegistrado,
 		$descripcion,
 		string $tipo,
-		$time
+		$time,
+		string $tipo_trabajo = reportetiempo::TIPO_CLIENTE,
 	): DataResponse {
 		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
 
 		$empleado = $this->empleadosMapper->GetMyEmployeeInfo(
 			$this->userSession->getUser()->getUID()
 		);
+		if ($empleado === []) {
+			return new DataResponse(['message' => 'El usuario autenticado no tiene un empleado asociado.'], Http::STATUS_FORBIDDEN);
+		}
 
-		$fecha = (new \DateTimeImmutable($time))->format('Y-m-d');
+		try {
+			$fecha = (new \DateTimeImmutable((string)$time))->format('Y-m-d');
+		} catch (\Throwable) {
+			return new DataResponse(['message' => 'La fecha no es válida.'], Http::STATUS_BAD_REQUEST);
+		}
 
 		$tipo = strtolower(trim($tipo));
+		$tipo_trabajo = strtolower(trim($tipo_trabajo));
 
 		if ($tipo === 'horas') {
 			$tiemporegistrado *= 60;
 		}
+		if (!is_numeric($tiemporegistrado) || (float)$tiemporegistrado <= 0) {
+			return new DataResponse(['message' => 'El tiempo registrado debe ser mayor que cero.'], Http::STATUS_BAD_REQUEST);
+		}
+		$activityRows = $this->actividadesMapper->findById((int)$id_actividad);
+		if ($activityRows === []) return new DataResponse(['message' => 'La actividad seleccionada no existe.'], Http::STATUS_NOT_FOUND);
+		try {
+			[$idCliente, $origin] = ReporteTiempoRules::validateManual(
+				$tipo_trabajo, $id_cliente, $activityRows[0], $this->employeeDepartmentId($empleado[0] ?? []),
+			);
+		} catch (ReporteTiempoRuleException $e) {
+			return new DataResponse(['message' => $e->getMessage()], $e->getHttpStatus());
+		}
+		if ($idCliente !== null && $this->clientesMapper->findById($idCliente) === []) {
+			return new DataResponse(['message' => 'El cliente seleccionado no existe.'], Http::STATUS_NOT_FOUND);
+		}
 
 		$reportetiempo = new reportetiempo();
 		$reportetiempo->setidEmpleado((int)$empleado[0]['Id_empleados']);
-		$reportetiempo->setidCliente((int)$id_cliente);
+		$reportetiempo->setidCliente($idCliente);
 		$reportetiempo->setidActividad((int)$id_actividad);
 		$reportetiempo->settiempoRegistrado((float)$tiemporegistrado);
 		$reportetiempo->setfechaRegistro($fecha);
 		$reportetiempo->setdescripcion((string)$descripcion);
+		$reportetiempo->setTipoTrabajo($tipo_trabajo);
+		$reportetiempo->setOrigen($origin);
+		$reportetiempo->setOrigenId(null);
 
 		$this->reportetiempoMapper->insert($reportetiempo);
 		$this->clearReporteTiempoNotification(
@@ -341,6 +405,22 @@ class reportetiempoController extends BaseController {
 			$fecha
 		);
 		return new DataResponse('ok', Http::STATUS_OK);
+	}
+
+	private function employeeDepartmentId(array $employee): ?int {
+		$value = $employee['Id_departamento'] ?? $employee['id_departamento'] ?? null;
+		return $value === null || $value === '' ? null : (int)$value;
+	}
+
+	private function isWithinManualEditWindow(array $report): bool {
+		$createdAt = trim((string)($report['created_at'] ?? ''));
+		if ($createdAt === '') return false;
+		try {
+			$created = new \DateTimeImmutable($createdAt);
+			return $created->getTimestamp() > (time() - 40 * 60);
+		} catch (\Throwable) {
+			return false;
+		}
 	}
 
 	/**
@@ -391,21 +471,44 @@ class reportetiempoController extends BaseController {
 		);
 
 		$costoTotal = 0.0;
+		$costoInterno = 0.0;
+		$costoCliente = 0.0;
+		$costoAusencia = 0.0;
+		$horasPorEmpleado = $this->reportetiempoMapper->getHorasPorEmpleado(
+			$periodo_inicio, $periodo_fin, $anio, $idEmpleadosVisibles,
+		);
+		$internosPorEmpleado = [];
+		$clientesPorEmpleado = [];
+		$ausenciasPorEmpleado = [];
+		foreach ($horasPorEmpleado as $hours) {
+			$id = (int)$hours['id_empleado'];
+			$internosPorEmpleado[$id] = (float)($hours['minutos_internos'] ?? 0);
+			$clientesPorEmpleado[$id] = (float)($hours['minutos_cliente'] ?? 0);
+			$ausenciasPorEmpleado[$id] = (float)($hours['minutos_ausencia'] ?? 0);
+		}
 
 		foreach ($empleadosData as $empleado) {
 			$totalMinutos = (float)($empleado['total_tiempo_registrado'] ?? 0);
 			$sueldoHora = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
+			$idEmpleado = (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? 0);
 
 			$costoTotal += ($totalMinutos / 60) * $sueldoHora;
+			$costoInterno += (($internosPorEmpleado[$idEmpleado] ?? 0) / 60) * $sueldoHora;
+			$costoCliente += (($clientesPorEmpleado[$idEmpleado] ?? 0) / 60) * $sueldoHora;
+			$costoAusencia += (($ausenciasPorEmpleado[$idEmpleado] ?? 0) / 60) * $sueldoHora;
 		}
 
 		$resumen['costo_total'] = $costoTotal;
+		$resumen['costo_laboral_interno'] = $costoInterno;
+		$resumen['costo_laboral_cliente'] = $costoCliente;
+		$resumen['costo_laboral_ausencia'] = $costoAusencia;
 
 		return new DataResponse([
 			'kpis' => $resumen,
 			'empleados' => $empleadosData,
 			'graficas' => [
-				'horas_por_empleado' => $this->reportetiempoMapper->getHorasPorEmpleado(
+				'horas_por_empleado' => $horasPorEmpleado,
+				'trabajo_interno' => $this->reportetiempoMapper->getTrabajoInternoAgrupado(
 					$periodo_inicio,
 					$periodo_fin,
 					$anio,
@@ -2156,6 +2259,17 @@ class reportetiempoController extends BaseController {
 			$this->kpiValue((string)((int)($resumen['empleados_con_reportes'] ?? 0))),
 		];
 
+		$rows[] = [
+			$this->kpiLabel('Horas cliente'),
+			$this->kpiValue(number_format((float)($resumen['horas_cliente'] ?? 0), 2)),
+			$this->kpiLabel('Horas internas'),
+			$this->kpiValue(number_format((float)($resumen['horas_internas'] ?? 0), 2)),
+			$this->kpiLabel('Porcentaje interno'),
+			$this->kpiValue(number_format((float)($resumen['porcentaje_interno'] ?? 0), 2) . '%'),
+			$this->kpiLabel('Costo laboral interno'),
+			$this->moneyCell((float)($resumen['costo_laboral_interno'] ?? 0)),
+		];
+
 		$rows[] = ['', '', '', '', '', '', '', ''];
 
 		$rows[] = [
@@ -2237,6 +2351,7 @@ class reportetiempoController extends BaseController {
 
 		$rows[] = [
 			$this->headerCell('Empleado'),
+			$this->headerCell('Tipo de trabajo'),
 			$this->headerCell('Cliente / proyecto'),
 			$this->headerCell('Actividad'),
 			$this->headerCell('Descripción'),
@@ -2282,12 +2397,19 @@ class reportetiempoController extends BaseController {
 
 				$idCliente = (int)($reporte['id_cliente'] ?? 0);
 				$idActividad = (int)($reporte['id_actividad'] ?? 0);
+				$tipoTrabajo = ReporteTiempoRules::normalizeExistingType($reporte);
 
-				$nombreCliente = $reporte['cliente']
-					?? $reporte['nombre_cliente']
-					?? $reporte['cliente_nombre']
-					?? $clientesMap[$idCliente]
-					?? ('Cliente #' . $idCliente);
+				if ($tipoTrabajo === reportetiempo::TIPO_INTERNO) {
+					$nombreCliente = 'Trabajo interno';
+				} elseif ($tipoTrabajo === reportetiempo::TIPO_AUSENCIA) {
+					$nombreCliente = 'Ausencia';
+				} else {
+					$nombreCliente = $reporte['cliente']
+						?? $reporte['nombre_cliente']
+						?? $reporte['cliente_nombre']
+						?? $clientesMap[$idCliente]
+						?? ('Cliente #' . $idCliente);
+				}
 
 				$nombreActividad = $reporte['actividad']
 					?? $reporte['nombre_actividad']
@@ -2297,6 +2419,11 @@ class reportetiempoController extends BaseController {
 
 				$rows[] = [
 					$this->bodyCell((string)$nombreEmpleado),
+					$this->bodyCell(match ($tipoTrabajo) {
+						reportetiempo::TIPO_INTERNO => 'Interno',
+						reportetiempo::TIPO_AUSENCIA => 'Ausencia',
+						default => 'Cliente',
+					}),
 					$this->bodyCell((string)$nombreCliente),
 					$this->bodyCell((string)$nombreActividad),
 					$this->wrapCell((string)($reporte['descripcion'] ?? '')),
@@ -2305,7 +2432,11 @@ class reportetiempoController extends BaseController {
 					$this->moneyCell($costo),
 					$this->bodyCell((string)($reporte['fecha_registro'] ?? '')),
 					$this->bodyCell((string)($reporte['created_at'] ?? '')),
-					$this->bodyCell(($reporte['origen'] ?? null) === 'soporte_ti' ? 'Soporte TI' : 'Manual'),
+					$this->bodyCell(match ((string)($reporte['origen'] ?? '')) {
+						'soporte_ti' => 'Soporte TI',
+						reportetiempo::ORIGEN_MANUAL_INTERNO => 'Manual interno',
+						default => 'Manual',
+					}),
 					$this->bodyCell((string)($reporte['origen_id'] ?? '')),
 					$this->bodyCell((int)($reporte['cargable'] ?? 0) === 1 ? 'Cargable' : 'No cargable'),
 					$this->bodyCell((string)($reporte['nombre_dispositivo'] ?? '')),

@@ -50,6 +50,10 @@
 						<span class="hero-stat-label">{{ t('empleados', 'Billable base') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.horas_cargables }}</strong>
 					</div>
+					<div class="hero-stat">
+						<span class="hero-stat-label">{{ t('empleados', 'Internal hours') }}</span>
+						<strong class="hero-stat-value">{{ kpisFmt.horas_internas }}</strong>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -393,10 +397,15 @@ export default {
 					const idCliente = r.id_cliente ?? r.idCliente ?? r.Id_cliente ?? null
 					const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null
 
-					const esAusencia = Number(idCliente) === 99999 || Number(idActividad) === 99999
+					const tipoTrabajo = r.tipo_trabajo || r.tipoTrabajo
+						|| (Number(idCliente) === 99999 || Number(idActividad) === 99999
+							? 'ausencia'
+							: (idCliente == null || r.origen === 'soporte_ti' ? 'interno' : 'cliente'))
+					const esAusencia = tipoTrabajo === 'ausencia'
+					const esInterno = tipoTrabajo === 'interno'
 					const esSoporte = r.origen === 'soporte_ti'
 
-					const clienteNombre = esSoporte
+					const clienteNombre = esInterno
 						? t('empleados', 'Internal work')
 						: esAusencia
 							? t('empleados', 'Módulo de Ausencia')
@@ -413,9 +422,11 @@ export default {
 						id,
 						idCliente,
 						idActividad,
+						tipoTrabajo,
 						clienteNombre,
 						actividadNombre,
 						esAusencia,
+						esInterno,
 						esSoporte,
 					}
 				})
@@ -433,6 +444,7 @@ export default {
 
 			let minutos = 0
 			let minutosCargables = 0
+			let minutosInternos = 0
 			const proyectos = new Set()
 			const actividades = new Set()
 
@@ -442,7 +454,13 @@ export default {
 				if (this.isBillableReport(it)) {
 					minutosCargables += itemMinutos
 				}
-				if (it?.id_cliente != null) proyectos.add(String(it.id_cliente))
+				const tipoTrabajo = it?.tipo_trabajo
+					|| it?.tipoTrabajo
+					|| (Number(it?.id_cliente) === 99999 || Number(it?.id_actividad) === 99999
+						? 'ausencia'
+						: (it?.id_cliente == null || it?.origen === 'soporte_ti' ? 'interno' : 'cliente'))
+				if (tipoTrabajo === 'interno') minutosInternos += itemMinutos
+				if (tipoTrabajo === 'cliente' && it?.id_cliente != null) proyectos.add(String(it.id_cliente))
 				if (it?.id_actividad != null) actividades.add(String(it.id_actividad))
 			}
 
@@ -465,6 +483,7 @@ export default {
 				promedio_horas_reporte: promedioHorasReporte,
 				costo_hora: sueldoHora,
 				horas_cargables: horasCargables,
+				horas_internas: minutosInternos / 60,
 				costo_por_reporte: totalReportes > 0 ? costo / totalReportes : 0,
 			}
 		},
@@ -483,6 +502,7 @@ export default {
 				promedio_horas_reporte: `${num2.format(this.kpis.promedio_horas_reporte || 0)} h`,
 				costo_hora: money.format(this.kpis.costo_hora || 0),
 				horas_cargables: `${num2.format(this.kpis.horas_cargables || 0)} h`,
+				horas_internas: `${num2.format(this.kpis.horas_internas || 0)} h`,
 			}
 		},
 
@@ -541,7 +561,7 @@ export default {
 		},
 
 		graficaProyectos() {
-			return this.agruparReportes('idCliente', 'clienteNombre')
+			return this.agruparReportes('idCliente', 'clienteNombre', reporte => reporte.tipoTrabajo === 'cliente')
 		},
 
 		graficaActividades() {
@@ -600,6 +620,7 @@ export default {
 			const actividadesSet = new Set()
 
 			for (const r of this.historial) {
+				if (r.tipoTrabajo !== 'cliente') continue
 				const proyecto = r.clienteNombre || 'Sin proyecto'
 				const actividad = r.actividadNombre || 'Sin actividad'
 
@@ -706,12 +727,13 @@ export default {
 			return Number.isFinite(x) ? x : 0
 		},
 
-		agruparReportes(idCampo, nombreCampo) {
+		agruparReportes(idCampo, nombreCampo, filter = null) {
 			const acc = new Map()
 			const sueldoHora = this.toNum(this.sueldo)
 			const totalHorasGeneral = this.kpis.horas_reportadas || 0
 
 			for (const r of this.historial) {
+				if (filter && !filter(r)) continue
 				const id = r[idCampo] ?? 'sin-id'
 				const label = r[nombreCampo] || `${t('empleados', 'No')} ${nombreCampo}`
 

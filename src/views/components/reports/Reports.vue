@@ -32,7 +32,7 @@
 
 								<div class="filters-stat">
 									<span>{{ t('empleados', 'Fortnight') }}</span>
-									<strong>{{ quincenaHorasTexto }} h</strong>
+									<strong>{{ quincenaHorasTexto }}</strong>
 								</div>
 							</div>
 						</div>
@@ -57,6 +57,21 @@
 							</div>
 
 							<div class="filters-grid">
+								<NcSelect
+									v-model="filter_tipo_trabajo"
+									:input-label="t('empleados', 'Work type')"
+									:options="workTypeFilterOptions"
+									class="filter-control" />
+								<NcSelect
+									v-model="filter_origen"
+									:input-label="t('empleados', 'Origin')"
+									:options="originFilterOptions"
+									class="filter-control" />
+								<NcSelect
+									v-model="filter_cargable"
+									:input-label="t('empleados', 'Billable classification')"
+									:options="billableFilterOptions"
+									class="filter-control" />
 								<NcDateTimePicker
 									v-model="filter_fecha_inicio"
 									class="filter-control"
@@ -133,11 +148,11 @@
 						</div>
 
 						<div class="semaforo-value">
-							{{ quincenaHorasTexto }} h
+							{{ quincenaHorasTexto }}
 						</div>
 
 						<div class="semaforo-meta">
-							<span>{{ t('empleados', 'Goal') }}: {{ quincenaMetaTexto }} h</span>
+							<span>{{ t('empleados', 'Goal') }}: {{ quincenaMetaTexto }}</span>
 							<strong>{{ quincenaPorcentajeTexto }}%</strong>
 						</div>
 
@@ -154,88 +169,12 @@
 				</aside>
 			</div>
 		</div>
-		<NcModal
-			v-if="modal"
-			ref="modalRef"
-			:name="t('empleados', 'Add new activity')"
-			@close="closeModal">
-			<div class="modal__content">
-				<div class="form-group">
-					<input
-						ref="trapFocus"
-						type="text"
-						style="position:absolute;opacity:0;height:0;width:0;pointer-events:none;">
-					<NcSelect
-						v-model="activity_selected"
-						:input-label="t('empleados', 'Proyect')"
-						:options="actividades"
-						class="fit" />
-					<div class="time-selector">
-						<div class="wrapper">
-							<NcDateTimePicker
-								v-model="time"
-								class="date-picker"
-								type="date" />
-						</div>
-						<div class="estimatetime">
-							<NcTextField
-								required
-								:value.sync="time_activity"
-								type="number"
-								min="1"
-								:label="t('empleados', 'Estimate time')" />
-						</div>
-						<div class="radios">
-							<NcCheckboxRadioSwitch
-								v-model="type_time"
-								:button-variant="true"
-								value="minutos"
-								:name="t('empleados', 'Minutes')"
-								type="radio"
-								button-variant-grouped="horizontal">
-								{{ t('empleados', 'Minutes') }}
-							</NcCheckboxRadioSwitch>
-							<NcCheckboxRadioSwitch
-								v-model="type_time"
-								:button-variant="true"
-								value="horas"
-								:name="t('empleados', 'Hours')"
-								type="radio"
-								button-variant-grouped="horizontal">
-								{{ t('empleados', 'Hours') }}
-							</NcCheckboxRadioSwitch>
-						</div>
-					</div>
-					<NcSelect
-						v-model="listas_selected"
-						:input-label="t('empleados', 'Activity')"
-						:options="listas"
-						class="fit" />
-					<br>
-					<NcTextArea
-						required
-						resize="vertical"
-						:value.sync="description_activity"
-						class="top"
-						:label="t('empleados', 'Description activity')" />
-					<div class="save top">
-						<NcButton
-							class=""
-							:aria-label="t('empleados', 'Create Activity')"
-							type="primary"
-							:disabled="!isFormValid"
-							@click="create()">
-							{{ t('empleados', 'Create Activity') }}
-						</NcButton>
-					</div>
-				</div>
-			</div>
-		</NcModal>
+		<ReportTimeModal v-if="modal" @created="gethistorial" @close="closeModal" />
 	</NcAppContent>
 </template>
 
 <script>
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import { showError } from '@nextcloud/dialogs'
 import Check from 'vue-material-design-icons/Check.vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
@@ -244,13 +183,12 @@ import VirtualList from 'vue-virtual-scroll-list'
 import ReportRow from '../Helpers/Lists/ReportRow.vue'
 import mitt from 'mitt'
 
+import ReportTimeModal from './ReportTimeModal.vue'
+
 import {
 	NcLoadingIcon,
 	NcAppContent,
 	NcButton,
-	NcTextArea,
-	NcCheckboxRadioSwitch,
-	NcModal,
 	NcTextField,
 	NcDateTimePicker,
 	NcSelect,
@@ -264,13 +202,11 @@ export default {
 		NcAppContent,
 		NcButton,
 		Check,
-		NcTextArea,
-		NcCheckboxRadioSwitch,
-		NcModal,
 		NcTextField,
 		NcDateTimePicker,
 		NcSelect,
 		VirtualList,
+		ReportTimeModal,
 	},
 	inject: {
 		configuraciones: {
@@ -284,40 +220,42 @@ export default {
 			loading: true,
 			historial: [],
 			modal: false,
-			description_activity: '',
-			type_time: 'minutos',
-			time_activity: 0,
-			time: new Date(),
 			listas: [],
 			actividades: [],
-			activity_selected: null,
-			listas_selected: null,
 			temp_listas: [],
 			filter_fecha_inicio: null,
 			filter_fecha_fin: null,
 			filter_cliente: null,
 			filter_actividad: null,
+			filter_tipo_trabajo: null,
+			filter_origen: null,
+			filter_cargable: null,
 			filter_busqueda: '',
 		}
 	},
 	computed: {
-		isFormValid() {
-			const clienteId = this.activity_selected?.id
-			const actividadId = this.listas_selected?.id
-			const tiempo = Number(this.time_activity)
-			const descripcion = String(this.description_activity || '').trim()
-			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
-
-			return Boolean(
-				clienteId !== null
-				&& clienteId !== undefined
-				&& actividadId !== null
-				&& actividadId !== undefined
-				&& Number.isFinite(tiempo)
-				&& tiempo > 0
-				&& descripcion.length > 0
-				&& !isNaN(fecha.getTime()),
-			)
+		workTypeFilterOptions() {
+			return [
+				{ id: 'todos', label: t('empleados', 'All') },
+				{ id: 'cliente', label: t('empleados', 'Client work') },
+				{ id: 'interno', label: t('empleados', 'Internal work') },
+				{ id: 'ausencia', label: t('empleados', 'Absences') },
+			]
+		},
+		originFilterOptions() {
+			const origins = new Set(this.historial.map(report => report.origen || 'legado'))
+			return Array.from(origins).map(origin => ({
+				id: origin,
+				label: origin === 'manual_interno'
+					? t('empleados', 'Manual internal report')
+					: origin === 'soporte_ti' ? t('empleados', 'Support TI') : origin,
+			}))
+		},
+		billableFilterOptions() {
+			return [
+				{ id: '1', label: t('empleados', 'Billable') },
+				{ id: '0', label: t('empleados', 'Non-billable') },
+			]
 		},
 		historialFiltrado() {
 			const fechaInicio = this.normalizeDateOnly(this.filter_fecha_inicio)
@@ -325,6 +263,10 @@ export default {
 
 			const clienteId = this.getOptionId(this.filter_cliente)
 			const actividadId = this.getOptionId(this.filter_actividad)
+			const selectedWorkType = this.getOptionId(this.filter_tipo_trabajo)
+			const workType = selectedWorkType === 'todos' ? null : selectedWorkType
+			const origin = this.getOptionId(this.filter_origen)
+			const billable = this.getOptionId(this.filter_cargable)
 			const busqueda = String(this.filter_busqueda || '').trim().toLowerCase()
 
 			return this.historial.filter((reporte) => {
@@ -345,6 +287,10 @@ export default {
 				if (actividadId !== null && Number(this.getReportActivityId(reporte)) !== Number(actividadId)) {
 					return false
 				}
+
+				if (workType !== null && reporte.tipo_trabajo !== workType) return false
+				if (origin !== null && (reporte.origen || 'legado') !== origin) return false
+				if (billable !== null && Number(reporte.cargable || 0) !== Number(billable)) return false
 
 				if (busqueda) {
 					const texto = [
@@ -370,110 +316,11 @@ export default {
 				this.filter_fecha_fin,
 				this.filter_cliente,
 				this.filter_actividad,
+				this.getOptionId(this.filter_tipo_trabajo) === 'todos' ? null : this.filter_tipo_trabajo,
+				this.filter_origen,
+				this.filter_cargable,
 				String(this.filter_busqueda || '').trim(),
 			].filter(Boolean).length
-		},
-
-		totalHorasFiltradas() {
-			const totalMinutos = this.historialFiltrado.reduce((total, reporte) => {
-				return total + Number(reporte.tiempo_registrado || 0)
-			}, 0)
-
-			return this.formatHours(totalMinutos / 60)
-		},
-
-		quincenaActual() {
-			const today = new Date()
-			const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() <= 15 ? 1 : 16)
-			const end = today.getDate() <= 15
-				? new Date(today.getFullYear(), today.getMonth(), 15)
-				: new Date(today.getFullYear(), today.getMonth() + 1, 0)
-
-			return {
-				start,
-				end,
-				today,
-				startKey: this.formatLocalDateKey(start),
-				endKey: this.formatLocalDateKey(end),
-				todayKey: this.formatLocalDateKey(today),
-			}
-		},
-
-		quincenaMinutos() {
-			const { startKey, endKey } = this.quincenaActual
-
-			return this.historial.reduce((total, reporte) => {
-				const fechaReporte = this.normalizeDateOnly(reporte.fecha_registro)
-
-				if (!fechaReporte || fechaReporte < startKey || fechaReporte > endKey) {
-					return total
-				}
-
-				return total + Number(reporte.tiempo_registrado || 0)
-			}, 0)
-		},
-
-		quincenaHoras() {
-			return this.quincenaMinutos / 60
-		},
-
-		quincenaHorasTexto() {
-			return this.formatHours(this.quincenaHoras)
-		},
-
-		horasMinimasDiarias() {
-			const configured = Number(
-				this.configuraciones?.Reportes?.horas_minimas
-				?? this.configuraciones?.reportes_horas_minimas
-				?? 0,
-			)
-
-			return Number.isFinite(configured) && configured > 0 ? configured : 8
-		},
-
-		diasHabilesQuincenaTranscurridos() {
-			const { start, today, end } = this.quincenaActual
-			const limit = today < end ? today : end
-			let count = 0
-
-			for (
-				let cursorTime = start.getTime();
-				cursorTime <= limit.getTime();
-				cursorTime += 24 * 60 * 60 * 1000
-			) {
-				const cursor = new Date(cursorTime)
-				const day = cursor.getDay()
-
-				if (day !== 0 && day !== 6) {
-					count++
-				}
-			}
-
-			return Math.max(count, 1)
-		},
-
-		quincenaMetaHoras() {
-			return this.horasMinimasDiarias * this.diasHabilesQuincenaTranscurridos
-		},
-
-		quincenaMetaTexto() {
-			return this.formatHours(this.quincenaMetaHoras)
-		},
-
-		quincenaPorcentaje() {
-			if (this.quincenaMetaHoras <= 0) {
-				return this.quincenaHoras > 0 ? 100 : 0
-			}
-
-			return Math.min((this.quincenaHoras / this.quincenaMetaHoras) * 100, 100)
-		},
-
-		quincenaPorcentajeTexto() {
-			return Math.round(this.quincenaPorcentaje)
-		},
-
-		quincenaProgressWidth() {
-			return `${this.quincenaPorcentaje}%`
 		},
 
 		semaforoClass() {
@@ -508,6 +355,159 @@ export default {
 
 			return `${formatter.format(this.quincenaActual.start)} - ${formatter.format(this.quincenaActual.end)}`
 		},
+
+		totalMinutosFiltrados() {
+			return this.historialFiltrado.reduce((total, reporte) => {
+				const minutos = Number(reporte.tiempo_registrado)
+
+				return total + (
+					Number.isFinite(minutos) && minutos > 0
+						? minutos
+						: 0
+				)
+			}, 0)
+		},
+
+		totalHorasFiltradas() {
+			return this.formatDuration(this.totalMinutosFiltrados)
+		},
+
+		quincenaActual() {
+			const today = new Date()
+
+			today.setHours(12, 0, 0, 0)
+
+			const start = new Date(
+				today.getFullYear(),
+				today.getMonth(),
+				today.getDate() <= 15 ? 1 : 16,
+				12,
+			)
+
+			const end = today.getDate() <= 15
+				? new Date(today.getFullYear(), today.getMonth(), 15, 12)
+				: new Date(today.getFullYear(), today.getMonth() + 1, 0, 12)
+
+			return {
+				start,
+				end,
+				today,
+				startKey: this.formatLocalDateKey(start),
+				endKey: this.formatLocalDateKey(end),
+				todayKey: this.formatLocalDateKey(today),
+			}
+		},
+
+		quincenaMinutos() {
+			const { startKey, todayKey } = this.quincenaActual
+
+			return this.historial.reduce((total, reporte) => {
+				const fechaReporte = this.normalizeDateOnly(reporte.fecha_registro)
+
+				// Para cumplimiento solo contamos desde el inicio
+				// de la quincena hasta el día actual.
+				if (
+					!fechaReporte
+					|| fechaReporte < startKey
+					|| fechaReporte > todayKey
+				) {
+					return total
+				}
+
+				const minutos = Number(reporte.tiempo_registrado)
+
+				return total + (
+					Number.isFinite(minutos) && minutos > 0
+						? minutos
+						: 0
+				)
+			}, 0)
+		},
+
+		quincenaHoras() {
+			return this.quincenaMinutos / 60
+		},
+
+		quincenaHorasTexto() {
+			return this.formatDuration(this.quincenaMinutos)
+		},
+
+		horasMinimasDiarias() {
+			const configured = Number(
+				this.configuraciones?.Reportes?.horas_minimas
+				?? this.configuraciones?.reportes_horas_minimas
+				?? 0,
+			)
+
+			return Number.isFinite(configured) && configured > 0
+				? configured
+				: 8
+		},
+
+		quincenaMetaMinutos() {
+			return Math.round(
+				this.horasMinimasDiarias
+				* this.diasHabilesQuincena
+				* 60,
+			)
+		},
+
+		diasHabilesQuincena() {
+			const { start, end } = this.quincenaActual
+
+			const cursor = new Date(start)
+			const lastDay = new Date(end)
+
+			cursor.setHours(12, 0, 0, 0)
+			lastDay.setHours(12, 0, 0, 0)
+
+			let count = 0
+
+			// eslint-disable-next-line no-unmodified-loop-condition
+			while (cursor <= lastDay) {
+				const day = cursor.getDay()
+
+				if (day !== 0 && day !== 6) {
+					count++
+				}
+
+				cursor.setDate(cursor.getDate() + 1)
+			}
+
+			return count
+		},
+
+		quincenaMetaHoras() {
+			return this.horasMinimasDiarias * this.diasHabilesQuincena
+		},
+
+		quincenaMetaTexto() {
+			return this.formatDuration(this.quincenaMetaMinutos)
+		},
+
+		quincenaPorcentaje() {
+			if (this.quincenaMetaMinutos <= 0) {
+				return this.quincenaMinutos > 0 ? 100 : 0
+			}
+
+			return Math.min(
+				(this.quincenaMinutos / this.quincenaMetaMinutos) * 100,
+				100,
+			)
+		},
+
+		quincenaPorcentajeTexto() {
+			return Math.round(this.quincenaPorcentaje)
+		},
+
+		quincenaProgressWidth() {
+			const porcentaje = Math.min(
+				Math.max(this.quincenaPorcentaje, 0),
+				100,
+			)
+
+			return `${porcentaje}%`
+		},
 	},
 	async mounted() {
 		this.loading = true
@@ -529,13 +529,10 @@ export default {
 
 		openModal() {
 			this.modal = true
-			this.GetActividades()
-			this.GetCompaniesGroups()
 		},
 
 		closeModal() {
 			this.modal = false
-			this.resetForm()
 		},
 
 		async gethistorial() {
@@ -562,10 +559,12 @@ export default {
 						const idCliente = r.id_cliente ?? r.idCliente ?? r.Id_cliente ?? null
 						const idActividad = r.id_actividad ?? r.idActividad ?? r.Id_actividad ?? null
 
-						const esAusencia = Number(idCliente) === 99999
+						const tipoTrabajo = r.tipo_trabajo || (Number(idCliente) === 99999 ? 'ausencia' : (idCliente == null ? 'interno' : 'cliente'))
+						const esAusencia = tipoTrabajo === 'ausencia'
+						const esInterno = tipoTrabajo === 'interno'
 						const esSoporte = r.origen === 'soporte_ti'
 						const tipoAusenciaTexto = String(r.descripcion || '').trim()
-						const clienteNombre = esSoporte
+						const clienteNombre = esInterno
 							? t('empleados', 'Internal work')
 							: esAusencia
 								? `${t('empleados', 'Absence -')} ${tipoAusenciaTexto || t('empleados', 'Vacation')}`
@@ -584,6 +583,8 @@ export default {
 							actividadNombre,
 							esAusencia,
 							esSoporte,
+							esInterno,
+							tipo_trabajo: tipoTrabajo,
 						}
 					})
 
@@ -596,7 +597,7 @@ export default {
 
 		async GetActividades() {
 			try {
-				await axios.get(generateUrl('/apps/empleados/GetActividades'))
+				await axios.get(generateUrl('/apps/empleados/GetActividades'), { params: { manual: 1 } })
 					.then(
 						(response) => {
 							if (response?.data?.ocs?.meta?.status !== 'ok') {
@@ -621,7 +622,7 @@ export default {
 							this.loading = false
 						},
 						(err) => {
-							showError(err)
+							showError(this.backendError(err))
 						},
 					)
 			} catch (err) {
@@ -671,41 +672,11 @@ export default {
 							this.loading = false
 						},
 						(err) => {
-							showError(err)
+							showError(this.backendError(err))
 						},
 					)
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
-			}
-		},
-
-		async create() {
-			if (!this.isFormValid) {
-				showError(t('empleados', 'Completa todos los campos obligatorios con valores válidos.'))
-				return
-			}
-
-			const fecha = this.time instanceof Date ? this.time : new Date(this.time)
-			const payload = {
-				id_cliente: this.activity_selected.id,
-				id_actividad: this.listas_selected.id,
-				tiemporegistrado: Number(this.time_activity),
-				descripcion: String(this.description_activity || '').trim(),
-				tipo: this.type_time,
-				time: fecha.toISOString().slice(0, 10),
-			}
-
-			try {
-				await axios.post(generateUrl('/apps/empleados/crearReporte'), payload).then(
-					() => {
-						showSuccess(t('empleados', 'Área creada exitosamente'))
-						this.gethistorial()
-						this.closeModal()
-					},
-					(err) => { showError(err) },
-				)
-			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -728,14 +699,6 @@ export default {
 			return val
 		},
 
-		resetForm() {
-			this.description_activity = ''
-			this.type_time = 'minutos'
-			this.time_activity = 0
-			this.time = new Date()
-			this.activity_selected = null
-			this.listas_selected = null
-		},
 		getOptionId(option) {
 			if (option === null || option === undefined || option === '') {
 				return null
@@ -746,6 +709,12 @@ export default {
 			}
 
 			return option
+		},
+		backendError(error) {
+			return error?.response?.data?.ocs?.data?.message
+				|| error?.response?.data?.message
+				|| error?.message
+				|| String(error)
 		},
 
 		getReportClientId(reporte) {
@@ -793,6 +762,9 @@ export default {
 			this.filter_fecha_fin = null
 			this.filter_cliente = null
 			this.filter_actividad = null
+			this.filter_tipo_trabajo = null
+			this.filter_origen = null
+			this.filter_cargable = null
 			this.filter_busqueda = ''
 		},
 
@@ -809,6 +781,21 @@ export default {
 				minimumFractionDigits: 2,
 				maximumFractionDigits: 2,
 			}).format(Number(value) || 0)
+		},
+		formatDuration(value) {
+			const totalMinutes = Math.max(
+				0,
+				Math.round(Number(value) || 0),
+			)
+
+			const hours = Math.floor(totalMinutes / 60)
+			const minutes = totalMinutes % 60
+
+			if (minutes === 0) {
+				return `${hours} h`
+			}
+
+			return `${hours} h ${String(minutes).padStart(2, '0')} min`
 		},
 	},
 }

@@ -89,10 +89,17 @@ class actividadesController extends BaseController {
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function GetActividades(): DataResponse {
+	public function GetActividades(mixed $manual = false): DataResponse {
 		$this->requireClientesAccess();
-
-		return new DataResponse($this->actividadesMapper->findAll(), Http::STATUS_OK);
+		$manual = $manual === true || $manual === 1 || $manual === '1' || $manual === 'true';
+		if (!$manual) return new DataResponse($this->actividadesMapper->findAll(), Http::STATUS_OK);
+		$user = $this->userSession->getUser();
+		$employee = $user === null ? [] : $this->empleadosMapper->GetMyEmployeeInfo($user->getUID());
+		$row = $employee[0] ?? [];
+		$departmentId = isset($row['Id_departamento']) && $row['Id_departamento'] !== null
+			? (int)$row['Id_departamento']
+			: null;
+		return new DataResponse($this->actividadesMapper->findManualAvailable($departmentId), Http::STATUS_OK);
 	}
 
 	/**
@@ -113,8 +120,12 @@ class actividadesController extends BaseController {
 	#[NoAdminRequired]
 	public function deleteById($id): DataResponse {
 		$this->requireClientesAdminAccess();
-
-		return new DataResponse($this->actividadesMapper->deleteById($id), Http::STATUS_OK);
+		try {
+			$this->actividadesMapper->deleteById((int)$id);
+		} catch (\RuntimeException $e) {
+			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_CONFLICT);
+		}
+		return new DataResponse('ok', Http::STATUS_OK);
 	}
 
 	/**
@@ -128,7 +139,10 @@ class actividadesController extends BaseController {
 		string $detalles,
 		float $tiempoestimado,
 		string $tipo,
-		bool $cargable
+		bool $cargable,
+		string $tipo_actividad = actividades::TIPO_CLIENTE,
+		string $alcance = actividades::ALCANCE_GLOBAL,
+		array $area_ids = [],
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
@@ -137,13 +151,14 @@ class actividadesController extends BaseController {
 			$tiempoestimado *= 60;
 		}
 
-		$this->actividadesMapper->updateActividad(
-			$id_actividad,
-			$nombre,
-			$detalles,
-			$tiempoestimado,
-			$cargable
-		);
+		try {
+			$this->actividadesMapper->updateActividad(
+				$id_actividad, $nombre, $detalles, $tiempoestimado, $cargable,
+				$tipo_actividad, $alcance, $area_ids,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
 
 		return new DataResponse('ok', Http::STATUS_OK);
 	}
@@ -158,7 +173,10 @@ class actividadesController extends BaseController {
 		?string $detalles,
 		float $tiempoestimado,
 		string $tipo,
-		?bool $cargable
+		?bool $cargable,
+		string $tipo_actividad = actividades::TIPO_CLIENTE,
+		string $alcance = actividades::ALCANCE_GLOBAL,
+		array $area_ids = [],
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
@@ -167,14 +185,16 @@ class actividadesController extends BaseController {
 			$tiempoestimado *= 60;
 		}
 
-		$actividad = new actividades();
-		$actividad->setnombre($nombre);
-		$actividad->setdetalles($detalles);
-		$actividad->settiempo_estimado($tiempoestimado);
-		$actividad->setcargable($cargable);
-		$this->actividadesMapper->insert($actividad);
+		try {
+			$id = $this->actividadesMapper->createActivity(
+				trim($nombre), $detalles, $tiempoestimado, (bool)$cargable,
+				$tipo_actividad, $alcance, $area_ids,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
 
-		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+		return new DataResponse(['status' => 'ok', 'id_actividad' => $id], Http::STATUS_OK);
 	}
 
 	/**
@@ -184,7 +204,7 @@ class actividadesController extends BaseController {
 		$this->requireClientesAdminAccess();
 
 		$actividad = $this->actividadesMapper->findAll();
-		$books = [['id_actividad', 'nombre', 'detalles', 'tiempo_estimado', 'tiempo_real', 'cargable']];
+		$books = [['id_actividad', 'nombre', 'detalles', 'tiempo_estimado', 'tiempo_real', 'cargable', 'tipo_actividad', 'alcance', 'area_ids']];
 
 		foreach ($actividad as $item) {
 			$books[] = [
@@ -194,6 +214,9 @@ class actividadesController extends BaseController {
 				$item['tiempo_estimado'],
 				$item['tiempo_real'],
 				$item['cargable'],
+				$item['tipo_actividad'] ?? actividades::TIPO_CLIENTE,
+				$item['alcance'] ?? actividades::ALCANCE_GLOBAL,
+				implode(',', $item['area_ids'] ?? []),
 			];
 		}
 
@@ -215,22 +238,59 @@ class actividadesController extends BaseController {
 			return new DataResponse(['status' => 'error'], Http::STATUS_BAD_REQUEST);
 		}
 
-		foreach (array_slice($xlsx->rows(), 1) as $row) {
+		$rows = $xlsx->rows();
+		$headers = array_map(static fn($value): string => strtolower(trim((string)$value)), $rows[0] ?? []);
+		$column = static function (string $name, int $fallback) use ($headers): int {
+			$index = array_search($name, $headers, true);
+			return $index === false ? $fallback : (int)$index;
+		};
+		$hasTypeColumn = in_array('tipo_actividad', $headers, true);
+		$hasScopeColumn = in_array('alcance', $headers, true);
+		$hasAreasColumn = in_array('area_ids', $headers, true) || in_array('areas', $headers, true);
+		foreach (array_slice($rows, 1) as $offset => $row) {
+			$type = (string)($row[$column('tipo_actividad', 6)] ?? actividades::TIPO_CLIENTE);
+			$scope = (string)($row[$column('alcance', 7)] ?? actividades::ALCANCE_GLOBAL);
+			$areaIds = array_values(array_filter(array_map(
+				'intval',
+				preg_split('/\s*,\s*/', trim((string)($row[$column('area_ids', $column('areas', 8))] ?? ''))) ?: [],
+			)));
+			$billableValue = strtolower(trim((string)($row[$column('cargable', 5)] ?? '0')));
+			$billable = in_array($billableValue, ['1', 'true', 'si', 'sí', 'yes'], true);
+			$name = trim((string)($row[$column('nombre', 1)] ?? ''));
+			if ($name === '') continue;
+			try {
 			if (!empty($row[0])) {
+				$existing = $this->actividadesMapper->findById((int)$row[0]);
+				if ($existing === []) throw new \InvalidArgumentException('La actividad seleccionada no existe.');
+				$type = $hasTypeColumn ? $type : (string)($existing[0]['tipo_actividad'] ?? actividades::TIPO_CLIENTE);
+				$scope = $hasScopeColumn ? $scope : (string)($existing[0]['alcance'] ?? actividades::ALCANCE_GLOBAL);
+				$areaIds = $hasAreasColumn ? $areaIds : ($existing[0]['area_ids'] ?? []);
 				$this->actividadesMapper->updateActividad(
 					(int)$row[0],
-					(string)($row[1] ?? ''),
-					$row[2] ?? null,
-					(float)($row[3] ?? 0),
-					(bool)($row[4] ?? false)
+					$name,
+					$row[$column('detalles', 2)] ?? null,
+					(float)($row[$column('tiempo_estimado', 3)] ?? 0),
+					$billable,
+					$type,
+					$scope,
+					$areaIds,
 				);
 			} else {
-				$actividad = new actividades();
-				$actividad->setNombre((string)($row[1] ?? ''));
-				$actividad->setDetalles($row[2] ?? null);
-				$actividad->setTiempo_estimado((float)($row[3] ?? 0));
-				$actividad->setCargable((bool)($row[4] ?? false));
-				$this->actividadesMapper->insert($actividad);
+				$this->actividadesMapper->createActivity(
+					$name,
+					$row[$column('detalles', 2)] ?? null,
+					(float)($row[$column('tiempo_estimado', 3)] ?? 0),
+					$billable,
+					$type,
+					$scope,
+					$areaIds,
+				);
+			}
+			} catch (\InvalidArgumentException $e) {
+				return new DataResponse([
+					'status' => 'error',
+					'message' => 'Fila ' . ($offset + 2) . ': ' . $e->getMessage(),
+				], Http::STATUS_BAD_REQUEST);
 			}
 		}
 

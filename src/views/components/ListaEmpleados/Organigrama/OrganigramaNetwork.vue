@@ -61,6 +61,14 @@
 						{{ t('empleados', 'Table') }}
 					</button>
 				</div>
+				<div class="organigrama-export">
+					<button
+						type="button"
+						class="export-btn"
+						@click="exportarDrawio">
+						{{ t('empleados', 'Export to draw.io') }}
+					</button>
+				</div>
 			</div>
 		</template>
 	</div>
@@ -537,6 +545,467 @@ export default {
 				showError(t('empleados', 'An exception has occurred [03] [{error}]', { error: String(err) }))
 			}
 		},
+		escapeXml(value) {
+			return String(value ?? '')
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&apos;')
+		},
+
+		getEmpleadoNombre(emp) {
+			return emp.Nombre_completo
+		|| emp.nombre_completo
+		|| emp.Nombre
+		|| emp.nombre
+		|| emp.Id_user
+		|| `Empleado ${emp.Id_empleados}`
+		},
+
+		getEmpleadoPuesto(emp) {
+			return emp.Puesto
+		|| emp.puesto
+		|| emp.Nombre_puesto
+		|| emp.nombre_puesto
+		|| ''
+		},
+
+		descargarArchivo(contenido, nombre, tipo) {
+			const blob = new Blob([contenido], {
+				type: `${tipo};charset=utf-8`,
+			})
+
+			const url = URL.createObjectURL(blob)
+			const enlace = document.createElement('a')
+
+			enlace.href = url
+			enlace.download = nombre
+
+			document.body.appendChild(enlace)
+			enlace.click()
+			enlace.remove()
+
+			URL.revokeObjectURL(url)
+		},
+
+		async cargarAvataresDrawio() {
+			const avatares = {}
+			const batchSize = 8
+
+			/*
+	 * Se descargan por grupos para evitar lanzar demasiadas
+	 * solicitudes simultáneas contra Nextcloud.
+	 */
+			for (let index = 0; index < this.empleados.length; index += batchSize) {
+				const batch = this.empleados.slice(index, index + batchSize)
+
+				const resultados = await Promise.all(
+					batch.map(async empleado => {
+						const id = String(empleado.Id_empleados)
+
+						try {
+							const avatar = await this.crearAvatarCircularDataUrl(
+								empleado.Id_user,
+								96,
+							)
+
+							return [id, avatar]
+						} catch (error) {
+							console.warn(
+								`No se pudo cargar el avatar de ${empleado.Id_user}`,
+								error,
+							)
+
+							return [id, null]
+						}
+					}),
+				)
+
+				resultados.forEach(([id, avatar]) => {
+					avatares[id] = avatar
+				})
+			}
+
+			return avatares
+		},
+
+		async crearAvatarCircularDataUrl(userId, size = 96) {
+			const response = await fetch(this.avatarUrl(userId), {
+				method: 'GET',
+				credentials: 'same-origin',
+				cache: 'no-store',
+			})
+
+			if (!response.ok) {
+				throw new Error(
+					`No se pudo descargar el avatar: HTTP ${response.status}`,
+				)
+			}
+
+			const blob = await response.blob()
+			const objectUrl = URL.createObjectURL(blob)
+
+			try {
+				const imagen = await new Promise((resolve, reject) => {
+					const img = new Image()
+
+					img.onload = () => resolve(img)
+					img.onerror = () => reject(
+						new Error(`El avatar de ${userId} no es una imagen válida`),
+					)
+
+					img.src = objectUrl
+				})
+
+				const canvas = document.createElement('canvas')
+				canvas.width = size
+				canvas.height = size
+
+				const context = canvas.getContext('2d')
+
+				if (!context) {
+					throw new Error('No fue posible crear el canvas del avatar')
+				}
+
+				context.clearRect(0, 0, size, size)
+
+				/*
+		 * Recorte circular.
+		 */
+				context.save()
+				context.beginPath()
+				context.arc(
+					size / 2,
+					size / 2,
+					size / 2 - 3,
+					0,
+					Math.PI * 2,
+				)
+				context.closePath()
+				context.clip()
+
+				/*
+		 * Equivalente a object-fit: cover.
+		 */
+				const sourceWidth = imagen.naturalWidth || imagen.width
+				const sourceHeight = imagen.naturalHeight || imagen.height
+
+				if (!sourceWidth || !sourceHeight) {
+					throw new Error('El avatar no tiene dimensiones válidas')
+				}
+
+				const scale = Math.max(
+					size / sourceWidth,
+					size / sourceHeight,
+				)
+
+				const drawWidth = sourceWidth * scale
+				const drawHeight = sourceHeight * scale
+				const drawX = (size - drawWidth) / 2
+				const drawY = (size - drawHeight) / 2
+
+				context.drawImage(
+					imagen,
+					drawX,
+					drawY,
+					drawWidth,
+					drawHeight,
+				)
+
+				context.restore()
+
+				/*
+		 * Borde azul integrado en la imagen.
+		 */
+				context.beginPath()
+				context.arc(
+					size / 2,
+					size / 2,
+					size / 2 - 2,
+					0,
+					Math.PI * 2,
+				)
+				context.strokeStyle = '#3478f6'
+				context.lineWidth = 4
+				context.stroke()
+
+				return canvas
+					.toDataURL('image/png')
+					.replace(
+						'data:image/png;base64,',
+						'data:image/png%3Bbase64,',
+					)
+			} finally {
+				URL.revokeObjectURL(objectUrl)
+			}
+		},
+
+		async exportarDrawio() {
+			if (!this.network) {
+				showError(t('empleados', 'The organization chart is not available'))
+				return
+			}
+
+			if (!this.empleados.length) {
+				showError(t('empleados', 'There are no employees to export'))
+				return
+			}
+
+			const avatares = await this.cargarAvataresDrawio()
+			const posiciones = this.network.getPositions()
+
+			/*
+	 * vis-network trabaja con la posición central de los nodos.
+	 * draw.io trabaja con la esquina superior izquierda.
+	 */
+			const nodeSize = 64
+			const scale = 1.4
+			const margin = 160
+
+			const empleadosConPosicion = this.empleados.map(emp => {
+				const id = String(emp.Id_empleados)
+
+				const posicion = posiciones[id]
+			|| posiciones[emp.Id_empleados]
+			|| this.posiciones[emp.Id_empleados]
+			|| { x: 0, y: 0 }
+
+				return {
+					empleado: emp,
+					id,
+					x: Number(posicion.x) * scale || 0,
+					y: Number(posicion.y) * scale || 0,
+				}
+			})
+
+			const maxRingRadius = Math.max(
+				0,
+				...this.ringRadii.map(radius => Number(radius) * scale || 0),
+			)
+
+			const minNodeX = Math.min(
+				...empleadosConPosicion.map(item => item.x - nodeSize / 2),
+			)
+
+			const maxNodeX = Math.max(
+				...empleadosConPosicion.map(item => item.x + nodeSize / 2),
+			)
+
+			const minNodeY = Math.min(
+				...empleadosConPosicion.map(item => item.y - nodeSize / 2),
+			)
+
+			const maxNodeY = Math.max(
+				...empleadosConPosicion.map(item => item.y + nodeSize + 30),
+			)
+
+			/*
+	 * También se toman en cuenta los anillos, porque pueden ser más grandes
+	 * que las posiciones externas de los empleados.
+	 */
+			const minX = Math.min(minNodeX, -maxRingRadius)
+			const maxX = Math.max(maxNodeX, maxRingRadius)
+			const minY = Math.min(minNodeY, -maxRingRadius - 50)
+			const maxY = Math.max(maxNodeY, maxRingRadius)
+
+			const offsetX = margin - minX
+			const offsetY = margin - minY
+
+			const pageWidth = Math.ceil(maxX - minX + margin * 2)
+			const pageHeight = Math.ceil(maxY - minY + margin * 2)
+
+			const centerX = Math.round(offsetX)
+			const centerY = Math.round(offsetY)
+
+			/*
+	 * Anillos jerárquicos.
+	 * Se agregan primero para que permanezcan detrás de conexiones y nodos.
+	 */
+			const anillosXml = this.ringRadii
+				.map((radioOriginal, nivel) => {
+					if (!radioOriginal || nivel === 0) {
+						return ''
+					}
+
+					const radio = Number(radioOriginal) * scale
+					const diametro = radio * 2
+					const x = centerX - radio
+					const y = centerY - radio
+
+					const etiqueta = this.ringLabels[nivel]
+						? this.escapeXml(this.ringLabels[nivel])
+						: ''
+
+					const idAnillo = `anillo-${nivel}`
+					const idEtiqueta = `etiqueta-anillo-${nivel}`
+
+					return `
+				<mxCell
+					id="${idAnillo}"
+					value=""
+					style="ellipse;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#3478f6;dashed=1;dashPattern=4 6;strokeWidth=1;connectable=0;movable=0;resizable=0;editable=0;"
+					vertex="1"
+					parent="1">
+					<mxGeometry
+						x="${Math.round(x)}"
+						y="${Math.round(y)}"
+						width="${Math.round(diametro)}"
+						height="${Math.round(diametro)}"
+						as="geometry"/>
+				</mxCell>
+
+				<mxCell
+					id="${idEtiqueta}"
+					value="${etiqueta}"
+					style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#999999;opacity=55;connectable=0;movable=0;resizable=0;"
+					vertex="1"
+					parent="1">
+					<mxGeometry
+						x="${Math.round(centerX - 120)}"
+						y="${Math.round(centerY - radio - 45)}"
+						width="240"
+						height="40"
+						as="geometry"/>
+				</mxCell>`
+				})
+				.join('')
+
+			/*
+	 * Conexiones curvas parecidas a vis-network.
+	 */
+			const conexionesXml = this.relaciones.map((rel, index) => {
+				const jefeId = this.escapeXml(String(rel.id_empleado))
+				const dependienteId = this.escapeXml(String(rel.id_dependiente))
+
+				return `
+			<mxCell
+				id="conexion-${index}-${jefeId}-${dependienteId}"
+				value=""
+				style="edgeStyle=none;curved=1;rounded=0;html=1;endArrow=block;endFill=1;endSize=6;strokeColor=#8a8a8a;strokeWidth=1;"
+				edge="1"
+				parent="1"
+				source="empleado-${jefeId}"
+				target="empleado-${dependienteId}">
+				<mxGeometry relative="1" as="geometry"/>
+			</mxCell>`
+			}).join('')
+
+			const nodosXml = empleadosConPosicion.map(item => {
+				const nombre = this.getEmpleadoNombre(item.empleado)
+				const avatarOriginal = avatares[item.id]
+
+				const avatar = avatarOriginal
+					? avatarOriginal.replace(
+						'data:image/png;base64,',
+						'data:image/png%3Bbase64,',
+					)
+					: null
+
+				const x = item.x + offsetX - nodeSize / 2
+				const y = item.y + offsetY - nodeSize / 2
+
+				/*
+	 * Si el avatar no pudo descargarse, se conserva
+	 * el círculo azul como respaldo.
+	 */
+				const style = avatar
+					? [
+						'shape=image',
+						'html=1',
+						'imageAspect=1',
+						'aspect=fixed',
+						'perimeter=ellipsePerimeter',
+						'verticalLabelPosition=bottom',
+						'verticalAlign=top',
+						'align=center',
+						'spacingTop=6',
+						'fontSize=11',
+						'strokeColor=none',
+						'fillColor=none',
+						`image=${avatar}`,
+					].join(';')
+					: [
+						'ellipse',
+						'whiteSpace=wrap',
+						'html=1',
+						'aspect=fixed',
+						'align=center',
+						'verticalAlign=middle',
+						'verticalLabelPosition=bottom',
+						'labelPosition=center',
+						'spacingTop=8',
+						'fillColor=#8db9ef',
+						'strokeColor=#3478f6',
+						'strokeWidth=2',
+						'fontSize=11',
+					].join(';')
+
+				return `
+		<mxCell
+			id="empleado-${this.escapeXml(item.id)}"
+			value="${this.escapeXml(nombre)}"
+			style="${style};"
+			vertex="1"
+			parent="1">
+			<mxGeometry
+				x="${Math.round(x)}"
+				y="${Math.round(y)}"
+				width="${nodeSize}"
+				height="${nodeSize}"
+				as="geometry"/>
+		</mxCell>`
+			}).join('')
+
+			const fecha = new Date().toISOString()
+
+			const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<mxfile
+	host="app.diagrams.net"
+	modified="${fecha}"
+	agent="Nextcloud Empleados"
+	version="24.7.17"
+	type="device">
+	<diagram id="organigrama-empleados" name="Organigrama">
+		<mxGraphModel
+			dx="${pageWidth}"
+			dy="${pageHeight}"
+			grid="1"
+			gridSize="10"
+			guides="1"
+			tooltips="1"
+			connect="1"
+			arrows="1"
+			fold="1"
+			page="1"
+			pageScale="1"
+			pageWidth="${pageWidth}"
+			pageHeight="${pageHeight}"
+			math="0"
+			shadow="0">
+			<root>
+				<mxCell id="0"/>
+				<mxCell id="1" parent="0"/>
+
+				${anillosXml}
+				${conexionesXml}
+				${nodosXml}
+			</root>
+		</mxGraphModel>
+	</diagram>
+</mxfile>`
+
+			this.descargarArchivo(
+				xml,
+				'organigrama-empleados.drawio',
+				'application/vnd.jgraph.mxfile',
+			)
+
+			showSuccess(t(
+				'empleados',
+				'Organization chart exported successfully',
+			))
+		},
 	},
 }
 </script>
@@ -643,6 +1112,42 @@ export default {
 	.view-switch-btn {
 		flex: 1;
 		padding: 7px 8px;
+	}
+}
+.organigrama-export {
+	position: absolute;
+	right: 16px;
+	bottom: 16px;
+	z-index: 10;
+}
+
+.export-btn {
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	padding: 8px 18px;
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+	transition:
+		background 0.18s ease,
+		color 0.18s ease,
+		border-color 0.18s ease;
+
+	&:hover {
+		color: var(--color-primary-element-text);
+		background: var(--color-primary-element);
+		border-color: var(--color-primary-element);
+	}
+}
+
+@media (max-width: 600px) {
+	.organigrama-export {
+		top: 8px;
+		right: 8px;
+		bottom: auto;
 	}
 }
 </style>

@@ -1709,5 +1709,7 @@
         "Change the assigned technician?": "Change the assigned technician?",
         "Save checklist changes before completing.": "Save checklist changes before completing."
   },
-  "pluralForm": "nplurals=2; plural=(n != 1);"
+  "pluralForm": "nplurals=2; plural=(n != 1);",
+  "Client work": "Client work",
+  "Internal work": "Internal work"
 }

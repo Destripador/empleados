@@ -103,9 +103,23 @@ class MantenimientoServiceTest extends TestCase {
 
 	public function testCreateGroupRollsBackWhenChecklistFails(): void {
 		$d = $this->readyForCreation();
-		$d['checks']->method('insertResponse')->willThrowException(new \RuntimeException('database failure'));
+		$previous = new \LogicException('driver failure');
+		$failure = new \RuntimeException('database failure', 17, $previous);
+		$d['checks']->method('insertResponse')->willThrowException($failure);
 		$d['db']->expects($this->once())->method('rollBack');
 		$d['db']->expects($this->never())->method('commit');
+		$d['logger']->expects($this->once())->method('error')->with(
+			'Falló una operación de mantenimiento.',
+			$this->callback(fn(array $context): bool => $context['operacion'] === 'create_group'
+				&& $context['exceptionClass'] === \RuntimeException::class
+				&& $context['exceptionMessage'] === 'database failure'
+				&& $context['exceptionCode'] === 17
+				&& $context['exceptionFile'] === $failure->getFile()
+				&& $context['exceptionLine'] === $failure->getLine()
+				&& $context['previousExceptionClass'] === \LogicException::class
+				&& $context['previousExceptionMessage'] === 'driver failure'
+				&& $context['exception'] === $failure),
+		);
 
 		$this->expectException(MantenimientoStorageException::class);
 		$d['service']->createGroup($this->groupData(), [8], 'admin', 'Admin');

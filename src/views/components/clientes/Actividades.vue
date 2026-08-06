@@ -109,10 +109,42 @@
 							:placeholder="'0'" />
 					</div>
 				</div>
+				<div class="activity-type-section">
+					<span class="field-label">{{ t('empleados', 'Activity type') }}</span>
+					<div class="radios">
+						<NcCheckboxRadioSwitch v-model="activity_type" value="cliente" type="radio">
+							{{ t('empleados', 'Client activity') }}
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch v-model="activity_type" value="interno" type="radio">
+							{{ t('empleados', 'Internal activity') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+				</div>
+
+				<div v-if="activity_type === 'interno'" class="scope-section">
+					<span class="field-label">{{ t('empleados', 'Available to') }}</span>
+					<div class="radios">
+						<NcCheckboxRadioSwitch v-model="activity_scope" value="global" type="radio">
+							{{ t('empleados', 'Entire company') }}
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch v-model="activity_scope" value="areas" type="radio">
+							{{ t('empleados', 'Specific areas') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+					<NcSelect v-if="activity_scope === 'areas'"
+						v-model="selected_areas"
+						:options="area_options"
+						:multiple="true"
+						:input-label="t('empleados', 'Select areas')" />
+					<p class="cargable-hint">
+						{{ t('empleados', 'Internal activities are non-billable') }}
+					</p>
+				</div>
 
 				<div class="cargable-row">
 					<NcCheckboxRadioSwitch
 						v-model="cargable_activity"
+						:disabled="activity_type === 'interno'"
 						:checked.sync="cargable_activity"
 						type="checkbox">
 						{{ t('empleados', 'Billable activity') }}
@@ -172,6 +204,7 @@ import {
 	NcButton,
 	NcTextArea,
 	NcCheckboxRadioSwitch,
+	NcSelect,
 } from '@nextcloud/vue'
 
 export default {
@@ -185,6 +218,7 @@ export default {
 		NcButton,
 		NcTextArea,
 		NcCheckboxRadioSwitch,
+		NcSelect,
 		ActividadesDetalles,
 	},
 	mixins: [permissionsMixin],
@@ -200,6 +234,10 @@ export default {
 			type_time: 'minutos',
 			time_activity: 0,
 			cargable_activity: false,
+			activity_type: 'cliente',
+			activity_scope: 'global',
+			area_options: [],
+			selected_areas: [],
 			sortOrder: 'az',
 			onlyBillable: false,
 			showFilters: false,
@@ -233,6 +271,15 @@ export default {
 			return data
 		},
 	},
+	watch: {
+		activity_type(value) {
+			if (value === 'interno') this.cargable_activity = false
+			else {
+				this.activity_scope = 'global'
+				this.selected_areas = []
+			}
+		},
+	},
 
 	async mounted() {
 		this._onDetails = (id) => this.GetActividad(id)
@@ -252,6 +299,7 @@ export default {
 			this.$root.$on('importlist', this._onImport)
 		}
 		this.GetActividades()
+		this.GetAreasList()
 		this._onClickOutside = (e) => {
 			const wrap = this.$el.querySelector('.filter-wrap')
 			if (wrap && !wrap.contains(e.target)) {
@@ -297,6 +345,9 @@ export default {
 			this.type_time = 'minutos'
 			this.time_activity = 0
 			this.cargable_activity = false
+			this.activity_type = 'cliente'
+			this.activity_scope = 'global'
+			this.selected_areas = []
 			this.modal = true
 		},
 
@@ -330,10 +381,36 @@ export default {
 				const renameKeys = (obj, map) =>
 					Object.fromEntries(Object.entries(obj).map(([k, v]) => [map[k] ?? k, v]))
 				const arr = Array.isArray(response?.data?.ocs?.data) ? response.data.ocs.data : []
-				this.listas = arr.map(o => renameKeys(o, keyMap))
+				this.listas = arr.map((row) => {
+					const item = renameKeys(row, keyMap)
+					const typeLabel = item.clave_sistema
+						? t('empleados', 'System activity')
+						: item.tipo_actividad === 'interno'
+							? t('empleados', 'Internal activity')
+							: t('empleados', 'Client activity')
+					const scope = item.tipo_actividad === 'interno'
+						? (item.alcance === 'areas'
+							? (item.areas || []).map(area => area.nombre).filter(Boolean).join(', ')
+							: t('empleados', 'Entire company'))
+						: ''
+					return { ...item, subname: scope ? `${typeLabel} · ${scope}` : typeLabel }
+				})
 				this.loading = false
 			} catch (err) {
 				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+			}
+		},
+
+		async GetAreasList() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/GetAreasList'))
+				const rows = response?.data?.ocs?.data || []
+				this.area_options = rows.map(area => ({
+					id: Number(area.Id_departamento ?? area.id_departamento),
+					label: area.Nombre ?? area.nombre,
+				}))
+			} catch (err) {
+				showError(t('empleados', 'Unable to load areas: {error}', { error: String(err) }))
 			}
 		},
 
@@ -345,17 +422,24 @@ export default {
 					tiempoestimado: this.time_activity != null ? Number(this.time_activity) : 0,
 					tipo: this.type_time,
 					cargable: this.cargable_activity,
+					tipo_actividad: this.activity_type,
+					alcance: this.activity_scope,
+					area_ids: this.selected_areas.map(area => Number(area.id)),
 				})
 				showSuccess(t('empleados', 'Actividad creada exitosamente'))
 				this.GetActividades()
 				this.closeModal()
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
+				showError(this.backendError(err))
 			}
 		},
 
 		async delete() {
 			try {
+				if (this.select[0]?.clave_sistema || Number(this.select[0]?.id_actividad) === 99999) {
+					showError(t('empleados', 'System activities cannot be deleted'))
+					return
+				}
 				await axios.post(generateUrl('/apps/empleados/DeleteActividad'), {
 					id: this.select[0].id_actividad,
 				})
@@ -364,7 +448,7 @@ export default {
 				this.closeModal()
 				this.select = []
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
+				showError(this.backendError(err))
 			}
 		},
 
@@ -377,6 +461,9 @@ export default {
 					tiempoestimado: Number(this.time_activity),
 					tipo: this.type_time,
 					cargable: this.cargable_activity,
+					tipo_actividad: this.activity_type,
+					alcance: this.activity_scope,
+					area_ids: this.selected_areas.map(area => Number(area.id)),
 				})
 				showSuccess(t('empleados', 'Modificación exitosa'))
 				// Actualizar select con valores frescos (en minutos, ya convertidos)
@@ -389,11 +476,15 @@ export default {
 					detalles: this.description_activity,
 					tiempo_estimado: minutos,
 					cargable: this.cargable_activity,
+					tipo_actividad: this.activity_type,
+					alcance: this.activity_scope,
+					area_ids: this.selected_areas.map(area => Number(area.id)),
+					areas: this.selected_areas.map(area => ({ id_departamento: Number(area.id), nombre: area.label })),
 				}]
 				this.GetActividades()
 				this.closeModal()
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
+				showError(this.backendError(err))
 			}
 		},
 
@@ -404,6 +495,10 @@ export default {
 			this.type_time = 'minutos'
 			this.time_activity = this.select[0].tiempo_estimado
 			this.cargable_activity = Boolean(this.select[0].cargable)
+			this.activity_type = this.select[0].tipo_actividad || 'cliente'
+			this.activity_scope = this.select[0].alcance || 'global'
+			const selectedIds = new Set((this.select[0].area_ids || []).map(Number))
+			this.selected_areas = this.area_options.filter(area => selectedIds.has(Number(area.id)))
 			this.modal = true
 		},
 
@@ -436,6 +531,12 @@ export default {
 				.catch((err) => {
 					showError(t('empleados', 'Error al exportar: {error}', { error: String(err) }))
 				})
+		},
+		backendError(error) {
+			return error?.response?.data?.ocs?.data?.message
+				|| error?.response?.data?.message
+				|| error?.message
+				|| String(error)
 		},
 	},
 }

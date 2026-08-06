@@ -867,9 +867,19 @@ class MantenimientoService {
 			return $result;
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
+			$previous = $e->getPrevious();
 			$this->logger->error('Falló una operación de mantenimiento.', [
-				'operacion' => $operationName, 'id_grupo' => $groupId,
-				'id_mantenimiento' => $maintenanceId, 'exception' => $e::class,
+				'operacion' => $operationName,
+				'id_grupo' => $groupId,
+				'id_mantenimiento' => $maintenanceId,
+				'exceptionClass' => $e::class,
+				'exceptionMessage' => $e->getMessage(),
+				'exceptionCode' => $e->getCode(),
+				'exceptionFile' => $e->getFile(),
+				'exceptionLine' => $e->getLine(),
+				'previousExceptionClass' => $previous === null ? null : $previous::class,
+				'previousExceptionMessage' => $previous?->getMessage(),
+				'exception' => $e,
 			]);
 			if ($e instanceof MantenimientoValidationException || $e instanceof MantenimientoNotFoundException || $e instanceof MantenimientoConflictException) throw $e;
 			$message = strtolower($e->getMessage());

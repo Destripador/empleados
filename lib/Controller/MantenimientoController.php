@@ -460,12 +460,17 @@ class MantenimientoController extends BaseController {
 	}
 
 	private function logInternal(string $operation, array $context, ?array $actor, \Throwable $e): void {
+		$previous = $e->getPrevious();
 		$this->logger->error('Falló un endpoint de mantenimiento.', [
 			'operation' => $operation,
 			'groupId' => isset($context['groupId']) && is_numeric($context['groupId']) ? (int)$context['groupId'] : null,
 			'maintenanceId' => isset($context['maintenanceId']) && is_numeric($context['maintenanceId']) ? (int)$context['maintenanceId'] : null,
 			'actorUid' => $actor['uid'] ?? null,
 			'exceptionClass' => $e::class,
+			'exceptionMessage' => $e->getMessage(),
+			'previousExceptionClass' => $previous === null ? null : $previous::class,
+			'previousExceptionMessage' => $previous?->getMessage(),
+			'exception' => $e,
 		]);
 	}
 

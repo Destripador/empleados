@@ -242,10 +242,18 @@ class MantenimientoControllerTest extends TestCase {
 
 	public function testUnexpectedExceptionIsLoggedWithoutPayloadAndReturnsGeneric500(): void {
 		$d = $this->dependencies('admin');
-		$d['service']->method('listGroups')->willThrowException(new \RuntimeException('sensitive internals'));
+		$previous = new \LogicException('previous sensitive internals');
+		$failure = new \RuntimeException('sensitive internals', 0, $previous);
+		$d['service']->method('listGroups')->willThrowException($failure);
 		$d['logger']->expects($this->once())->method('error')->with(
 			'Falló un endpoint de mantenimiento.',
-			$this->callback(fn(array $context): bool => $context['operation'] === 'list_groups' && $context['actorUid'] === 'admin' && !isset($context['payload'])),
+			$this->callback(fn(array $context): bool => $context['operation'] === 'list_groups'
+				&& $context['actorUid'] === 'admin'
+				&& $context['exceptionMessage'] === 'sensitive internals'
+				&& $context['previousExceptionClass'] === \LogicException::class
+				&& $context['previousExceptionMessage'] === 'previous sensitive internals'
+				&& $context['exception'] === $failure
+				&& !isset($context['payload'])),
 		);
 
 		$response = $d['controller']->groups('2026-08-01', '2026-08-02');
