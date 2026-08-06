@@ -24,6 +24,26 @@
 				:text="AusenciaSeleccionada.descripcion" />
 		</section>
 
+		<section v-if="esMedioDia" class="form-section">
+			<h3>{{ t('empleados', 'Shift') }}</h3>
+			<div class="turno-options">
+				<NcCheckboxRadioSwitch
+					v-model="turno"
+					value="manana"
+					name="turno_medio_dia"
+					type="radio">
+					{{ t('empleados', 'Morning') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					v-model="turno"
+					value="tarde"
+					name="turno_medio_dia"
+					type="radio">
+					{{ t('empleados', 'Afternoon') }}
+				</NcCheckboxRadioSwitch>
+			</div>
+		</section>
+
 		<!-- Selector de fechas -->
 		<section class="form-section">
 			<h3>{{ t('empleados', 'Absence period') }}</h3>
@@ -51,7 +71,7 @@
 			<div v-if="diasHabiles > 0" class="period-grid">
 				<div class="period-item">
 					<span>{{ t('empleados', 'Business days') }}</span>
-					<strong>{{ diasHabiles }}</strong>
+					<strong>{{ diasEfectivos }}</strong>
 				</div>
 				<div v-if="AusenciaSeleccionada && Number(AusenciaSeleccionada.solicitar_prima_vacacional) === 1" class="period-item">
 					<span>{{ t('empleados', 'Available days') }}</span>
@@ -77,6 +97,11 @@
 				v-if="excedeFechaLimite"
 				type="warning"
 				:text="t('empleados', 'You cannot schedule vacation days outside your current period. The limit to use these days is {fecha}.', { fecha: fechaLimiteFormateada })" />
+
+			<NcNoteCard
+				v-if="esMedioDia && fechaDesdeStr !== fechaHastaStr"
+				type="warning"
+				:text="t('empleados', 'Half day absences must have the same start and end date.')" />
 		</section>
 
 		<!-- Archivo (si aplica) -->
@@ -196,9 +221,9 @@ export default {
 
 	data() {
 		return {
-			TipoAusencias: [],
+			TipoAusenciasRaw: [],
 			AusenciaSeleccionada: null,
-			// Fechas como string yyyy-mm-dd para el input[type=date]
+			turno: this.ausencia.turno || null,
 			fechaDesdeStr: this.ausencia.fecha_de
 				? this.ausencia.fecha_de.substring(0, 10)
 				: '',
@@ -206,42 +231,59 @@ export default {
 				? this.ausencia.fecha_hasta.substring(0, 10)
 				: '',
 			diasHabiles: 0,
-			TotalDias: parseInt(this.diasDisponibles, 10) || 0,
+			TotalDias: parseFloat(this.diasDisponibles, 10) || 0,
 			comentarios: this.ausencia.notas || '',
 			SolicitarPrima: Number(this.ausencia.prima_vacacional) === 1,
 			selectedFiles: [],
 			loading: false,
 			primaVacacionalUsada: false,
-			// ← NUEVO: datos frescos del empleado dueño de la ausencia (modo admin)
 			loadingEmpleado: false,
 			diasInfoEmpleado: null,
 		}
 	},
 
 	computed: {
-		// Días que tenía la ausencia original (para devolver y restar correctamente)
+		TipoAusencias() {
+			return this.TipoAusenciasRaw
+				.filter(item => Number(item.es_medio_dia) !== 1 || this.diasHabiles <= 1)
+				.map(item => ({
+					id: item.id_tipo_ausencia,
+					label: item.nombre,
+					descripcion: item.descripcion,
+					solicitar_archivo: item.solicitar_archivo,
+					solicitar_prima_vacacional: item.solicitar_prima_vacacional,
+					es_medio_dia: item.es_medio_dia,
+				}))
+		},
+
+		esMedioDia() {
+			return !!this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.es_medio_dia) === 1
+		},
+
+		diasEfectivos() {
+			return this.esMedioDia ? 0.5 : this.diasHabiles
+		},
+
 		diasOriginales() {
 			return Number(this.ausencia.dias_solicitados) || 0
 		},
 
 		diasDisponiblesVigente() {
 			const val = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
-			return parseInt(val, 10) || 0
+			return parseFloat(val, 10) || 0
 		},
 
 		fechaLimitePeriodoVigente() {
 			return this.diasInfoEmpleado?.fecha_limite_periodo_actual ?? this.fechaLimitePeriodoActual
 		},
 
-		// Días disponibles ajustados: se devuelven los días originales, luego se restan los nuevos
 		diasRestantes() {
 			if (!this.AusenciaSeleccionada
 				|| Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) !== 1) {
 				return this.TotalDias
 			}
-			// Días disponibles reales = actuales + originales (porque ya se descontaron)
 			const disponiblesReales = this.TotalDias + this.diasOriginales
-			return disponiblesReales - this.diasHabiles
+			return disponiblesReales - this.diasEfectivos
 		},
 
 		exceedsAvailableDays() {
@@ -250,7 +292,7 @@ export default {
 				return false
 			}
 			const disponiblesReales = this.TotalDias + this.diasOriginales
-			return this.diasHabiles > disponiblesReales
+			return this.diasEfectivos > disponiblesReales
 		},
 
 		esAusenciaVacacional() {
@@ -275,19 +317,22 @@ export default {
 				&& this.fechaDesdeStr
 				&& this.fechaHastaStr
 				&& this.diasHabiles > 0
+				&& !(this.esMedioDia && this.fechaDesdeStr !== this.fechaHastaStr)
+				&& !(this.esMedioDia && !this.turno)
 				&& !this.exceedsAvailableDays
 				&& !this.excedeFechaLimite
 				&& !this.loadingEmpleado
 		},
 
 		primaDisabled() {
-			return this.primaVacacionalUsada || this.diasHabiles < 2
+			return this.primaVacacionalUsada || this.diasEfectivos < 2
 		},
 	},
 
 	watch: {
 		async AusenciaSeleccionada(tipo) {
 			this.primaVacacionalUsada = false
+			this.turno = (tipo && Number(tipo.es_medio_dia) === 1) ? this.turno : null
 			if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
 				await this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
 			}
@@ -297,11 +342,18 @@ export default {
 				this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
 			}
 		},
+		diasHabiles(nuevo) {
+			// Si el tipo actual era medio día y el rango dejó de ser de 1 día, se invalida
+			if (nuevo > 1 && this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.es_medio_dia) === 1) {
+				this.AusenciaSeleccionada = null
+				this.turno = null
+			}
+		},
 	},
 
 	mounted() {
-		this.GetTipoAusencias()
 		this.recalcularDias()
+		this.GetTipoAusencias()
 		if (this.ausencia?.solicitar_prima_vacacional === 1) {
 			this.checkPrimaVacacional(this.ausencia.id_historial_ausencias)
 		}
@@ -312,7 +364,6 @@ export default {
 			}
 		}
 	},
-
 	methods: {
 		t,
 
@@ -334,13 +385,8 @@ export default {
 		async GetTipoAusencias() {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/getTipo'))
-				this.TipoAusencias = response.data.map(item => ({
-					id: item.id_tipo_ausencia,
-					label: item.nombre,
-					descripcion: item.descripcion,
-					solicitar_archivo: item.solicitar_archivo,
-					solicitar_prima_vacacional: item.solicitar_prima_vacacional,
-				}))
+				this.TipoAusenciasRaw = response.data
+
 				this.AusenciaSeleccionada = this.TipoAusencias.find(
 					t => String(t.id) === String(this.ausencia.id_tipo_ausencia),
 				) || null
@@ -405,9 +451,12 @@ export default {
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
 				formData.append('fecha_de', this.fechaDesdeStr)
 				formData.append('fecha_hasta', this.fechaHastaStr)
-				formData.append('dias_solicitados', this.diasHabiles)
+				formData.append('dias_solicitados', this.diasEfectivos)
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
+				if (this.esMedioDia) {
+					formData.append('turno', this.turno)
+				}
 
 				for (let i = 0; i < this.selectedFiles.length; i++) {
 					formData.append('archivos[]', this.selectedFiles[i])
@@ -584,5 +633,10 @@ export default {
 	overflow: hidden;
 	opacity: 0;
 	pointer-events: none;
+}
+
+.turno-options {
+    display: flex;
+    gap: 16px;
 }
 </style>

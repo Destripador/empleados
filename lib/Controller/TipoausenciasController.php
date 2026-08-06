@@ -79,7 +79,7 @@ class TipoausenciasController extends Controller {
      */
     public function ExportarTipo(): array {
         $tipoausencias = $this->tipoausenciaMapper->getTipo();
-        $books = [['nombre', 'descripcion', 'solicitar_archivo', 'solicitar_prima_vacacional', 'cargable', 'privado']];
+        $books = [['nombre', 'descripcion', 'solicitar_archivo', 'solicitar_prima_vacacional', 'cargable', 'privado', 'es_medio_dia']];
 
         foreach ($tipoausencias as $tipo) {
             $books[] = [
@@ -89,6 +89,7 @@ class TipoausenciasController extends Controller {
                 $tipo['solicitar_prima_vacacional'],
                 $tipo['cargable'],
                 $tipo['privado'],
+                $tipo['es_medio_dia'] ?? 0,
             ];
         }
 
@@ -110,6 +111,7 @@ class TipoausenciasController extends Controller {
                     (int) $row[3],
                     (int) ($row[4] ?? 0),
                     (int) ($row[5] ?? 0),
+                    (int) ($row[6] ?? 0),
                 );
             }
         }
@@ -158,7 +160,7 @@ class TipoausenciasController extends Controller {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function AgregarNuevoTipo(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado = 0): DataResponse {
+    public function AgregarNuevoTipo(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado = 0, int $es_medio_dia = 0): DataResponse {
         if ($privado > 0 && !$this->isPrivileged()) {
             return new DataResponse(['success' => false, 'message' => 'Sin permiso para crear tipos privados'], Http::STATUS_FORBIDDEN);
         }
@@ -170,6 +172,7 @@ class TipoausenciasController extends Controller {
             $solicitar_prima_vacacional,
             $cargable,
             $privado,
+            $es_medio_dia,
         );
 
         return new DataResponse(['success' => true], Http::STATUS_OK);
@@ -207,13 +210,13 @@ class TipoausenciasController extends Controller {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado = 0): DataResponse {
+    public function ModificarTipo(int $id, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado = 0, int $es_medio_dia = 0): DataResponse {
         if ($privado > 0 && !$this->isPrivileged()) {
             return new DataResponse('Sin permiso para marcar como privado', Http::STATUS_FORBIDDEN);
         }
 
         try {
-            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional, $cargable, $privado);
+            $this->tipoausenciaMapper->updateTipoAusencias($id, $nombre, $descripcion, $solicitar_archivo, $solicitar_prima_vacacional, $cargable, $privado, $es_medio_dia);
             return new DataResponse('ok', Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);

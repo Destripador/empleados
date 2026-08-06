@@ -20,7 +20,8 @@ class HistorialAusencias extends Entity {
 	protected ?bool $a_gerente = false;
 	protected ?bool $a_capital_humano = false;
     protected string $notas = '';
-	protected int $dias_solicitados = 0;
+	protected float $dias_solicitados = 0.0;
+	protected ?string $turno = null;
 
 	public function __construct() {
 		$this->addType('id_historial_ausencias', 'string');
@@ -36,7 +37,8 @@ class HistorialAusencias extends Entity {
 		$this->addType('a_gerente', 'bool');
 		$this->addType('a_capital_humano', 'bool');
 		$this->addType('notas', 'string');
-		$this->addType('dias_solicitados', 'integer');
+		$this->addType('dias_solicitados', 'float');
+		$this->addType('turno', 'string');
 	}
 
 	public function read(): array {
@@ -55,6 +57,7 @@ class HistorialAusencias extends Entity {
 			'a_capital_humano' => $this->a_capital_humano,
 			'notas' => $this->notas,
 			'dias_solicitados' => $this->dias_solicitados,
+			'turno' => $this->turno,
 		];
 	}
 }

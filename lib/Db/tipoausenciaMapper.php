@@ -68,7 +68,7 @@ class tipoausenciaMapper extends QBMapper {
 	/**
 	 * Crea un nuevo tipo de ausencia.
 	 */
-	public function insertTipoAusencia(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado): tipoausencia {
+	public function insertTipoAusencia(string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado, int $es_medio_dia = 0): tipoausencia {
 		$entidad = new tipoausencia();
 		$entidad->setnombre($nombre);
 		$entidad->setdescripcion($descripcion);
@@ -76,11 +76,11 @@ class tipoausenciaMapper extends QBMapper {
 		$entidad->setsolicitar_prima_vacacional((bool) $solicitar_prima_vacacional);
 		$entidad->setcargable((bool) $cargable);
 		$entidad->setprivado($privado);
-
+		$entidad->setEs_medio_dia((bool) $es_medio_dia);
 		return $this->insert($entidad);
 	}
 
-	public function updateTipoAusencias(int $id_tipo_ausencia, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado): void {
+	public function updateTipoAusencias(int $id_tipo_ausencia, string $nombre, string $descripcion, int $solicitar_archivo, int $solicitar_prima_vacacional, int $cargable, int $privado, int $es_medio_dia = 0): void {
 		$query = $this->db->getQueryBuilder();
 		$query->update($this->getTableName())
 			->set('nombre', $query->createNamedParameter($nombre))
@@ -89,6 +89,7 @@ class tipoausenciaMapper extends QBMapper {
 			->set('solicitar_prima_vacacional', $query->createNamedParameter($solicitar_prima_vacacional))
 			->set('cargable', $query->createNamedParameter($cargable))
 			->set('privado', $query->createNamedParameter($privado))
+			->set('es_medio_dia', $query->createNamedParameter($es_medio_dia))
 			->where($query->expr()->eq('id_tipo_ausencia', $query->createNamedParameter($id_tipo_ausencia)));
 
 		$query->executeStatement();
