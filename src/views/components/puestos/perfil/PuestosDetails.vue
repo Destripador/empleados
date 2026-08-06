@@ -4,41 +4,11 @@
 		<!-- Empty state -->
 		<div v-if="Object.keys(data).length === 0">
 			<div class="empty">
-				<div v-if="Object.keys(data).length === 0" class="positions-empty-state">
-					<div class="positions-empty-card">
-						<img class="positions-empty-image"
-							src="../../../../../img/crowesito-think.png"
-							alt="Empty position state">
-
-						<h2>{{ t('empleados', 'Select a position for more details') }}</h2>
-
-						<p class="positions-empty-description">
-							{{ t('empleados', 'Choose a position from the list to view assigned employees, edit its name or change the display mode.') }}
-						</p>
-
-						<div class="positions-empty-grid">
-							<div class="positions-empty-item">
-								<strong>{{ t('empleados', 'View assigned employees') }}</strong>
-								<span>{{ t('empleados', 'Check which employees currently have this position.') }}</span>
-							</div>
-
-							<div class="positions-empty-item">
-								<strong>{{ t('empleados', 'Edit positions') }}</strong>
-								<span>{{ t('empleados', 'Update position names.') }}</span>
-							</div>
-
-							<div class="positions-empty-item">
-								<strong>{{ t('empleados', 'Change view') }}</strong>
-								<span>{{ t('empleados', 'Switch between card view and list view.') }}</span>
-							</div>
-						</div>
-
-						<div class="positions-empty-actions">
-							<NcButton type="primary" @click="$root.$emit('reload')">
-								{{ t('empleados', 'Refresh positions') }}
-							</NcButton>
-						</div>
-					</div>
+				<div class="positions-empty-state positions-empty-state--network">
+					<EntityCountNetwork
+						:items="items"
+						entity-type="position"
+						@select="onNetworkSelect" />
 				</div>
 			</div>
 		</div>
@@ -237,6 +207,7 @@ import {
 	NcListItem,
 	NcModal,
 } from '@nextcloud/vue'
+import EntityCountNetwork from '../../../../components/EntityCountNetwork.vue'
 
 export default {
 	name: 'PuestosDetails',
@@ -254,6 +225,7 @@ export default {
 		NcButton,
 		NcListItem,
 		NcModal,
+		EntityCountNetwork,
 	},
 
 	props: {
@@ -264,6 +236,11 @@ export default {
 		peopleArea: {
 			type: Object,
 			required: true,
+		},
+		items: {
+			type: Array,
+			required: false,
+			default: () => [],
 		},
 	},
 
@@ -311,6 +288,13 @@ export default {
 
 	methods: {
 		t,
+
+		onNetworkSelect(item) {
+			if (!item || !item.Id_puestos) {
+				return
+			}
+			this.$root.$emit('send-data-puestos', item)
+		},
 
 		showEdit() {
 			this.show = !this.show
@@ -606,6 +590,15 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 32px;
+}
+
+.positions-empty-state--network {
+	width: 100%;
+	height: calc(100vh - var(--header-height) - 24px);
+	min-height: 640px;
+	align-items: stretch;
+	justify-content: stretch;
+	padding: 8px 12px 12px;
 }
 
 .positions-empty-card {

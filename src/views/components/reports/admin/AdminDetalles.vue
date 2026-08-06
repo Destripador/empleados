@@ -10,7 +10,7 @@
 					{{ t('empleados', 'Report analysis and operational distribution') }}
 				</h2>
 				<p class="hero-copy">
-					{{ t('empleados', 'Understand where time is spent, which customers consume the most capacity and where estimated labor cost is concentrated.') }}
+					{{ t('empleados', 'Review how this employee spent time across companies, activities and work types.') }}
 				</p>
 				<div class="hero-stats">
 					<div class="hero-stat">
@@ -18,41 +18,32 @@
 						<strong class="hero-stat-value">{{ kpisFmt.horas_reportadas }}</strong>
 					</div>
 					<div class="hero-stat">
-						<span class="hero-stat-label">{{ t('empleados', 'Cost') }}</span>
-						<strong class="hero-stat-value">{{ kpisFmt.costo_total }}</strong>
-					</div>
-					<div class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Reports') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.total_reportes }}</strong>
 					</div>
-
 					<div class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Projects (customers)') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.proyectos_activos }}</strong>
 					</div>
-
 					<div class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Activities') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.actividades }}</strong>
 					</div>
-
 					<div class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Average per report') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.promedio_horas_reporte }}</strong>
 					</div>
-
 					<div class="hero-stat">
-						<span class="hero-stat-label">{{ t('empleados', 'Cost per hour') }}</span>
-						<strong class="hero-stat-value">{{ kpisFmt.costo_hora }}</strong>
-					</div>
-
-					<div class="hero-stat">
-						<span class="hero-stat-label">{{ t('empleados', 'Billable base') }}</span>
-						<strong class="hero-stat-value">{{ kpisFmt.horas_cargables }}</strong>
+						<span class="hero-stat-label">{{ t('empleados', 'Client hours') }}</span>
+						<strong class="hero-stat-value">{{ kpisFmt.horas_cliente }}</strong>
 					</div>
 					<div class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Internal hours') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.horas_internas }}</strong>
+					</div>
+					<div class="hero-stat">
+						<span class="hero-stat-label">{{ t('empleados', 'Absence hours') }}</span>
+						<strong class="hero-stat-value">{{ kpisFmt.horas_ausencia }}</strong>
 					</div>
 				</div>
 			</div>
@@ -60,7 +51,7 @@
 
 		<section class="decision-grid">
 			<article class="decision-card">
-				<span>{{ t('empleados', 'Highest cost customer') }}</span>
+				<span>{{ t('empleados', 'Company with most hours') }}</span>
 				<strong>{{ decisionFmt.topCliente }}</strong>
 				<small>{{ decisionFmt.topClienteDetalle }}</small>
 			</article>
@@ -68,19 +59,19 @@
 			<article class="decision-card">
 				<span>{{ t('empleados', 'Top 3 concentration') }}</span>
 				<strong>{{ decisionFmt.concentracionTop3 }}</strong>
-				<small>{{ t('empleados', 'Share of total estimated cost') }}</small>
+				<small>{{ t('empleados', 'Share of client hours') }}</small>
 			</article>
 
 			<article class="decision-card">
-				<span>{{ t('empleados', 'Cost per report') }}</span>
-				<strong>{{ decisionFmt.costoPorReporte }}</strong>
-				<small>{{ t('empleados', 'Average labor cost by submitted report') }}</small>
+				<span>{{ t('empleados', 'Most used activity') }}</span>
+				<strong>{{ decisionFmt.topActividad }}</strong>
+				<small>{{ decisionFmt.topActividadDetalle }}</small>
 			</article>
 
-			<article class="decision-card" :class="{ muted: !hasBillableField }">
-				<span>{{ t('empleados', 'Billable classification') }}</span>
-				<strong>{{ decisionFmt.cargables }}</strong>
-				<small>{{ decisionFmt.cargablesDetalle }}</small>
+			<article class="decision-card">
+				<span>{{ t('empleados', 'Dominant work type') }}</span>
+				<strong>{{ decisionFmt.tipoDominante }}</strong>
+				<small>{{ decisionFmt.tipoDominanteDetalle }}</small>
 			</article>
 		</section>
 
@@ -150,13 +141,13 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							{{ t('empleados', 'Customer value') }}
+							{{ t('empleados', 'Distribution') }}
 						</div>
 						<h3 class="panel-title">
-							{{ t('empleados', 'Cost and hours by company') }}
+							{{ t('empleados', 'Hours by company') }}
 						</h3>
 						<p class="panel-copy">
-							{{ t('empleados', 'Compare labor cost, reported hours and share of attention by customer.') }}
+							{{ t('empleados', 'Compare reported hours and share of attention by customer.') }}
 						</p>
 					</div>
 				</div>
@@ -172,10 +163,10 @@
 							{{ t('empleados', 'Time spend') }}
 						</div>
 						<h3 class="panel-title">
-							{{ t('empleados', 'Activities consuming capacity') }}
+							{{ t('empleados', 'Hours by activity') }}
 						</h3>
 						<p class="panel-copy">
-							{{ t('empleados', 'See which type of work is taking the most hours and budget.') }}
+							{{ t('empleados', 'See which type of work is taking the most hours.') }}
 						</p>
 					</div>
 				</div>
@@ -188,18 +179,18 @@
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							{{ t('empleados', 'Portfolio') }}
+							{{ t('empleados', 'Composition') }}
 						</div>
 						<h3 class="panel-title">
-							{{ t('empleados', 'Customer decision matrix') }}
+							{{ t('empleados', 'Work type mix') }}
 						</h3>
 						<p class="panel-copy">
-							{{ t('empleados', 'Customers farther right and higher up consume more time and estimated cost.') }}
+							{{ t('empleados', 'Split between client work, internal work and absences.') }}
 						</p>
 					</div>
 				</div>
 				<div class="chart-box">
-					<canvas ref="chartClienteMatriz" />
+					<canvas ref="chartTipoTrabajo" />
 				</div>
 			</article>
 
@@ -222,21 +213,21 @@
 				</div>
 			</article>
 
-			<article class="panel">
+			<article class="panel panel-wide">
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
 							{{ t('empleados', 'Trend') }}
 						</div>
 						<h3 class="panel-title">
-							{{ t('empleados', 'Hours per day') }}
+							{{ t('empleados', 'Daily hours by work type') }}
 						</h3>
 						<p class="panel-copy">
-							{{ t('empleados', 'Detect spikes and recurring workload pressure across the selected period.') }}
+							{{ t('empleados', 'Detect spikes and how client, internal and absence hours evolve day by day.') }}
 						</p>
 					</div>
 				</div>
-				<div class="chart-box">
+				<div class="chart-box chart-box-tall">
 					<canvas ref="chartHorasDia" />
 				</div>
 			</article>
@@ -248,10 +239,10 @@
 							{{ t('empleados', 'Executive ranking') }}
 						</div>
 						<h3 class="panel-title">
-							{{ t('empleados', 'Customers by estimated labor cost') }}
+							{{ t('empleados', 'Companies by hours') }}
 						</h3>
 						<p class="panel-copy">
-							{{ t('empleados', 'Use this table to discuss pricing, prioritization and capacity allocation by customer.') }}
+							{{ t('empleados', 'Use this ranking to see which companies consume more of this employee time.') }}
 						</p>
 					</div>
 				</div>
@@ -261,20 +252,17 @@
 							<tr>
 								<th>{{ t('empleados', 'Customer') }}</th>
 								<th>{{ t('empleados', 'Hours') }}</th>
-								<th>{{ t('empleados', 'Estimated cost') }}</th>
 								<th>{{ t('empleados', 'Share') }}</th>
 								<th>{{ t('empleados', 'Reports') }}</th>
-								<th>{{ t('empleados', 'Cost/report') }}</th>
+								<th>{{ t('empleados', 'Main activity') }}</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr v-for="cliente in rankingClientes" :key="cliente.key">
 								<td>
 									<strong>{{ cliente.label }}</strong>
-									<span>{{ cliente.actividadPrincipal }}</span>
 								</td>
 								<td>{{ formatNumber(cliente.total) }} h</td>
-								<td>{{ formatMoney(cliente.costo) }}</td>
 								<td>
 									<div class="share-cell">
 										<span>{{ formatPercent(cliente.porcentaje) }}</span>
@@ -286,7 +274,7 @@
 									</div>
 								</td>
 								<td>{{ formatInteger(cliente.reportes) }}</td>
-								<td>{{ formatMoney(cliente.costoPorReporte) }}</td>
+								<td>{{ cliente.actividadPrincipal }}</td>
 							</tr>
 						</tbody>
 					</table>
@@ -352,7 +340,6 @@ export default {
 		return {
 			rowComponent: ReportRow,
 			horasreportadas: '',
-			costototal: '',
 			proyectosactivos: '',
 			actividades: '',
 
@@ -360,7 +347,7 @@ export default {
 			chartActividadesInstance: null,
 			chartHorasDiaInstance: null,
 			chartProyectoActividadInstance: null,
-			chartClienteMatrizInstance: null,
+			chartTipoTrabajoInstance: null,
 			chartLimit: 10,
 			selectedCliente: null,
 			selectedActividad: null,
@@ -435,129 +422,125 @@ export default {
 		kpis() {
 			const arr = Array.isArray(this.select) ? this.select : []
 
-			const toNum = (v) => {
-				if (v === null || v === undefined) return 0
-				const s = String(v).trim().replace(',', '.').replace(/[^\d.-]/g, '')
-				const x = Number(s)
-				return Number.isFinite(x) ? x : 0
-			}
-
 			let minutos = 0
-			let minutosCargables = 0
+			let minutosCliente = 0
 			let minutosInternos = 0
+			let minutosAusencia = 0
 			const proyectos = new Set()
 			const actividades = new Set()
 
 			for (const it of arr) {
-				const itemMinutos = toNum(it?.tiempo_registrado)
+				const itemMinutos = this.toNum(it?.tiempo_registrado)
 				minutos += itemMinutos
-				if (this.isBillableReport(it)) {
-					minutosCargables += itemMinutos
-				}
+
 				const tipoTrabajo = it?.tipo_trabajo
 					|| it?.tipoTrabajo
 					|| (Number(it?.id_cliente) === 99999 || Number(it?.id_actividad) === 99999
 						? 'ausencia'
 						: (it?.id_cliente == null || it?.origen === 'soporte_ti' ? 'interno' : 'cliente'))
+
+				if (tipoTrabajo === 'cliente') minutosCliente += itemMinutos
 				if (tipoTrabajo === 'interno') minutosInternos += itemMinutos
+				if (tipoTrabajo === 'ausencia') minutosAusencia += itemMinutos
 				if (tipoTrabajo === 'cliente' && it?.id_cliente != null) proyectos.add(String(it.id_cliente))
 				if (it?.id_actividad != null) actividades.add(String(it.id_actividad))
 			}
 
 			const horas = minutos / 60
-			const horasCargables = this.hasBillableField ? minutosCargables / 60 : horas
-			const sueldoHora = toNum(this.sueldo)
-			const costo = horas * sueldoHora
-
 			const totalReportes = arr.length
-			const promedioHorasReporte = totalReportes > 0
-				? horas / totalReportes
-				: 0
 
 			return {
 				horas_reportadas: horas,
-				costo_total: costo,
 				proyectos_activos: proyectos.size,
 				actividades: actividades.size,
 				total_reportes: totalReportes,
-				promedio_horas_reporte: promedioHorasReporte,
-				costo_hora: sueldoHora,
-				horas_cargables: horasCargables,
+				promedio_horas_reporte: totalReportes > 0 ? horas / totalReportes : 0,
+				horas_cliente: minutosCliente / 60,
 				horas_internas: minutosInternos / 60,
-				costo_por_reporte: totalReportes > 0 ? costo / totalReportes : 0,
+				horas_ausencia: minutosAusencia / 60,
 			}
 		},
 
 		kpisFmt() {
 			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
 			const int = new Intl.NumberFormat('es-MX')
-			const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
 
 			return {
 				horas_reportadas: num2.format(this.kpis.horas_reportadas || 0),
-				costo_total: money.format(this.kpis.costo_total || 0),
 				proyectos_activos: int.format(this.kpis.proyectos_activos || 0),
 				actividades: int.format(this.kpis.actividades || 0),
 				total_reportes: int.format(this.kpis.total_reportes || 0),
 				promedio_horas_reporte: `${num2.format(this.kpis.promedio_horas_reporte || 0)} h`,
-				costo_hora: money.format(this.kpis.costo_hora || 0),
-				horas_cargables: `${num2.format(this.kpis.horas_cargables || 0)} h`,
+				horas_cliente: `${num2.format(this.kpis.horas_cliente || 0)} h`,
 				horas_internas: `${num2.format(this.kpis.horas_internas || 0)} h`,
+				horas_ausencia: `${num2.format(this.kpis.horas_ausencia || 0)} h`,
 			}
 		},
 
-		hasBillableField() {
-			return this.historial.some(reporte => [
-				'cargable',
-				'es_cargable',
-				'facturable',
-				'es_facturable',
-				'billable',
-				'is_billable',
-			].some(field => reporte[field] !== undefined && reporte[field] !== null))
-		},
-
 		rankingClientes() {
-			return this.graficaProyectos.map((cliente) => {
-				const actividadPrincipal = this.actividadPrincipalPorCliente(cliente.key)
-
-				return {
-					...cliente,
-					actividadPrincipal,
-					costoPorReporte: cliente.reportes > 0 ? cliente.costo / cliente.reportes : 0,
-				}
-			})
+			return this.graficaProyectos.map((cliente) => ({
+				...cliente,
+				actividadPrincipal: this.actividadPrincipalPorCliente(cliente.key),
+			}))
 		},
 
 		decisionFmt() {
-			const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
 			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
 			const percent = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 1 })
 			const topCliente = this.rankingClientes[0] || null
-			const top3Costo = this.rankingClientes
+			const topActividad = this.graficaActividades[0] || null
+			const top3Horas = this.rankingClientes
 				.slice(0, 3)
-				.reduce((total, cliente) => total + cliente.costo, 0)
-			const concentracionTop3 = this.kpis.costo_total > 0
-				? (top3Costo / this.kpis.costo_total) * 100
+				.reduce((total, cliente) => total + cliente.total, 0)
+			const totalCliente = this.kpis.horas_cliente || 0
+			const concentracionTop3 = totalCliente > 0
+				? (top3Horas / totalCliente) * 100
 				: 0
+
+			const tipos = this.graficaTipoTrabajo
+			const dominante = [...tipos].sort((a, b) => b.horas - a.horas)[0] || null
+			const totalHoras = this.kpis.horas_reportadas || 0
 
 			return {
 				topCliente: topCliente?.label || t('empleados', 'No data'),
 				topClienteDetalle: topCliente
-					? t('empleados', '{hours} h · {cost}', {
+					? t('empleados', '{hours} h · {percent}%', {
 						hours: num2.format(topCliente.total || 0),
-						cost: money.format(topCliente.costo || 0),
+						percent: num2.format(topCliente.porcentaje || 0),
 					})
-					: t('empleados', 'Select an employee to analyze customer cost.'),
+					: t('empleados', 'No company reports in this period.'),
 				concentracionTop3: `${percent.format(concentracionTop3)}%`,
-				costoPorReporte: money.format(this.kpis.costo_por_reporte || 0),
-				cargables: this.hasBillableField
-					? `${num2.format(this.kpis.horas_cargables || 0)} h`
-					: t('empleados', 'Not classified'),
-				cargablesDetalle: this.hasBillableField
-					? t('empleados', 'Uses the billable/facturable flag present in reports.')
-					: t('empleados', 'All reported hours are shown as decision base until reports include a billable flag.'),
+				topActividad: topActividad?.label || t('empleados', 'No data'),
+				topActividadDetalle: topActividad
+					? t('empleados', '{hours} h · {percent}%', {
+						hours: num2.format(topActividad.total || 0),
+						percent: num2.format(topActividad.porcentaje || 0),
+					})
+					: t('empleados', 'No activity reports in this period.'),
+				tipoDominante: dominante?.label || t('empleados', 'No data'),
+				tipoDominanteDetalle: dominante && totalHoras > 0
+					? t('empleados', '{hours} h · {percent}%', {
+						hours: num2.format(dominante.horas || 0),
+						percent: num2.format((dominante.horas / totalHoras) * 100),
+					})
+					: t('empleados', 'No data'),
 			}
+		},
+
+		graficaTipoTrabajo() {
+			const buckets = {
+				cliente: { key: 'cliente', label: t('empleados', 'Client work'), horas: 0 },
+				interno: { key: 'interno', label: t('empleados', 'Internal work'), horas: 0 },
+				ausencia: { key: 'ausencia', label: t('empleados', 'Absences'), horas: 0 },
+			}
+
+			for (const r of this.historial) {
+				const tipo = r.tipoTrabajo || 'cliente'
+				const key = buckets[tipo] ? tipo : 'interno'
+				buckets[key].horas += this.toNum(r.tiempo_registrado) / 60
+			}
+
+			return Object.values(buckets).filter(item => item.horas > 0)
 		},
 
 		graficaProyectos() {
@@ -589,27 +572,33 @@ export default {
 
 			for (const r of this.historial) {
 				const fechaRaw = r.fecha_registro
-			?? r.fechaRegistro
-			?? r.created_at
-			?? null
+					?? r.fechaRegistro
+					?? r.created_at
+					?? null
 
 				const fecha = fechaRaw
 					? String(fechaRaw).slice(0, 10)
 					: 'Sin fecha'
 
-				const minutos = this.toNum(r.tiempo_registrado)
-				const horas = minutos / 60
+				const horas = this.toNum(r.tiempo_registrado) / 60
+				const tipo = r.tipoTrabajo || 'cliente'
+				const bucket = ['cliente', 'interno', 'ausencia'].includes(tipo) ? tipo : 'interno'
 
 				if (!acc.has(fecha)) {
 					acc.set(fecha, {
 						fecha,
+						cliente: 0,
+						interno: 0,
+						ausencia: 0,
 						total: 0,
 						reportes: 0,
 					})
 				}
 
-				acc.get(fecha).total += horas
-				acc.get(fecha).reportes++
+				const day = acc.get(fecha)
+				day[bucket] += horas
+				day.total += horas
+				day.reportes++
 			}
 
 			return Array.from(acc.values())
@@ -729,7 +718,6 @@ export default {
 
 		agruparReportes(idCampo, nombreCampo, filter = null) {
 			const acc = new Map()
-			const sueldoHora = this.toNum(this.sueldo)
 			const totalHorasGeneral = this.kpis.horas_reportadas || 0
 
 			for (const r of this.historial) {
@@ -739,14 +727,12 @@ export default {
 
 				const minutos = this.toNum(r.tiempo_registrado)
 				const horas = minutos / 60
-				const costo = horas * sueldoHora
 
 				if (!acc.has(String(id))) {
 					acc.set(String(id), {
 						key: String(id),
 						label,
 						total: 0,
-						costo: 0,
 						reportes: 0,
 						porcentaje: 0,
 					})
@@ -754,7 +740,6 @@ export default {
 
 				const item = acc.get(String(id))
 				item.total += horas
-				item.costo += costo
 				item.reportes += 1
 			}
 
@@ -796,35 +781,6 @@ export default {
 			return t('empleados', 'Main activity: {activity}', { activity: top[0] })
 		},
 
-		isBillableReport(reporte) {
-			const fields = [
-				'cargable',
-				'es_cargable',
-				'facturable',
-				'es_facturable',
-				'billable',
-				'is_billable',
-			]
-
-			for (const field of fields) {
-				if (reporte?.[field] === undefined || reporte?.[field] === null) {
-					continue
-				}
-
-				const value = reporte[field]
-
-				if (typeof value === 'boolean') {
-					return value
-				}
-
-				const normalized = String(value).trim().toLowerCase()
-
-				return ['1', 'true', 'si', 'sí', 'yes', 'y'].includes(normalized)
-			}
-
-			return false
-		},
-
 		formatNumber(value) {
 			return new Intl.NumberFormat('es-MX', {
 				maximumFractionDigits: 2,
@@ -833,13 +789,6 @@ export default {
 
 		formatInteger(value) {
 			return new Intl.NumberFormat('es-MX').format(Number(value) || 0)
-		},
-
-		formatMoney(value) {
-			return new Intl.NumberFormat('es-MX', {
-				style: 'currency',
-				currency: 'MXN',
-			}).format(Number(value) || 0)
 		},
 
 		formatPercent(value) {
@@ -851,7 +800,7 @@ export default {
 		renderGraficas() {
 			this.renderGraficaProyectos()
 			this.renderGraficaActividades()
-			this.renderGraficaClienteMatriz()
+			this.renderGraficaTipoTrabajo()
 			this.renderGraficaHorasDia()
 			this.renderGraficaProyectoActividad()
 		},
@@ -880,22 +829,12 @@ export default {
 					labels: datos.map(x => x.label),
 					datasets: [
 						{
-							label: t('empleados', 'Estimated cost'),
-							data: datos.map(x => Number(x.costo.toFixed(2))),
-							backgroundColor: 'rgba(37, 99, 235, 0.76)',
-							borderColor: 'rgba(37, 99, 235, 1)',
-							borderRadius: 6,
-							borderWidth: 1,
-							xAxisID: 'xCost',
-						},
-						{
 							label: t('empleados', 'Hours'),
 							data: datos.map(x => Number(x.total.toFixed(2))),
-							backgroundColor: 'rgba(20, 184, 166, 0.62)',
+							backgroundColor: 'rgba(20, 184, 166, 0.72)',
 							borderColor: 'rgba(13, 148, 136, 1)',
 							borderRadius: 6,
 							borderWidth: 1,
-							xAxisID: 'xHours',
 						},
 					],
 				},
@@ -912,23 +851,15 @@ export default {
 							callbacks: {
 								label(context) {
 									const item = datos[context.dataIndex]
-
 									const horas = new Intl.NumberFormat('es-MX', {
 										maximumFractionDigits: 2,
 									}).format(item.total || 0)
-
-									const costo = new Intl.NumberFormat('es-MX', {
-										style: 'currency',
-										currency: 'MXN',
-									}).format(item.costo || 0)
-
 									const porcentaje = new Intl.NumberFormat('es-MX', {
 										maximumFractionDigits: 2,
 									}).format(item.porcentaje || 0)
 
 									return [
 										t('empleados', 'Hours: {hours}', { hours: horas }),
-										t('empleados', 'Cost: {cost}', { cost: costo }),
 										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
 										t('empleados', 'Share: {percent}%', { percent: porcentaje }),
 									]
@@ -949,22 +880,8 @@ export default {
 						})
 					},
 					scales: {
-						xCost: {
-							position: 'bottom',
+						x: {
 							beginAtZero: true,
-							grid: {
-								color: 'rgba(148, 163, 184, 0.18)',
-							},
-							ticks: {
-								callback: value => this.formatMoney(value),
-							},
-						},
-						xHours: {
-							position: 'top',
-							beginAtZero: true,
-							grid: {
-								drawOnChartArea: false,
-							},
 							ticks: {
 								callback: value => `${value} h`,
 							},
@@ -1015,18 +932,14 @@ export default {
 							callbacks: {
 								label(context) {
 									const item = datos[context.dataIndex]
-									const costo = new Intl.NumberFormat('es-MX', {
-										style: 'currency',
-										currency: 'MXN',
-									}).format(item.costo || 0)
 									const porcentaje = new Intl.NumberFormat('es-MX', {
 										maximumFractionDigits: 1,
 									}).format(item.porcentaje || 0)
 
 									return [
 										t('empleados', 'Hours: {hours}', { hours: context.raw }),
-										t('empleados', 'Cost: {cost}', { cost: costo }),
 										t('empleados', 'Share: {percent}%', { percent: porcentaje }),
+										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
 									]
 								},
 							},
@@ -1061,32 +974,29 @@ export default {
 			})
 		},
 
-		renderGraficaClienteMatriz() {
-			if (!this.$refs.chartClienteMatriz) return
+		renderGraficaTipoTrabajo() {
+			if (!this.$refs.chartTipoTrabajo) return
 
-			if (this.chartClienteMatrizInstance) {
-				this.chartClienteMatrizInstance.destroy()
+			if (this.chartTipoTrabajoInstance) {
+				this.chartTipoTrabajoInstance.destroy()
 			}
 
-			const datos = this.selectedCliente
-				? this.rankingClientes.filter(item => item.label === this.selectedCliente)
-				: (this.chartLimit > 0 ? this.rankingClientes.slice(0, this.chartLimit) : this.rankingClientes)
-			const maxReportes = Math.max(...datos.map(x => x.reportes), 1)
+			const datos = this.graficaTipoTrabajo
+			const colors = {
+				cliente: 'rgba(37, 99, 235, 0.78)',
+				interno: 'rgba(20, 184, 166, 0.78)',
+				ausencia: 'rgba(245, 158, 11, 0.78)',
+			}
 
-			this.chartClienteMatrizInstance = new Chart(this.$refs.chartClienteMatriz, {
-				type: 'bubble',
+			this.chartTipoTrabajoInstance = new Chart(this.$refs.chartTipoTrabajo, {
+				type: 'doughnut',
 				data: {
-					datasets: datos.map((cliente, index) => ({
-						label: cliente.label,
-						data: [{
-							x: Number(cliente.total.toFixed(2)),
-							y: Number(cliente.costo.toFixed(2)),
-							r: Math.max(7, Math.min(24, 7 + (cliente.reportes / maxReportes) * 17)),
-						}],
-						backgroundColor: `hsla(${(index * 47) % 360}, 72%, 52%, 0.62)`,
-						borderColor: `hsla(${(index * 47) % 360}, 72%, 38%, 1)`,
-						borderWidth: 1,
-					})),
+					labels: datos.map(x => x.label),
+					datasets: [{
+						data: datos.map(x => Number(x.horas.toFixed(2))),
+						backgroundColor: datos.map(x => colors[x.key] || 'rgba(100, 116, 139, 0.75)'),
+						borderWidth: 0,
+					}],
 				},
 				options: {
 					responsive: true,
@@ -1094,41 +1004,16 @@ export default {
 					plugins: {
 						legend: {
 							position: 'bottom',
-							labels: {
-								boxWidth: 10,
-							},
 						},
 						tooltip: {
 							callbacks: {
-								label: (context) => {
-									const item = datos[context.datasetIndex]
-
-									return [
-										item.label,
-										t('empleados', 'Hours: {hours}', { hours: this.formatNumber(item.total) }),
-										t('empleados', 'Cost: {cost}', { cost: this.formatMoney(item.costo) }),
-										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
-									]
+								label(context) {
+									const item = datos[context.dataIndex]
+									return t('empleados', '{label}: {hours} hours', {
+										label: item.label,
+										hours: item.horas.toFixed(2),
+									})
 								},
-							},
-						},
-					},
-					scales: {
-						x: {
-							beginAtZero: true,
-							title: {
-								display: true,
-								text: t('empleados', 'Reported hours'),
-							},
-						},
-						y: {
-							beginAtZero: true,
-							title: {
-								display: true,
-								text: t('empleados', 'Estimated labor cost'),
-							},
-							ticks: {
-								callback: value => this.formatMoney(value),
 							},
 						},
 					},
@@ -1146,15 +1031,27 @@ export default {
 			const datos = this.graficaHorasPorDia
 
 			this.chartHorasDiaInstance = new Chart(this.$refs.chartHorasDia, {
-				type: 'line',
+				type: 'bar',
 				data: {
 					labels: datos.map(x => x.fecha),
 					datasets: [
 						{
-							label: 'Horas por día',
-							data: datos.map(x => Number(x.total.toFixed(2))),
-							tension: 0.3,
-							fill: false,
+							label: t('empleados', 'Client work'),
+							data: datos.map(x => Number(x.cliente.toFixed(2))),
+							backgroundColor: 'rgba(37, 99, 235, 0.78)',
+							stack: 'day',
+						},
+						{
+							label: t('empleados', 'Internal work'),
+							data: datos.map(x => Number(x.interno.toFixed(2))),
+							backgroundColor: 'rgba(20, 184, 166, 0.78)',
+							stack: 'day',
+						},
+						{
+							label: t('empleados', 'Absences'),
+							data: datos.map(x => Number(x.ausencia.toFixed(2))),
+							backgroundColor: 'rgba(245, 158, 11, 0.78)',
+							stack: 'day',
 						},
 					],
 				},
@@ -1163,22 +1060,28 @@ export default {
 					maintainAspectRatio: false,
 					plugins: {
 						legend: {
-							display: true,
+							position: 'bottom',
 						},
 						tooltip: {
 							callbacks: {
-								label(context) {
-									const item = datos[context.dataIndex]
-									return `${context.raw} horas en ${item.reportes} reporte(s)`
+								footer(items) {
+									const index = items?.[0]?.dataIndex
+									const day = datos[index]
+									if (!day) return ''
+									return t('empleados', 'Reports: {reports}', { reports: day.reportes })
 								},
 							},
 						},
 					},
 					scales: {
+						x: {
+							stacked: true,
+						},
 						y: {
+							stacked: true,
 							beginAtZero: true,
 							ticks: {
-								precision: 0,
+								callback: value => `${value} h`,
 							},
 						},
 					},
@@ -1249,9 +1152,9 @@ export default {
 				this.chartProyectoActividadInstance.destroy()
 				this.chartProyectoActividadInstance = null
 			}
-			if (this.chartClienteMatrizInstance) {
-				this.chartClienteMatrizInstance.destroy()
-				this.chartClienteMatrizInstance = null
+			if (this.chartTipoTrabajoInstance) {
+				this.chartTipoTrabajoInstance.destroy()
+				this.chartTipoTrabajoInstance = null
 			}
 		},
 	},
@@ -1457,6 +1360,10 @@ export default {
 	grid-column: 1 / -1;
 }
 
+.panel-wide {
+	grid-column: span 12;
+}
+
 .panel-heading {
 	display: flex;
 	align-items: flex-start;
@@ -1495,6 +1402,10 @@ export default {
 
 .chart-box-large {
 	height: 440px;
+}
+
+.chart-box-tall {
+	height: 380px;
 }
 
 .details-list-wrap {

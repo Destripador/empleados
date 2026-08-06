@@ -2,39 +2,11 @@
 <template>
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys(data).length === 0">
-			<div v-if="Object.keys(data).length === 0" class="teams-empty-state">
-				<div class="teams-empty-card">
-					<img class="teams-empty-image" src="../../../../../img/crowesito-think.png" alt="Empty team state">
-
-					<h2>{{ t('empleados', 'Select a team for more details') }}</h2>
-
-					<p class="teams-empty-description">
-						{{ t('empleados', 'Choose a team from the list to view its members, team lead and available actions.') }}
-					</p>
-
-					<div class="teams-empty-grid">
-						<div class="teams-empty-item">
-							<strong>{{ t('empleados', 'Team members') }}</strong>
-							<span>{{ t('empleados', 'Review the employees assigned to each work team.') }}</span>
-						</div>
-
-						<div class="teams-empty-item">
-							<strong>{{ t('empleados', 'Team lead') }}</strong>
-							<span>{{ t('empleados', 'Check or update the person responsible for the team.') }}</span>
-						</div>
-
-						<div class="teams-empty-item">
-							<strong>{{ t('empleados', 'Change view') }}</strong>
-							<span>{{ t('empleados', 'Switch between card view and list view.') }}</span>
-						</div>
-					</div>
-
-					<div class="teams-empty-actions">
-						<NcButton type="primary" @click="$root.$emit('reload')">
-							{{ t('empleados', 'Refresh teams') }}
-						</NcButton>
-					</div>
-				</div>
+			<div class="teams-empty-state teams-empty-state--network">
+				<EntityCountNetwork
+					:items="items"
+					entity-type="team"
+					@select="onNetworkSelect" />
 			</div>
 		</div>
 
@@ -227,6 +199,7 @@ import {
 	NcListItem,
 	NcModal,
 } from '@nextcloud/vue'
+import EntityCountNetwork from '../../../../components/EntityCountNetwork.vue'
 
 export default {
 	name: 'EquiposDetails',
@@ -245,11 +218,17 @@ export default {
 		NcSelect,
 		NcListItem,
 		NcModal,
+		EntityCountNetwork,
 	},
 
 	props: {
 		data: { type: Object, required: true },
 		peopleArea: { type: Object, required: true },
+		items: {
+			type: Array,
+			required: false,
+			default: () => [],
+		},
 	},
 
 	data() {
@@ -298,6 +277,13 @@ export default {
 
 	methods: {
 		t,
+
+		onNetworkSelect(item) {
+			if (!item || !item.Id_equipo) {
+				return
+			}
+			this.$root.$emit('send-data-equipos', item)
+		},
 
 		async showEdit() {
 			this.show = !this.show
@@ -601,6 +587,15 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 32px;
+}
+
+.teams-empty-state--network {
+	width: 100%;
+	height: calc(100vh - var(--header-height) - 24px);
+	min-height: 640px;
+	align-items: stretch;
+	justify-content: stretch;
+	padding: 8px 12px 12px;
 }
 
 .teams-empty-card {

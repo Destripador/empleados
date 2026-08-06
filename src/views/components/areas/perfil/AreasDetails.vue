@@ -3,41 +3,12 @@
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys(data).length == 0">
 			<div class="empty">
-				<div v-if="Object.keys(data).length === 0" class="areas-empty-state">
-					<div class="areas-empty-card">
-						<img class="areas-empty-image"
-							src="../../../../../img/crowesito-think.png"
-							alt="Empty area state">
-
-						<h2>{{ t('empleados', 'Select an area for more details') }}</h2>
-
-						<p class="areas-empty-description">
-							{{ t('empleados', 'Choose a department or area from the list to view assigned employees, edit its information or change the display mode.') }}
-						</p>
-
-						<div class="areas-empty-grid">
-							<div class="areas-empty-item">
-								<strong>{{ t('empleados', 'View employees') }}</strong>
-								<span>{{ t('empleados', 'Check who belongs to each department or area.') }}</span>
-							</div>
-
-							<div class="areas-empty-item">
-								<strong>{{ t('empleados', 'Edit areas') }}</strong>
-								<span>{{ t('empleados', 'Update area names and parent departments.') }}</span>
-							</div>
-
-							<div class="areas-empty-item">
-								<strong>{{ t('empleados', 'Change view') }}</strong>
-								<span>{{ t('empleados', 'Switch between card view and list view.') }}</span>
-							</div>
-						</div>
-
-						<div class="areas-empty-actions">
-							<NcButton type="primary" @click="$root.$emit('reload')">
-								{{ t('empleados', 'Refresh areas') }}
-							</NcButton>
-						</div>
-					</div>
+				<div class="areas-empty-state areas-empty-state--network">
+					<EntityCountNetwork
+						:items="items"
+						entity-type="area"
+						:show-hierarchy="true"
+						@select="onNetworkSelect" />
 				</div>
 			</div>
 		</div>
@@ -229,6 +200,7 @@ import {
 	NcListItem,
 	NcModal,
 } from '@nextcloud/vue'
+import EntityCountNetwork from '../../../../components/EntityCountNetwork.vue'
 
 export default {
 	name: 'AreasDetails',
@@ -247,6 +219,7 @@ export default {
 		NcButton,
 		NcListItem,
 		NcModal,
+		EntityCountNetwork,
 	},
 
 	props: {
@@ -257,6 +230,11 @@ export default {
 		peopleArea: {
 			type: Object,
 			required: true,
+		},
+		items: {
+			type: Array,
+			required: false,
+			default: () => [],
 		},
 	},
 
@@ -308,6 +286,13 @@ export default {
 	methods: {
 		// expone t en el template
 		t,
+
+		onNetworkSelect(item) {
+			if (!item || !item.Id_departamento) {
+				return
+			}
+			this.$root.$emit('send-data-areas', item)
+		},
 
 		showEdit() {
 			this.show = !this.show
@@ -600,6 +585,15 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 32px;
+}
+
+.areas-empty-state--network {
+	width: 100%;
+	height: calc(100vh - var(--header-height) - 24px);
+	min-height: 640px;
+	align-items: stretch;
+	justify-content: stretch;
+	padding: 8px 12px 12px;
 }
 
 .areas-empty-card {

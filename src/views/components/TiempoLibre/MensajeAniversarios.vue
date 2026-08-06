@@ -31,27 +31,48 @@
 				{{ t('empleados', 'Check this table every time you reach a work anniversary. That way you can plan your time off in advance and enjoy your days to the fullest.') }}
 			</p>
 		</NcNoteCard>
+
+		<div class="tutorial-reset">
+			<NcButton type="tertiary"
+				:disabled="resettingTutorial"
+				@click="$emit('reset-tutorial')">
+				<template #icon>
+					<NcLoadingIcon v-if="resettingTutorial" :size="20" />
+					<Replay v-else :size="20" />
+				</template>
+				{{ resettingTutorial
+					? t('empleados', 'Saving...')
+					: t('empleados', 'Restart tutorial') }}
+			</NcButton>
+		</div>
 	</section>
 </template>
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
-import { NcNoteCard } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon, NcNoteCard } from '@nextcloud/vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
+import Replay from 'vue-material-design-icons/Replay.vue'
 
 export default {
 	name: 'MensajeAniversarios',
 	components: {
 		ChevronDown,
 		ChevronUp,
+		NcButton,
+		NcLoadingIcon,
 		NcNoteCard,
+		Replay,
 	},
 
 	props: {
 		info: { type: Object, required: true },
 		acumular: { type: String, required: true },
+		resettingTutorial: { type: Boolean, default: false },
 	},
+
+	emits: ['reset-tutorial'],
 
 	data() {
 		return {
@@ -146,5 +167,11 @@ export default {
 .faq-content {
 	padding: 0 12px 12px;
 	border: none;
+}
+
+.tutorial-reset {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 4px;
 }
 </style>

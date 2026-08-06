@@ -522,7 +522,11 @@
 							</table>
 						</div>
 						<div class="grow4">
-							<MensajeAniversarios :info="Ausencias" :acumular="configuraciones.acumular_vacaciones" />
+							<MensajeAniversarios
+								:info="Ausencias"
+								:acumular="configuraciones.acumular_vacaciones"
+								:resetting-tutorial="tutorialSaving"
+								@reset-tutorial="onResetVacationTutorial" />
 						</div>
 					</div>
 				</div>
@@ -540,6 +544,17 @@
 			</NcActions>
 		</div>
 		<!-- END ANNIVERSARIES INFO MODAL -->
+
+		<TutorialDialog
+			:show="tutorialVisible"
+			lesson-id="vacaciones.crear.v1"
+			:name="t('empleados', 'How to request time off')"
+			@complete="onTutorialComplete"
+			@close="tutorialVisible = false"
+			@error="onTutorialError">
+			<p>{{ t('empleados', 'Select a day or a range of days on the calendar to open the absence request form.') }}</p>
+			<p>{{ t('empleados', 'Choose the absence type, review the available days, and submit your request.') }}</p>
+		</TutorialDialog>
 	</NcAppContent>
 </template>
 
@@ -550,6 +565,8 @@ import NuevaSolicitud from './Modal/NuevaSolicitud.vue'
 import DetalleAusencia from './Modal/DetalleAusencia.vue'
 import EditarAusencia from './Modal/EditarAusencia.vue'
 import ReporteAusencias from './ReporteAusencias.vue'
+import TutorialDialog from '../../../components/tutorials/TutorialDialog.vue'
+import { getTutorialStatus, resetTutorial } from '../../../services/tutorials.js'
 
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -559,7 +576,7 @@ import multiMonthPlugin from '@fullcalendar/multimonth'
 import { ref } from 'vue'
 
 import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
-import { showError, showInfo } from '@nextcloud/dialogs'
+import { showError, showInfo, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
@@ -605,6 +622,7 @@ export default {
 		NcLoadingIcon,
 		NcNoteCard,
 		ReporteAusencias,
+		TutorialDialog,
 	},
 
 	inject: ['employee', 'configuraciones', 'groupuser', 'subordinates'],
@@ -691,6 +709,10 @@ export default {
 			ausenciaEditar: null,
 			mostrarReporte: false,
 			usuarioAusenciaSeleccionada: null,
+			tutorialLoading: true,
+			tutorialVisible: false,
+			tutorialSaving: false,
+			tutorialError: null,
 		}
 	},
 
@@ -760,6 +782,7 @@ export default {
 		this.GetAllEquipo()
 		this.getFestivosCalendario()
 		this.checkNotifications()
+		this.loadVacationTutorial()
 		this.$nextTick(() => {
 			this.ajustarAlturaCalendario()
 			window.addEventListener('resize', this.ajustarAlturaCalendario)
@@ -772,6 +795,57 @@ export default {
 
 	methods: {
 		t,
+
+		async loadVacationTutorial() {
+			this.tutorialLoading = true
+			this.tutorialError = null
+			this.tutorialVisible = false
+
+			try {
+				const status = await getTutorialStatus('vacaciones.crear.v1')
+				if (status?.completed === false) {
+					this.tutorialVisible = true
+				}
+			} catch (err) {
+				this.tutorialError = err
+				console.error('No se pudo cargar el tutorial de vacaciones:', err)
+			} finally {
+				this.tutorialLoading = false
+			}
+		},
+
+		onTutorialComplete() {
+			this.tutorialVisible = false
+			this.tutorialSaving = false
+			this.tutorialError = null
+		},
+
+		onTutorialError(err) {
+			this.tutorialSaving = false
+			this.tutorialError = err
+			showError(t('empleados', 'Could not save tutorial progress'))
+		},
+
+		async onResetVacationTutorial() {
+			if (this.tutorialSaving) {
+				return
+			}
+
+			this.tutorialSaving = true
+			this.tutorialError = null
+
+			try {
+				await resetTutorial('vacaciones.crear.v1')
+				this.ModalAniversario = false
+				this.tutorialVisible = true
+				showSuccess(t('empleados', 'Tutorial restarted'))
+			} catch (err) {
+				this.tutorialError = err
+				showError(t('empleados', 'Could not restart tutorial'))
+			} finally {
+				this.tutorialSaving = false
+			}
+		},
 
 		/**
 		 * Trae la lista de festivos (fecha en formato MM-DD, se repite cada

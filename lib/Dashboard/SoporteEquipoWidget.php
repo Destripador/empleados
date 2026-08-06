@@ -54,6 +54,7 @@ class SoporteEquipoWidget implements IWidget, IConditionalWidget, IIconWidget {
 	}
 
 	public function load(): void {
+		Util::addTranslations(Application::APP_ID);
 		Util::addScript(Application::APP_ID, 'empleados-dashboard-soporte');
 	}
 

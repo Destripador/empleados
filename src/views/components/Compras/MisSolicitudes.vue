@@ -578,6 +578,13 @@
 				</div>
 			</div>
 		</NcModal>
+
+		<input
+			ref="firmadoInput"
+			class="firmado-file-input"
+			type="file"
+			accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+			@change="onFirmadoSelected">
 	</NcAppContent>
 </template>
 
@@ -2080,8 +2087,15 @@ export default {
 		},
 		seleccionarFirmado(id) {
 			this.firmadoSolicitudId = id
-			this.$refs.firmadoInput.value = ''
-			this.$refs.firmadoInput.click()
+			this.$nextTick(() => {
+				const input = this.$refs.firmadoInput
+				if (!input) {
+					showError(t('empleados', 'Could not open the file selector.'))
+					return
+				}
+				input.value = ''
+				input.click()
+			})
 		},
 
 		async onFirmadoSelected(event) {
@@ -2163,6 +2177,18 @@ export default {
 	gap: 16px;
 	width: 100%;
 	padding: 24px;
+}
+
+.firmado-file-input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 .compras-layout {

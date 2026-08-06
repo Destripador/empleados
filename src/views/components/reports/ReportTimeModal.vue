@@ -291,7 +291,7 @@ export default {
 				showError(
 					t(
 						'empleados',
-						'Completa todos los campos obligatorios con valores válidos.',
+						'Complete all required fields with valid values.',
 					),
 				)
 				return

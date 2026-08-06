@@ -17,14 +17,8 @@
 					<div class="summary-value">
 						{{ resumenFmt.horas_reportadas }}
 					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Total cost') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.costo_total }}
+					<div class="summary-meta">
+						{{ statsFilterCaption }}
 					</div>
 				</div>
 
@@ -46,24 +40,6 @@
 					</div>
 					<div class="summary-meta">
 						{{ resumenFmt.porcentaje_interno }} {{ t('empleados', 'of reported work') }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Internal labor cost') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.costo_laboral_interno }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Employees with reports') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.empleados_con_reportes }}
 					</div>
 				</div>
 
@@ -105,23 +81,11 @@
 						{{ t('empleados', 'Average recorded efficiency') }}
 					</div>
 				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Estimated cost/hour') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.costo_hora_promedio }}
-					</div>
-					<div class="summary-meta">
-						{{ t('empleados', 'Blended team cost for the period') }}
-					</div>
-				</div>
 			</section>
 
 			<section class="decision-grid">
 				<article class="decision-card">
-					<span>{{ t('empleados', 'Highest cost company') }}</span>
+					<span>{{ t('empleados', 'Company with most hours') }}</span>
 					<strong>{{ decisionFmt.topEmpresa }}</strong>
 					<small>{{ decisionFmt.topEmpresaDetalle }}</small>
 				</article>
@@ -129,81 +93,138 @@
 				<article class="decision-card">
 					<span>{{ t('empleados', 'Top 3 companies') }}</span>
 					<strong>{{ decisionFmt.concentracionTop3 }}</strong>
-					<small>{{ t('empleados', 'Share of total estimated labor cost') }}</small>
+					<small>{{ t('empleados', 'Share of visible reported hours') }}</small>
 				</article>
 
 				<article class="decision-card">
-					<span>{{ t('empleados', 'Most expensive activity') }}</span>
+					<span>{{ t('empleados', 'Most used activity') }}</span>
 					<strong>{{ decisionFmt.topActividad }}</strong>
 					<small>{{ decisionFmt.topActividadDetalle }}</small>
 				</article>
 
 				<article class="decision-card">
-					<span>{{ t('empleados', 'Billable hours') }}</span>
-					<strong>{{ resumenFmt.horas_cargables }}</strong>
-					<small>{{ t('empleados', 'Internal work is always non-billable.') }}</small>
+					<span>{{ t('empleados', 'Hidden categories') }}</span>
+					<strong>{{ exclusionCount }}</strong>
+					<small>{{ t('empleados', 'Companies or activities excluded from the view') }}</small>
 				</article>
 			</section>
 
 			<section class="chart-controls">
-				<div class="control-group">
-					<label for="resumen-chart-limit">{{ t('empleados', 'Show') }}</label>
-					<select
-						id="resumen-chart-limit"
-						v-model.number="chartLimit"
-						@change="renderGraficas">
-						<option
-							v-for="option in chartLimitOptions"
-							:key="option.value"
-							:value="option.value">
-							{{ option.label }}
-						</option>
-					</select>
+				<div class="chart-controls-bar">
+					<div class="period-presets control-group inline">
+						<label for="resumen-chart-limit">{{ t('empleados', 'Show') }}</label>
+						<select
+							id="resumen-chart-limit"
+							v-model.number="chartLimit"
+							@change="renderGraficas">
+							<option
+								v-for="option in chartLimitOptions"
+								:key="option.value"
+								:value="option.value">
+								{{ option.label }}
+							</option>
+						</select>
+					</div>
+
+					<button
+						type="button"
+						class="clear-focus"
+						:class="{ active: hideAbsences }"
+						@click="toggleHideAbsences">
+						{{ hideAbsences
+							? t('empleados', 'Absences hidden')
+							: t('empleados', 'Hide absences') }}
+					</button>
+
+					<button
+						type="button"
+						class="clear-focus"
+						:aria-expanded="showChartFilters ? 'true' : 'false'"
+						@click="showChartFilters = !showChartFilters">
+						{{ t('empleados', 'More filters') }}
+						<span v-if="exclusionCount > 0" class="filter-badge">{{ exclusionCount }}</span>
+					</button>
+
+					<button
+						type="button"
+						class="clear-focus"
+						:disabled="!canClearFocus"
+						@click="clearChartFocus">
+						{{ t('empleados', 'Clear focus') }}
+					</button>
 				</div>
 
-				<div class="control-group">
-					<label for="resumen-company-focus">{{ t('empleados', 'Company') }}</label>
-					<select
-						id="resumen-company-focus"
-						v-model="selectedEmpresa"
-						@change="renderGraficas">
-						<option :value="null">
-							{{ t('empleados', 'All companies') }}
-						</option>
-						<option
-							v-for="empresa in graficaProyectos"
-							:key="empresa.key"
-							:value="empresa.label">
-							{{ empresa.label }}
-						</option>
-					</select>
-				</div>
+				<div v-if="showChartFilters" class="chart-filters-panel">
+					<div class="control-group">
+						<label for="resumen-company-focus">{{ t('empleados', 'Focus company') }}</label>
+						<select
+							id="resumen-company-focus"
+							v-model="selectedEmpresa"
+							@change="renderGraficas">
+							<option :value="null">
+								{{ t('empleados', 'All companies') }}
+							</option>
+							<option
+								v-for="empresa in graficaProyectosAll"
+								:key="empresa.key"
+								:value="empresa.label">
+								{{ empresa.label }}
+							</option>
+						</select>
+					</div>
 
-				<div class="control-group">
-					<label for="resumen-activity-focus">{{ t('empleados', 'Activity') }}</label>
-					<select
-						id="resumen-activity-focus"
-						v-model="selectedActividad"
-						@change="renderGraficas">
-						<option :value="null">
-							{{ t('empleados', 'All activities') }}
-						</option>
-						<option
-							v-for="actividad in graficaActividades"
-							:key="actividad.label"
-							:value="actividad.label">
-							{{ actividad.label }}
-						</option>
-					</select>
-				</div>
+					<div class="control-group">
+						<label for="resumen-activity-focus">{{ t('empleados', 'Focus activity') }}</label>
+						<select
+							id="resumen-activity-focus"
+							v-model="selectedActividad"
+							@change="renderGraficas">
+							<option :value="null">
+								{{ t('empleados', 'All activities') }}
+							</option>
+							<option
+								v-for="actividad in graficaActividadesAll"
+								:key="actividad.key"
+								:value="actividad.label">
+								{{ actividad.label }}
+							</option>
+						</select>
+					</div>
 
-				<button
-					type="button"
-					class="clear-focus"
-					:disabled="!selectedEmpresa && !selectedActividad && chartLimit === 10"
-					@click="clearChartFocus">
-					{{ t('empleados', 'Clear focus') }}
-				</button>
+					<div class="control-group control-group-wide">
+						<span class="control-label">{{ t('empleados', 'Hide companies') }}</span>
+						<div class="exclude-list">
+							<label
+								v-for="empresa in graficaProyectosAll"
+								:key="`hide-co-${empresa.key}`"
+								class="exclude-item">
+								<input
+									v-model="excludedEmpresaKeys"
+									type="checkbox"
+									:value="empresa.key"
+									@change="onExclusionChange">
+								{{ empresa.label }}
+							</label>
+						</div>
+					</div>
+
+					<div class="control-group control-group-wide">
+						<span class="control-label">{{ t('empleados', 'Hide activities') }}</span>
+						<div class="exclude-list">
+							<label
+								v-for="actividad in graficaActividadesAll"
+								:key="`hide-act-${actividad.key}`"
+								class="exclude-item">
+								<input
+									v-model="excludedActividadKeys"
+									type="checkbox"
+									:value="actividad.key"
+									@change="onExclusionChange">
+								{{ actividad.label }}
+							</label>
+						</div>
+					</div>
+				</div>
 			</section>
 
 			<section class="charts-grid">
@@ -217,11 +238,11 @@
 								{{ t('empleados', 'Hours by employee') }}
 							</h3>
 							<p class="panel-copy">
-								{{ t('empleados', 'See who is carrying the operational load and estimated payroll cost.') }}
+								{{ t('empleados', 'See who is carrying the operational load.') }}
 							</p>
 						</div>
 						<div class="panel-badge">
-							{{ t('empleados', '{count} active', { count: resumenFmt.empleados_con_reportes }) }}
+							{{ t('empleados', '{count} reports recorded', { count: resumenFmt.total_reportes }) }}
 						</div>
 					</div>
 					<div class="chart-box chart-box-tall">
@@ -258,9 +279,9 @@
 							<span class="insight-meta">{{ topActividad.valor }}</span>
 						</li>
 						<li class="insight-item">
-							<span class="insight-label">{{ t('empleados', 'Operational coverage') }}</span>
-							<strong class="insight-value">{{ t('empleados', '{count} employees', { count: resumenFmt.empleados_con_reportes }) }}</strong>
-							<span class="insight-meta">{{ t('empleados', '{count} reports recorded', { count: resumenFmt.total_reportes }) }}</span>
+							<span class="insight-label">{{ t('empleados', 'Reports') }}</span>
+							<strong class="insight-value">{{ resumenFmt.total_reportes }}</strong>
+							<span class="insight-meta">{{ statsFilterCaption }}</span>
 						</li>
 					</ul>
 				</article>
@@ -275,7 +296,7 @@
 								{{ t('empleados', 'Activities') }}
 							</h3>
 							<p class="panel-copy">
-								{{ t('empleados', 'Identify which work categories consume the most hours and budget.') }}
+								{{ t('empleados', 'Identify which work categories consume the most hours.') }}
 							</p>
 						</div>
 						<div class="panel-badge">
@@ -294,10 +315,10 @@
 								{{ t('empleados', 'Performance') }}
 							</div>
 							<h3 class="panel-title">
-								{{ t('empleados', 'Companies by cost and hours') }}
+								{{ t('empleados', 'Companies by hours') }}
 							</h3>
 							<p class="panel-copy">
-								{{ t('empleados', 'Compare where team time is spent and which customers concentrate estimated labor cost.') }}
+								{{ t('empleados', 'Compare where team time is spent across companies and projects.') }}
 							</p>
 						</div>
 						<div class="panel-badge">
@@ -316,10 +337,10 @@
 								{{ t('empleados', 'Portfolio') }}
 							</div>
 							<h3 class="panel-title">
-								{{ t('empleados', 'Company decision matrix') }}
+								{{ t('empleados', 'Company hours matrix') }}
 							</h3>
 							<p class="panel-copy">
-								{{ t('empleados', 'Companies farther right and higher up consume more team capacity and estimated cost.') }}
+								{{ t('empleados', 'Companies farther right with larger bubbles consume more team hours and reports.') }}
 							</p>
 						</div>
 					</div>
@@ -395,10 +416,10 @@
 								{{ t('empleados', 'Executive ranking') }}
 							</div>
 							<h3 class="panel-title">
-								{{ t('empleados', 'Companies by estimated labor cost') }}
+								{{ t('empleados', 'Companies by hours') }}
 							</h3>
 							<p class="panel-copy">
-								{{ t('empleados', 'Use this ranking to review pricing, contracts, priorities and whether a customer is consuming more time than expected.') }}
+								{{ t('empleados', 'Use this ranking to see which companies consume more of the team time.') }}
 							</p>
 						</div>
 					</div>
@@ -408,7 +429,6 @@
 								<tr>
 									<th>{{ t('empleados', 'Company') }}</th>
 									<th>{{ t('empleados', 'Hours') }}</th>
-									<th>{{ t('empleados', 'Estimated cost') }}</th>
 									<th>{{ t('empleados', 'Share') }}</th>
 									<th>{{ t('empleados', 'Reports') }}</th>
 									<th>{{ t('empleados', 'Main activity') }}</th>
@@ -418,7 +438,6 @@
 								<tr v-for="empresa in rankingEmpresas" :key="empresa.key">
 									<td><strong>{{ empresa.label }}</strong></td>
 									<td>{{ formatNumber(empresa.horas) }} h</td>
-									<td>{{ formatMoney(empresa.costo) }}</td>
 									<td>
 										<div class="share-cell">
 											<span>{{ formatPercent(empresa.porcentaje) }}</span>
@@ -484,6 +503,10 @@ export default {
 			chartLimit: 10,
 			selectedEmpresa: null,
 			selectedActividad: null,
+			showChartFilters: false,
+			hideAbsences: true,
+			excludedEmpresaKeys: [],
+			excludedActividadKeys: [],
 		}
 	},
 
@@ -497,38 +520,61 @@ export default {
 			]
 		},
 
-		resumenFmt() {
-			const kpis = this.resumen?.kpis || {}
-
-			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
-			const int = new Intl.NumberFormat('es-MX')
-			const money = new Intl.NumberFormat('es-MX', {
-				style: 'currency',
-				currency: 'MXN',
-			})
-
-			return {
-				horas_reportadas: num2.format(kpis.horas_reportadas || 0),
-				horas_cliente: `${num2.format(kpis.horas_cliente || 0)} h`,
-				horas_internas: `${num2.format(kpis.horas_internas || 0)} h`,
-				horas_cargables: `${num2.format(kpis.horas_cargables || 0)} h`,
-				porcentaje_interno: `${num2.format(kpis.porcentaje_interno || 0)}%`,
-				costo_total: money.format(kpis.costo_total || 0),
-				costo_laboral_interno: money.format(kpis.costo_laboral_interno || 0),
-				empleados_con_reportes: int.format(kpis.empleados_con_reportes || 0),
-				total_reportes: int.format(kpis.total_reportes || 0),
-				proyectos_activos: int.format(kpis.proyectos_activos || 0),
-				actividades: int.format(kpis.actividades || 0),
-				promedio_horas_reporte: `${num2.format(kpis.promedio_horas_reporte || 0)} h`,
-				costo_hora_promedio: money.format(this.costoHoraPromedio || 0),
-			}
+		absenceEmpresaKey() {
+			return '99999'
 		},
 
-		costoHoraPromedio() {
-			const horas = this.toNum(this.resumen?.kpis?.horas_reportadas)
-			const costo = this.toNum(this.resumen?.kpis?.costo_total)
+		absenceActividadKey() {
+			return '99999'
+		},
 
-			return horas > 0 ? costo / horas : 0
+		exclusionCount() {
+			let count = this.excludedEmpresaKeys.length + this.excludedActividadKeys.length
+			if (this.hideAbsences) {
+				count += 1
+			}
+			return count
+		},
+
+		canClearFocus() {
+			return Boolean(this.selectedEmpresa)
+				|| Boolean(this.selectedActividad)
+				|| this.chartLimit !== 10
+				|| !this.hideAbsences
+				|| this.excludedEmpresaKeys.length > 0
+				|| this.excludedActividadKeys.length > 0
+		},
+
+		statsFilterCaption() {
+			if (this.exclusionCount > 0) {
+				return t('empleados', 'With current exclusions')
+			}
+			return t('empleados', 'All categories visible')
+		},
+
+		horasVisiblesTotal() {
+			return this.graficaProyectos.reduce((total, item) => total + item.horas, 0)
+		},
+
+		resumenFmt() {
+			const kpis = this.resumen?.kpis || {}
+			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
+			const int = new Intl.NumberFormat('es-MX')
+			const horasVisibles = this.horasVisiblesTotal
+			const reportesVisibles = this.graficaProyectos.reduce((total, item) => total + item.reportes, 0)
+
+			return {
+				horas_reportadas: num2.format(horasVisibles || 0),
+				horas_cliente: `${num2.format(kpis.horas_cliente || 0)} h`,
+				horas_internas: `${num2.format(kpis.horas_internas || 0)} h`,
+				porcentaje_interno: `${num2.format(kpis.porcentaje_interno || 0)}%`,
+				total_reportes: int.format(reportesVisibles || kpis.total_reportes || 0),
+				proyectos_activos: int.format(this.graficaProyectos.length || 0),
+				actividades: int.format(this.graficaActividades.length || 0),
+				promedio_horas_reporte: reportesVisibles > 0
+					? `${num2.format(horasVisibles / reportesVisibles)} h`
+					: `${num2.format(kpis.promedio_horas_reporte || 0)} h`,
+			}
 		},
 
 		proyectosMap() {
@@ -566,16 +612,14 @@ export default {
 					return {
 						label: e.displayname || e.Id_user || e.id_user || `Empleado ${e.Id_empleados || ''}`,
 						horas,
-						costo: this.toNum(e.costo_total),
 					}
 				})
 				.filter(e => e.horas > 0)
 				.sort((a, b) => b.horas - a.horas)
 		},
 
-		graficaProyectos() {
+		graficaProyectosAll() {
 			const rows = this.resumen?.graficas?.horas_por_proyecto || []
-			const totalHoras = this.toNum(this.resumen?.kpis?.horas_reportadas)
 
 			return rows.map(r => {
 				const horas = this.toNum(r.horas)
@@ -583,27 +627,43 @@ export default {
 					key: String(r.id_cliente ?? 'sin-id'),
 					label: this.proyectosMap.get(Number(r.id_cliente)) || `Proyecto ${r.id_cliente}`,
 					horas,
-					costo: horas * this.costoHoraPromedio,
 					reportes: this.toNum(r.total_reportes),
-					porcentaje: totalHoras > 0 ? (horas / totalHoras) * 100 : 0,
 				}
-			}).sort((a, b) => b.costo - a.costo)
+			}).sort((a, b) => b.horas - a.horas)
 		},
 
-		graficaActividades() {
+		graficaActividadesAll() {
 			const rows = this.resumen?.graficas?.horas_por_actividad || []
-			const totalHoras = this.toNum(this.resumen?.kpis?.horas_reportadas)
 
 			return rows.map(r => {
 				const horas = this.toNum(r.horas)
 				return {
+					key: String(r.id_actividad ?? 'sin-id'),
 					label: this.actividadesMap.get(Number(r.id_actividad)) || `Actividad ${r.id_actividad}`,
 					horas,
-					costo: horas * this.costoHoraPromedio,
 					reportes: this.toNum(r.total_reportes),
-					porcentaje: totalHoras > 0 ? (horas / totalHoras) * 100 : 0,
 				}
-			}).sort((a, b) => b.costo - a.costo)
+			}).sort((a, b) => b.horas - a.horas)
+		},
+
+		graficaProyectos() {
+			const filtered = this.graficaProyectosAll.filter(item => this.isEmpresaVisible(item.key))
+			const totalHoras = filtered.reduce((total, item) => total + item.horas, 0)
+
+			return filtered.map(item => ({
+				...item,
+				porcentaje: totalHoras > 0 ? (item.horas / totalHoras) * 100 : 0,
+			}))
+		},
+
+		graficaActividades() {
+			const filtered = this.graficaActividadesAll.filter(item => this.isActividadVisible(item.key))
+			const totalHoras = filtered.reduce((total, item) => total + item.horas, 0)
+
+			return filtered.map(item => ({
+				...item,
+				porcentaje: totalHoras > 0 ? (item.horas / totalHoras) * 100 : 0,
+			}))
 		},
 
 		proyectosVisibles() {
@@ -645,6 +705,13 @@ export default {
 			const matriz = new Map()
 
 			for (const r of rows) {
+				const empresaKey = String(r.id_cliente ?? 'sin-id')
+				const actividadKey = String(r.id_actividad ?? 'sin-id')
+
+				if (!this.isEmpresaVisible(empresaKey) || !this.isActividadVisible(actividadKey)) {
+					continue
+				}
+
 				const proyecto = this.proyectosMap.get(Number(r.id_cliente)) || `Proyecto ${r.id_cliente}`
 				const actividad = this.actividadesMap.get(Number(r.id_actividad)) || `Actividad ${r.id_actividad}`
 				const horas = this.toNum(r.horas)
@@ -719,26 +786,26 @@ export default {
 		decisionFmt() {
 			const topEmpresa = this.rankingEmpresas[0] || null
 			const topActividad = this.graficaActividades[0] || null
-			const top3Costo = this.rankingEmpresas
+			const top3Horas = this.rankingEmpresas
 				.slice(0, 3)
-				.reduce((total, empresa) => total + empresa.costo, 0)
-			const costoTotal = this.toNum(this.resumen?.kpis?.costo_total)
-			const concentracionTop3 = costoTotal > 0 ? (top3Costo / costoTotal) * 100 : 0
+				.reduce((total, empresa) => total + empresa.horas, 0)
+			const totalHoras = this.horasVisiblesTotal
+			const concentracionTop3 = totalHoras > 0 ? (top3Horas / totalHoras) * 100 : 0
 
 			return {
 				topEmpresa: topEmpresa?.label || t('empleados', 'No data'),
 				topEmpresaDetalle: topEmpresa
-					? t('empleados', '{hours} h · {cost}', {
+					? t('empleados', '{hours} h · {percent}%', {
 						hours: this.formatNumber(topEmpresa.horas),
-						cost: this.formatMoney(topEmpresa.costo),
+						percent: this.formatNumber(topEmpresa.porcentaje),
 					})
 					: t('empleados', 'No company reports in this period.'),
 				concentracionTop3: this.formatPercent(concentracionTop3),
 				topActividad: topActividad?.label || t('empleados', 'No data'),
 				topActividadDetalle: topActividad
-					? t('empleados', '{hours} h · {cost}', {
+					? t('empleados', '{hours} h · {percent}%', {
 						hours: this.formatNumber(topActividad.horas),
-						cost: this.formatMoney(topActividad.costo),
+						percent: this.formatNumber(topActividad.porcentaje),
 					})
 					: t('empleados', 'No activity reports in this period.'),
 			}
@@ -828,6 +895,35 @@ export default {
 			return Number.isFinite(x) ? x : 0
 		},
 
+		isEmpresaVisible(key) {
+			const empresaKey = String(key)
+			if (this.hideAbsences && empresaKey === this.absenceEmpresaKey) {
+				return false
+			}
+			return !this.excludedEmpresaKeys.includes(empresaKey)
+		},
+
+		isActividadVisible(key) {
+			const actividadKey = String(key)
+			if (this.hideAbsences && actividadKey === this.absenceActividadKey) {
+				return false
+			}
+			return !this.excludedActividadKeys.includes(actividadKey)
+		},
+
+		toggleHideAbsences() {
+			this.hideAbsences = !this.hideAbsences
+			this.$nextTick(() => {
+				this.renderGraficas()
+			})
+		},
+
+		onExclusionChange() {
+			this.$nextTick(() => {
+				this.renderGraficas()
+			})
+		},
+
 		renderGraficas() {
 			this.renderGraficaHorasEmpleado()
 			this.renderGraficaProyectos()
@@ -842,6 +938,10 @@ export default {
 			this.chartLimit = 10
 			this.selectedEmpresa = null
 			this.selectedActividad = null
+			this.hideAbsences = true
+			this.excludedEmpresaKeys = []
+			this.excludedActividadKeys = []
+			this.showChartFilters = false
 			this.$nextTick(() => {
 				this.renderGraficas()
 			})
@@ -857,13 +957,6 @@ export default {
 			return new Intl.NumberFormat('es-MX').format(Number(value) || 0)
 		},
 
-		formatMoney(value) {
-			return new Intl.NumberFormat('es-MX', {
-				style: 'currency',
-				currency: 'MXN',
-			}).format(Number(value) || 0)
-		},
-
 		formatPercent(value) {
 			return `${new Intl.NumberFormat('es-MX', {
 				maximumFractionDigits: 1,
@@ -875,9 +968,11 @@ export default {
 			const acc = new Map()
 
 			for (const row of rows) {
+				const empresaKey = String(row.id_cliente ?? 'sin-id')
+				const actividadKey = String(row.id_actividad ?? 'sin-id')
 				const empresa = this.proyectosMap.get(Number(row.id_cliente)) || `Proyecto ${row.id_cliente}`
 
-				if (empresa !== empresaLabel) {
+				if (empresa !== empresaLabel || !this.isEmpresaVisible(empresaKey) || !this.isActividadVisible(actividadKey)) {
 					continue
 				}
 
@@ -921,16 +1016,7 @@ export default {
 						tooltip: {
 							callbacks: {
 								label(context) {
-									const item = datos[context.dataIndex]
-									const costo = new Intl.NumberFormat('es-MX', {
-										style: 'currency',
-										currency: 'MXN',
-									}).format(item.costo || 0)
-
-									return [
-										t('empleados', 'Hours: {hours}', { hours: context.raw }),
-										t('empleados', 'Cost: {cost}', { cost: costo }),
-									]
+									return t('empleados', 'Hours: {hours}', { hours: context.raw })
 								},
 							},
 						},
@@ -967,24 +1053,13 @@ export default {
 					labels: datos.map(x => x.label),
 					datasets: [
 						{
-							label: t('empleados', 'Estimated cost'),
-							data: datos.map(x => Number(x.costo.toFixed(2))),
-							backgroundColor: 'rgba(37, 99, 235, 0.76)',
-							borderColor: 'rgba(37, 99, 235, 1)',
-							borderRadius: 8,
-							borderSkipped: false,
-							borderWidth: 1,
-							xAxisID: 'xCost',
-						},
-						{
 							label: t('empleados', 'Hours'),
 							data: datos.map(x => Number(x.horas.toFixed(2))),
-							backgroundColor: 'rgba(20, 184, 166, 0.62)',
+							backgroundColor: 'rgba(20, 184, 166, 0.72)',
 							borderColor: 'rgba(13, 148, 136, 1)',
 							borderRadius: 8,
 							borderSkipped: false,
 							borderWidth: 1,
-							xAxisID: 'xHours',
 						},
 					],
 				},
@@ -1003,12 +1078,6 @@ export default {
 
 									return [
 										t('empleados', 'Hours: {hours}', { hours: item.horas.toFixed(2) }),
-										t('empleados', 'Estimated cost: {cost}', {
-											cost: new Intl.NumberFormat('es-MX', {
-												style: 'currency',
-												currency: 'MXN',
-											}).format(item.costo || 0),
-										}),
 										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
 										t('empleados', 'Share: {percent}%', { percent: item.porcentaje.toFixed(2) }),
 									]
@@ -1029,21 +1098,10 @@ export default {
 						})
 					},
 					scales: {
-						xCost: {
-							position: 'bottom',
+						x: {
 							beginAtZero: true,
 							grid: {
 								color: 'rgba(20, 184, 166, 0.14)',
-							},
-							ticks: {
-								callback: value => this.formatMoney(value),
-							},
-						},
-						xHours: {
-							position: 'top',
-							beginAtZero: true,
-							grid: {
-								drawOnChartArea: false,
 							},
 							ticks: {
 								callback: value => `${value} h`,
@@ -1097,12 +1155,6 @@ export default {
 
 									return [
 										t('empleados', '{label}: {hours} hours', { label: context.label, hours: context.raw }),
-										t('empleados', 'Estimated cost: {cost}', {
-											cost: new Intl.NumberFormat('es-MX', {
-												style: 'currency',
-												currency: 'MXN',
-											}).format(item.costo || 0),
-										}),
 										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
 										t('empleados', 'Share: {percent}%', { percent: item.porcentaje.toFixed(2) }),
 									]
@@ -1158,7 +1210,7 @@ export default {
 						label: empresa.label,
 						data: [{
 							x: Number(empresa.horas.toFixed(2)),
-							y: Number(empresa.costo.toFixed(2)),
+							y: Number(empresa.porcentaje.toFixed(2)),
 							r: Math.max(7, Math.min(24, 7 + (empresa.reportes / maxReportes) * 17)),
 						}],
 						backgroundColor: `hsla(${(index * 47) % 360}, 72%, 52%, 0.62)`,
@@ -1184,7 +1236,7 @@ export default {
 									return [
 										item.label,
 										t('empleados', 'Hours: {hours}', { hours: this.formatNumber(item.horas) }),
-										t('empleados', 'Estimated cost: {cost}', { cost: this.formatMoney(item.costo) }),
+										t('empleados', 'Share: {percent}%', { percent: this.formatNumber(item.porcentaje) }),
 										t('empleados', 'Reports: {reports}', { reports: item.reportes }),
 									]
 								},
@@ -1203,10 +1255,10 @@ export default {
 							beginAtZero: true,
 							title: {
 								display: true,
-								text: t('empleados', 'Estimated labor cost'),
+								text: t('empleados', 'Share of hours (%)'),
 							},
 							ticks: {
-								callback: value => this.formatMoney(value),
+								callback: value => `${value}%`,
 							},
 						},
 					},
@@ -1611,8 +1663,7 @@ export default {
 
 .chart-controls {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: end;
+	flex-direction: column;
 	gap: 12px;
 	padding: 14px;
 	border: 1px solid var(--color-border, rgba(15, 23, 42, 0.08));
@@ -1621,10 +1672,40 @@ export default {
 	box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
 }
 
+.chart-controls-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	gap: 10px;
+}
+
+.chart-filters-panel {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(180px, 1fr));
+	gap: 12px;
+	padding-top: 4px;
+	border-top: 1px solid var(--color-border, rgba(15, 23, 42, 0.08));
+}
+
 .control-group {
 	display: grid;
 	gap: 5px;
-	min-width: 180px;
+	min-width: 160px;
+}
+
+.control-group.inline {
+	align-items: end;
+}
+
+.control-group-wide {
+	grid-column: 1 / -1;
+}
+
+.control-label {
+	color: var(--color-text-maxcontrast, #6b7280);
+	font-size: 0.76rem;
+	font-weight: 700;
+	text-transform: uppercase;
 }
 
 .control-group label {
@@ -1643,6 +1724,45 @@ export default {
 	color: var(--color-main-text, #111827);
 }
 
+.exclude-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 6px 12px;
+	max-height: 160px;
+	overflow: auto;
+	padding: 8px 10px;
+	border: 1px solid var(--color-border, rgba(15, 23, 42, 0.12));
+	border-radius: 8px;
+	background: var(--color-background-hover, rgba(15, 23, 42, 0.03));
+}
+
+.exclude-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--color-main-text, #111827);
+	font-size: 0.86rem;
+	font-weight: 500;
+	text-transform: none;
+	cursor: pointer;
+}
+
+.filter-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	margin-left: 6px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background: var(--color-primary-element, #0082c9);
+	color: var(--color-primary-element-text, #fff);
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+}
+
 .clear-focus {
 	min-height: 36px;
 	padding: 0 14px;
@@ -1651,10 +1771,18 @@ export default {
 	background: var(--color-background-hover, rgba(15, 23, 42, 0.05));
 	color: var(--color-main-text, #111827);
 	font-weight: 700;
+	cursor: pointer;
+}
+
+.clear-focus.active {
+	border-color: var(--color-primary-element, #0082c9);
+	background: rgba(0, 130, 201, 0.12);
+	color: var(--color-primary-element, #0082c9);
 }
 
 .clear-focus:disabled {
 	opacity: .55;
+	cursor: default;
 }
 
 .charts-grid {

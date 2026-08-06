@@ -1173,11 +1173,27 @@ class reportetiempoController extends BaseController {
 
 		$estado = $registros > 0 ? 'reportado' : 'pendiente';
 
+		$horasObjetivo = (float)$this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_horas_minimas',
+			'0'
+		);
+		if (!is_finite($horasObjetivo) || $horasObjetivo <= 0) {
+			$horasObjetivo = 0.0;
+		}
+
+		$progreso = null;
+		if ($horasObjetivo > 0) {
+			$progreso = (int)min(100, round(($horas / $horasObjetivo) * 100));
+		}
+
 		return new DataResponse([
 			'fecha' => $fecha,
 			'registros' => $registros,
 			'minutos_reportados' => $minutos,
 			'horas_reportadas' => round($horas, 2),
+			'horas_objetivo' => $horasObjetivo > 0 ? round($horasObjetivo, 2) : null,
+			'progreso' => $progreso,
 			'estado' => $estado,
 		], Http::STATUS_OK);
 	}

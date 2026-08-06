@@ -19,44 +19,75 @@
 								<p>{{ t('empleados', 'Review my reports') }}</p>
 							</div>
 
-							<div class="filters-stats">
-								<div class="filters-stat">
-									<span>{{ t('empleados', 'Reports') }}</span>
-									<strong>{{ historialFiltrado.length }}</strong>
-								</div>
+							<div class="filters-stats-wrap">
+								<div class="filters-stats">
+									<div class="filters-stat">
+										<span>{{ t('empleados', 'Reports') }}</span>
+										<strong>{{ historialFiltrado.length }}</strong>
+										<small>{{ statsPeriodCaption }}</small>
+									</div>
 
-								<div class="filters-stat">
-									<span>{{ t('empleados', 'Total hours') }}</span>
-									<strong>{{ totalHorasFiltradas }}</strong>
-								</div>
+									<div class="filters-stat">
+										<span>{{ t('empleados', 'Hours in period') }}</span>
+										<strong>{{ totalHorasFiltradas }}</strong>
+										<small>{{ statsPeriodCaption }}</small>
+									</div>
 
-								<div class="filters-stat">
-									<span>{{ t('empleados', 'Fortnight') }}</span>
-									<strong>{{ quincenaHorasTexto }}</strong>
+									<div class="filters-stat">
+										<span>{{ t('empleados', 'Daily average') }}</span>
+										<strong>{{ promedioDiarioFiltrado }}</strong>
+										<small>{{ t('empleados', 'Working days in period') }}</small>
+									</div>
 								</div>
 							</div>
 						</div>
 
 						<div class="filters-panel">
 							<div class="filters-toolbar">
-								<div>
-									<strong>{{ t('empleados', 'Filters') }}</strong>
-									<span>
-										{{ activeFiltersCount > 0
-											? t('empleados', '{count} active', { count: activeFiltersCount })
-											: t('empleados', 'No active filters') }}
-									</span>
+								<div class="period-presets" role="group" :aria-label="t('empleados', 'Period')">
+									<NcButton
+										v-for="preset in periodPresetOptions"
+										:key="preset.id"
+										:type="periodPreset === preset.id ? 'primary' : 'tertiary'"
+										:aria-pressed="periodPreset === preset.id ? 'true' : 'false'"
+										@click="applyPeriodPreset(preset.id)">
+										{{ preset.label }}
+									</NcButton>
 								</div>
 
-								<NcButton
-									:aria-label="t('empleados', 'Clear filters')"
-									:disabled="activeFiltersCount === 0"
-									@click="clearFilters">
-									{{ t('empleados', 'Clear filters') }}
-								</NcButton>
+								<div class="filters-toolbar-actions">
+									<NcTextField
+										class="filter-search-compact"
+										:value.sync="filter_busqueda"
+										:label="t('empleados', 'Search')" />
+
+									<NcButton
+										type="tertiary"
+										:aria-expanded="showFilters ? 'true' : 'false'"
+										:aria-label="t('empleados', 'Filters')"
+										@click="showFilters = !showFilters">
+										<template #icon>
+											<FilterVariant :size="20" />
+										</template>
+										{{ t('empleados', 'Filters') }}
+										<span
+											v-if="activeFiltersCount > 0"
+											class="filter-badge">
+											{{ activeFiltersCount }}
+										</span>
+									</NcButton>
+
+									<NcButton
+										type="tertiary"
+										:aria-label="t('empleados', 'Clear filters')"
+										:disabled="activeFiltersCount === 0"
+										@click="clearFilters">
+										{{ t('empleados', 'Clear filters') }}
+									</NcButton>
+								</div>
 							</div>
 
-							<div class="filters-grid">
+							<div v-if="showFilters" class="filters-grid">
 								<NcSelect
 									v-model="filter_tipo_trabajo"
 									:input-label="t('empleados', 'Work type')"
@@ -95,12 +126,14 @@
 									:input-label="t('empleados', 'Activity')"
 									:options="listas"
 									class="filter-control" />
-
-								<NcTextField
-									class="filter-control filter-search"
-									:value.sync="filter_busqueda"
-									:label="t('empleados', 'Search description, project or activity')" />
 							</div>
+
+							<p class="list-summary">
+								{{ t('empleados', 'Showing {shown} of {total} reports', {
+									shown: historialFiltrado.length,
+									total: historial.length,
+								}) }}
+							</p>
 						</div>
 					</div>
 
@@ -141,30 +174,34 @@
 					<section class="compliance-card" :class="semaforoClass">
 						<div class="semaforo-header">
 							<div>
-								<h3>{{ t('empleados', 'Fortnight compliance') }}</h3>
-								<p>{{ quincenaPeriodoTexto }}</p>
+								<h3>{{ t('empleados', 'Period compliance') }}</h3>
+								<p>{{ statsPeriodCaption }}</p>
 							</div>
 							<span class="semaforo-light" />
 						</div>
 
 						<div class="semaforo-value">
-							{{ quincenaHorasTexto }}
+							{{ totalHorasFiltradas }}
 						</div>
 
 						<div class="semaforo-meta">
-							<span>{{ t('empleados', 'Goal') }}: {{ quincenaMetaTexto }}</span>
-							<strong>{{ quincenaPorcentajeTexto }}%</strong>
+							<span>{{ t('empleados', 'Goal') }}: {{ cumplimientoMetaTexto }}</span>
+							<strong>{{ cumplimientoPorcentajeTexto }}%</strong>
 						</div>
 
 						<div class="progress-track">
 							<div
 								class="progress-value"
-								:style="{ width: quincenaProgressWidth }" />
+								:style="{ width: cumplimientoProgressWidth }" />
 						</div>
 
 						<div class="semaforo-status">
 							{{ semaforoLabel }}
 						</div>
+
+						<p class="compliance-note">
+							{{ t('empleados', 'Calculated from the reports currently shown by your filters.') }}
+						</p>
 					</section>
 				</aside>
 			</div>
@@ -176,6 +213,7 @@
 <script>
 import { showError } from '@nextcloud/dialogs'
 import Check from 'vue-material-design-icons/Check.vue'
+import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
@@ -202,6 +240,7 @@ export default {
 		NcAppContent,
 		NcButton,
 		Check,
+		FilterVariant,
 		NcTextField,
 		NcDateTimePicker,
 		NcSelect,
@@ -231,9 +270,93 @@ export default {
 			filter_origen: null,
 			filter_cargable: null,
 			filter_busqueda: '',
+			periodPreset: 'fortnight',
+			syncingPeriodPreset: false,
+			showFilters: false,
 		}
 	},
 	computed: {
+		periodPresetOptions() {
+			return [
+				{ id: 'today', label: t('empleados', 'Today') },
+				{ id: 'fortnight', label: t('empleados', 'Fortnight') },
+				{ id: 'month', label: t('empleados', 'This month') },
+				{ id: 'all', label: t('empleados', 'All') },
+			]
+		},
+
+		statsPeriodCaption() {
+			if (this.periodPreset === 'today') {
+				return t('empleados', 'Today')
+			}
+
+			if (this.periodPreset === 'fortnight') {
+				return this.quincenaPeriodoTexto
+			}
+
+			if (this.periodPreset === 'month') {
+				return t('empleados', 'This month')
+			}
+
+			if (this.periodPreset === 'all' && this.activeFiltersCount === 0) {
+				return t('empleados', 'All reports')
+			}
+
+			const inicio = this.normalizeDateOnly(this.filter_fecha_inicio)
+			const fin = this.normalizeDateOnly(this.filter_fecha_fin)
+
+			if (inicio && fin) {
+				return `${inicio} → ${fin}`
+			}
+
+			if (inicio) {
+				return t('empleados', 'From {date}', { date: inicio })
+			}
+
+			if (fin) {
+				return t('empleados', 'Until {date}', { date: fin })
+			}
+
+			return t('empleados', 'According to filters')
+		},
+
+		diasHabilesFiltrados() {
+			const inicio = this.normalizeDateOnly(this.filter_fecha_inicio)
+			const fin = this.normalizeDateOnly(this.filter_fecha_fin)
+
+			if (!inicio && !fin) {
+				if (this.historialFiltrado.length === 0) {
+					return 0
+				}
+
+				const fechas = this.historialFiltrado
+					.map(reporte => this.normalizeDateOnly(reporte.fecha_registro))
+					.filter(Boolean)
+					.sort()
+
+				if (fechas.length === 0) {
+					return 0
+				}
+
+				return this.countWorkingDaysBetween(fechas[0], fechas[fechas.length - 1])
+			}
+
+			const startKey = inicio || fin
+			const endKey = fin || inicio
+
+			return this.countWorkingDaysBetween(startKey, endKey)
+		},
+
+		promedioDiarioFiltrado() {
+			if (this.diasHabilesFiltrados <= 0) {
+				return this.formatDuration(0)
+			}
+
+			return this.formatDuration(
+				this.totalMinutosFiltrados / this.diasHabilesFiltrados,
+			)
+		},
+
 		workTypeFilterOptions() {
 			return [
 				{ id: 'todos', label: t('empleados', 'All') },
@@ -311,9 +434,7 @@ export default {
 		},
 
 		activeFiltersCount() {
-			return [
-				this.filter_fecha_inicio,
-				this.filter_fecha_fin,
+			const nonDateFilters = [
 				this.filter_cliente,
 				this.filter_actividad,
 				this.getOptionId(this.filter_tipo_trabajo) === 'todos' ? null : this.filter_tipo_trabajo,
@@ -321,14 +442,19 @@ export default {
 				this.filter_cargable,
 				String(this.filter_busqueda || '').trim(),
 			].filter(Boolean).length
+
+			const hasCustomDates = this.periodPreset === 'custom'
+				&& (this.filter_fecha_inicio || this.filter_fecha_fin)
+
+			return nonDateFilters + (hasCustomDates ? 1 : 0)
 		},
 
 		semaforoClass() {
-			if (this.quincenaPorcentaje >= 100) {
+			if (this.cumplimientoPorcentaje >= 100) {
 				return 'status-ok'
 			}
 
-			if (this.quincenaPorcentaje >= 70) {
+			if (this.cumplimientoPorcentaje >= 70) {
 				return 'status-warning'
 			}
 
@@ -336,11 +462,11 @@ export default {
 		},
 
 		semaforoLabel() {
-			if (this.quincenaPorcentaje >= 100) {
+			if (this.cumplimientoPorcentaje >= 100) {
 				return t('empleados', 'On track')
 			}
 
-			if (this.quincenaPorcentaje >= 70) {
+			if (this.cumplimientoPorcentaje >= 70) {
 				return t('empleados', 'Close to goal')
 			}
 
@@ -398,40 +524,6 @@ export default {
 			}
 		},
 
-		quincenaMinutos() {
-			const { startKey, todayKey } = this.quincenaActual
-
-			return this.historial.reduce((total, reporte) => {
-				const fechaReporte = this.normalizeDateOnly(reporte.fecha_registro)
-
-				// Para cumplimiento solo contamos desde el inicio
-				// de la quincena hasta el día actual.
-				if (
-					!fechaReporte
-					|| fechaReporte < startKey
-					|| fechaReporte > todayKey
-				) {
-					return total
-				}
-
-				const minutos = Number(reporte.tiempo_registrado)
-
-				return total + (
-					Number.isFinite(minutos) && minutos > 0
-						? minutos
-						: 0
-				)
-			}, 0)
-		},
-
-		quincenaHoras() {
-			return this.quincenaMinutos / 60
-		},
-
-		quincenaHorasTexto() {
-			return this.formatDuration(this.quincenaMinutos)
-		},
-
 		horasMinimasDiarias() {
 			const configured = Number(
 				this.configuraciones?.Reportes?.horas_minimas
@@ -444,69 +536,48 @@ export default {
 				: 8
 		},
 
-		quincenaMetaMinutos() {
+		cumplimientoMetaMinutos() {
 			return Math.round(
 				this.horasMinimasDiarias
-				* this.diasHabilesQuincena
+				* this.diasHabilesFiltrados
 				* 60,
 			)
 		},
 
-		diasHabilesQuincena() {
-			const { start, end } = this.quincenaActual
-
-			const cursor = new Date(start)
-			const lastDay = new Date(end)
-
-			cursor.setHours(12, 0, 0, 0)
-			lastDay.setHours(12, 0, 0, 0)
-
-			let count = 0
-
-			// eslint-disable-next-line no-unmodified-loop-condition
-			while (cursor <= lastDay) {
-				const day = cursor.getDay()
-
-				if (day !== 0 && day !== 6) {
-					count++
-				}
-
-				cursor.setDate(cursor.getDate() + 1)
-			}
-
-			return count
+		cumplimientoMetaTexto() {
+			return this.formatDuration(this.cumplimientoMetaMinutos)
 		},
 
-		quincenaMetaHoras() {
-			return this.horasMinimasDiarias * this.diasHabilesQuincena
-		},
-
-		quincenaMetaTexto() {
-			return this.formatDuration(this.quincenaMetaMinutos)
-		},
-
-		quincenaPorcentaje() {
-			if (this.quincenaMetaMinutos <= 0) {
-				return this.quincenaMinutos > 0 ? 100 : 0
+		cumplimientoPorcentaje() {
+			if (this.cumplimientoMetaMinutos <= 0) {
+				return this.totalMinutosFiltrados > 0 ? 100 : 0
 			}
 
 			return Math.min(
-				(this.quincenaMinutos / this.quincenaMetaMinutos) * 100,
+				(this.totalMinutosFiltrados / this.cumplimientoMetaMinutos) * 100,
 				100,
 			)
 		},
 
-		quincenaPorcentajeTexto() {
-			return Math.round(this.quincenaPorcentaje)
+		cumplimientoPorcentajeTexto() {
+			return Math.round(this.cumplimientoPorcentaje)
 		},
 
-		quincenaProgressWidth() {
+		cumplimientoProgressWidth() {
 			const porcentaje = Math.min(
-				Math.max(this.quincenaPorcentaje, 0),
+				Math.max(this.cumplimientoPorcentaje, 0),
 				100,
 			)
 
 			return `${porcentaje}%`
+		},
+	},
+	watch: {
+		filter_fecha_inicio() {
+			this.syncPeriodPresetFromDates()
+		},
+		filter_fecha_fin() {
+			this.syncPeriodPresetFromDates()
 		},
 	},
 	async mounted() {
@@ -517,6 +588,7 @@ export default {
 				await this.GetActividades(),
 			])
 			await this.gethistorial()
+			this.applyPeriodPreset('fortnight')
 		} finally {
 			this.loading = false
 		}
@@ -526,6 +598,101 @@ export default {
 	},
 	methods: {
 		t, // expone t al template
+
+		applyPeriodPreset(preset) {
+			this.syncingPeriodPreset = true
+			this.periodPreset = preset
+
+			const today = new Date()
+			today.setHours(12, 0, 0, 0)
+
+			if (preset === 'today') {
+				this.filter_fecha_inicio = new Date(today)
+				this.filter_fecha_fin = new Date(today)
+			} else if (preset === 'fortnight') {
+				this.filter_fecha_inicio = new Date(this.quincenaActual.start)
+				this.filter_fecha_fin = new Date(this.quincenaActual.end)
+			} else if (preset === 'month') {
+				this.filter_fecha_inicio = new Date(today.getFullYear(), today.getMonth(), 1, 12)
+				this.filter_fecha_fin = new Date(today.getFullYear(), today.getMonth() + 1, 0, 12)
+			} else {
+				this.filter_fecha_inicio = null
+				this.filter_fecha_fin = null
+			}
+
+			this.$nextTick(() => {
+				this.syncingPeriodPreset = false
+			})
+		},
+
+		syncPeriodPresetFromDates() {
+			if (this.syncingPeriodPreset) {
+				return
+			}
+
+			const inicio = this.normalizeDateOnly(this.filter_fecha_inicio)
+			const fin = this.normalizeDateOnly(this.filter_fecha_fin)
+
+			if (!inicio && !fin) {
+				this.periodPreset = 'all'
+				return
+			}
+
+			const today = new Date()
+			today.setHours(12, 0, 0, 0)
+			const todayKey = this.formatLocalDateKey(today)
+
+			if (inicio === todayKey && fin === todayKey) {
+				this.periodPreset = 'today'
+				return
+			}
+
+			const { startKey, endKey } = this.quincenaActual
+			if (inicio === startKey && fin === endKey) {
+				this.periodPreset = 'fortnight'
+				return
+			}
+
+			const monthStart = this.formatLocalDateKey(
+				new Date(today.getFullYear(), today.getMonth(), 1, 12),
+			)
+			const monthEnd = this.formatLocalDateKey(
+				new Date(today.getFullYear(), today.getMonth() + 1, 0, 12),
+			)
+			if (inicio === monthStart && fin === monthEnd) {
+				this.periodPreset = 'month'
+				return
+			}
+
+			this.periodPreset = 'custom'
+		},
+
+		countWorkingDaysBetween(startKey, endKey) {
+			if (!startKey || !endKey) {
+				return 0
+			}
+
+			const start = new Date(`${startKey}T12:00:00`)
+			const end = new Date(`${endKey}T12:00:00`)
+
+			if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+				return 0
+			}
+
+			const cursor = new Date(start)
+			let count = 0
+
+			// eslint-disable-next-line no-unmodified-loop-condition
+			while (cursor <= end) {
+				const day = cursor.getDay()
+				if (day !== 0 && day !== 6) {
+					count++
+				}
+				cursor.setDate(cursor.getDate() + 1)
+			}
+
+			return count
+		},
 
 		openModal() {
 			this.modal = true
@@ -758,14 +925,13 @@ export default {
 		},
 
 		clearFilters() {
-			this.filter_fecha_inicio = null
-			this.filter_fecha_fin = null
 			this.filter_cliente = null
 			this.filter_actividad = null
 			this.filter_tipo_trabajo = null
 			this.filter_origen = null
 			this.filter_cargable = null
 			this.filter_busqueda = ''
+			this.applyPeriodPreset('fortnight')
 		},
 
 		formatLocalDateKey(date) {
@@ -958,12 +1124,20 @@ export default {
 	width: min(100%, 520px);
 }
 
+.filters-stats-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 10px;
+	width: min(100%, 520px);
+}
+
 .filters-stat {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	min-width: 0;
-	min-height: 76px;
+	min-height: 88px;
 	padding: 12px;
 	border: 1px solid var(--color-border);
 	border-radius: 8px;
@@ -987,16 +1161,81 @@ export default {
 	line-height: 1;
 }
 
+.filters-stat small {
+	display: block;
+	margin-top: 8px;
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.compliance-note {
+	margin: 10px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	line-height: 1.4;
+}
+
 .filters-panel {
 	padding: 16px 18px 18px;
 }
 
 .filters-toolbar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
-	margin-bottom: 14px;
+	margin-bottom: 12px;
+}
+
+.filters-toolbar-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	min-width: 0;
+	flex: 1 1 280px;
+}
+
+.filter-search-compact {
+	width: min(100%, 240px);
+	min-width: 160px;
+	flex: 1 1 180px;
+}
+
+.period-presets {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	gap: 6px;
+}
+
+.filter-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	margin-left: 6px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.list-summary {
+	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
 }
 
 .filters-toolbar strong {
@@ -1014,18 +1253,16 @@ export default {
 
 .filters-grid {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(180px, 1fr));
+	grid-template-columns: repeat(4, minmax(160px, 1fr));
 	gap: 12px;
 	align-items: end;
+	margin-bottom: 8px;
+	padding-top: 4px;
 }
 
 .filter-control {
 	width: 100%;
 	min-width: 0;
-}
-
-.filter-search {
-	grid-column: span 2;
 }
 
 .quick-card {
@@ -1150,8 +1387,8 @@ export default {
 		width: min(100%, 460px);
 	}
 
-	.filter-search {
-		grid-column: span 2;
+	.filters-stats-wrap {
+		width: min(100%, 460px);
 	}
 }
 
@@ -1168,6 +1405,11 @@ export default {
 		flex-direction: column;
 	}
 
+	.filters-stats-wrap {
+		align-items: stretch;
+		width: 100%;
+	}
+
 	.filters-stats {
 		grid-template-columns: 1fr;
 		width: 100%;
@@ -1178,16 +1420,20 @@ export default {
 	}
 
 	.filters-toolbar {
-		align-items: flex-start;
+		align-items: stretch;
 		flex-direction: column;
+	}
+
+	.filters-toolbar-actions {
+		justify-content: stretch;
+	}
+
+	.filter-search-compact {
+		width: 100%;
 	}
 
 	.filters-grid {
 		grid-template-columns: 1fr;
-	}
-
-	.filter-search {
-		grid-column: auto;
 	}
 }
 

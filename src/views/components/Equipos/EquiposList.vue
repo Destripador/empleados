@@ -18,7 +18,8 @@
 
 		<EquiposDetails
 			:data="data_Equipos"
-			:people-area="peopleArea" />
+			:people-area="peopleArea"
+			:items="Equipos" />
 
 		<FloatingHelpButton
 			:open.sync="modalMensajeEquipos"
@@ -95,11 +96,27 @@ export default {
 		this.$root.$on('reload', () => {
 			this.getall()
 		})
+		window.addEventListener('keydown', this.onKeyDown)
+	},
+
+	beforeDestroy() {
+		window.removeEventListener('keydown', this.onKeyDown)
 	},
 
 	methods: {
 		// Exponer t a la plantilla
 		t,
+
+		onKeyDown(e) {
+			if (e.key === 'Escape') {
+				this.onEsc()
+			}
+		},
+
+		onEsc() {
+			this.data_Equipos = {}
+			this.peopleArea = {}
+		},
 
 		async getallequipo(equipo) {
 			try {
