@@ -34,6 +34,25 @@
 				type="info"
 				:text="AusenciaSeleccionada.descripcion" />
 		</section>
+		<section v-if="esMedioDia" class="form-section">
+			<h3>{{ t('empleados', 'Shift') }}</h3>
+			<div class="turno-options">
+				<NcCheckboxRadioSwitch
+					v-model="turno"
+					value="manana"
+					name="turno_medio_dia"
+					type="radio">
+					{{ t('empleados', 'Morning') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					v-model="turno"
+					value="tarde"
+					name="turno_medio_dia"
+					type="radio">
+					{{ t('empleados', 'Afternoon') }}
+				</NcCheckboxRadioSwitch>
+			</div>
+		</section>
 
 		<NcNoteCard
 			v-if="exceedsAvailableDays"
@@ -209,6 +228,7 @@ export default {
 		return {
 			TipoAusencias: [],
 			AusenciaSeleccionada: null,
+			turno: null, // 'manana' | 'tarde'
 			TotalDias: 0,
 			RestanteDias: 0,
 			comentarios: '',
@@ -234,6 +254,14 @@ export default {
 		diasAcumuladosNum() {
 			const val = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
 			return parseFloat(val) || 0
+		},
+
+		esMedioDia() {
+			return !!this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.es_medio_dia) === 1
+		},
+
+		diasEfectivos() {
+			return this.esMedioDia ? 0.5 : this.diasSolicitados
 		},
 
 		esAusenciaVacacional() {
@@ -300,12 +328,12 @@ export default {
 
 		diasDelAcumuladoAUsar() {
 			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
-			return Math.min(this.diasAcumuladosNum, this.diasSolicitados, this.diasDentroDeVigencia)
+			return Math.min(this.diasAcumuladosNum, this.diasEfectivos, this.diasDentroDeVigencia)
 		},
 
 		diasDelPeriodoActualAUsar() {
 			if (!this.esAusenciaVacacional || this.esAusenciaAnticipada) return 0
-			return this.diasSolicitados - this.diasDelAcumuladoAUsar
+			return this.diasEfectivos - this.diasDelAcumuladoAUsar
 		},
 
 		acumuladoNoAplicaPorFecha() {
@@ -319,7 +347,7 @@ export default {
 			return this.AusenciaSeleccionada
 				&& Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1
 				&& !this.esAusenciaAnticipada
-				&& this.diasSolicitados > this.TotalDias
+				&& this.diasEfectivos > this.TotalDias
 		},
 
 		fechaVencimientoReal() {
@@ -334,7 +362,7 @@ export default {
 			const items = [
 				{
 					label: t('empleados', 'Days to take'),
-					value: this.diasSolicitados,
+					value: this.diasEfectivos,
 				},
 				{
 					label: t('empleados', 'From:'),
@@ -353,7 +381,7 @@ export default {
 				})
 				items.push({
 					label: t('empleados', 'Remaining days'),
-					value: this.RestanteDias,
+					value: this.TotalDias - this.diasEfectivos,
 				})
 			}
 
@@ -378,6 +406,7 @@ export default {
 		async AusenciaSeleccionada(tipo) {
 			this.SolicitarPrima = false
 			this.primaVacacionalUsada = false
+			this.turno = null
 			if (tipo && Number(tipo.solicitar_prima_vacacional) === 1) {
 				await this.checkPrimaVacacional()
 			}
@@ -386,6 +415,12 @@ export default {
 		diasSolicitados(nuevo) {
 			if (nuevo < 2) {
 				this.SolicitarPrima = false
+			}
+			this.GetTipoAusencias()
+			// Si estaba seleccionado un tipo de medio día y el rango pasó a 2+ días, se invalida
+			if (nuevo > 1 && this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.es_medio_dia) === 1) {
+				this.AusenciaSeleccionada = null
+				this.turno = null
 			}
 		},
 
@@ -400,7 +435,7 @@ export default {
 	},
 
 	mounted() {
-		this.TotalDias = parseInt(this.diasDisponibles, 10) + this.diasAcumuladosNum
+		this.TotalDias = parseFloat(this.diasDisponibles) + this.diasAcumuladosNum
 		this.RestanteDias = this.TotalDias - this.diasSolicitados
 		this.GetTipoAusencias()
 		if (this.AusenciaSeleccionada && Number(this.AusenciaSeleccionada.solicitar_prima_vacacional) === 1) {
@@ -452,7 +487,7 @@ export default {
 		recalcularDias() {
 			const disponibles = this.diasInfoEmpleado?.dias_disponibles ?? this.diasDisponibles
 			const acumulados = this.diasInfoEmpleado?.dias_acumulados ?? this.diasAcumulados
-			this.TotalDias = parseInt(disponibles, 10) + (parseFloat(acumulados) || 0)
+			this.TotalDias = parseFloat(disponibles) + (parseFloat(acumulados) || 0)
 			this.RestanteDias = this.TotalDias - this.diasSolicitados
 			this.GetTipoAusencias()
 		},
@@ -465,7 +500,8 @@ export default {
 							this.TipoAusencias = response.data
 								.filter(item => (Number(item.privado) !== 1 || this.admin)
 									&& (Number(item.privado) === 1
-										|| !(item.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias)))
+										|| !(item.solicitar_prima_vacacional === 1 && this.diasSolicitados > this.TotalDias))
+									&& (Number(item.es_medio_dia) !== 1 || this.diasSolicitados <= 1))
 								.map(item => ({
 									id: item.id_tipo_ausencia,
 									label: item.nombre,
@@ -473,6 +509,7 @@ export default {
 									solicitar_archivo: item.solicitar_archivo,
 									solicitar_prima_vacacional: item.solicitar_prima_vacacional,
 									privado: item.privado,
+									es_medio_dia: item.es_medio_dia,
 								}))
 						},
 						(err) => { showError(err) },
@@ -499,6 +536,11 @@ export default {
 		},
 
 		async EnviarAusencia() {
+			if (this.esMedioDia && !this.turno) {
+				showError(t('empleados', 'You must select morning or afternoon for a half day.'))
+				return
+			}
+
 			this.loading = true
 			try {
 				const formData = new FormData()
@@ -506,11 +548,14 @@ export default {
 					formData.append('id_usuario', this.employees_list.user)
 				}
 				formData.append('id_tipo_ausencia', this.AusenciaSeleccionada.id)
-				formData.append('dias_solicitados', this.diasSolicitados)
+				formData.append('dias_solicitados', this.diasEfectivos)
 				formData.append('fecha_de', this.formatFechaParaBackend(this.date.start))
 				formData.append('fecha_hasta', this.date.end ? this.formatFechaParaBackend(this.date.end) : '')
 				formData.append('prima_vacacional', this.SolicitarPrima ? 1 : 0)
 				formData.append('notas', this.comentarios || '')
+				if (this.esMedioDia) {
+					formData.append('turno', this.turno)
+				}
 
 				for (let i = 0; i < this.selectedFiles.length; i++) {
 					formData.append('archivos[]', this.selectedFiles[i])
@@ -656,5 +701,10 @@ export default {
 	clip-path: inset(50%) !important;
 	white-space: nowrap !important;
 	border: 0 !important;
+}
+
+.turno-options {
+    display: flex;
+    gap: 16px;
 }
 </style>

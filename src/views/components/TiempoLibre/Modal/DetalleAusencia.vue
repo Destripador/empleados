@@ -36,6 +36,11 @@
 					<strong class="info-item__value">{{ ausencia.dias_solicitados ?? '—' }}</strong>
 				</div>
 
+				<div v-if="ausencia.turno" class="info-item">
+					<span class="info-item__label">{{ t('empleados', 'Shift') }}</span>
+					<strong class="info-item__value">{{ turnoLabel }}</strong>
+				</div>
+
 				<div v-if="ausencia.prima_vacacional == 1" class="info-item">
 					<span class="info-item__label">{{ t('empleados', 'Vacation bonus') }}</span>
 					<strong class="info-item__value">{{ t('empleados', 'Requested') }}</strong>
@@ -338,6 +343,13 @@ export default {
 				}
 				return { key: rol.key, label: rol.label, estado: estadoKey, texto }
 			})
+		},
+
+		turnoLabel() {
+			if (!this.ausencia?.turno) return ''
+			return this.ausencia.turno === 'manana'
+				? t('empleados', 'Morning')
+				: t('empleados', 'Afternoon')
 		},
 	},
 

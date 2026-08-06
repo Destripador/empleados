@@ -20,8 +20,9 @@ class historialausenciasMapper extends QBMapper {
 		int $prima_vacacional,
 		string $notas,
 		$id_aniverario,
-		int $dias_solicitados,
-		float $dias_de_acumulado = 0.0
+		float $dias_solicitados,
+		float $dias_de_acumulado = 0.0,
+		?string $turno = null
 	): int {
 		$insert = $this->db->getQueryBuilder();
 		$insert->insert($this->getTableName())
@@ -35,6 +36,7 @@ class historialausenciasMapper extends QBMapper {
 				'notas'             => $insert->createNamedParameter($notas),
 				'dias_solicitados'  => $insert->createNamedParameter($dias_solicitados),
 				'dias_de_acumulado' => $insert->createNamedParameter($dias_de_acumulado),
+				'turno'             => $insert->createNamedParameter($turno),
 				'timestamp'         => $insert->createNamedParameter((new \DateTime())->format('Y-m-d H:i:s')),
 			]);
 
@@ -146,7 +148,8 @@ class historialausenciasMapper extends QBMapper {
 		string $fecha_hasta,
 		int $prima_vacacional,
 		string $notas,
-		int $dias_solicitados 
+		float $dias_solicitados,
+		?string $turno = null
 	): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->getTableName())
@@ -156,6 +159,7 @@ class historialausenciasMapper extends QBMapper {
 			->set('prima_vacacional', $qb->createNamedParameter($prima_vacacional))
 			->set('notas',            $qb->createNamedParameter($notas))
 			->set('dias_solicitados', $qb->createNamedParameter($dias_solicitados))
+			->set('turno',            $qb->createNamedParameter($turno))
 			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
 		$qb->executeStatement();
 	}

@@ -568,6 +568,28 @@ class AusenciasController extends BaseController {
             $fecha_hasta = $this->request->getParam('fecha_hasta');
             $prima_vacacional = (int) $this->request->getParam('prima_vacacional');
             $notas = $this->request->getParam('notas');
+            $turno = $this->request->getParam('turno');
+
+            $tipo_ausencia_check = $this->tipoausenciaMapper->getTipoById($id_tipo_ausencia);
+            $esMedioDia = !empty($tipo_ausencia_check) && (int) ($tipo_ausencia_check[0]['es_medio_dia'] ?? 0) === 1;
+
+            if ($esMedioDia) {
+                if ($fecha_de !== $fecha_hasta) {
+                    return new DataResponse([
+                        'success' => false,
+                        'message' => 'El medio día solo puede solicitarse para un único día.'
+                    ], Http::STATUS_BAD_REQUEST);
+                }
+                if (!in_array($turno, ['manana', 'tarde'], true)) {
+                    return new DataResponse([
+                        'success' => false,
+                        'message' => 'Debes indicar si el medio día es por la mañana o por la tarde.'
+                    ], Http::STATUS_BAD_REQUEST);
+                }
+                $dias_solicitados = 0.5;
+            } else {
+                $turno = null;
+            }
 
             if ($prima_vacacional === 1 && (float) $dias_solicitados < 2) {
                 return new DataResponse(
@@ -776,8 +798,9 @@ class AusenciasController extends BaseController {
                     (int) $prima_vacacional,
                     $notas,
                     $idAniversarioRegistro,
-                    (int) $dias_solicitados,
-                    $diasDeAcumulado
+                    (float) $dias_solicitados,
+                    $diasDeAcumulado,
+                    $turno
                 );
             }
 
@@ -794,9 +817,12 @@ class AusenciasController extends BaseController {
                         $reporte->setidEmpleado((int) $id_empleado[0]['Id_empleados']);
                         $reporte->setidCliente(99999);
                         $reporte->setidActividad(99999);
-                        $reporte->settiempoRegistrado(480);
+                        $reporte->settiempoRegistrado($esMedioDia ? ($turno === 'manana' ? 300 : 180) : 480);
                         $reporte->setfechaRegistro($cursor->format('Y-m-d'));
-                        $reporte->setdescripcion((string) ($tipo_ausencia[0]['nombre'] ?? ''));
+                        $reporte->setdescripcion(
+                            (string) ($tipo_ausencia[0]['nombre'] ?? '')
+                            . ($esMedioDia ? ' (' . ($turno === 'manana' ? 'Mañana' : 'Tarde') . ')' : '')
+                        );
 						$reporte->setTipoTrabajo(\OCA\Empleados\Db\reportetiempo::TIPO_AUSENCIA);
                         $this->reportetiempoMapper->insert($reporte);
                     }
@@ -1130,7 +1156,8 @@ class AusenciasController extends BaseController {
             $id_tipo = (int) $this->request->getParam('id_tipo_ausencia');
             $fecha_de_raw = $this->request->getParam('fecha_de');   // yyyy-mm-dd
             $fecha_hasta_raw = $this->request->getParam('fecha_hasta'); // yyyy-mm-dd
-            $dias = (int) $this->request->getParam('dias_solicitados');
+            $dias = (float) $this->request->getParam('dias_solicitados');
+            $turno = $this->request->getParam('turno');
             $prima = (int) $this->request->getParam('prima_vacacional');
             $notas = $this->request->getParam('notas') ?? '';
 
@@ -1160,6 +1187,18 @@ class AusenciasController extends BaseController {
             $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($uid);
             $empleado_ausencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado[0]['Id_empleados']);
             $tipo_ausencia = $this->tipoausenciaMapper->getTipoById($id_tipo);
+            $esMedioDia = !empty($tipo_ausencia) && (int) ($tipo_ausencia[0]['es_medio_dia'] ?? 0) === 1;
+            if ($esMedioDia) {
+                if ($fecha_de_raw !== $fecha_hasta_raw) {
+                    return new DataResponse(['success' => false, 'message' => 'El medio día solo puede ser de un único día.'], Http::STATUS_BAD_REQUEST);
+                }
+                if (!in_array($turno, ['manana', 'tarde'], true)) {
+                    return new DataResponse(['success' => false, 'message' => 'Indica si el medio día es mañana o tarde.'], Http::STATUS_BAD_REQUEST);
+                }
+                $dias = 0.5;
+            } else {
+                $turno = null;
+            }
 
             // Ni la ausencia original ni el tipo nuevo pueden ser "anticipada" (privado=1)
             // si quien edita no es admin/RH.
@@ -1194,7 +1233,7 @@ class AusenciasController extends BaseController {
 
             // Sólo ajustar días si el tipo descuenta vacaciones
             if (!empty($tipo_ausencia) && $tipo_ausencia[0]['solicitar_prima_vacacional'] == 1 && (int) ($tipo_ausencia[0]['privado'] ?? 0) === 0) {
-                $dias_originales = (int) ($registro[0]['dias_solicitados'] ?? 0);
+                $dias_originales = (float) ($registro[0]['dias_solicitados'] ?? 0);
                 $dias_disponibles = (float) $empleado_ausencias[0]['dias_disponibles'];
                 $nuevos_disponibles = ($dias_disponibles + $dias_originales) - $dias;
                 $this->ausenciasMapper->updateAusenciasEmpleado(
@@ -1208,7 +1247,7 @@ class AusenciasController extends BaseController {
             $fecha_hasta = (new \DateTime($fecha_hasta_raw))->format('Y-m-d');
 
             $this->historialausenciasMapper->EditarAusencia(
-                $id, $id_tipo, $fecha_de, $fecha_hasta, $prima, $notas, $dias
+                $id, $id_tipo, $fecha_de, $fecha_hasta, $prima, $notas, $dias, $turno
             );
 
             // Manejar reportes de tiempo si el tipo es cargable
