@@ -1,12 +1,5 @@
 <template id="content">
 	<section class="anniversary-info">
-		<header class="info-header">
-			<h2>{{ t('empleados', 'Vacation Table') }}</h2>
-			<p>
-				{{ t('empleados', 'This table shows how many vacation days you are entitled to based on your years with the company. It is a guide based on the Federal Labor Law, reformed in 2023.') }}
-			</p>
-		</header>
-
 		<div class="faq-section">
 			<h3>{{ t('empleados', 'Frequently Asked Questions') }}</h3>
 
@@ -25,12 +18,6 @@
 				</div>
 			</div>
 		</div>
-
-		<NcNoteCard type="info" :heading="t('empleados', 'Recommendation')">
-			<p>
-				{{ t('empleados', 'Check this table every time you reach a work anniversary. That way you can plan your time off in advance and enjoy your days to the fullest.') }}
-			</p>
-		</NcNoteCard>
 
 		<div v-if="finishTutorialMode" class="tutorial-finish">
 			<span class="tutorial-finish__progress">
@@ -65,7 +52,7 @@
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
-import { NcButton, NcLoadingIcon, NcNoteCard } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 import Replay from 'vue-material-design-icons/Replay.vue'
@@ -77,7 +64,6 @@ export default {
 		ChevronUp,
 		NcButton,
 		NcLoadingIcon,
-		NcNoteCard,
 		Replay,
 	},
 
@@ -95,6 +81,11 @@ export default {
 	data() {
 		return {
 			preguntas: [
+				{
+					titulo: t('empleados', 'Anniversary table?'),
+					contenido: t('empleados', 'This table shows how many vacation days you are entitled to based on your years with the company. It is a guide based on the Federal Labor Law, reformed in 2023.'),
+					abierto: true,
+				},
 				{
 					titulo: t('empleados', 'From when do I have the right to vacation?'),
 					contenido: t('empleados', 'From your first full year worked you can already take vacation. The minimum is 12 days and it increases each year.'),
@@ -114,7 +105,7 @@ export default {
 					titulo: t('empleados', 'What happens if I do not take my vacation?'),
 					contenido: this.acumular === 'true'
 						? t('empleados', 'Unused vacation is not lost, but it is important to use it. Resting is a right and also helps your health and performance.')
-						: t('empleados', 'If you do not take your vacation, it is lost. It is important to use it to take care of your health and wellbeing.'),
+						: t('empleados', 'If you do not take your vacation, you will lose it within the six months following the expiration date. It is important to make use of it to look after your health and well-being.'),
 					abierto: false,
 				},
 			],

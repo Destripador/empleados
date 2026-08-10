@@ -490,6 +490,13 @@
 			@close="closeModalAniversario">
 			<div class="table_component" role="region" tabindex="0">
 				<div class="modal__content">
+					<div>
+						<NcNoteCard type="info" :heading="t('empleados', 'Recommendation')">
+							<p>
+								{{ t('empleados', 'Check this table every time you reach a work anniversary. That way you can plan your time off in advance and enjoy your days to the fullest.') }}
+							</p>
+						</NcNoteCard>
+					</div>
 					<div class="layout">
 						<div class="grow3">
 							<TrofeosAniversarios
@@ -739,13 +746,9 @@ export default {
 
 			return [
 				{
+					title: t('empleados', 'Welcome to the Time off section.'),
 					text: [
-						t('empleados', 'Welcome to the Time off section.'),
 						t('empleados', 'From here you can check and manage your vacations and absences.'),
-						t('empleados', 'To submit a request, select on the calendar the day or range of days you need.'),
-						t('empleados', 'Then choose the absence type, review the information, and submit the form.'),
-						t('empleados', 'Done! Your request has been registered.'),
-						t('empleados', 'Now you only need to wait for the system confirmation.'),
 					],
 					video: stepVideos[1][lang],
 				},
@@ -753,10 +756,6 @@ export default {
 					title: t('empleados', 'Approval flow'),
 					text: [
 						t('empleados', 'Do you have questions about how your absences are authorized?'),
-						t('empleados', 'Once you submit your request, the system will notify your direct managers.'),
-						t('empleados', 'They will receive an alert in the system and also by email.'),
-						t('empleados', 'From your request you can check the progress of each approval level.'),
-						t('empleados', 'When all responsible people have made a decision, you will receive a notification with the result and the corresponding comments.'),
 					],
 					video: stepVideos[2][lang],
 				},
@@ -959,6 +958,7 @@ export default {
 
 		/**
 		 * Convierte un Date a 'MM-DD' (mismo formato que usa la tabla de festivos).
+		 * @param date
 		 */
 		formatMesDia(date) {
 			const mes = String(date.getMonth() + 1).padStart(2, '0')
@@ -969,6 +969,7 @@ export default {
 		/**
 		 * Indica si una fecha determinada corresponde a un día festivo
 		 * registrado (usa el mismo diccionario 'MM-DD' -> nombre).
+		 * @param date
 		 */
 		esFestivo(date) {
 			return Boolean(this.festivosPorFecha[this.formatMesDia(date)])
@@ -985,6 +986,7 @@ export default {
 		 * verde desaparecía. Como excepción: si la celda es "hoy", dejamos
 		 * que se vea el resaltado amarillo propio de FullCalendar aunque
 		 * el día sea festivo (solo se mantienen la etiqueta y el bloqueo).
+		 * @param arg
 		 */
 		onDayCellDidMount(arg) {
 			const mesDia = this.formatMesDia(arg.date)
