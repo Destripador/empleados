@@ -549,12 +549,10 @@
 			:show="tutorialVisible"
 			lesson-id="vacaciones.crear.v1"
 			:name="t('empleados', 'How to request time off')"
+			:steps="vacationTutorialSteps"
 			@complete="onTutorialComplete"
 			@close="tutorialVisible = false"
-			@error="onTutorialError">
-			<p>{{ t('empleados', 'Select a day or a range of days on the calendar to open the absence request form.') }}</p>
-			<p>{{ t('empleados', 'Choose the absence type, review the available days, and submit your request.') }}</p>
-		</TutorialDialog>
+			@error="onTutorialError" />
 	</NcAppContent>
 </template>
 
@@ -717,6 +715,14 @@ export default {
 	},
 
 	computed: {
+		vacationTutorialSteps() {
+			return [
+				t('empleados', 'Select a day or a range of days on the calendar to open the absence request form.'),
+				t('empleados', 'Choose the absence type.'),
+				t('empleados', 'Review the available days and submit your request.'),
+			]
+		},
+
 		AniversariosAgrupados() {
 			const agrupados = []
 			let inicio = null
