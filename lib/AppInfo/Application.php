@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\AppInfo;
 
 use OCA\Empleados\Command\SeedFestivosOficiales;
+use OCA\Empleados\Listener\CSPListener;
 use OCA\Empleados\Listener\MovimientoArchivoListener;
 use OCP\IDBConnection;
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
@@ -27,6 +28,7 @@ use OCP\Files\Events\Node\NodeCreatedEvent;
 use OCP\Files\Events\Node\NodeDeletedEvent;
 use OCP\Files\Events\Node\NodeRenamedEvent;
 use OCP\Files\Events\Node\NodeWrittenEvent;
+use OCP\Security\CSP\AddContentSecurityPolicyEvent;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'empleados';
@@ -47,6 +49,7 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(NodeRenamedEvent::class, MovimientoArchivoListener::class);
 		$context->registerEventListener(NodeCopiedEvent::class, MovimientoArchivoListener::class);
 		$context->registerEventListener(NodeDeletedEvent::class, MovimientoArchivoListener::class);
+		$context->registerEventListener(AddContentSecurityPolicyEvent::class, CSPListener::class);
 
 		$context->registerService(AniversarioSyncService::class, function($c) {
 			return new AniversarioSyncService(

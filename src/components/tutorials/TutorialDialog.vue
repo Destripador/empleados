@@ -67,16 +67,20 @@ function toEmbedUrl(url) {
 
 		if (host === 'youtu.be') {
 			const id = parsed.pathname.replace(/^\//, '').split('/')[0]
-			return id ? `https://www.youtube.com/embed/${id}` : trimmed
+			return id ? `https://www.youtube-nocookie.com/embed/${id}` : trimmed
 		}
 
 		if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
 			if (parsed.pathname.startsWith('/embed/')) {
+				// Prefer privacy-enhanced host while keeping an already-valid embed path.
+				if (host === 'youtube.com' || host === 'm.youtube.com') {
+					return `https://www.youtube-nocookie.com${parsed.pathname}${parsed.search}`
+				}
 				return trimmed
 			}
 			const id = parsed.searchParams.get('v')
 			if (id) {
-				return `https://www.youtube.com/embed/${id}`
+				return `https://www.youtube-nocookie.com/embed/${id}`
 			}
 		}
 	} catch (e) {
