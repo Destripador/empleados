@@ -2237,7 +2237,18 @@
     "Work type": "Tipo de trabajo",
     "Activities could not be loaded": "No se pudieron cargar las actividades",
     "Could not load today's status: {error}": "No se pudo cargar el estado de hoy: {error}",
-    "Could not open the file selector.": "No se pudo abrir el selector de archivos."
+    "Could not open the file selector.": "No se pudo abrir el selector de archivos.",
+    "Welcome to the Time off section.": "Bienvenido al apartado de Tiempo laboral.",
+    "From here you can check and manage your vacations and absences.": "Desde aquí puedes consultar y gestionar tus vacaciones y ausencias.",
+    "To submit a request, select on the calendar the day or range of days you need.": "Para realizar una solicitud, selecciona en el calendario el día o el rango de días que necesitas.",
+    "Then choose the absence type, review the information, and submit the form.": "Después, elige el tipo de ausencia, verifica la información y envía el formulario.",
+    "Done! Your request has been registered.": "¡Listo! Tu solicitud ha sido registrada.",
+    "Now you only need to wait for the system confirmation.": "Ahora solo debes esperar la confirmación del sistema.",
+    "Do you have questions about how your absences are authorized?": "¿Tienes dudas sobre cómo se autorizan tus ausencias?",
+    "Once you submit your request, the system will notify your direct managers.": "Una vez que envíes tu solicitud, el sistema notificará a tus jefes directos.",
+    "They will receive an alert in the system and also by email.": "Ellos recibirán una alerta dentro del sistema y también por correo electrónico.",
+    "From your request you can check the progress of each approval level.": "Desde tu solicitud podrás consultar el avance de cada nivel de aprobación.",
+    "When all responsible people have made a decision, you will receive a notification with the result and the corresponding comments.": "Cuando todos los responsables hayan tomado una decisión, recibirás una notificación con el resultado y los comentarios correspondientes."
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

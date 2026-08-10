@@ -1549,6 +1549,18 @@ OC.L10N.register(
     "Restart tutorial" : "Restart tutorial",
     "Tutorial restarted" : "Tutorial restarted",
     "Could not restart tutorial" : "Could not restart tutorial",
-    "Next" : "Next"
+    "Next" : "Next",
+    "Welcome to the Time off section." : "Welcome to the Time off section.",
+    "From here you can check and manage your vacations and absences." : "From here you can check and manage your vacations and absences.",
+    "To submit a request, select on the calendar the day or range of days you need." : "To submit a request, select on the calendar the day or range of days you need.",
+    "Then choose the absence type, review the information, and submit the form." : "Then choose the absence type, review the information, and submit the form.",
+    "Done! Your request has been registered." : "Done! Your request has been registered.",
+    "Now you only need to wait for the system confirmation." : "Now you only need to wait for the system confirmation.",
+    "Approval flow" : "Approval flow",
+    "Do you have questions about how your absences are authorized?" : "Do you have questions about how your absences are authorized?",
+    "Once you submit your request, the system will notify your direct managers." : "Once you submit your request, the system will notify your direct managers.",
+    "They will receive an alert in the system and also by email." : "They will receive an alert in the system and also by email.",
+    "From your request you can check the progress of each approval level." : "From your request you can check the progress of each approval level.",
+    "When all responsible people have made a decision, you will receive a notification with the result and the corresponding comments." : "When all responsible people have made a decision, you will receive a notification with the result and the corresponding comments."
 },
 "nplurals=2; plural=(n != 1);");

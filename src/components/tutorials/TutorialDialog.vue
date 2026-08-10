@@ -6,7 +6,13 @@
 		<div class="tutorial-dialog">
 			<div class="tutorial-dialog__body">
 				<template v-if="hasSteps">
-					<p v-if="currentStepText">{{ currentStepText }}</p>
+					<h3 v-if="currentStepTitle" class="tutorial-dialog__title">
+						{{ currentStepTitle }}
+					</h3>
+					<p v-for="(paragraph, index) in currentStepParagraphs"
+						:key="index">
+						{{ paragraph }}
+					</p>
 					<div v-if="currentStepVideo"
 						class="tutorial-dialog__video">
 						<iframe
@@ -114,9 +120,8 @@ export default {
 		},
 		/**
 		 * Optional multi-step content. Each entry may be a string or an object
-		 * `{ text, video }` / `{ type: 'anniversary' }`. When provided, the dialog
-		 * walks through each step and only completes the tutorial on the last one
-		 * (unless the last step is handled externally, e.g. anniversary).
+		 * `{ text, title, video }` / `{ type: 'anniversary' }`.
+		 * `text` may be a string or an array of paragraph strings.
 		 */
 		steps: {
 			type: Array,
@@ -155,12 +160,32 @@ export default {
 			return !!(step && typeof step === 'object' && step.type === 'anniversary')
 		},
 
-		currentStepText() {
+		currentStepTitle() {
 			const step = this.currentStep
 			if (step && typeof step === 'object') {
-				return step.text || ''
+				return step.title || ''
 			}
-			return step || ''
+			return ''
+		},
+
+		currentStepParagraphs() {
+			const step = this.currentStep
+			let text = ''
+			if (step && typeof step === 'object') {
+				text = step.text || ''
+			} else {
+				text = step || ''
+			}
+
+			if (Array.isArray(text)) {
+				return text.filter(paragraph => typeof paragraph === 'string' && paragraph.trim() !== '')
+			}
+
+			if (typeof text === 'string' && text.trim() !== '') {
+				return [text]
+			}
+
+			return []
 		},
 
 		currentStepVideo() {
@@ -273,6 +298,16 @@ export default {
 	flex-direction: column;
 	gap: 0.75rem;
 	line-height: 1.5;
+}
+
+.tutorial-dialog__title {
+	margin: 0;
+	font-size: 1.1rem;
+	font-weight: 700;
+}
+
+.tutorial-dialog__body p {
+	margin: 0;
 }
 
 .tutorial-dialog__video {

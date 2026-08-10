@@ -739,11 +739,25 @@ export default {
 
 			return [
 				{
-					text: t('empleados', 'Select a day or a range of days on the calendar to open the absence request form.'),
+					text: [
+						t('empleados', 'Welcome to the Time off section.'),
+						t('empleados', 'From here you can check and manage your vacations and absences.'),
+						t('empleados', 'To submit a request, select on the calendar the day or range of days you need.'),
+						t('empleados', 'Then choose the absence type, review the information, and submit the form.'),
+						t('empleados', 'Done! Your request has been registered.'),
+						t('empleados', 'Now you only need to wait for the system confirmation.'),
+					],
 					video: stepVideos[1][lang],
 				},
 				{
-					text: t('empleados', 'Choose the absence type.'),
+					title: t('empleados', 'Approval flow'),
+					text: [
+						t('empleados', 'Do you have questions about how your absences are authorized?'),
+						t('empleados', 'Once you submit your request, the system will notify your direct managers.'),
+						t('empleados', 'They will receive an alert in the system and also by email.'),
+						t('empleados', 'From your request you can check the progress of each approval level.'),
+						t('empleados', 'When all responsible people have made a decision, you will receive a notification with the result and the corresponding comments.'),
+					],
 					video: stepVideos[2][lang],
 				},
 				{ type: 'anniversary' },
