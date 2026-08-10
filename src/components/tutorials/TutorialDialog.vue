@@ -1,11 +1,23 @@
 <template>
-	<NcModal v-if="show"
-		size="normal"
+	<NcModal v-if="show && !isAnniversaryStep"
+		:size="modalSize"
 		:name="name"
 		@close="onDismiss">
 		<div class="tutorial-dialog">
 			<div class="tutorial-dialog__body">
-				<p v-if="hasSteps">{{ currentStepText }}</p>
+				<template v-if="hasSteps">
+					<p v-if="currentStepText">{{ currentStepText }}</p>
+					<div v-if="currentStepVideo"
+						class="tutorial-dialog__video">
+						<iframe
+							:src="currentStepVideo"
+							:title="name"
+							frameborder="0"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							allowfullscreen
+							referrerpolicy="strict-origin-when-cross-origin" />
+					</div>
+				</template>
 				<slot v-else />
 			</div>
 
@@ -32,6 +44,48 @@ import { NcModal, NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import { completeTutorial } from '../../services/tutorials.js'
 
+/**
+ * Convert a YouTube watch/share URL into an embeddable URL.
+ * Leaves already-embed URLs and non-YouTube links untouched.
+ *
+ * @param {string} url
+ * @return {string}
+ */
+function toEmbedUrl(url) {
+	if (!url || typeof url !== 'string') {
+		return ''
+	}
+
+	const trimmed = url.trim()
+	if (!trimmed) {
+		return ''
+	}
+
+	try {
+		const parsed = new URL(trimmed)
+		const host = parsed.hostname.replace(/^www\./, '')
+
+		if (host === 'youtu.be') {
+			const id = parsed.pathname.replace(/^\//, '').split('/')[0]
+			return id ? `https://www.youtube.com/embed/${id}` : trimmed
+		}
+
+		if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+			if (parsed.pathname.startsWith('/embed/')) {
+				return trimmed
+			}
+			const id = parsed.searchParams.get('v')
+			if (id) {
+				return `https://www.youtube.com/embed/${id}`
+			}
+		}
+	} catch (e) {
+		return trimmed
+	}
+
+	return trimmed
+}
+
 export default {
 	name: 'TutorialDialog',
 
@@ -55,8 +109,10 @@ export default {
 			default: false,
 		},
 		/**
-		 * Optional multi-step content. When provided, the dialog walks
-		 * through each string and only completes the tutorial on the last step.
+		 * Optional multi-step content. Each entry may be a string or an object
+		 * `{ text, video }` / `{ type: 'anniversary' }`. When provided, the dialog
+		 * walks through each step and only completes the tutorial on the last one
+		 * (unless the last step is handled externally, e.g. anniversary).
 		 */
 		steps: {
 			type: Array,
@@ -68,7 +124,7 @@ export default {
 		},
 	},
 
-	emits: ['complete', 'close', 'error'],
+	emits: ['complete', 'close', 'error', 'anniversary-step'],
 
 	data() {
 		return {
@@ -86,8 +142,37 @@ export default {
 			return !this.hasSteps || this.currentStepIndex >= this.steps.length - 1
 		},
 
+		currentStep() {
+			return this.steps[this.currentStepIndex] || null
+		},
+
+		isAnniversaryStep() {
+			const step = this.currentStep
+			return !!(step && typeof step === 'object' && step.type === 'anniversary')
+		},
+
 		currentStepText() {
-			return this.steps[this.currentStepIndex] || ''
+			const step = this.currentStep
+			if (step && typeof step === 'object') {
+				return step.text || ''
+			}
+			return step || ''
+		},
+
+		currentStepVideo() {
+			const step = this.currentStep
+			if (!step || typeof step !== 'object' || !step.video) {
+				return ''
+			}
+			return toEmbedUrl(step.video)
+		},
+
+		hasAnyVideo() {
+			return this.steps.some(step => typeof step === 'object' && step?.video)
+		},
+
+		modalSize() {
+			return this.hasAnyVideo ? 'large' : 'normal'
 		},
 
 		primaryLabel() {
@@ -107,12 +192,23 @@ export default {
 		show(visible) {
 			if (visible) {
 				this.currentStepIndex = 0
+				this.$nextTick(() => this.emitAnniversaryStepIfNeeded())
 			}
+		},
+
+		currentStepIndex() {
+			this.emitAnniversaryStepIfNeeded()
 		},
 	},
 
 	methods: {
 		t,
+
+		emitAnniversaryStepIfNeeded() {
+			if (this.show && this.isAnniversaryStep) {
+				this.$emit('anniversary-step')
+			}
+		},
 
 		async onPrimary() {
 			if (this.saving) {
@@ -121,6 +217,11 @@ export default {
 
 			if (!this.isLastStep) {
 				this.currentStepIndex += 1
+				return
+			}
+
+			if (this.isAnniversaryStep) {
+				this.$emit('anniversary-step')
 				return
 			}
 
@@ -168,6 +269,23 @@ export default {
 	flex-direction: column;
 	gap: 0.75rem;
 	line-height: 1.5;
+}
+
+.tutorial-dialog__video {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	border-radius: var(--border-radius-large, 8px);
+	background: var(--color-background-dark, #000);
+
+	iframe {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: 0;
+	}
 }
 
 .tutorial-dialog__actions {

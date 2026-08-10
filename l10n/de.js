@@ -1563,6 +1563,18 @@ OC.L10N.register(
     "Client work" : "Kundenarbeit",
     "The time will be added automatically to your reports as a non-billable activity." : "The time will be added automatically to your reports as a non-billable activity.",
     "Could not load today's status: {error}" : "Der Status von heute konnte nicht geladen werden: {error}",
-    "Could not open the file selector." : "Die Dateiauswahl konnte nicht geöffnet werden."
+    "Could not open the file selector." : "Die Dateiauswahl konnte nicht geöffnet werden.",
+    "Got it" : "Got it",
+    "Finish tutorial" : "Finish tutorial",
+    "How to request time off" : "How to request time off",
+    "Select a day or a range of days on the calendar to open the absence request form." : "Select a day or a range of days on the calendar to open the absence request form.",
+    "Choose the absence type." : "Choose the absence type.",
+    "Review the available days and submit your request." : "Review the available days and submit your request.",
+    "Choose the absence type, review the available days, and submit your request." : "Choose the absence type, review the available days, and submit your request.",
+    "Could not save tutorial progress" : "Could not save tutorial progress",
+    "Restart tutorial" : "Restart tutorial",
+    "Tutorial restarted" : "Tutorial restarted",
+    "Could not restart tutorial" : "Could not restart tutorial",
+    "Next" : "Next"
 },
 "nplurals=2; plural=(n != 1);");

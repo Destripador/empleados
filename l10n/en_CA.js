@@ -1537,6 +1537,18 @@ OC.L10N.register(
     "Show all my subordinates" : "Show all my subordinates",
     "Pending absences" : "Pending absences",
     "No employees were found" : "No employees were found",
-    "Absence request" : "Absence request"
+    "Absence request" : "Absence request",
+    "Got it" : "Got it",
+    "Finish tutorial" : "Finish tutorial",
+    "How to request time off" : "How to request time off",
+    "Select a day or a range of days on the calendar to open the absence request form." : "Select a day or a range of days on the calendar to open the absence request form.",
+    "Choose the absence type." : "Choose the absence type.",
+    "Review the available days and submit your request." : "Review the available days and submit your request.",
+    "Choose the absence type, review the available days, and submit your request." : "Choose the absence type, review the available days, and submit your request.",
+    "Could not save tutorial progress" : "Could not save tutorial progress",
+    "Restart tutorial" : "Restart tutorial",
+    "Tutorial restarted" : "Tutorial restarted",
+    "Could not restart tutorial" : "Could not restart tutorial",
+    "Next" : "Next"
 },
 "nplurals=2; plural=(n != 1);");

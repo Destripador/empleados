@@ -35,6 +35,50 @@ import BriefcaseClockOutline from 'vue-material-design-icons/BriefcaseClockOutli
 import CalendarStar from 'vue-material-design-icons/CalendarStar.vue'
 import TrophyOutline from 'vue-material-design-icons/TrophyOutline.vue'
 
+/**
+ * Parse YYYY-MM-DD (or ISO datetime) as a local calendar date at midnight.
+ *
+ * @param {string|null|undefined} value
+ * @return {Date|null}
+ */
+function parseLocalDate(value) {
+	if (!value || typeof value !== 'string') {
+		return null
+	}
+
+	const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+	if (!match) {
+		return null
+	}
+
+	const year = Number(match[1])
+	const month = Number(match[2]) - 1
+	const day = Number(match[3])
+	const date = new Date(year, month, day)
+
+	if (
+		date.getFullYear() !== year
+		|| date.getMonth() !== month
+		|| date.getDate() !== day
+	) {
+		return null
+	}
+
+	return date
+}
+
+/**
+ * Format a Date as MM-DD for holiday lookups.
+ *
+ * @param {Date} date
+ * @return {string}
+ */
+function toMonthDay(date) {
+	const month = String(date.getMonth() + 1).padStart(2, '0')
+	const day = String(date.getDate()).padStart(2, '0')
+	return `${month}-${day}`
+}
+
 export default {
 	name: 'TrofeosAniversarios',
 
@@ -53,33 +97,86 @@ export default {
 			type: String,
 			required: true,
 		},
+		/**
+		 * Optional holiday list. Each item should expose `fecha` as MM-DD
+		 * (same format used by the calendar).
+		 */
+		festivos: {
+			type: Array,
+			default: () => [],
+		},
 	},
 
 	computed: {
 		anniversaryNumber() {
-			return this.info.id_aniversario || 0
+			return Number(this.info.id_aniversario) || 0
 		},
 
+		festivosSet() {
+			const set = new Set()
+			this.festivos.forEach(item => {
+				if (item?.fecha) {
+					set.add(String(item.fecha))
+				}
+			})
+			return set
+		},
+
+		/**
+		 * Approximate business days worked since hire date
+		 * (Mon–Fri, excluding configured holidays when available).
+		 */
 		workedDays() {
-			return (this.anniversaryNumber * 260) + this.calcularDiasLaborales()
+			const start = this.resolveHireDate()
+			if (!start) {
+				return 0
+			}
+
+			const today = new Date()
+			today.setHours(0, 0, 0, 0)
+
+			if (start.getTime() > today.getTime()) {
+				return 0
+			}
+
+			return this.countBusinessDays(start, today)
 		},
 	},
 
 	methods: {
 		t,
 
-		calcularDiasLaborales() {
-			const hoy = new Date()
-			const inicio = new Date(hoy.getFullYear(), 0, 1)
-			const todayTime = hoy.getTime()
-			const current = new Date(inicio)
+		resolveHireDate() {
+			const fromIngreso = parseLocalDate(this.info.fecha_ingreso)
+			if (fromIngreso) {
+				return fromIngreso
+			}
+
+			// Fallback: reconstruct hire date from the current period start.
+			const periodoInicio = parseLocalDate(this.info.periodo_inicio)
+			if (periodoInicio) {
+				const reconstructed = new Date(periodoInicio)
+				reconstructed.setFullYear(reconstructed.getFullYear() - this.anniversaryNumber)
+				return reconstructed
+			}
+
+			return null
+		},
+
+		countBusinessDays(start, end) {
+			const current = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+			const last = new Date(end.getFullYear(), end.getMonth(), end.getDate())
 			let count = 0
 
-			while (current.getTime() <= todayTime) {
-				const day = current.getDay()
-				if (day !== 0 && day !== 6) {
+			while (current.getTime() <= last.getTime()) {
+				const weekday = current.getDay()
+				const isWeekend = weekday === 0 || weekday === 6
+				const isHoliday = this.festivosSet.has(toMonthDay(current))
+
+				if (!isWeekend && !isHoliday) {
 					count++
 				}
+
 				current.setDate(current.getDate() + 1)
 			}
 

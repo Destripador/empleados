@@ -483,7 +483,7 @@
 		<!-- END EDIT ABSENCE MODAL -->
 
 		<!-- ANNIVERSARIES INFO MODAL -->
-		<NcModal v-if="ModalAniversario"
+		<NcModal v-if="ModalAniversario || tutorialAnniversaryStep"
 			ref="modalRef"
 			size="large"
 			:name="t('empleados', 'Anniversary table')"
@@ -492,7 +492,10 @@
 				<div class="modal__content">
 					<div class="layout">
 						<div class="grow3">
-							<TrofeosAniversarios :info="Ausencias" :acumular="configuraciones.acumular_vacaciones" />
+							<TrofeosAniversarios
+								:info="Ausencias"
+								:acumular="configuraciones.acumular_vacaciones"
+								:festivos="Festivos" />
 							<br>
 							<table>
 								<caption>
@@ -526,7 +529,11 @@
 								:info="Ausencias"
 								:acumular="configuraciones.acumular_vacaciones"
 								:resetting-tutorial="tutorialSaving"
-								@reset-tutorial="onResetVacationTutorial" />
+								:finish-tutorial-mode="tutorialAnniversaryStep"
+								:finishing-tutorial="tutorialSaving"
+								:tutorial-step-label="tutorialAnniversaryStepLabel"
+								@reset-tutorial="onResetVacationTutorial"
+								@finish-tutorial="onFinishVacationTutorial" />
 						</div>
 					</div>
 				</div>
@@ -550,8 +557,9 @@
 			lesson-id="vacaciones.crear.v1"
 			:name="t('empleados', 'How to request time off')"
 			:steps="vacationTutorialSteps"
+			@anniversary-step="onTutorialAnniversaryStep"
 			@complete="onTutorialComplete"
-			@close="tutorialVisible = false"
+			@close="onTutorialClose"
 			@error="onTutorialError" />
 	</NcAppContent>
 </template>
@@ -564,7 +572,7 @@ import DetalleAusencia from './Modal/DetalleAusencia.vue'
 import EditarAusencia from './Modal/EditarAusencia.vue'
 import ReporteAusencias from './ReporteAusencias.vue'
 import TutorialDialog from '../../../components/tutorials/TutorialDialog.vue'
-import { getTutorialStatus, resetTutorial } from '../../../services/tutorials.js'
+import { getTutorialStatus, resetTutorial, completeTutorial } from '../../../services/tutorials.js'
 
 import FullCalendar from '@fullcalendar/vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -577,7 +585,7 @@ import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
 import { showError, showInfo, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
-import { translate as t } from '@nextcloud/l10n'
+import { getLanguage, translate as t } from '@nextcloud/l10n'
 
 import BellOutline from 'vue-material-design-icons/BellOutline.vue'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
@@ -711,16 +719,40 @@ export default {
 			tutorialVisible: false,
 			tutorialSaving: false,
 			tutorialError: null,
+			tutorialAnniversaryStep: false,
 		}
 	},
 
 	computed: {
 		vacationTutorialSteps() {
+			const lang = getLanguage().startsWith('es') ? 'es' : 'en'
+			const stepVideos = {
+				1: {
+					es: 'https://www.youtube.com/watch?v=cuPLvWedAZc',
+					en: 'https://www.youtube.com/watch?v=YYSpySD-sA4',
+				},
+				2: {
+					es: 'https://www.youtube.com/watch?v=sMHtpufgcBo',
+					en: 'https://www.youtube.com/watch?v=TrYMYimx-IA',
+				},
+			}
+
 			return [
-				t('empleados', 'Select a day or a range of days on the calendar to open the absence request form.'),
-				t('empleados', 'Choose the absence type.'),
-				t('empleados', 'Review the available days and submit your request.'),
+				{
+					text: t('empleados', 'Select a day or a range of days on the calendar to open the absence request form.'),
+					video: stepVideos[1][lang],
+				},
+				{
+					text: t('empleados', 'Choose the absence type.'),
+					video: stepVideos[2][lang],
+				},
+				{ type: 'anniversary' },
 			]
+		},
+
+		tutorialAnniversaryStepLabel() {
+			const total = this.vacationTutorialSteps.length
+			return `${total} / ${total}`
 		},
 
 		AniversariosAgrupados() {
@@ -806,6 +838,7 @@ export default {
 			this.tutorialLoading = true
 			this.tutorialError = null
 			this.tutorialVisible = false
+			this.tutorialAnniversaryStep = false
 
 			try {
 				const status = await getTutorialStatus('vacaciones.crear.v1')
@@ -820,16 +853,52 @@ export default {
 			}
 		},
 
+		async onTutorialAnniversaryStep() {
+			this.tutorialAnniversaryStep = true
+			this.ModalAniversario = false
+
+			if (!this.Aniversarios?.length) {
+				try {
+					const response = await axios.get(generateUrl('/apps/empleados/Getaniversarios'))
+					this.Aniversarios = response?.data?.ocs?.data || []
+				} catch (err) {
+					showError(t('empleados', 'An exception has occurred [01] [{err}]', { err }))
+				}
+			}
+		},
+
 		onTutorialComplete() {
 			this.tutorialVisible = false
+			this.tutorialAnniversaryStep = false
 			this.tutorialSaving = false
 			this.tutorialError = null
+		},
+
+		onTutorialClose() {
+			this.tutorialVisible = false
+			this.tutorialAnniversaryStep = false
 		},
 
 		onTutorialError(err) {
 			this.tutorialSaving = false
 			this.tutorialError = err
 			showError(t('empleados', 'Could not save tutorial progress'))
+		},
+
+		async onFinishVacationTutorial() {
+			if (this.tutorialSaving) {
+				return
+			}
+
+			this.tutorialSaving = true
+			this.tutorialError = null
+
+			try {
+				await completeTutorial('vacaciones.crear.v1')
+				this.onTutorialComplete()
+			} catch (err) {
+				this.onTutorialError(err)
+			}
 		},
 
 		async onResetVacationTutorial() {
@@ -843,6 +912,7 @@ export default {
 			try {
 				await resetTutorial('vacaciones.crear.v1')
 				this.ModalAniversario = false
+				this.tutorialAnniversaryStep = false
 				this.tutorialVisible = true
 				showSuccess(t('empleados', 'Tutorial restarted'))
 			} catch (err) {
@@ -1000,7 +1070,12 @@ export default {
 
 		showAniversarioModal() { this.getAniversarios() },
 		closeModal() { this.modal = false },
-		closeModalAniversario() { this.ModalAniversario = false },
+		closeModalAniversario() {
+			this.ModalAniversario = false
+			if (this.tutorialAnniversaryStep) {
+				this.onTutorialClose()
+			}
+		},
 
 		closeModalEvento() {
 			this.modalEvento = false

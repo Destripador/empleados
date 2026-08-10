@@ -32,7 +32,22 @@
 			</p>
 		</NcNoteCard>
 
-		<div class="tutorial-reset">
+		<div v-if="finishTutorialMode" class="tutorial-finish">
+			<span class="tutorial-finish__progress">
+				{{ tutorialStepLabel }}
+			</span>
+			<NcButton type="primary"
+				:disabled="finishingTutorial"
+				@click="$emit('finish-tutorial')">
+				<template #icon>
+					<NcLoadingIcon v-if="finishingTutorial" :size="20" />
+				</template>
+				{{ finishingTutorial
+					? t('empleados', 'Saving...')
+					: t('empleados', 'Finalize') }}
+			</NcButton>
+		</div>
+		<div v-else class="tutorial-reset">
 			<NcButton type="tertiary"
 				:disabled="resettingTutorial"
 				@click="$emit('reset-tutorial')">
@@ -70,9 +85,12 @@ export default {
 		info: { type: Object, required: true },
 		acumular: { type: String, required: true },
 		resettingTutorial: { type: Boolean, default: false },
+		finishTutorialMode: { type: Boolean, default: false },
+		finishingTutorial: { type: Boolean, default: false },
+		tutorialStepLabel: { type: String, default: '' },
 	},
 
-	emits: ['reset-tutorial'],
+	emits: ['reset-tutorial', 'finish-tutorial'],
 
 	data() {
 		return {
@@ -169,9 +187,18 @@ export default {
 	border: none;
 }
 
-.tutorial-reset {
+.tutorial-reset,
+.tutorial-finish {
 	display: flex;
 	justify-content: flex-end;
+	align-items: center;
+	gap: 1rem;
 	margin-top: 4px;
+}
+
+.tutorial-finish__progress {
+	margin-right: auto;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.875rem;
 }
 </style>
