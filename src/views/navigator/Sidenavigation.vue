@@ -25,6 +25,12 @@
 						<ViewDashboard :size="20" />
 					</template>
 				</NcAppNavigationItem>
+
+				<NcAppNavigationItem :name="t('empleados', 'Office simulation')" :to="{ name: 'SimulacionOficina' }">
+					<template #icon>
+						<OfficeBuildingMarker :size="20" />
+					</template>
+				</NcAppNavigationItem>
 			</NcAppNavigationList>
 
 			<!-- Human Resources -->
@@ -225,6 +231,7 @@ import Laptop from 'vue-material-design-icons/Laptop.vue'
 import CartOutline from 'vue-material-design-icons/CartOutline.vue'
 import Cash from 'vue-material-design-icons/Cash.vue'
 import CalendarMonth from 'vue-material-design-icons/CalendarMonth.vue'
+import OfficeBuildingMarker from 'vue-material-design-icons/OfficeBuildingMarker.vue'
 
 import {
 	NcAppNavigation,
@@ -261,6 +268,7 @@ export default {
 		CartOutline,
 		Cash,
 		CalendarMonth,
+		OfficeBuildingMarker,
 	},
 
 	mixins: [permissionsMixin],

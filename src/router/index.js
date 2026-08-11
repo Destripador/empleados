@@ -20,6 +20,7 @@ import QuickReport from '../views/components/reports/QuickReport.vue'
 import CumplimientoReportes from '../views/components/reports/CumplimientoReportes.vue'
 import Inventario from '../views/components/Inventario/Inventario.vue'
 import MisSolicitudesCompras from '../views/components/Compras/MisSolicitudes.vue'
+import SimulacionOficina from '../views/components/SimulacionOficina/SimulacionOficina.vue'
 
 Vue.use(Router)
 
@@ -134,6 +135,11 @@ export default new Router({
 			path: '/compras',
 			name: 'compras',
 			component: MisSolicitudesCompras,
+		},
+		{
+			path: '/office-simulation',
+			name: 'SimulacionOficina',
+			component: SimulacionOficina,
 		},
 	],
 })
