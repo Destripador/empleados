@@ -163,6 +163,21 @@
 							:options="options" />
 					</div>
 					<div class="form-group">
+						<p class="area-report-flags__title">
+							{{ t('empleados', 'Admin time report') }}
+						</p>
+						<NcCheckboxRadioSwitch
+							v-model="mostrarClientes"
+							type="switch">
+							{{ t('empleados', 'Show clients in admin report') }}
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch
+							v-model="mostrarAusencias"
+							type="switch">
+							{{ t('empleados', 'Show absences in admin report') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+					<div class="form-group">
 						<NcButton
 							class="center"
 							:aria-label="t('empleados', 'Save changes')"
@@ -199,6 +214,7 @@ import {
 	NcButton,
 	NcListItem,
 	NcModal,
+	NcCheckboxRadioSwitch,
 } from '@nextcloud/vue'
 import EntityCountNetwork from '../../../../components/EntityCountNetwork.vue'
 
@@ -219,6 +235,7 @@ export default {
 		NcButton,
 		NcListItem,
 		NcModal,
+		NcCheckboxRadioSwitch,
 		EntityCountNetwork,
 	},
 
@@ -246,6 +263,8 @@ export default {
 			showDialog: false,
 			area: '',
 			padre: '',
+			mostrarClientes: true,
+			mostrarAusencias: true,
 			preferencias_areas: null,
 		}
 	},
@@ -300,6 +319,12 @@ export default {
 				this.getall()
 				this.padre = this.data.Id_padre
 				this.area = this.data.Nombre
+				this.mostrarClientes = this.data.mostrar_clientes !== false
+					&& this.data.mostrar_clientes !== 0
+					&& this.data.mostrar_clientes !== '0'
+				this.mostrarAusencias = this.data.mostrar_ausencias !== false
+					&& this.data.mostrar_ausencias !== 0
+					&& this.data.mostrar_ausencias !== '0'
 			}
 		},
 		closeModal() {
@@ -349,6 +374,8 @@ export default {
 					id_departamento: this.data.Id_departamento,
 					padre: this.padre,
 					nombre: this.area,
+					mostrar_clientes: this.mostrarClientes ? 1 : 0,
+					mostrar_ausencias: this.mostrarAusencias ? 1 : 0,
 				})
 				showSuccess(this.t('empleados', 'Área actualizada exitosamente'))
 				this.$root.$emit('reload')
@@ -578,6 +605,13 @@ export default {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
+}
+
+.area-report-flags__title {
+	margin: 0 0 10px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	font-weight: 700;
 }
 .areas-empty-state {
 	min-height: calc(100vh - var(--header-height) - 80px);

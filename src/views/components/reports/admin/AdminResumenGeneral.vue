@@ -8,454 +8,712 @@
 			{{ t('empleados', 'No data for this period.') }}
 		</div>
 
-		<div v-else class="dashboard-shell">
-			<section class="summary-grid">
-				<div class="summary-card summary-card-accent">
-					<div class="summary-label">
-						{{ t('empleados', 'Reported hours') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.horas_reportadas }}
-					</div>
-					<div class="summary-meta">
-						{{ statsFilterCaption }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Client work hours') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.horas_cliente }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Internal work hours') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.horas_internas }}
-					</div>
-					<div class="summary-meta">
-						{{ resumenFmt.porcentaje_interno }} {{ t('empleados', 'of reported work') }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Reports') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.total_reportes }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Projects') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.proyectos_activos }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Activities') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.actividades }}
-					</div>
-				</div>
-
-				<div class="summary-card">
-					<div class="summary-label">
-						{{ t('empleados', 'Average per report') }}
-					</div>
-					<div class="summary-value">
-						{{ resumenFmt.promedio_horas_reporte }}
-					</div>
-					<div class="summary-meta">
-						{{ t('empleados', 'Average recorded efficiency') }}
-					</div>
-				</div>
-			</section>
-
-			<section class="decision-grid">
-				<article class="decision-card">
-					<span>{{ t('empleados', 'Company with most hours') }}</span>
-					<strong>{{ decisionFmt.topEmpresa }}</strong>
-					<small>{{ decisionFmt.topEmpresaDetalle }}</small>
-				</article>
-
-				<article class="decision-card">
-					<span>{{ t('empleados', 'Top 3 companies') }}</span>
-					<strong>{{ decisionFmt.concentracionTop3 }}</strong>
-					<small>{{ t('empleados', 'Share of visible reported hours') }}</small>
-				</article>
-
-				<article class="decision-card">
-					<span>{{ t('empleados', 'Most used activity') }}</span>
-					<strong>{{ decisionFmt.topActividad }}</strong>
-					<small>{{ decisionFmt.topActividadDetalle }}</small>
-				</article>
-
-				<article class="decision-card">
-					<span>{{ t('empleados', 'Hidden categories') }}</span>
-					<strong>{{ exclusionCount }}</strong>
-					<small>{{ t('empleados', 'Companies or activities excluded from the view') }}</small>
-				</article>
-			</section>
-
-			<section class="chart-controls">
-				<div class="chart-controls-bar">
-					<div class="period-presets control-group inline">
-						<label for="resumen-chart-limit">{{ t('empleados', 'Show') }}</label>
-						<select
-							id="resumen-chart-limit"
-							v-model.number="chartLimit"
-							@change="renderGraficas">
-							<option
-								v-for="option in chartLimitOptions"
-								:key="option.value"
-								:value="option.value">
-								{{ option.label }}
-							</option>
-						</select>
-					</div>
-
-					<button
-						type="button"
-						class="clear-focus"
-						:class="{ active: hideAbsences }"
-						@click="toggleHideAbsences">
-						{{ hideAbsences
-							? t('empleados', 'Absences hidden')
-							: t('empleados', 'Hide absences') }}
-					</button>
-
-					<button
-						type="button"
-						class="clear-focus"
-						:aria-expanded="showChartFilters ? 'true' : 'false'"
-						@click="showChartFilters = !showChartFilters">
-						{{ t('empleados', 'More filters') }}
-						<span v-if="exclusionCount > 0" class="filter-badge">{{ exclusionCount }}</span>
-					</button>
-
-					<button
-						type="button"
-						class="clear-focus"
-						:disabled="!canClearFocus"
-						@click="clearChartFocus">
-						{{ t('empleados', 'Clear focus') }}
-					</button>
-				</div>
-
-				<div v-if="showChartFilters" class="chart-filters-panel">
-					<div class="control-group">
-						<label for="resumen-company-focus">{{ t('empleados', 'Focus company') }}</label>
-						<select
-							id="resumen-company-focus"
-							v-model="selectedEmpresa"
-							@change="renderGraficas">
-							<option :value="null">
-								{{ t('empleados', 'All companies') }}
-							</option>
-							<option
-								v-for="empresa in graficaProyectosAll"
-								:key="empresa.key"
-								:value="empresa.label">
-								{{ empresa.label }}
-							</option>
-						</select>
-					</div>
-
-					<div class="control-group">
-						<label for="resumen-activity-focus">{{ t('empleados', 'Focus activity') }}</label>
-						<select
-							id="resumen-activity-focus"
-							v-model="selectedActividad"
-							@change="renderGraficas">
-							<option :value="null">
-								{{ t('empleados', 'All activities') }}
-							</option>
-							<option
-								v-for="actividad in graficaActividadesAll"
-								:key="actividad.key"
-								:value="actividad.label">
-								{{ actividad.label }}
-							</option>
-						</select>
-					</div>
-
-					<div class="control-group control-group-wide">
-						<span class="control-label">{{ t('empleados', 'Hide companies') }}</span>
-						<div class="exclude-list">
-							<label
-								v-for="empresa in graficaProyectosAll"
-								:key="`hide-co-${empresa.key}`"
-								class="exclude-item">
-								<input
-									v-model="excludedEmpresaKeys"
-									type="checkbox"
-									:value="empresa.key"
-									@change="onExclusionChange">
-								{{ empresa.label }}
-							</label>
+		<div v-else class="dashboard-shell" :class="{ 'dashboard-shell--admin': !mostrarClientes }">
+			<!-- Bloque de cumplimiento (ambas vistas) -->
+			<section v-if="hasCumplimientoData" class="compliance-panel">
+				<div class="compliance-panel__header">
+					<div>
+						<div class="panel-eyebrow">
+							{{ t('empleados', 'Compliance') }}
 						</div>
+						<h3 class="panel-title">
+							{{ t('empleados', 'Period compliance') }}
+						</h3>
 					</div>
+					<strong class="compliance-panel__percent">
+						{{ cumplimientoFmt.porcentaje_cumplimiento }}
+					</strong>
+				</div>
 
-					<div class="control-group control-group-wide">
-						<span class="control-label">{{ t('empleados', 'Hide activities') }}</span>
-						<div class="exclude-list">
-							<label
-								v-for="actividad in graficaActividadesAll"
-								:key="`hide-act-${actividad.key}`"
-								class="exclude-item">
-								<input
-									v-model="excludedActividadKeys"
-									type="checkbox"
-									:value="actividad.key"
-									@change="onExclusionChange">
-								{{ actividad.label }}
-							</label>
-						</div>
-					</div>
+				<div
+					class="compliance-progress"
+					role="progressbar"
+					:aria-valuenow="cumplimientoPercent"
+					aria-valuemin="0"
+					aria-valuemax="100">
+					<div
+						class="compliance-progress__bar"
+						:style="{ width: `${Math.min(Math.max(cumplimientoPercent, 0), 100)}%` }" />
+				</div>
+
+				<div class="compliance-kpi-grid">
+					<article class="compliance-kpi">
+						<span>{{ t('empleados', 'Expected hours') }}</span>
+						<strong>{{ cumplimientoFmt.horas_esperadas }}</strong>
+					</article>
+					<article class="compliance-kpi">
+						<span>{{ t('empleados', 'Reported hours') }}</span>
+						<strong>{{ cumplimientoFmt.horas_reportadas }}</strong>
+					</article>
+					<article class="compliance-kpi">
+						<span>{{ t('empleados', 'Pending hours') }}</span>
+						<strong>{{ cumplimientoFmt.horas_pendientes }}</strong>
+					</article>
+					<article class="compliance-kpi">
+						<span>{{ t('empleados', 'Compliance') }}</span>
+						<strong>{{ cumplimientoFmt.porcentaje_cumplimiento }}</strong>
+					</article>
+					<article class="compliance-kpi">
+						<span>{{ t('empleados', 'Daily average') }}</span>
+						<strong>{{ cumplimientoFmt.promedio_diario }}</strong>
+					</article>
 				</div>
 			</section>
 
-			<section class="charts-grid">
-				<article class="panel panel-wide">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Distribution') }}
+			<!-- ============ VISTA ADMINISTRATIVA ============ -->
+			<template v-if="!mostrarClientes">
+				<section class="admin-hero-grid">
+					<article v-if="actividadPrincipalCard" class="admin-hero-card admin-hero-card--accent">
+						<div class="panel-eyebrow">
+							{{ t('empleados', 'Main activity') }}
+						</div>
+						<h3 class="admin-hero-card__title">
+							{{ actividadPrincipalCard.label }}
+						</h3>
+						<p class="admin-hero-card__meta">
+							{{ formatNumber(actividadPrincipalCard.horas) }} h
+							·
+							{{ formatPercent(actividadPrincipalCard.porcentaje) }}
+							{{ t('empleados', 'of reported time') }}
+						</p>
+					</article>
+
+					<article class="admin-hero-card">
+						<div class="panel-eyebrow">
+							{{ t('empleados', 'Summary') }}
+						</div>
+						<div class="admin-mini-kpis">
+							<div>
+								<span>{{ t('empleados', 'Reported hours') }}</span>
+								<strong>{{ resumenFmt.horas_reportadas }} h</strong>
 							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Hours by employee') }}
-							</h3>
-							<p class="panel-copy">
-								{{ t('empleados', 'See who is carrying the operational load.') }}
-							</p>
-						</div>
-						<div class="panel-badge">
-							{{ t('empleados', '{count} reports recorded', { count: resumenFmt.total_reportes }) }}
-						</div>
-					</div>
-					<div class="chart-box chart-box-tall">
-						<canvas ref="chartHorasEmpleado" />
-					</div>
-				</article>
-
-				<article class="panel panel-small">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Key indicators') }}
+							<div>
+								<span>{{ t('empleados', 'Reports') }}</span>
+								<strong>{{ resumenFmt.total_reportes }}</strong>
 							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Attention points') }}
-							</h3>
+							<div>
+								<span>{{ t('empleados', 'Activities') }}</span>
+								<strong>{{ resumenFmt.actividades }}</strong>
+							</div>
+							<div>
+								<span>{{ t('empleados', 'Average per report') }}</span>
+								<strong>{{ resumenFmt.promedio_horas_reporte }}</strong>
+							</div>
 						</div>
-					</div>
+					</article>
+				</section>
 
-					<ul class="insight-list">
-						<li class="insight-item">
-							<span class="insight-label">{{ t('empleados', 'Employee with highest workload') }}</span>
-							<strong class="insight-value">{{ topEmpleado.label }}</strong>
-							<span class="insight-meta">{{ topEmpleado.valor }}</span>
-						</li>
-						<li class="insight-item">
-							<span class="insight-label">{{ t('empleados', 'Leading project') }}</span>
-							<strong class="insight-value">{{ topProyecto.label }}</strong>
-							<span class="insight-meta">{{ topProyecto.valor }}</span>
-						</li>
-						<li class="insight-item">
-							<span class="insight-label">{{ t('empleados', 'Main activity') }}</span>
-							<strong class="insight-value">{{ topActividad.label }}</strong>
-							<span class="insight-meta">{{ topActividad.valor }}</span>
-						</li>
-						<li class="insight-item">
-							<span class="insight-label">{{ t('empleados', 'Reports') }}</span>
-							<strong class="insight-value">{{ resumenFmt.total_reportes }}</strong>
-							<span class="insight-meta">{{ statsFilterCaption }}</span>
-						</li>
-					</ul>
-				</article>
-
-				<article class="panel">
+				<section v-if="distribucionActividades.length > 0" class="panel panel-full distribution-panel">
 					<div class="panel-heading">
 						<div>
 							<div class="panel-eyebrow">
-								{{ t('empleados', 'Composition') }}
+								{{ t('empleados', 'Time distribution') }}
 							</div>
 							<h3 class="panel-title">
 								{{ t('empleados', 'Activities') }}
 							</h3>
 							<p class="panel-copy">
-								{{ t('empleados', 'Identify which work categories consume the most hours.') }}
-							</p>
-						</div>
-						<div class="panel-badge">
-							{{ t('empleados', '{count} categories', { count: resumenFmt.actividades }) }}
-						</div>
-					</div>
-					<div class="chart-box">
-						<canvas ref="chartActividades" />
-					</div>
-				</article>
-
-				<article class="panel">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Performance') }}
-							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Companies by hours') }}
-							</h3>
-							<p class="panel-copy">
-								{{ t('empleados', 'Compare where team time is spent across companies and projects.') }}
-							</p>
-						</div>
-						<div class="panel-badge">
-							{{ t('empleados', '{count} projects', { count: resumenFmt.proyectos_activos }) }}
-						</div>
-					</div>
-					<div class="chart-box">
-						<canvas ref="chartProyectos" />
-					</div>
-				</article>
-
-				<article class="panel">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Portfolio') }}
-							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Company hours matrix') }}
-							</h3>
-							<p class="panel-copy">
-								{{ t('empleados', 'Companies farther right with larger bubbles consume more team hours and reports.') }}
+								{{ t('empleados', 'Share of reported time by activity.') }}
 							</p>
 						</div>
 					</div>
-					<div class="chart-box">
-						<canvas ref="chartClienteMatriz" />
-					</div>
-				</article>
-
-				<article class="panel">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Trend') }}
+					<ul class="distribution-list">
+						<li
+							v-for="item in distribucionActividades"
+							:key="item.key"
+							class="distribution-item">
+							<div class="distribution-row">
+								<strong>{{ item.label }}</strong>
+								<span>{{ formatPercent(item.porcentaje) }} · {{ formatNumber(item.horas) }} h</span>
 							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Hours per day') }}
-							</h3>
-						</div>
-						<div class="panel-badge">
-							{{ t('empleados', 'Time series') }}
-						</div>
-					</div>
-					<div class="chart-box">
-						<canvas ref="chartHorasDia" />
-					</div>
-				</article>
-
-				<article class="panel">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Volume') }}
+							<div class="share-track">
+								<div
+									class="share-value"
+									:style="{ width: `${Math.min(item.porcentaje, 100)}%` }" />
 							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Reports per day') }}
-							</h3>
-						</div>
-						<div class="panel-badge">
-							{{ t('empleados', 'Daily frequency') }}
-						</div>
-					</div>
-					<div class="chart-box">
-						<canvas ref="chartReportesDia" />
-					</div>
-				</article>
+						</li>
+					</ul>
+				</section>
+				<p v-else class="state-inline">
+					{{ t('empleados', 'No activities recorded for this selection.') }}
+				</p>
 
-				<article class="panel panel-full">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Operational cross-check') }}
-							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Project vs activity') }}
-							</h3>
-							<p class="panel-copy">
-								{{ t('empleados', 'Understand exactly what each company is consuming from the team.') }}
-							</p>
+				<section class="chart-controls">
+					<div class="chart-controls-bar">
+						<div class="period-presets control-group inline">
+							<label for="resumen-chart-limit-admin">{{ t('empleados', 'Show') }}</label>
+							<select
+								id="resumen-chart-limit-admin"
+								v-model.number="chartLimit"
+								@change="renderGraficas">
+								<option
+									v-for="option in chartLimitOptions"
+									:key="option.value"
+									:value="option.value">
+									{{ option.label }}
+								</option>
+							</select>
 						</div>
-						<div class="panel-badge">
-							{{ t('empleados', 'Stacked distribution') }}
-						</div>
-					</div>
-					<div class="chart-box chart-box-large">
-						<canvas ref="chartProyectoActividad" />
-					</div>
-				</article>
 
-				<article v-if="rankingEmpresas.length > 0" class="panel panel-full">
-					<div class="panel-heading">
-						<div>
-							<div class="panel-eyebrow">
-								{{ t('empleados', 'Executive ranking') }}
-							</div>
-							<h3 class="panel-title">
-								{{ t('empleados', 'Companies by hours') }}
-							</h3>
-							<p class="panel-copy">
-								{{ t('empleados', 'Use this ranking to see which companies consume more of the team time.') }}
-							</p>
+						<button
+							v-if="mostrarAusencias"
+							type="button"
+							class="clear-focus"
+							:class="{ active: hideAbsences }"
+							@click="toggleHideAbsences">
+							{{ hideAbsences
+								? t('empleados', 'Absences hidden')
+								: t('empleados', 'Hide absences') }}
+						</button>
+
+						<button
+							type="button"
+							class="clear-focus"
+							:aria-expanded="showChartFilters ? 'true' : 'false'"
+							@click="showChartFilters = !showChartFilters">
+							{{ t('empleados', 'More filters') }}
+						</button>
+					</div>
+
+					<div v-if="showChartFilters" class="chart-filters-panel">
+						<div class="control-group">
+							<label for="resumen-activity-focus-admin">{{ t('empleados', 'Focus activity') }}</label>
+							<select
+								id="resumen-activity-focus-admin"
+								v-model="selectedActividad"
+								@change="renderGraficas">
+								<option :value="null">
+									{{ t('empleados', 'All activities') }}
+								</option>
+								<option
+									v-for="actividad in graficaActividadesAll"
+									:key="actividad.key"
+									:value="actividad.label">
+									{{ actividad.label }}
+								</option>
+							</select>
 						</div>
 					</div>
-					<div class="ranking-table-wrap">
-						<table class="ranking-table">
-							<thead>
-								<tr>
-									<th>{{ t('empleados', 'Company') }}</th>
-									<th>{{ t('empleados', 'Hours') }}</th>
-									<th>{{ t('empleados', 'Share') }}</th>
-									<th>{{ t('empleados', 'Reports') }}</th>
-									<th>{{ t('empleados', 'Main activity') }}</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-for="empresa in rankingEmpresas" :key="empresa.key">
-									<td><strong>{{ empresa.label }}</strong></td>
-									<td>{{ formatNumber(empresa.horas) }} h</td>
-									<td>
-										<div class="share-cell">
-											<span>{{ formatPercent(empresa.porcentaje) }}</span>
-											<div class="share-track">
-												<div
-													class="share-value"
-													:style="{ width: `${Math.min(empresa.porcentaje, 100)}%` }" />
+				</section>
+
+				<section class="charts-grid charts-grid--admin">
+					<article class="panel panel-wide">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Distribution') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Hours by employee') }}
+								</h3>
+							</div>
+						</div>
+						<div class="chart-box chart-box-tall">
+							<canvas ref="chartHorasEmpleado" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Composition') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Activities') }}
+								</h3>
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartActividades" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Trend') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Hours per day') }}
+								</h3>
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartHorasDia" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Volume') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Reports per day') }}
+								</h3>
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartReportesDia" />
+						</div>
+					</article>
+				</section>
+			</template>
+
+			<!-- ============ VISTA OPERATIVA (CLIENTES) ============ -->
+			<template v-else>
+				<section class="summary-grid">
+					<div class="summary-card summary-card-accent">
+						<div class="summary-label">
+							{{ t('empleados', 'Reported hours') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.horas_reportadas }}
+						</div>
+						<div class="summary-meta">
+							{{ statsFilterCaption }}
+						</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">
+							{{ t('empleados', 'Client work hours') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.horas_cliente }}
+						</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">
+							{{ t('empleados', 'Internal work hours') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.horas_internas }}
+						</div>
+						<div class="summary-meta">
+							{{ resumenFmt.porcentaje_interno }} {{ t('empleados', 'of reported work') }}
+						</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">
+							{{ t('empleados', 'Reports') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.total_reportes }}
+						</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">
+							{{ t('empleados', 'Projects') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.proyectos_activos }}
+						</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">
+							{{ t('empleados', 'Activities') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.actividades }}
+						</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">
+							{{ t('empleados', 'Average per report') }}
+						</div>
+						<div class="summary-value">
+							{{ resumenFmt.promedio_horas_reporte }}
+						</div>
+						<div class="summary-meta">
+							{{ t('empleados', 'Average recorded efficiency') }}
+						</div>
+					</div>
+				</section>
+
+				<section class="decision-grid">
+					<article class="decision-card">
+						<span>{{ t('empleados', 'Company with most hours') }}</span>
+						<strong>{{ decisionFmt.topEmpresa }}</strong>
+						<small>{{ decisionFmt.topEmpresaDetalle }}</small>
+					</article>
+
+					<article class="decision-card">
+						<span>{{ t('empleados', 'Top 3 companies') }}</span>
+						<strong>{{ decisionFmt.concentracionTop3 }}</strong>
+						<small>{{ t('empleados', 'Share of visible reported hours') }}</small>
+					</article>
+
+					<article class="decision-card">
+						<span>{{ t('empleados', 'Most used activity') }}</span>
+						<strong>{{ decisionFmt.topActividad }}</strong>
+						<small>{{ decisionFmt.topActividadDetalle }}</small>
+					</article>
+
+					<article class="decision-card">
+						<span>{{ t('empleados', 'Hidden categories') }}</span>
+						<strong>{{ exclusionCount }}</strong>
+						<small>{{ t('empleados', 'Companies or activities excluded from the view') }}</small>
+					</article>
+				</section>
+
+				<section class="chart-controls">
+					<div class="chart-controls-bar">
+						<div class="period-presets control-group inline">
+							<label for="resumen-chart-limit">{{ t('empleados', 'Show') }}</label>
+							<select
+								id="resumen-chart-limit"
+								v-model.number="chartLimit"
+								@change="renderGraficas">
+								<option
+									v-for="option in chartLimitOptions"
+									:key="option.value"
+									:value="option.value">
+									{{ option.label }}
+								</option>
+							</select>
+						</div>
+
+						<button
+							v-if="mostrarAusencias"
+							type="button"
+							class="clear-focus"
+							:class="{ active: hideAbsences }"
+							@click="toggleHideAbsences">
+							{{ hideAbsences
+								? t('empleados', 'Absences hidden')
+								: t('empleados', 'Hide absences') }}
+						</button>
+
+						<button
+							type="button"
+							class="clear-focus"
+							:aria-expanded="showChartFilters ? 'true' : 'false'"
+							@click="showChartFilters = !showChartFilters">
+							{{ t('empleados', 'More filters') }}
+							<span v-if="exclusionCount > 0" class="filter-badge">{{ exclusionCount }}</span>
+						</button>
+
+						<button
+							type="button"
+							class="clear-focus"
+							:disabled="!canClearFocus"
+							@click="clearChartFocus">
+							{{ t('empleados', 'Clear focus') }}
+						</button>
+					</div>
+
+					<div v-if="showChartFilters" class="chart-filters-panel">
+						<div class="control-group">
+							<label for="resumen-company-focus">{{ t('empleados', 'Focus company') }}</label>
+							<select
+								id="resumen-company-focus"
+								v-model="selectedEmpresa"
+								@change="renderGraficas">
+								<option :value="null">
+									{{ t('empleados', 'All companies') }}
+								</option>
+								<option
+									v-for="empresa in graficaProyectosAll"
+									:key="empresa.key"
+									:value="empresa.label">
+									{{ empresa.label }}
+								</option>
+							</select>
+						</div>
+
+						<div class="control-group">
+							<label for="resumen-activity-focus">{{ t('empleados', 'Focus activity') }}</label>
+							<select
+								id="resumen-activity-focus"
+								v-model="selectedActividad"
+								@change="renderGraficas">
+								<option :value="null">
+									{{ t('empleados', 'All activities') }}
+								</option>
+								<option
+									v-for="actividad in graficaActividadesAll"
+									:key="actividad.key"
+									:value="actividad.label">
+									{{ actividad.label }}
+								</option>
+							</select>
+						</div>
+
+						<div class="control-group control-group-wide">
+							<span class="control-label">{{ t('empleados', 'Hide companies') }}</span>
+							<div class="exclude-list">
+								<label
+									v-for="empresa in graficaProyectosAll"
+									:key="`hide-co-${empresa.key}`"
+									class="exclude-item">
+									<input
+										v-model="excludedEmpresaKeys"
+										type="checkbox"
+										:value="empresa.key"
+										@change="onExclusionChange">
+									{{ empresa.label }}
+								</label>
+							</div>
+						</div>
+
+						<div class="control-group control-group-wide">
+							<span class="control-label">{{ t('empleados', 'Hide activities') }}</span>
+							<div class="exclude-list">
+								<label
+									v-for="actividad in graficaActividadesAll"
+									:key="`hide-act-${actividad.key}`"
+									class="exclude-item">
+									<input
+										v-model="excludedActividadKeys"
+										type="checkbox"
+										:value="actividad.key"
+										@change="onExclusionChange">
+									{{ actividad.label }}
+								</label>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section class="charts-grid">
+					<article class="panel panel-wide">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Distribution') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Hours by employee') }}
+								</h3>
+								<p class="panel-copy">
+									{{ t('empleados', 'See who is carrying the operational load.') }}
+								</p>
+							</div>
+							<div class="panel-badge">
+								{{ t('empleados', '{count} reports recorded', { count: resumenFmt.total_reportes }) }}
+							</div>
+						</div>
+						<div class="chart-box chart-box-tall">
+							<canvas ref="chartHorasEmpleado" />
+						</div>
+					</article>
+
+					<article class="panel panel-small">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Key indicators') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Attention points') }}
+								</h3>
+							</div>
+						</div>
+
+						<ul class="insight-list">
+							<li class="insight-item">
+								<span class="insight-label">{{ t('empleados', 'Employee with highest workload') }}</span>
+								<strong class="insight-value">{{ topEmpleado.label }}</strong>
+								<span class="insight-meta">{{ topEmpleado.valor }}</span>
+							</li>
+							<li class="insight-item">
+								<span class="insight-label">{{ t('empleados', 'Leading project') }}</span>
+								<strong class="insight-value">{{ topProyecto.label }}</strong>
+								<span class="insight-meta">{{ topProyecto.valor }}</span>
+							</li>
+							<li class="insight-item">
+								<span class="insight-label">{{ t('empleados', 'Main activity') }}</span>
+								<strong class="insight-value">{{ topActividad.label }}</strong>
+								<span class="insight-meta">{{ topActividad.valor }}</span>
+							</li>
+							<li class="insight-item">
+								<span class="insight-label">{{ t('empleados', 'Reports') }}</span>
+								<strong class="insight-value">{{ resumenFmt.total_reportes }}</strong>
+								<span class="insight-meta">{{ statsFilterCaption }}</span>
+							</li>
+						</ul>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Composition') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Activities') }}
+								</h3>
+								<p class="panel-copy">
+									{{ t('empleados', 'Identify which work categories consume the most hours.') }}
+								</p>
+							</div>
+							<div class="panel-badge">
+								{{ t('empleados', '{count} categories', { count: resumenFmt.actividades }) }}
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartActividades" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Performance') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Companies by hours') }}
+								</h3>
+								<p class="panel-copy">
+									{{ t('empleados', 'Compare where team time is spent across companies and projects.') }}
+								</p>
+							</div>
+							<div class="panel-badge">
+								{{ t('empleados', '{count} projects', { count: resumenFmt.proyectos_activos }) }}
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartProyectos" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Portfolio') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Company hours matrix') }}
+								</h3>
+								<p class="panel-copy">
+									{{ t('empleados', 'Companies farther right with larger bubbles consume more team hours and reports.') }}
+								</p>
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartClienteMatriz" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Trend') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Hours per day') }}
+								</h3>
+							</div>
+							<div class="panel-badge">
+								{{ t('empleados', 'Time series') }}
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartHorasDia" />
+						</div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Volume') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Reports per day') }}
+								</h3>
+							</div>
+							<div class="panel-badge">
+								{{ t('empleados', 'Daily frequency') }}
+							</div>
+						</div>
+						<div class="chart-box">
+							<canvas ref="chartReportesDia" />
+						</div>
+					</article>
+
+					<article class="panel panel-full">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Operational cross-check') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Project vs activity') }}
+								</h3>
+								<p class="panel-copy">
+									{{ t('empleados', 'Understand exactly what each company is consuming from the team.') }}
+								</p>
+							</div>
+							<div class="panel-badge">
+								{{ t('empleados', 'Stacked distribution') }}
+							</div>
+						</div>
+						<div class="chart-box chart-box-large">
+							<canvas ref="chartProyectoActividad" />
+						</div>
+					</article>
+
+					<article v-if="rankingEmpresas.length > 0" class="panel panel-full">
+						<div class="panel-heading">
+							<div>
+								<div class="panel-eyebrow">
+									{{ t('empleados', 'Executive ranking') }}
+								</div>
+								<h3 class="panel-title">
+									{{ t('empleados', 'Companies by hours') }}
+								</h3>
+								<p class="panel-copy">
+									{{ t('empleados', 'Use this ranking to see which companies consume more of the team time.') }}
+								</p>
+							</div>
+						</div>
+						<div class="ranking-table-wrap">
+							<table class="ranking-table">
+								<thead>
+									<tr>
+										<th>{{ t('empleados', 'Company') }}</th>
+										<th>{{ t('empleados', 'Hours') }}</th>
+										<th>{{ t('empleados', 'Share') }}</th>
+										<th>{{ t('empleados', 'Reports') }}</th>
+										<th>{{ t('empleados', 'Main activity') }}</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr v-for="empresa in rankingEmpresas" :key="empresa.key">
+										<td><strong>{{ empresa.label }}</strong></td>
+										<td>{{ formatNumber(empresa.horas) }} h</td>
+										<td>
+											<div class="share-cell">
+												<span>{{ formatPercent(empresa.porcentaje) }}</span>
+												<div class="share-track">
+													<div
+														class="share-value"
+														:style="{ width: `${Math.min(empresa.porcentaje, 100)}%` }" />
+												</div>
 											</div>
-										</div>
-									</td>
-									<td>{{ formatInteger(empresa.reportes) }}</td>
-									<td>{{ empresa.actividadPrincipal }}</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</article>
-			</section>
+										</td>
+										<td>{{ formatInteger(empresa.reportes) }}</td>
+										<td>{{ empresa.actividadPrincipal }}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</article>
+				</section>
+			</template>
 		</div>
 	</div>
 </template>
@@ -489,6 +747,16 @@ export default {
 			required: false,
 			default: () => [],
 		},
+		mostrarClientes: {
+			type: Boolean,
+			required: false,
+			default: true,
+		},
+		mostrarAusencias: {
+			type: Boolean,
+			required: false,
+			default: true,
+		},
 	},
 
 	data() {
@@ -511,6 +779,10 @@ export default {
 	},
 
 	computed: {
+		effectiveHideAbsences() {
+			return !this.mostrarAusencias || this.hideAbsences
+		},
+
 		chartLimitOptions() {
 			return [
 				{ value: 5, label: t('empleados', 'Top 5') },
@@ -530,7 +802,7 @@ export default {
 
 		exclusionCount() {
 			let count = this.excludedEmpresaKeys.length + this.excludedActividadKeys.length
-			if (this.hideAbsences) {
+			if (this.effectiveHideAbsences) {
 				count += 1
 			}
 			return count
@@ -540,7 +812,7 @@ export default {
 			return Boolean(this.selectedEmpresa)
 				|| Boolean(this.selectedActividad)
 				|| this.chartLimit !== 10
-				|| !this.hideAbsences
+				|| (this.mostrarAusencias && !this.hideAbsences)
 				|| this.excludedEmpresaKeys.length > 0
 				|| this.excludedActividadKeys.length > 0
 		},
@@ -553,7 +825,66 @@ export default {
 		},
 
 		horasVisiblesTotal() {
+			if (!this.mostrarClientes) {
+				return this.graficaActividades.reduce((total, item) => total + item.horas, 0)
+			}
 			return this.graficaProyectos.reduce((total, item) => total + item.horas, 0)
+		},
+
+		cumplimientoFmt() {
+			const c = this.resumen?.cumplimiento || {}
+			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
+			const actividadId = c.actividad_principal?.id_actividad
+			const actividadLabel = actividadId
+				? (this.actividadesMap.get(Number(actividadId)) || `#${actividadId}`)
+				: ''
+
+			return {
+				horas_esperadas: `${num2.format(Number(c.horas_esperadas) || 0)} h`,
+				horas_reportadas: `${num2.format(Number(c.horas_reportadas) || 0)} h`,
+				horas_pendientes: `${num2.format(Number(c.horas_pendientes) || 0)} h`,
+				porcentaje_cumplimiento: `${num2.format(Number(c.porcentaje_cumplimiento) || 0)}%`,
+				promedio_diario: `${num2.format(Number(c.promedio_diario) || 0)} h`,
+				actividad_principal: actividadLabel || t('empleados', 'No data'),
+			}
+		},
+
+		cumplimientoPercent() {
+			const value = Number(this.resumen?.cumplimiento?.porcentaje_cumplimiento)
+			return Number.isFinite(value) ? value : 0
+		},
+
+		hasCumplimientoData() {
+			const c = this.resumen?.cumplimiento
+			if (!c || typeof c !== 'object') {
+				return false
+			}
+			return Number(c.horas_esperadas) > 0
+				|| Number(c.horas_reportadas) > 0
+				|| Number(c.dias_habiles) > 0
+		},
+
+		actividadPrincipalCard() {
+			const top = this.distribucionActividades[0]
+			if (!top || !(top.horas > 0)) {
+				return null
+			}
+			return top
+		},
+
+		distribucionActividades() {
+			const items = this.graficaActividadesAll.slice()
+			const total = items.reduce((sum, item) => sum + item.horas, 0)
+			if (total <= 0) {
+				return []
+			}
+			return items
+				.map(item => ({
+					...item,
+					porcentaje: (item.horas / total) * 100,
+				}))
+				.sort((a, b) => b.horas - a.horas)
+				.slice(0, this.chartLimit > 0 ? this.chartLimit : items.length)
 		},
 
 		resumenFmt() {
@@ -561,10 +892,16 @@ export default {
 			const num2 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 })
 			const int = new Intl.NumberFormat('es-MX')
 			const horasVisibles = this.horasVisiblesTotal
-			const reportesVisibles = this.graficaProyectos.reduce((total, item) => total + item.reportes, 0)
+			const reportesVisibles = this.mostrarClientes
+				? this.graficaProyectos.reduce((total, item) => total + item.reportes, 0)
+				: this.graficaActividades.reduce((total, item) => total + item.reportes, 0)
+
+			const horasReportadas = horasVisibles > 0
+				? horasVisibles
+				: (kpis.horas_reportadas || 0)
 
 			return {
-				horas_reportadas: num2.format(horasVisibles || 0),
+				horas_reportadas: num2.format(horasReportadas || 0),
 				horas_cliente: `${num2.format(kpis.horas_cliente || 0)} h`,
 				horas_internas: `${num2.format(kpis.horas_internas || 0)} h`,
 				porcentaje_interno: `${num2.format(kpis.porcentaje_interno || 0)}%`,
@@ -643,7 +980,9 @@ export default {
 					horas,
 					reportes: this.toNum(r.total_reportes),
 				}
-			}).sort((a, b) => b.horas - a.horas)
+			})
+				.filter(item => this.isActividadVisible(item.key))
+				.sort((a, b) => b.horas - a.horas)
 		},
 
 		graficaProyectos() {
@@ -852,6 +1191,27 @@ export default {
 			},
 		},
 
+		mostrarAusencias(value) {
+			if (!value) {
+				this.hideAbsences = true
+			}
+			this.$nextTick(() => {
+				this.renderGraficas()
+			})
+		},
+
+		mostrarClientes(value) {
+			if (!value) {
+				this.selectedEmpresa = null
+				this.excludedEmpresaKeys = []
+			}
+			this.$nextTick(() => {
+				this.$nextTick(() => {
+					this.renderGraficas()
+				})
+			})
+		},
+
 		proyectosList: {
 			deep: true,
 			handler() {
@@ -897,7 +1257,7 @@ export default {
 
 		isEmpresaVisible(key) {
 			const empresaKey = String(key)
-			if (this.hideAbsences && empresaKey === this.absenceEmpresaKey) {
+			if (this.effectiveHideAbsences && empresaKey === this.absenceEmpresaKey) {
 				return false
 			}
 			return !this.excludedEmpresaKeys.includes(empresaKey)
@@ -905,13 +1265,16 @@ export default {
 
 		isActividadVisible(key) {
 			const actividadKey = String(key)
-			if (this.hideAbsences && actividadKey === this.absenceActividadKey) {
+			if (this.effectiveHideAbsences && actividadKey === this.absenceActividadKey) {
 				return false
 			}
 			return !this.excludedActividadKeys.includes(actividadKey)
 		},
 
 		toggleHideAbsences() {
+			if (!this.mostrarAusencias) {
+				return
+			}
 			this.hideAbsences = !this.hideAbsences
 			this.$nextTick(() => {
 				this.renderGraficas()
@@ -926,12 +1289,26 @@ export default {
 
 		renderGraficas() {
 			this.renderGraficaHorasEmpleado()
-			this.renderGraficaProyectos()
 			this.renderGraficaActividades()
-			this.renderGraficaClienteMatriz()
 			this.renderGraficaHorasDia()
 			this.renderGraficaReportesDia()
-			this.renderGraficaProyectoActividad()
+
+			if (this.mostrarClientes) {
+				this.renderGraficaProyectos()
+				this.renderGraficaClienteMatriz()
+				this.renderGraficaProyectoActividad()
+			} else if (this.chartProyectosInstance) {
+				this.chartProyectosInstance.destroy()
+				this.chartProyectosInstance = null
+				if (this.chartClienteMatrizInstance) {
+					this.chartClienteMatrizInstance.destroy()
+					this.chartClienteMatrizInstance = null
+				}
+				if (this.chartProyectoActividadInstance) {
+					this.chartProyectoActividadInstance.destroy()
+					this.chartProyectoActividadInstance = null
+				}
+			}
 		},
 
 		clearChartFocus() {
@@ -1597,6 +1974,191 @@ export default {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 	gap: 16px;
+}
+
+.compliance-grid {
+	margin-top: 16px;
+}
+
+.compliance-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin-bottom: 18px;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.compliance-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.compliance-panel__percent {
+	font-size: 1.6rem;
+	line-height: 1;
+	color: var(--color-primary-element);
+}
+
+.compliance-progress {
+	width: 100%;
+	height: 12px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--color-background-dark);
+}
+
+.compliance-progress__bar {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--color-primary-element);
+	transition: width 180ms ease;
+}
+
+.compliance-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.compliance-kpi {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 12px 14px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.compliance-kpi span {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+
+.compliance-kpi strong {
+	font-size: 1.2rem;
+	line-height: 1.2;
+}
+
+.admin-hero-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 18px;
+}
+
+.admin-hero-card {
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.admin-hero-card--accent {
+	background:
+		linear-gradient(180deg, var(--color-primary-element-light), var(--color-main-background));
+	border-color: var(--color-primary-element-light);
+}
+
+.admin-hero-card__title {
+	margin: 8px 0 6px;
+	font-size: 1.35rem;
+	line-height: 1.2;
+}
+
+.admin-hero-card__meta {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.admin-mini-kpis {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	margin-top: 10px;
+}
+
+.admin-mini-kpis span {
+	display: block;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.admin-mini-kpis strong {
+	display: block;
+	margin-top: 4px;
+	font-size: 1.1rem;
+}
+
+.charts-grid--admin {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.state-inline {
+	margin: 0 0 16px;
+	color: var(--color-text-maxcontrast);
+}
+
+.summary-value-sm {
+	font-size: 1.15rem;
+	line-height: 1.25;
+}
+
+.distribution-panel {
+	margin: 0 0 18px;
+	padding: 18px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.distribution-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin: 12px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.distribution-item {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.distribution-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	font-size: 0.92rem;
+}
+
+@media (max-width: 960px) {
+	.compliance-kpi-grid,
+	.admin-hero-grid,
+	.charts-grid--admin {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.compliance-kpi-grid,
+	.admin-hero-grid,
+	.admin-mini-kpis,
+	.charts-grid--admin {
+		grid-template-columns: 1fr;
+	}
 }
 
 .summary-card {

@@ -58,7 +58,7 @@ final class RepairConfigCommand extends Command {
 			'Telefono_contacto', 'Curp', 'Rfc', 'Imss', 'Genero',
 			'Contacto_emergencia', 'Numero_emergencia', 'created_at', 'updated_at',
 		],
-		'departamentos' => ['Id_departamento', 'Id_padre', 'Nombre', 'created_at', 'updated_at'],
+		'departamentos' => ['Id_departamento', 'Id_padre', 'Nombre', 'mostrar_clientes', 'mostrar_ausencias', 'created_at', 'updated_at'],
 		'puestos' => ['Id_puestos', 'Nombre', 'created_at', 'updated_at'],
 		'equipos' => ['Id_equipo', 'Id_jefe_equipo', 'Nombre', 'created_at', 'updated_at'],
 		'aniversarios' => ['id_aniversario', 'numero_aniversario', 'fecha_de', 'fecha_hasta', 'dias'],

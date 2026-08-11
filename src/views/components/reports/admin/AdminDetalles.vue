@@ -21,7 +21,7 @@
 						<span class="hero-stat-label">{{ t('empleados', 'Reports') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.total_reportes }}</strong>
 					</div>
-					<div class="hero-stat">
+					<div v-if="mostrarClientes" class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Projects (customers)') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.proyectos_activos }}</strong>
 					</div>
@@ -33,7 +33,7 @@
 						<span class="hero-stat-label">{{ t('empleados', 'Average per report') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.promedio_horas_reporte }}</strong>
 					</div>
-					<div class="hero-stat">
+					<div v-if="mostrarClientes" class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Client hours') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.horas_cliente }}</strong>
 					</div>
@@ -41,7 +41,7 @@
 						<span class="hero-stat-label">{{ t('empleados', 'Internal hours') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.horas_internas }}</strong>
 					</div>
-					<div class="hero-stat">
+					<div v-if="mostrarAusencias" class="hero-stat">
 						<span class="hero-stat-label">{{ t('empleados', 'Absence hours') }}</span>
 						<strong class="hero-stat-value">{{ kpisFmt.horas_ausencia }}</strong>
 					</div>
@@ -50,13 +50,13 @@
 		</section>
 
 		<section class="decision-grid">
-			<article class="decision-card">
+			<article v-if="mostrarClientes" class="decision-card">
 				<span>{{ t('empleados', 'Company with most hours') }}</span>
 				<strong>{{ decisionFmt.topCliente }}</strong>
 				<small>{{ decisionFmt.topClienteDetalle }}</small>
 			</article>
 
-			<article class="decision-card">
+			<article v-if="mostrarClientes" class="decision-card">
 				<span>{{ t('empleados', 'Top 3 concentration') }}</span>
 				<strong>{{ decisionFmt.concentracionTop3 }}</strong>
 				<small>{{ t('empleados', 'Share of client hours') }}</small>
@@ -91,7 +91,7 @@
 				</select>
 			</div>
 
-			<div class="control-group">
+			<div v-if="mostrarClientes" class="control-group">
 				<label for="detalles-company-focus">{{ t('empleados', 'Company') }}</label>
 				<select
 					id="detalles-company-focus"
@@ -137,7 +137,7 @@
 		</section>
 
 		<section class="charts-grid">
-			<article class="panel">
+			<article v-if="mostrarClientes" class="panel">
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
@@ -194,7 +194,7 @@
 				</div>
 			</article>
 
-			<article class="panel">
+			<article v-if="mostrarClientes" class="panel">
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
@@ -232,7 +232,7 @@
 				</div>
 			</article>
 
-			<article v-if="rankingClientes.length > 0" class="panel panel-full">
+			<article v-if="mostrarClientes && rankingClientes.length > 0" class="panel panel-full">
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
@@ -301,7 +301,7 @@
 						:data-sources="historial"
 						:data-key="'id_reporte'"
 						:data-component="rowComponent"
-						:extra-props="{ proyectosList, actividadesList }" />
+						:extra-props="{ listas: actividadesList, actividades: proyectosList }" />
 				</div>
 			</article>
 		</section>
@@ -334,6 +334,8 @@ export default {
 		sueldo: { type: Number, required: false, default: 0 },
 		actividadesList: { type: Array, required: false, default: () => [] },
 		proyectosList: { type: Array, required: false, default: () => [] },
+		mostrarClientes: { type: Boolean, required: false, default: true },
+		mostrarAusencias: { type: Boolean, required: false, default: true },
 	},
 
 	data() {
@@ -540,7 +542,18 @@ export default {
 				buckets[key].horas += this.toNum(r.tiempo_registrado) / 60
 			}
 
-			return Object.values(buckets).filter(item => item.horas > 0)
+			return Object.values(buckets).filter(item => {
+				if (item.horas <= 0) {
+					return false
+				}
+				if (item.key === 'cliente' && !this.mostrarClientes) {
+					return false
+				}
+				if (item.key === 'ausencia' && !this.mostrarAusencias) {
+					return false
+				}
+				return true
+			})
 		},
 
 		graficaProyectos() {
@@ -548,7 +561,11 @@ export default {
 		},
 
 		graficaActividades() {
-			return this.agruparReportes('idActividad', 'actividadNombre')
+			return this.agruparReportes(
+				'idActividad',
+				'actividadNombre',
+				reporte => this.mostrarAusencias || reporte.tipoTrabajo !== 'ausencia',
+			)
 		},
 
 		proyectosVisibles() {
@@ -798,11 +815,24 @@ export default {
 		},
 
 		renderGraficas() {
-			this.renderGraficaProyectos()
 			this.renderGraficaActividades()
 			this.renderGraficaTipoTrabajo()
 			this.renderGraficaHorasDia()
-			this.renderGraficaProyectoActividad()
+
+			if (this.mostrarClientes) {
+				this.renderGraficaProyectos()
+				this.renderGraficaProyectoActividad()
+			} else {
+				if (this.chartProyectosInstance) {
+					this.chartProyectosInstance.destroy()
+					this.chartProyectosInstance = null
+				}
+				if (this.chartProyectoActividadInstance) {
+					this.chartProyectoActividadInstance.destroy()
+					this.chartProyectoActividadInstance = null
+				}
+				this.selectedCliente = null
+			}
 		},
 
 		clearChartFocus() {
@@ -1029,31 +1059,38 @@ export default {
 			}
 
 			const datos = this.graficaHorasPorDia
+			const datasets = []
+
+			if (this.mostrarClientes) {
+				datasets.push({
+					label: t('empleados', 'Client work'),
+					data: datos.map(x => Number(x.cliente.toFixed(2))),
+					backgroundColor: 'rgba(37, 99, 235, 0.78)',
+					stack: 'day',
+				})
+			}
+
+			datasets.push({
+				label: t('empleados', 'Internal work'),
+				data: datos.map(x => Number(x.interno.toFixed(2))),
+				backgroundColor: 'rgba(20, 184, 166, 0.78)',
+				stack: 'day',
+			})
+
+			if (this.mostrarAusencias) {
+				datasets.push({
+					label: t('empleados', 'Absences'),
+					data: datos.map(x => Number(x.ausencia.toFixed(2))),
+					backgroundColor: 'rgba(245, 158, 11, 0.78)',
+					stack: 'day',
+				})
+			}
 
 			this.chartHorasDiaInstance = new Chart(this.$refs.chartHorasDia, {
 				type: 'bar',
 				data: {
 					labels: datos.map(x => x.fecha),
-					datasets: [
-						{
-							label: t('empleados', 'Client work'),
-							data: datos.map(x => Number(x.cliente.toFixed(2))),
-							backgroundColor: 'rgba(37, 99, 235, 0.78)',
-							stack: 'day',
-						},
-						{
-							label: t('empleados', 'Internal work'),
-							data: datos.map(x => Number(x.interno.toFixed(2))),
-							backgroundColor: 'rgba(20, 184, 166, 0.78)',
-							stack: 'day',
-						},
-						{
-							label: t('empleados', 'Absences'),
-							data: datos.map(x => Number(x.ausencia.toFixed(2))),
-							backgroundColor: 'rgba(245, 158, 11, 0.78)',
-							stack: 'day',
-						},
-					],
+					datasets,
 				},
 				options: {
 					responsive: true,
