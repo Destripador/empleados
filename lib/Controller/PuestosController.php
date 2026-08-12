@@ -25,6 +25,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\CompraPermisosService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -41,6 +42,7 @@ class PuestosController extends BaseController {
     protected $configuracionesMapper;
     protected $l10n;
     protected PermisosService $permisosService;
+    protected CompraPermisosService $compraPermisosService;
 
     public function __construct(
         IRequest $request,
@@ -51,8 +53,8 @@ class PuestosController extends BaseController {
         configuracionesMapper $configuracionesMapper,
         IL10N $l10n,
 		IGroupManager $groupManager,
-        PermisosService $permisosService
-        
+        PermisosService $permisosService,
+        CompraPermisosService $compraPermisosService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -63,6 +65,7 @@ class PuestosController extends BaseController {
         $this->configuracionesMapper = $configuracionesMapper;
         $this->l10n = $l10n;
         $this->permisosService = $permisosService;
+        $this->compraPermisosService = $compraPermisosService;
     }
 
     /**
@@ -71,7 +74,7 @@ class PuestosController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetPuestosFix(): DataResponse {
-        $this->requireHumanResourcesAccess();
+        $this->requireCatalogReadAccess();
         $result = array_map(fn($puesto) => [
             'value' => $puesto['Id_puestos'],
             'label' => $puesto['Nombre'],
@@ -199,5 +202,29 @@ class PuestosController extends BaseController {
             'empleados.hr',
             'empleados.admin',
         ]);
+    }
+
+    /**
+     * Catálogo de solo lectura (id/nombre) para etiquetas en módulos
+     * como compras, sin conceder gestión de RRHH.
+     */
+    private function requireCatalogReadAccess(): void {
+        $user = $this->userSession->getUser();
+        $uid = $user?->getUID();
+
+        if ($uid !== null && $uid !== '' && (
+            $this->permisosService->canManageHumanResources($uid)
+            || $this->compraPermisosService->canAccessModule($uid)
+            || $this->permisosService->canSeeAny([
+                'compras.admin',
+                'compras.approve',
+                'compras.request',
+                'compras.accounting',
+            ], $uid)
+        )) {
+            return;
+        }
+
+        $this->requireHumanResourcesAccess();
     }
 }

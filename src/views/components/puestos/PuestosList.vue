@@ -17,7 +17,7 @@
 		</template>
 
 		<!-- main contacts details -->
-		<PuestosDetails :data="data_puestos" :people-area="peopleArea" />
+		<PuestosDetails :data="data_puestos" :people-area="peopleArea" :items="Puestos" />
 		<FloatingHelpButton
 			:open.sync="modalMensajePuestos"
 			:title="t('empleados', 'Puestos information')"
@@ -78,19 +78,39 @@ export default {
 	async mounted() {
 		this.getall()
 		this.$root.$on('send-data-puestos', (data) => {
-			this.data_puestos = data
-			this.getallpuesto(data.Id_puestos)
+			this.data_puestos = data || {}
+			if (data && data.Id_puestos) {
+				this.getallpuesto(data.Id_puestos)
+			} else {
+				this.peopleArea = {}
+			}
 		})
-		this.$root.$on('delete-puestos', (data) => {
+		this.$root.$on('delete-puestos', () => {
 			this.getall()
 		})
 		this.$root.$on('reload', () => {
 			this.getall()
 		})
+		window.addEventListener('keydown', this.onKeyDown)
+	},
+
+	beforeDestroy() {
+		window.removeEventListener('keydown', this.onKeyDown)
 	},
 
 	methods: {
 		t,
+
+		onKeyDown(e) {
+			if (e.key === 'Escape') {
+				this.onEsc()
+			}
+		},
+
+		onEsc() {
+			this.data_puestos = {}
+			this.peopleArea = {}
+		},
 
 		async getallpuesto(puesto) {
 			try {

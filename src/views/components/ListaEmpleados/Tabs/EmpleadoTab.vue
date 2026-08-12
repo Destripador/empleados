@@ -206,12 +206,15 @@
 									:multiple="true"
 									:close-on-select="false"
 									:clearable="true"
+									track-by="id_equipo"
+									label="label"
 									:input-label="t('empleados', 'Assigned equipment')"
 									:label-outside="true"
 									:placeholder="t('empleados', 'Select assigned equipment')">
 									<template #selected-option="option">
 										<div class="equipo-selected-option">
 											<strong>{{ equipoOptionTitle(option) }}</strong>
+											<span>{{ equipoOptionSubtitle(option) }}</span>
 										</div>
 									</template>
 
@@ -284,7 +287,11 @@
 												{{ equipoModel(equipo) }}
 											</span>
 
-											<span v-if="canNavigateAssignedEquipment"
+											<span v-if="!canAccessInventory"
+												class="assigned-equipment-note">
+												{{ t('empleados', 'Inventory details are read-only for your account.') }}
+											</span>
+											<span v-else-if="canNavigateAssignedEquipment"
 												class="assigned-equipment-link-hint">
 												{{ t('empleados', 'Open in IT Inventory') }}
 											</span>
@@ -394,97 +401,6 @@
 										:options="optionsequipos"
 										:input-label="t('empleados','Team')" />
 								</div>
-							</div>
-						</div>
-					</div>
-
-					<div v-if="inventoryEnabled">
-						<div class="divider">
-							<span>{{ t('empleados', 'Systems') }}</span>
-						</div>
-						<div class="flexible">
-							<div class="box1Inside equipo-asignado-field">
-								<label for="Equipos_asignados" class="labeltype">
-									<Laptopaccount :size="20" />
-									{{ t('empleados', 'Assigned devices') }}
-								</label>
-
-								<NcSelect
-									v-if="show && canModifyInventory"
-									id="Equipos_asignados"
-									v-model="Equipos_asignados"
-									class="equipo-computo-select"
-									:disabled="cargandoEquipos"
-									:options="inventarioEquipos"
-									:multiple="true"
-									:close-on-select="false"
-									track-by="id_equipo"
-									label="label"
-									:input-label="t('empleados', 'Assigned devices')"
-									:label-outside="true"
-									:placeholder="t('empleados', 'Select assigned equipment')">
-									<template #selected-option="option">
-										<div class="equipo-selected-option">
-											<strong>{{ equipoOptionTitle(option) }}</strong>
-											<span>{{ equipoOptionSubtitle(option) }}</span>
-										</div>
-									</template>
-
-									<template #option="option">
-										<div class="equipo-dropdown-option">
-											<div class="equipo-dropdown-main">
-												<strong>{{ equipoOptionTitle(option) }}</strong>
-												<span
-													v-if="option.estado"
-													class="equipo-status"
-													:class="`equipo-status--${String(option.estado).toLowerCase()}`">
-													{{ option.estado }}
-												</span>
-											</div>
-											<div>
-												<h1> {{ Equipo.label }} </h1>
-											</div>
-										</div>
-									</template>
-								</NcSelect>
-
-								<p v-if="cargandoEquipos" class="assigned-equipment-empty">
-									{{ t('empleados', 'Loading assigned equipment…') }}
-								</p>
-								<p v-else-if="errorEquipos" class="assigned-equipment-empty">
-									{{ errorEquipos }}
-								</p>
-								<template v-else>
-									<component
-										:is="canNavigateAssignedEquipment ? 'button' : 'div'"
-										v-for="equipoAsignado in Equipos_asignados"
-										:key="equipoAsignado.id_equipo"
-										class="assigned-equipment-card"
-										:class="{ 'assigned-equipment-card--interactive': canNavigateAssignedEquipment }"
-										:type="canNavigateAssignedEquipment ? 'button' : null"
-										:title="canNavigateAssignedEquipment ? t('empleados', 'Open this device in IT Inventory') : null"
-										:aria-label="canNavigateAssignedEquipment ? t('empleados', 'Open {device} in IT Inventory', { device: equipoOptionTitle(equipoAsignado) }) : null"
-										@click="openAssignedEquipment(equipoAsignado)">
-										<Laptopaccount :size="32" aria-hidden="true" />
-										<div class="assigned-equipment-content">
-											<div class="assigned-equipment-heading">
-												<strong>{{ equipoOptionTitle(equipoAsignado) }}</strong>
-												<span v-if="equipoAsignado.estado" class="equipo-status" :class="`equipo-status--${String(equipoAsignado.estado).toLowerCase()}`">
-													{{ equipoAsignado.estado }}
-												</span>
-											</div>
-											<span v-if="equipoAsignado.nombre_sistema">{{ t('empleados', 'System name') }}: {{ equipoAsignado.nombre_sistema }}</span>
-											<span v-if="equipoAsignado.numero_serie">{{ t('empleados', 'Serial number') }}: {{ equipoAsignado.numero_serie }}</span>
-											<span v-if="equipoModel(equipoAsignado)">{{ t('empleados', 'Model') }}: {{ equipoModel(equipoAsignado) }}</span>
-											<span v-if="!canAccessInventory" class="assigned-equipment-note">{{ t('empleados', 'Inventory details are read-only for your account.') }}</span>
-											<span v-else class="assigned-equipment-link-hint">{{ t('empleados', 'Open in IT Inventory') }}</span>
-										</div>
-									</component>
-								</template>
-
-								<p v-if="!cargandoEquipos && !errorEquipos && Equipos_asignados.length === 0" class="assigned-equipment-empty">
-									{{ t('empleados', 'No equipment assigned.') }}
-								</p>
 							</div>
 						</div>
 					</div>

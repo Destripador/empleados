@@ -399,6 +399,7 @@ class AusenciasController extends BaseController {
 
         return [
             'numero_aniversario' => $numeroAniversario,
+            'fecha_ingreso' => $fechaIngreso->format('Y-m-d'),
             'periodo_inicio' => $periodoInicioStr,
             'periodo_fin' => $periodoFinStr,
             'dias_derecho' => $diasDerecho,
@@ -424,6 +425,9 @@ class AusenciasController extends BaseController {
             $periodo = $this->getPeriodoActualEmpleado((int) $id, (int) $rows[0]['id_ausencias']);
             if ($periodo) {
                 $rows[0]['id_aniversario'] = $periodo['numero_aniversario'];
+                $rows[0]['fecha_ingreso'] = $periodo['fecha_ingreso'];
+                $rows[0]['periodo_inicio'] = $periodo['periodo_inicio'];
+                $rows[0]['periodo_fin'] = $periodo['periodo_fin'];
                 $rows[0]['dias_derecho'] = $periodo['dias_derecho'];
                 $rows[0]['dias_disponibles'] = $periodo['dias_restantes'];
                 $rows[0]['dias_acumulados'] = $periodo['dias_acumulados_restantes'];

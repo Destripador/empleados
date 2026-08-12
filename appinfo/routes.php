@@ -348,5 +348,11 @@ return [
 		['name' => 'configuraciones#uploadCompraDocumentoLogo','url' => '/compras/settings/logo','verb' => 'POST'],
 		['name' => 'configuraciones#getCompraDocumentoLogo','url' => '/compras/settings/logo','verb' => 'GET'],
 		['name' => 'configuraciones#deleteCompraDocumentoLogo','url' => '/compras/settings/logo','verb' => 'DELETE'],
+
+		/******************************* TUTORIALES *****************************************/
+		['name' => 'tutorial#resetAll', 'url' => '/tutoriales/reset-all', 'verb' => 'POST'],
+		['name' => 'tutorial#status', 'url' => '/tutoriales/{lessonId}', 'verb' => 'GET'],
+		['name' => 'tutorial#complete', 'url' => '/tutoriales/{lessonId}/complete', 'verb' => 'POST'],
+		['name' => 'tutorial#reset', 'url' => '/tutoriales/{lessonId}', 'verb' => 'DELETE'],
 	],
 ];

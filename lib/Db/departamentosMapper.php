@@ -16,7 +16,15 @@ class departamentosMapper extends QBMapper {
 	public function GetAreasList(): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('d.Id_departamento', 'd.Id_padre', 'd.Nombre', 'd.created_at', 'd.updated_at')
+		$qb->select(
+			'd.Id_departamento',
+			'd.Id_padre',
+			'd.Nombre',
+			'd.created_at',
+			'd.updated_at',
+			'd.mostrar_clientes',
+			'd.mostrar_ausencias'
+		)
 			->selectAlias($qb->createFunction('COUNT(e.Id_empleados)'), 'cantidad_empleados')
 			->from($this->getTableName(), 'd')
 			->leftJoin('d', 'empleados', 'e', 'd.Id_departamento = e.Id_departamento')
@@ -26,7 +34,11 @@ class departamentosMapper extends QBMapper {
 		$users = $result->fetchAll();
 		$result->closeCursor();
 
-		return $users;
+		return array_map(static function (array $row): array {
+			$row['mostrar_clientes'] = self::toBoolFlag($row['mostrar_clientes'] ?? 1);
+			$row['mostrar_ausencias'] = self::toBoolFlag($row['mostrar_ausencias'] ?? 1);
+			return $row;
+		}, $users);
 	}
 
 	public function CheckExistAreas($id_departamentos): array {
@@ -52,7 +64,13 @@ class departamentosMapper extends QBMapper {
 		$qb->executeStatement();
 	}
 
-	public function updateAreas(string $Id_departamento, string $Id_padre, string $Nombre): void {
+	public function updateAreas(
+		string $Id_departamento,
+		string $Id_padre,
+		string $Nombre,
+		?bool $mostrarClientes = null,
+		?bool $mostrarAusencias = null
+	): void {
 		$timestamp = date('Y-m-d');
 
 		if (empty($Id_departamento) && $Id_departamento != 0) { $Id_departamento = null; }
@@ -63,8 +81,22 @@ class departamentosMapper extends QBMapper {
 		$query->update($this->getTableName())
 			->set('Id_padre', $query->createNamedParameter($Id_padre))
 			->set('Nombre', $query->createNamedParameter($Nombre))
-			->set('updated_at', $query->createNamedParameter($timestamp))
-			->where($query->expr()->eq('Id_departamento', $query->createNamedParameter($Id_departamento)));
+			->set('updated_at', $query->createNamedParameter($timestamp));
+
+		if ($mostrarClientes !== null) {
+			$query->set(
+				'mostrar_clientes',
+				$query->createNamedParameter($mostrarClientes ? 1 : 0, IQueryBuilder::PARAM_INT)
+			);
+		}
+		if ($mostrarAusencias !== null) {
+			$query->set(
+				'mostrar_ausencias',
+				$query->createNamedParameter($mostrarAusencias ? 1 : 0, IQueryBuilder::PARAM_INT)
+			);
+		}
+
+		$query->where($query->expr()->eq('Id_departamento', $query->createNamedParameter($Id_departamento)));
 
 		$query->executeStatement();
 	}
@@ -108,7 +140,13 @@ class departamentosMapper extends QBMapper {
 	 */
 	public function findDepartmentRow(int $id): ?array {
 		$qb = $this->db->getQueryBuilder();
-		$result = $qb->select('d.Id_departamento', 'd.Id_padre', 'd.Nombre')
+		$result = $qb->select(
+			'd.Id_departamento',
+			'd.Id_padre',
+			'd.Nombre',
+			'd.mostrar_clientes',
+			'd.mostrar_ausencias'
+		)
 			->from($this->getTableName(), 'd')
 			->where($qb->expr()->eq('d.Id_departamento', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
 			->setMaxResults(1)
@@ -116,6 +154,39 @@ class departamentosMapper extends QBMapper {
 		$row = $result->fetch();
 		$result->closeCursor();
 
-		return $row === false ? null : $row;
+		if ($row === false) {
+			return null;
+		}
+
+		$row['mostrar_clientes'] = self::toBoolFlag($row['mostrar_clientes'] ?? 1);
+		$row['mostrar_ausencias'] = self::toBoolFlag($row['mostrar_ausencias'] ?? 1);
+
+		return $row;
+	}
+
+	/**
+	 * Contexto de área para el reporte administrativo.
+	 *
+	 * @return array{id:int,nombre:string,mostrar_clientes:bool,mostrar_ausencias:bool}|null
+	 */
+	public function getAreaReporteContext(int $id): ?array {
+		$row = $this->findDepartmentRow($id);
+		if ($row === null) {
+			return null;
+		}
+
+		return [
+			'id' => (int)($row['Id_departamento'] ?? 0),
+			'nombre' => (string)($row['Nombre'] ?? ''),
+			'mostrar_clientes' => (bool)$row['mostrar_clientes'],
+			'mostrar_ausencias' => (bool)$row['mostrar_ausencias'],
+		];
+	}
+
+	private static function toBoolFlag(mixed $value): bool {
+		if (is_bool($value)) {
+			return $value;
+		}
+		return (int)$value === 1;
 	}
 }

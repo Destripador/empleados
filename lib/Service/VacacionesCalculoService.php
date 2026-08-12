@@ -195,14 +195,15 @@ class VacacionesCalculoService {
 
 		return [
 			'numero_aniversario' => $numeroAniversario,
-            'periodo_inicio' => $periodoInicioStr,
-            'periodo_fin' => $periodoFinStr,
-            'dias_derecho' => $diasDerecho,
-            'dias_disfrutados' => $diasDisfrutados,
-            'dias_restantes' => $diasDerecho - $diasDisfrutados,
-            'dias_acumulados_restantes' => $acumuladoVigente ? $diasAcumuladosRestantes : 0,
-            'fecha_expiracion_acumulados' => $acumuladoVigente ? $fechaExpiracionAcum : null,
-            'fecha_limite_periodo_actual' => (clone $periodoFin)->modify('+6 months')->format('Y-m-d'),
+			'fecha_ingreso' => $fechaIngreso->format('Y-m-d'),
+			'periodo_inicio' => $periodoInicioStr,
+			'periodo_fin' => $periodoFinStr,
+			'dias_derecho' => $diasDerecho,
+			'dias_disfrutados' => $diasDisfrutados,
+			'dias_restantes' => $diasDerecho - $diasDisfrutados,
+			'dias_acumulados_restantes' => $acumuladoVigente ? $diasAcumuladosRestantes : 0,
+			'fecha_expiracion_acumulados' => $acumuladoVigente ? $fechaExpiracionAcum : null,
+			'fecha_limite_periodo_actual' => (clone $periodoFin)->modify('+6 months')->format('Y-m-d'),
 		];
-    }
+	}
 }

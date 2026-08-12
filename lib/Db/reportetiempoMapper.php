@@ -1863,6 +1863,440 @@ class reportetiempoMapper extends QBMapper {
 		}, $rows);
 	}
 
+	/**
+	 * Resumen administrativo para un rango de fechas ISO exactas e inclusivas.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<string,int|float>
+	 */
+	public function getAdminSummary(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return $this->emptyAdminSummary();
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$types = $this->adminWorkTypeConditions('r');
+
+		$qb->selectAlias(
+			$qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'),
+			'total_minutos'
+		)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_CLIENTE]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_cliente'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_INTERNO]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_internos'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_AUSENCIA]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_ausencia'
+			)
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_empleado)'), 'empleados_con_reportes')
+			->selectAlias(
+				$qb->createFunction("COUNT(DISTINCT CASE WHEN {$types[reportetiempo::TIPO_CLIENTE]} THEN r.id_cliente ELSE NULL END)"),
+				'clientes_con_reportes'
+			)
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_actividad)'), 'actividades_con_reportes')
+			->from($this->getTableName(), 'r');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		if ($row === false) {
+			return $this->emptyAdminSummary();
+		}
+
+		$totalMinutes = (float)($row['total_minutos'] ?? 0);
+		$clientMinutes = (float)($row['minutos_cliente'] ?? 0);
+		$internalMinutes = (float)($row['minutos_internos'] ?? 0);
+		$absenceMinutes = (float)($row['minutos_ausencia'] ?? 0);
+
+		return [
+			'total_minutos' => $totalMinutes,
+			'horas_reportadas' => $totalMinutes / 60,
+			'minutos_cliente' => $clientMinutes,
+			'horas_cliente' => $clientMinutes / 60,
+			'minutos_internos' => $internalMinutes,
+			'horas_internas' => $internalMinutes / 60,
+			'minutos_ausencia' => $absenceMinutes,
+			'horas_ausencia' => $absenceMinutes / 60,
+			'total_reportes' => (int)($row['total_reportes'] ?? 0),
+			'empleados_con_reportes' => (int)($row['empleados_con_reportes'] ?? 0),
+			'clientes_con_reportes' => (int)($row['clientes_con_reportes'] ?? 0),
+			'actividades_con_reportes' => (int)($row['actividades_con_reportes'] ?? 0),
+		];
+	}
+
+	/**
+	 * Horas administrativas agrupadas por empleado.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,int|float>>
+	 */
+	public function getAdminHoursByEmployee(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$types = $this->adminWorkTypeConditions('r');
+
+		$qb->select('r.id_empleado')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_CLIENTE]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_cliente'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_INTERNO]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_internos'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_AUSENCIA]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_ausencia'
+			)
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->from($this->getTableName(), 'r')
+			->groupBy('r.id_empleado')
+			->orderBy('total_minutos', 'DESC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static function (array $row): array {
+			$totalMinutes = (float)($row['total_minutos'] ?? 0);
+
+			return [
+				'id_empleado' => (int)($row['id_empleado'] ?? 0),
+				'total_minutos' => $totalMinutes,
+				'horas' => $totalMinutes / 60,
+				'minutos_cliente' => (float)($row['minutos_cliente'] ?? 0),
+				'minutos_internos' => (float)($row['minutos_internos'] ?? 0),
+				'minutos_ausencia' => (float)($row['minutos_ausencia'] ?? 0),
+				'total_reportes' => (int)($row['total_reportes'] ?? 0),
+			];
+		}, $rows);
+	}
+
+	/**
+	 * Horas de trabajo para cliente agrupadas por cliente.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,int|float|string>>
+	 */
+	public function getAdminHoursByClient(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$filters['tipo_trabajo'] = reportetiempo::TIPO_CLIENTE;
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('r.id_cliente')
+			->selectAlias('c.nombre', 'cliente_nombre')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_empleado)'), 'empleados')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_clientes', 'c', 'c.id = r.id_cliente')
+			->groupBy('r.id_cliente', 'c.nombre')
+			->orderBy('total_minutos', 'DESC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static function (array $row): array {
+			$totalMinutes = (float)($row['total_minutos'] ?? 0);
+
+			return [
+				'id_cliente' => (int)($row['id_cliente'] ?? 0),
+				'cliente_nombre' => (string)($row['cliente_nombre'] ?? ''),
+				'total_minutos' => $totalMinutes,
+				'horas' => $totalMinutes / 60,
+				'total_reportes' => (int)($row['total_reportes'] ?? 0),
+				'empleados' => (int)($row['empleados'] ?? 0),
+			];
+		}, $rows);
+	}
+
+	/**
+	 * Horas de trabajo interno agrupadas por actividad interna.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,int|float|string|null>>
+	 */
+	public function getAdminHoursByInternalActivity(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$filters['tipo_trabajo'] = reportetiempo::TIPO_INTERNO;
+		unset($filters['id_cliente']);
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('r.id_actividad')
+			->selectAlias('a.nombre', 'actividad_nombre')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_empleado)'), 'empleados')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
+			->groupBy('r.id_actividad', 'a.nombre')
+			->orderBy('total_minutos', 'DESC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static function (array $row): array {
+			$totalMinutes = (float)($row['total_minutos'] ?? 0);
+			$idActividad = $row['id_actividad'] ?? null;
+
+			return [
+				'id_actividad' => $idActividad === null ? null : (int)$idActividad,
+				'actividad_nombre' => (string)($row['actividad_nombre'] ?? ''),
+				'total_minutos' => $totalMinutes,
+				'horas' => $totalMinutes / 60,
+				'total_reportes' => (int)($row['total_reportes'] ?? 0),
+				'empleados' => (int)($row['empleados'] ?? 0),
+			];
+		}, $rows);
+	}
+
+	/**
+	 * Horas administrativas agrupadas por fecha.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,int|float|string>>
+	 */
+	public function getAdminHoursByDay(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$types = $this->adminWorkTypeConditions('r');
+		$qb->select('r.fecha_registro')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_CLIENTE]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_cliente'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_INTERNO]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_internos'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN {$types[reportetiempo::TIPO_AUSENCIA]} THEN r.tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_ausencia'
+			)
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->from($this->getTableName(), 'r')
+			->groupBy('r.fecha_registro')
+			->orderBy('r.fecha_registro', 'ASC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(fn (array $row): array => $this->mapAdminDayTotals($row), $rows);
+	}
+
+	/**
+	 * Desglose por empleado, tipo de trabajo, cliente y actividad.
+	 *
+	 * La primera agregacion mantiene las columnas legacy necesarias para clasificar
+	 * sin funciones especificas del motor. La segunda fusion en PHP evita que dos
+	 * representaciones legacy del mismo tipo produzcan filas duplicadas.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,int|float|string|null>>
+	 */
+	public function getAdminEmployeeBreakdown(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(
+			'r.id_empleado',
+			'r.tipo_trabajo',
+			'r.origen',
+			'r.id_cliente',
+			'r.id_actividad'
+		)
+			->selectAlias('c.nombre', 'cliente_nombre')
+			->selectAlias('a.nombre', 'actividad_nombre')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_clientes', 'c', 'c.id = r.id_cliente')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
+			->groupBy(
+				'r.id_empleado',
+				'r.tipo_trabajo',
+				'r.origen',
+				'r.id_cliente',
+				'r.id_actividad',
+				'c.nombre',
+				'a.nombre'
+			)
+			->orderBy('r.id_empleado', 'ASC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$grouped = [];
+		foreach ($rows as $row) {
+			$type = $this->normalizeAdminWorkType($row);
+			$clientId = $type === reportetiempo::TIPO_CLIENTE
+				? $this->adminNullableInt($row['id_cliente'] ?? null)
+				: null;
+			$activityId = $this->adminNullableInt($row['id_actividad'] ?? null);
+			$employeeId = (int)($row['id_empleado'] ?? 0);
+			$key = implode(':', [
+				$employeeId,
+				$type,
+				$clientId ?? '-',
+				$activityId ?? '-',
+			]);
+			$minutes = (float)($row['total_minutos'] ?? 0);
+
+			if (!isset($grouped[$key])) {
+				$grouped[$key] = [
+					'id_empleado' => $employeeId,
+					'tipo_trabajo' => $type,
+					'id_cliente' => $clientId,
+					'cliente_nombre' => $clientId === null ? null : (string)($row['cliente_nombre'] ?? ''),
+					'id_actividad' => $activityId,
+					'actividad_nombre' => $activityId === null ? null : (string)($row['actividad_nombre'] ?? ''),
+					'total_minutos' => 0.0,
+					'horas' => 0.0,
+					'total_reportes' => 0,
+				];
+			}
+
+			$grouped[$key]['total_minutos'] += $minutes;
+			$grouped[$key]['horas'] = $grouped[$key]['total_minutos'] / 60;
+			$grouped[$key]['total_reportes'] += (int)($row['total_reportes'] ?? 0);
+		}
+
+		$items = array_values($grouped);
+		usort($items, static function (array $left, array $right): int {
+			$employeeComparison = ((int)$left['id_empleado']) <=> ((int)$right['id_empleado']);
+			if ($employeeComparison !== 0) {
+				return $employeeComparison;
+			}
+			return ((float)$right['total_minutos']) <=> ((float)$left['total_minutos']);
+		});
+
+		return $items;
+	}
+
+	/**
+	 * Reportes crudos visibles para exportacion o detalle por lote.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function findAdminReportsByEmployeeIds(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('r.*')
+			->selectAlias('a.nombre', 'actividad_nombre')
+			->selectAlias('a.cargable', 'cargable')
+			->selectAlias('s.id_equipo', 'id_equipo')
+			->selectAlias('d.nombre_dispositivo', 'nombre_dispositivo')
+			->from($this->getTableName(), 'r')
+			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
+			->leftJoin('r', 'soporte_historial', 's', "r.origen = 'soporte_ti' AND s.id_soporte = r.origen_id")
+			->leftJoin('s', 'inventario_computo', 'd', 'd.id_equipo = s.id_equipo')
+			->orderBy('r.fecha_registro', 'DESC')
+			->addOrderBy('r.id_reporte', 'DESC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($rows as &$row) {
+			$row['tipo_trabajo'] = $this->normalizeAdminWorkType($row);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
 	public function deleteById(int $id): void {
 		$qb = $this->db->getQueryBuilder();
 
@@ -2044,6 +2478,249 @@ class reportetiempoMapper extends QBMapper {
 			->andWhere($qb->expr()->gte('fecha_registro', $qb->createNamedParameter($fecha_de)))
 			->andWhere($qb->expr()->lte('fecha_registro', $qb->createNamedParameter($fecha_hasta)));
 		$qb->executeStatement();
+	}
+
+	/**
+	 * @param int[] $idEmpleadosVisibles
+	 * @param array<string,mixed> $filters
+	 * @return array{
+	 *     fecha_inicio:string,
+	 *     fecha_fin:string,
+	 *     employee_ids:array<int,int>,
+	 *     filters:array{tipo_trabajo:?string,id_cliente:?int,id_actividad:?int,id_empleado:?int}
+	 * }
+	 */
+	private function normalizeAdminQueryContext(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleadosVisibles,
+		array $filters,
+	): array {
+		$fechaInicio = $this->normalizeAdminIsoDate($fechaInicio, 'fechaInicio');
+		$fechaFin = $this->normalizeAdminIsoDate($fechaFin, 'fechaFin');
+		if ($fechaInicio > $fechaFin) {
+			throw new \InvalidArgumentException('La fecha inicial no puede ser posterior a la fecha final.');
+		}
+
+		$employeeIds = array_values(array_unique(array_filter(
+			array_map('intval', $idEmpleadosVisibles),
+			static fn (int $id): bool => $id > 0,
+		)));
+
+		$type = $filters['tipo_trabajo'] ?? null;
+		if ($type !== null && $type !== '') {
+			$type = strtolower(trim((string)$type));
+			if (!in_array($type, reportetiempo::TIPOS_TRABAJO_VALIDOS, true)) {
+				throw new \InvalidArgumentException('El filtro tipo_trabajo no es valido.');
+			}
+		} else {
+			$type = null;
+		}
+
+		$employeeFilter = $this->normalizeAdminOptionalId($filters, 'id_empleado');
+		if ($employeeFilter !== null) {
+			$employeeIds = in_array($employeeFilter, $employeeIds, true)
+				? [$employeeFilter]
+				: [];
+		}
+
+		$clientFilter = $this->normalizeAdminOptionalId($filters, 'id_cliente');
+		if ($type === reportetiempo::TIPO_INTERNO) {
+			$clientFilter = null;
+		}
+
+		return [
+			'fecha_inicio' => $fechaInicio,
+			'fecha_fin' => $fechaFin,
+			'employee_ids' => $employeeIds,
+			'filters' => [
+				'tipo_trabajo' => $type,
+				'id_cliente' => $clientFilter,
+				'id_actividad' => $this->normalizeAdminOptionalId($filters, 'id_actividad'),
+				'id_empleado' => $employeeFilter,
+			],
+		];
+	}
+
+	private function normalizeAdminIsoDate(string $value, string $field): string {
+		$value = trim($value);
+		$date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+		$errors = \DateTimeImmutable::getLastErrors();
+
+		if (
+			$date === false
+			|| $date->format('Y-m-d') !== $value
+			|| (
+				is_array($errors)
+				&& ((int)$errors['warning_count'] > 0 || (int)$errors['error_count'] > 0)
+			)
+		) {
+			throw new \InvalidArgumentException("El parametro {$field} debe ser una fecha ISO valida (Y-m-d).");
+		}
+
+		return $value;
+	}
+
+	/**
+	 * @param array<string,mixed> $filters
+	 */
+	private function normalizeAdminOptionalId(array $filters, string $key): ?int {
+		if (!array_key_exists($key, $filters) || $filters[$key] === null || $filters[$key] === '') {
+			return null;
+		}
+
+		$value = filter_var($filters[$key], FILTER_VALIDATE_INT, [
+			'options' => ['min_range' => 1],
+		]);
+		if ($value === false) {
+			throw new \InvalidArgumentException("El filtro {$key} debe ser un entero positivo.");
+		}
+
+		return (int)$value;
+	}
+
+	/**
+	 * @param array{
+	 *     fecha_inicio:string,
+	 *     fecha_fin:string,
+	 *     employee_ids:array<int,int>,
+	 *     filters:array{tipo_trabajo:?string,id_cliente:?int,id_actividad:?int,id_empleado:?int}
+	 * } $context
+	 */
+	private function applyAdminQueryContext(IQueryBuilder $qb, string $alias, array $context): void {
+		$prefix = $alias === '' ? '' : $alias . '.';
+		$employeeIds = array_map('strval', $context['employee_ids']);
+
+		$qb->andWhere($qb->expr()->gte(
+			$prefix . 'fecha_registro',
+			$qb->createNamedParameter($context['fecha_inicio'])
+		))
+			->andWhere($qb->expr()->lte(
+				$prefix . 'fecha_registro',
+				$qb->createNamedParameter($context['fecha_fin'])
+			))
+			->andWhere($qb->expr()->in(
+				$prefix . 'id_empleado',
+				$qb->createNamedParameter($employeeIds, IQueryBuilder::PARAM_STR_ARRAY)
+			));
+
+		$type = $context['filters']['tipo_trabajo'];
+		if ($type !== null) {
+			$conditions = $this->adminWorkTypeConditions($alias);
+			$qb->andWhere($conditions[$type]);
+		}
+
+		$idCliente = $context['filters']['id_cliente'];
+		if ($idCliente !== null && $type !== reportetiempo::TIPO_INTERNO) {
+			if ($type === null) {
+				$conditions = $this->adminWorkTypeConditions($alias);
+				$qb->andWhere($conditions[reportetiempo::TIPO_CLIENTE]);
+			}
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'id_cliente',
+				$qb->createNamedParameter($idCliente, IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		$idActividad = $context['filters']['id_actividad'];
+		if ($idActividad !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'id_actividad',
+				$qb->createNamedParameter($idActividad, IQueryBuilder::PARAM_INT)
+			));
+		}
+	}
+
+	/**
+	 * Regla SQL canonica compartida por todos los agregados administrativos.
+	 * Un tipo explicito valido prevalece; cualquier valor legacy se resuelve por
+	 * ids reservados, cliente nulo u origen de soporte.
+	 *
+	 * @return array<string,string>
+	 */
+	private function adminWorkTypeConditions(string $alias): array {
+		$prefix = $alias === '' ? '' : $alias . '.';
+		$type = $prefix . 'tipo_trabajo';
+		$client = $prefix . 'id_cliente';
+		$activity = $prefix . 'id_actividad';
+		$origin = $prefix . 'origen';
+		$legacy = "({$type} IS NULL OR {$type} = '' OR {$type} NOT IN ('cliente', 'interno', 'ausencia'))";
+		$notReserved = "(({$client} IS NULL OR {$client} <> 99999) AND ({$activity} IS NULL OR {$activity} <> 99999))";
+
+		return [
+			reportetiempo::TIPO_AUSENCIA => "({$type} = 'ausencia' OR ({$legacy} AND ({$client} = 99999 OR {$activity} = 99999)))",
+			reportetiempo::TIPO_INTERNO => "({$type} = 'interno' OR ({$legacy} AND {$notReserved} AND ({$client} IS NULL OR {$origin} = 'soporte_ti')))",
+			reportetiempo::TIPO_CLIENTE => "({$type} = 'cliente' OR ({$legacy} AND {$notReserved} AND {$client} IS NOT NULL AND ({$origin} IS NULL OR {$origin} <> 'soporte_ti')))",
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $row
+	 */
+	private function normalizeAdminWorkType(array $row): string {
+		$type = strtolower(trim((string)($row['tipo_trabajo'] ?? '')));
+		if (in_array($type, reportetiempo::TIPOS_TRABAJO_VALIDOS, true)) {
+			return $type;
+		}
+		if (
+			(int)($row['id_cliente'] ?? 0) === 99999
+			|| (int)($row['id_actividad'] ?? 0) === 99999
+		) {
+			return reportetiempo::TIPO_AUSENCIA;
+		}
+		if (($row['id_cliente'] ?? null) === null || ($row['origen'] ?? null) === 'soporte_ti') {
+			return reportetiempo::TIPO_INTERNO;
+		}
+
+		return reportetiempo::TIPO_CLIENTE;
+	}
+
+	private function adminNullableInt(mixed $value): ?int {
+		return $value === null || $value === '' ? null : (int)$value;
+	}
+
+	/**
+	 * @param array<string,mixed> $row
+	 * @return array<string,int|float|string>
+	 */
+	private function mapAdminDayTotals(array $row): array {
+		$totalMinutes = (float)($row['total_minutos'] ?? 0);
+		$date = $row['fecha_registro'] ?? '';
+		if ($date instanceof \DateTimeInterface) {
+			$date = $date->format('Y-m-d');
+		} else {
+			$date = substr((string)$date, 0, 10);
+		}
+
+		return [
+			'fecha' => $date,
+			'total_minutos' => $totalMinutes,
+			'horas' => $totalMinutes / 60,
+			'minutos_cliente' => (float)($row['minutos_cliente'] ?? 0),
+			'minutos_internos' => (float)($row['minutos_internos'] ?? 0),
+			'minutos_ausencia' => (float)($row['minutos_ausencia'] ?? 0),
+			'total_reportes' => (int)($row['total_reportes'] ?? 0),
+		];
+	}
+
+	/**
+	 * @return array<string,int|float>
+	 */
+	private function emptyAdminSummary(): array {
+		return [
+			'total_minutos' => 0.0,
+			'horas_reportadas' => 0.0,
+			'minutos_cliente' => 0.0,
+			'horas_cliente' => 0.0,
+			'minutos_internos' => 0.0,
+			'horas_internas' => 0.0,
+			'minutos_ausencia' => 0.0,
+			'horas_ausencia' => 0.0,
+			'total_reportes' => 0,
+			'empleados_con_reportes' => 0,
+			'clientes_con_reportes' => 0,
+			'actividades_con_reportes' => 0,
+		];
 	}
 
 	private function internalWorkExpression(IQueryBuilder $qb, string $alias = ''): mixed {

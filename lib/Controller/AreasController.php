@@ -24,6 +24,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\CompraPermisosService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -40,6 +41,7 @@ class AreasController extends BaseController {
     protected $configuracionesMapper;
     protected $l10n;
     protected PermisosService $permisosService;
+    protected CompraPermisosService $compraPermisosService;
 
     public function __construct(
         IRequest $request,
@@ -50,7 +52,8 @@ class AreasController extends BaseController {
         configuracionesMapper $configuracionesMapper,
         IL10N $l10n,
         IGroupManager $groupManager,
-        PermisosService $permisosService
+        PermisosService $permisosService,
+        CompraPermisosService $compraPermisosService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -61,6 +64,7 @@ class AreasController extends BaseController {
         $this->configuracionesMapper = $configuracionesMapper;
         $this->l10n = $l10n;
         $this->permisosService = $permisosService;
+        $this->compraPermisosService = $compraPermisosService;
     }
 
     /**
@@ -69,10 +73,12 @@ class AreasController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetAreasFix(): DataResponse {
-        $this->requireHumanResourcesAccess();
+        $this->requireAreasCatalogAccess();
         $areas = array_map(fn($area) => [
             'value' => $area['Id_departamento'],
             'label' => $area['Nombre'],
+            'mostrar_clientes' => (bool)($area['mostrar_clientes'] ?? true),
+            'mostrar_ausencias' => (bool)($area['mostrar_ausencias'] ?? true),
         ], $this->departamentosMapper->GetAreasList());
 
         return new DataResponse($areas, Http::STATUS_OK);
@@ -98,13 +104,15 @@ class AreasController extends BaseController {
     public function ExportListAreas(): DataResponse {
         $this->requireHumanResourcesAccess();
         $areas = $this->departamentosMapper->GetAreasList();
-        $books = [['Id_departamento', 'Id_padre', 'Nombre', 'created_at', 'updated_at']];
+        $books = [['Id_departamento', 'Id_padre', 'Nombre', 'mostrar_clientes', 'mostrar_ausencias', 'created_at', 'updated_at']];
 
         foreach ($areas as $area) {
             $books[] = [
                 $area['Id_departamento'],
                 $area['Id_padre'],
                 $area['Nombre'],
+                !empty($area['mostrar_clientes']) ? 1 : 0,
+                !empty($area['mostrar_ausencias']) ? 1 : 0,
                 $area['created_at'],
                 $area['updated_at'],
             ];
@@ -159,9 +167,21 @@ class AreasController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function GuardarCambioArea(int $id_departamento, string $padre, string $nombre): DataResponse {
+    public function GuardarCambioArea(
+        int $id_departamento,
+        string $padre,
+        string $nombre,
+        $mostrar_clientes = null,
+        $mostrar_ausencias = null
+    ): DataResponse {
         $this->requireHumanResourcesAccess();
-        $this->departamentosMapper->updateAreas((string) $id_departamento, $padre, $nombre);
+        $this->departamentosMapper->updateAreas(
+            (string) $id_departamento,
+            $padre,
+            $nombre,
+            $this->normalizeOptionalBool($mostrar_clientes),
+            $this->normalizeOptionalBool($mostrar_ausencias)
+        );
         return new DataResponse(Http::STATUS_OK);
     }
 
@@ -178,8 +198,33 @@ class AreasController extends BaseController {
         $area->setnombre($nombre);
         $area->setcreated_at($timestamp);
         $area->setupdated_at($timestamp);
+        $area->setMostrarClientes(1);
+        $area->setMostrarAusencias(1);
         $this->departamentosMapper->insert($area);
         return new DataResponse(Http::STATUS_OK);
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function normalizeOptionalBool($value): ?bool {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int)$value === 1;
+        }
+        $normalized = strtolower(trim((string)$value));
+        if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+            return false;
+        }
+        return null;
     }
 
     /**
@@ -202,5 +247,43 @@ class AreasController extends BaseController {
             'empleados.hr',
             'empleados.admin',
         ]);
+    }
+
+    /**
+     * Catálogo de solo lectura (id/nombre) para etiquetas en módulos
+     * como compras, sin conceder gestión de RRHH.
+     */
+    private function requireCatalogReadAccess(): void {
+        $user = $this->userSession->getUser();
+        $uid = $user?->getUID();
+
+        if ($uid !== null && $uid !== '' && (
+            $this->permisosService->canManageHumanResources($uid)
+            || $this->compraPermisosService->canAccessModule($uid)
+            || $this->permisosService->canSeeAny([
+                'compras.admin',
+                'compras.approve',
+                'compras.request',
+                'compras.accounting',
+            ], $uid)
+        )) {
+            return;
+        }
+
+        $this->requireHumanResourcesAccess();
+    }
+
+    /**
+     * Lectura de catálogo de áreas también para reportes administrativos.
+     */
+    private function requireAreasCatalogAccess(): void {
+        $user = $this->userSession->getUser();
+        $uid = $user?->getUID();
+
+        if ($uid !== null && $uid !== '' && $this->permisosService->canSee('reporte_tiempos.admin', $uid)) {
+            return;
+        }
+
+        $this->requireCatalogReadAccess();
     }
 }

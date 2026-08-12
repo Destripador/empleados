@@ -18,7 +18,7 @@
 		</template>
 
 		<!-- main contacts details -->
-		<AreasDetails :data="data_areas" :people-area="peopleArea" />
+		<AreasDetails :data="data_areas" :people-area="peopleArea" :items="Areas" />
 		<FloatingHelpButton
 			:open.sync="modalMensajeAreas"
 			:title="t('empleados', 'Areas information')"
@@ -78,8 +78,12 @@ export default {
 	async mounted() {
 		this.getall()
 		this.$root.$on('send-data-areas', (data) => {
-			this.data_areas = data
-			this.getalldepartament(data.Id_departamento)
+			this.data_areas = data || {}
+			if (data && data.Id_departamento) {
+				this.getalldepartament(data.Id_departamento)
+			} else {
+				this.peopleArea = {}
+			}
 		})
 		this.$root.$on('delete-areas', () => {
 			this.getall()
@@ -87,11 +91,27 @@ export default {
 		this.$root.$on('reload', () => {
 			this.getall()
 		})
+		window.addEventListener('keydown', this.onKeyDown)
+	},
+
+	beforeDestroy() {
+		window.removeEventListener('keydown', this.onKeyDown)
 	},
 
 	methods: {
 		// expone i18n en plantilla
 		t,
+
+		onKeyDown(e) {
+			if (e.key === 'Escape') {
+				this.onEsc()
+			}
+		},
+
+		onEsc() {
+			this.data_areas = {}
+			this.peopleArea = {}
+		},
 
 		async getalldepartament(departamento) {
 			try {

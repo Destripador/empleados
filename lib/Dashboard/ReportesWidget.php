@@ -7,6 +7,7 @@ namespace OCA\Empleados\Dashboard;
 use OCA\Empleados\AppInfo\Application;
 use OCP\Dashboard\IIconWidget;
 use OCP\Dashboard\IWidget;
+use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\Util;
 
@@ -14,6 +15,7 @@ class ReportesWidget implements IWidget, IIconWidget {
 
 	public function __construct(
 		private IURLGenerator $urlGenerator,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -22,7 +24,7 @@ class ReportesWidget implements IWidget, IIconWidget {
 	}
 
 	public function getTitle(): string {
-		return 'Reportar tiempo';
+		return $this->l10n->t('Report time');
 	}
 
 	public function getOrder(): int {
@@ -44,6 +46,7 @@ class ReportesWidget implements IWidget, IIconWidget {
 	}
 
 	public function load(): void {
+		Util::addTranslations(Application::APP_ID);
 		Util::addScript(Application::APP_ID, 'empleados-dashboard-reportes');
 	}
 }

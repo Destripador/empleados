@@ -45,6 +45,14 @@
 									{{ t('empleados', 'Hide empty') }}
 								</label>
 							</div>
+
+							<hr class="filter-divider">
+
+							<div class="filter-section">
+								<button type="button" class="filter-reset-button" @click="resetListFilters">
+									{{ resetListFiltersLabel() }}
+								</button>
+							</div>
 						</div>
 					</div>
 					<div class="button-container">
@@ -155,6 +163,8 @@ import {
 } from '@nextcloud/vue'
 import EquiposListItem from './EquiposListItem.vue'
 import VirtualList from 'vue-virtual-scroll-list'
+import { PREFERENCE_KEYS } from '../../../utils/userPreferences.js'
+import { createListFiltersMixin } from '../../../mixins/persistListFilters.js'
 
 export default {
 	name: 'EquiposFullList',
@@ -175,6 +185,8 @@ export default {
 		NcButton,
 		NcSelect,
 	},
+
+	mixins: [createListFiltersMixin(PREFERENCE_KEYS.EQUIPMENT)],
 
 	props: {
 		list: { type: Array, required: true },
@@ -235,7 +247,6 @@ export default {
 	},
 
 	mounted() {
-		this.query = this.searchQuery
 		this._onClickOutside = (event) => {
 			const wrap = this.$el.querySelector('.filters-container')
 			if (wrap && !wrap.contains(event.target)) {
@@ -507,5 +518,23 @@ export default {
 	min-width: unset !important;
 	padding-left: 4px !important;
 	padding-right: 4px !important;
+}
+
+.filter-reset-button {
+	width: 100%;
+	height: 28px;
+	padding: 0 8px;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	cursor: pointer;
+	text-align: center;
+}
+
+.filter-reset-button:hover {
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
 }
 </style>

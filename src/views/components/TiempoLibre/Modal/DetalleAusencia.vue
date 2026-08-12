@@ -131,7 +131,9 @@
 				<template v-if="esRechazoDeJefe">
 					<div v-if="ausencia.notas" class="confirm-motivo__original">
 						<span class="info-item__label">{{ t('empleados', 'Comments from requester') }}</span>
-						<p class="info-item__notes">{{ ausencia.notas }}</p>
+						<p class="info-item__notes">
+							{{ ausencia.notas }}
+						</p>
 					</div>
 
 					<div class="confirm-motivo">

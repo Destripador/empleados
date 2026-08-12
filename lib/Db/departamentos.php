@@ -14,6 +14,8 @@ class departamentos extends Entity {
     protected string $nombre = '';
     protected string $created_at = '';
     protected string $updated_at = '';
+	protected int $mostrarClientes = 1;
+	protected int $mostrarAusencias = 1;
 
 	public function __construct() {
         $this->addType('Id_departamentos', 'string');
@@ -21,6 +23,8 @@ class departamentos extends Entity {
 		$this->addType('Nombre', 'string');
 		$this->addType('created_at', 'string');
 		$this->addType('updated_at', 'string');
+		$this->addType('mostrarClientes', 'integer');
+		$this->addType('mostrarAusencias', 'integer');
 	}
 
 	public function read(): array {
@@ -30,6 +34,8 @@ class departamentos extends Entity {
 			'Nombre' => $this->nombre,
 			'created_at' => $this->created_at,
 			'updated_at' => $this->updated_at,
+			'mostrar_clientes' => (int)$this->mostrarClientes === 1,
+			'mostrar_ausencias' => (int)$this->mostrarAusencias === 1,
 		];
 	}
 }

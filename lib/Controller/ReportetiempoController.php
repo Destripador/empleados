@@ -8,11 +8,13 @@ use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Db\actividadesMapper;
 use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Db\configuracionesMapper;
+use OCA\Empleados\Db\departamentosMapper;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\reportetiempo;
 use OCA\Empleados\Db\reportetiempoMapper;
 use OCA\Empleados\Db\historialausenciasMapper;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\ReporteTiempoComplianceService;
 use OCA\Empleados\Service\ReporteTiempoRules;
 use OCA\Empleados\Service\VacacionesCalculoService;
 use OCA\Empleados\Exception\ReporteTiempoRuleException;
@@ -64,6 +66,8 @@ class reportetiempoController extends BaseController {
 	private INotificationManager $notificationManager;
 	private PermisosService $permisosService;
 	private VacacionesCalculoService $vacacionesCalculoService;
+	private departamentosMapper $departamentosMapper;
+	private ReporteTiempoComplianceService $reporteTiempoComplianceService;
 
 	public function __construct(
 		IRequest $request,
@@ -85,6 +89,8 @@ class reportetiempoController extends BaseController {
 		INotificationManager $notificationManager,
 		VacacionesCalculoService $vacacionesCalculoService,
 		PermisosService $permisosService,
+		departamentosMapper $departamentosMapper,
+		ReporteTiempoComplianceService $reporteTiempoComplianceService,
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -113,6 +119,8 @@ class reportetiempoController extends BaseController {
 		$this->historialausenciasMapper = $historialausenciasMapper;
 		$this->vacacionesCalculoService = $vacacionesCalculoService;
 		$this->permisosService = $permisosService;
+		$this->departamentosMapper = $departamentosMapper;
+		$this->reporteTiempoComplianceService = $reporteTiempoComplianceService;
 	}
 
 	private function requireAdminReportsAccess(): void {
@@ -144,7 +152,17 @@ class reportetiempoController extends BaseController {
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function findById($id = null, $periodo_inicio = null, $periodo_fin = null, $anio = null): DataResponse {
+	public function findById(
+		$id = null,
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null,
+		$fecha_inicio = null,
+		$fecha_fin = null,
+		$tipo_trabajo = null,
+		$id_cliente = null,
+		$id_actividad = null
+	): DataResponse {
 		$user = $this->userSession->getUser();
 		$empleado = $user === null
 			? []
@@ -194,16 +212,49 @@ class reportetiempoController extends BaseController {
 			}
 		}
 
-		return new DataResponse(
-			$this->reportetiempoMapper->findById(
-				$idEmpleadoConsultado,
-				0,
-				0,
+		$hasAnalyticFilters = $fecha_inicio !== null
+			|| $fecha_fin !== null
+			|| $tipo_trabajo !== null
+			|| $id_cliente !== null
+			|| $id_actividad !== null;
+		if (!$hasAnalyticFilters) {
+			return new DataResponse(
+				$this->reportetiempoMapper->findById(
+					$idEmpleadoConsultado,
+					0,
+					0,
+					$periodo_inicio,
+					$periodo_fin,
+					$anio
+				),
+				Http::STATUS_OK
+			);
+		}
+
+		try {
+			$filters = $this->normalizeAdminReportFilters(
+				$fecha_inicio,
+				$fecha_fin,
 				$periodo_inicio,
 				$periodo_fin,
-				$anio
+				$anio,
+				$tipo_trabajo,
+				$idEmpleadoConsultado,
+				$id_cliente,
+				$id_actividad,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse(
+			$this->reportetiempoMapper->findAdminReportsByEmployeeIds(
+				$filters['fecha_inicio'],
+				$filters['fecha_fin'],
+				[$idEmpleadoConsultado],
+				$filters,
 			),
-			Http::STATUS_OK
+			Http::STATUS_OK,
 		);
 	}
 
@@ -430,13 +481,49 @@ class reportetiempoController extends BaseController {
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function GetEmpleadosReports($periodo_inicio = null, $periodo_fin = null, $anio = null): DataResponse {
+	public function GetEmpleadosReports(
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null,
+		$id_departamento = null,
+		$fecha_inicio = null,
+		$fecha_fin = null,
+		$tipo_trabajo = null,
+		$id_empleado = null,
+		$id_cliente = null,
+		$id_actividad = null
+	): DataResponse {
 		$this->requireAdminReportsAccess();
 
-		return new DataResponse(
-			$this->getEmpleadosReportsData($periodo_inicio, $periodo_fin, $anio),
-			Http::STATUS_OK
-		);
+		try {
+			$filters = $this->normalizeAdminReportFilters(
+				$fecha_inicio,
+				$fecha_fin,
+				$periodo_inicio,
+				$periodo_fin,
+				$anio,
+				$tipo_trabajo,
+				$id_empleado,
+				$id_cliente,
+				$id_actividad,
+			);
+			$areaContext = $this->resolveAreaReporteContext($id_departamento);
+			$this->assertAdminAreaFilters($areaContext, $filters);
+			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
+			$rows = $this->reportetiempoMapper->getAdminHoursByEmployee(
+				$filters['fecha_inicio'],
+				$filters['fecha_fin'],
+				$this->employeeIds($employees),
+				$filters,
+			);
+
+			return new DataResponse(
+				$this->mergeAdminEmployeeHours($employees, $rows),
+				Http::STATUS_OK,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
 	}
 
 	/**
@@ -447,105 +534,43 @@ class reportetiempoController extends BaseController {
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function GetAdminReportsSummary($periodo_inicio = null, $periodo_fin = null, $anio = null): DataResponse {
+	public function GetAdminReportsSummary(
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null,
+		$id_departamento = null,
+		$fecha_inicio = null,
+		$fecha_fin = null,
+		$tipo_trabajo = null,
+		$id_empleado = null,
+		$id_cliente = null,
+		$id_actividad = null
+	): DataResponse {
 		$this->requireAdminReportsAccess();
 
-		$empleadosData = $this->getEmpleadosReportsData(
-			$periodo_inicio,
-			$periodo_fin,
-			$anio
-		);
+		try {
+			$filters = $this->normalizeAdminReportFilters(
+				$fecha_inicio,
+				$fecha_fin,
+				$periodo_inicio,
+				$periodo_fin,
+				$anio,
+				$tipo_trabajo,
+				$id_empleado,
+				$id_cliente,
+				$id_actividad,
+			);
+			$areaContext = $this->resolveAreaReporteContext($id_departamento);
+			$this->assertAdminAreaFilters($areaContext, $filters);
+			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
 
-		$idEmpleadosVisibles = array_values(array_unique(array_filter(array_map(
-			static function ($empleado) {
-				return (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? 0);
-			},
-			$empleadosData
-		))));
-
-		$resumen = $this->reportetiempoMapper->getResumenGeneral(
-			$periodo_inicio,
-			$periodo_fin,
-			$anio,
-			$idEmpleadosVisibles
-		);
-
-		$costoTotal = 0.0;
-		$costoInterno = 0.0;
-		$costoCliente = 0.0;
-		$costoAusencia = 0.0;
-		$horasPorEmpleado = $this->reportetiempoMapper->getHorasPorEmpleado(
-			$periodo_inicio, $periodo_fin, $anio, $idEmpleadosVisibles,
-		);
-		$internosPorEmpleado = [];
-		$clientesPorEmpleado = [];
-		$ausenciasPorEmpleado = [];
-		foreach ($horasPorEmpleado as $hours) {
-			$id = (int)$hours['id_empleado'];
-			$internosPorEmpleado[$id] = (float)($hours['minutos_internos'] ?? 0);
-			$clientesPorEmpleado[$id] = (float)($hours['minutos_cliente'] ?? 0);
-			$ausenciasPorEmpleado[$id] = (float)($hours['minutos_ausencia'] ?? 0);
+			return new DataResponse(
+				$this->buildAdminReportsData($filters, $employees, $areaContext),
+				Http::STATUS_OK,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
-
-		foreach ($empleadosData as $empleado) {
-			$totalMinutos = (float)($empleado['total_tiempo_registrado'] ?? 0);
-			$sueldoHora = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
-			$idEmpleado = (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? 0);
-
-			$costoTotal += ($totalMinutos / 60) * $sueldoHora;
-			$costoInterno += (($internosPorEmpleado[$idEmpleado] ?? 0) / 60) * $sueldoHora;
-			$costoCliente += (($clientesPorEmpleado[$idEmpleado] ?? 0) / 60) * $sueldoHora;
-			$costoAusencia += (($ausenciasPorEmpleado[$idEmpleado] ?? 0) / 60) * $sueldoHora;
-		}
-
-		$resumen['costo_total'] = $costoTotal;
-		$resumen['costo_laboral_interno'] = $costoInterno;
-		$resumen['costo_laboral_cliente'] = $costoCliente;
-		$resumen['costo_laboral_ausencia'] = $costoAusencia;
-
-		return new DataResponse([
-			'kpis' => $resumen,
-			'empleados' => $empleadosData,
-			'graficas' => [
-				'horas_por_empleado' => $horasPorEmpleado,
-				'trabajo_interno' => $this->reportetiempoMapper->getTrabajoInternoAgrupado(
-					$periodo_inicio,
-					$periodo_fin,
-					$anio,
-					$idEmpleadosVisibles
-				),
-				'horas_por_proyecto' => $this->reportetiempoMapper->getHorasPorProyecto(
-					$periodo_inicio,
-					$periodo_fin,
-					$anio,
-					$idEmpleadosVisibles
-				),
-				'horas_por_actividad' => $this->reportetiempoMapper->getHorasPorActividad(
-					$periodo_inicio,
-					$periodo_fin,
-					$anio,
-					$idEmpleadosVisibles
-				),
-				'horas_por_dia' => $this->reportetiempoMapper->getHorasPorDia(
-					$periodo_inicio,
-					$periodo_fin,
-					$anio,
-					$idEmpleadosVisibles
-				),
-				'reportes_por_dia' => $this->reportetiempoMapper->getReportesPorDia(
-					$periodo_inicio,
-					$periodo_fin,
-					$anio,
-					$idEmpleadosVisibles
-				),
-				'proyecto_vs_actividad' => $this->reportetiempoMapper->getProyectoVsActividad(
-					$periodo_inicio,
-					$periodo_fin,
-					$anio,
-					$idEmpleadosVisibles
-				),
-			],
-		], Http::STATUS_OK);
 	}
 
 	/**
@@ -859,59 +884,93 @@ class reportetiempoController extends BaseController {
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function ExportarReportes($periodo_inicio = null, $periodo_fin = null, $anio = null) {
+	public function ExportarReportes(
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null,
+		$id_departamento = null,
+		$fecha_inicio = null,
+		$fecha_fin = null,
+		$tipo_trabajo = null,
+		$id_empleado = null,
+		$id_cliente = null,
+		$id_actividad = null
+	) {
 		$this->requireAdminReportsAccess();
 
-		$empleadosData = $this->getEmpleadosReportsData(
-			$periodo_inicio,
-			$periodo_fin,
-			$anio
-		);
-
-		$idEmpleadosVisibles = array_values(array_unique(array_filter(array_map(
-			static function ($empleado) {
-				return (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? $empleado['id'] ?? 0);
-			},
-			$empleadosData
-		))));
-
-		$resumen = $this->reportetiempoMapper->getResumenGeneral(
-			$periodo_inicio,
-			$periodo_fin,
-			$anio,
-			$idEmpleadosVisibles
-		);
-
-		$costoTotal = 0.0;
-
-		foreach ($empleadosData as $empleado) {
-			$totalMinutos = (float)($empleado['total_tiempo_registrado'] ?? 0);
-			$sueldoHora = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
-
-			$costoTotal += ($totalMinutos / 60) * $sueldoHora;
+		try {
+			$filters = $this->normalizeAdminReportFilters(
+				$fecha_inicio,
+				$fecha_fin,
+				$periodo_inicio,
+				$periodo_fin,
+				$anio,
+				$tipo_trabajo,
+				$id_empleado,
+				$id_cliente,
+				$id_actividad,
+			);
+			$areaContext = $this->resolveAreaReporteContext($id_departamento);
+			$this->assertAdminAreaFilters($areaContext, $filters);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 
-		$resumen['costo_total'] = $costoTotal;
+		$mostrarClientes = $areaContext === null || ($areaContext['mostrar_clientes'] ?? true);
+		$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
+		$employeeIds = $this->employeeIds($employees);
+		$hoursRows = $this->reportetiempoMapper->getAdminHoursByEmployee(
+			$filters['fecha_inicio'],
+			$filters['fecha_fin'],
+			$employeeIds,
+			$filters,
+		);
+		$empleadosData = $this->mergeAdminEmployeeHours($employees, $hoursRows);
+		$resumen = $this->enrichAdminSummary(
+			$this->reportetiempoMapper->getAdminSummary(
+				$filters['fecha_inicio'],
+				$filters['fecha_fin'],
+				$employeeIds,
+				$filters,
+			),
+			$empleadosData,
+		);
+		$reportes = $this->reportetiempoMapper->findAdminReportsByEmployeeIds(
+			$filters['fecha_inicio'],
+			$filters['fecha_fin'],
+			$employeeIds,
+			$filters,
+		);
 
 		$resumenSheet = $this->buildResumenReportesXlsx(
 			$resumen,
 			$empleadosData,
-			$periodo_inicio,
-			$periodo_fin,
-			$anio
+			$filters['fecha_inicio'],
+			$filters['fecha_fin'],
+			null,
+			$mostrarClientes,
+			$filters,
 		);
 
 		$detalleSheet = $this->buildDetalleReportesXlsx(
 			$empleadosData,
-			$periodo_inicio,
-			$periodo_fin,
-			$anio
+			$filters['fecha_inicio'],
+			$filters['fecha_fin'],
+			null,
+			$mostrarClientes,
+			$reportes,
 		);
 
+		$detailLastColumn = $mostrarClientes ? 'N' : 'M';
+		$detailLastRow = max(4, count($detalleSheet));
 		$xlsx = \Shuchkin\SimpleXLSXGen::fromArray($resumenSheet, 'Resumen')
-			->addSheet($detalleSheet, 'Detalle')
 			->setDefaultFont('Arial')
 			->setDefaultFontSize(10)
+			->mergeCells('A1:H1')
+			->mergeCells('A2:H2')
+			->autoFilter('A7:H' . max(7, count($resumenSheet)))
+			->freezePanes('A8')
+			->addSheet($detalleSheet, 'Detalle')
 			->setColWidth(1, 30)
 			->setColWidth(2, 22)
 			->setColWidth(3, 16)
@@ -920,22 +979,17 @@ class reportetiempoController extends BaseController {
 			->setColWidth(6, 18)
 			->setColWidth(7, 18)
 			->setColWidth(8, 35)
-			->mergeCells('A1:M1')
-			->mergeCells('A2:M2')
-			->autoFilter('A6:M2000')
-			->freezePanes('A7');
+			->mergeCells('A1:' . $detailLastColumn . '1')
+			->mergeCells('A2:' . $detailLastColumn . '2')
+			->autoFilter('A4:' . $detailLastColumn . $detailLastRow)
+			->freezePanes('A5');
 
-		$tmpFile = tempnam(sys_get_temp_dir(), 'reportetiempo_') . '.xlsx';
-
-		$xlsx->saveAs($tmpFile);
-
-		$content = file_get_contents($tmpFile);
-		@unlink($tmpFile);
+		$content = (string)$xlsx;
 
 		$filename = 'reporte_tiempos_' . date('Ymd_His') . '.xlsx';
 
 		return new DataDownloadResponse(
-			$content ?: '',
+			$content,
 			$filename,
 			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 		);
@@ -1048,76 +1102,551 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
-	 * Construye la lista de empleados visibles con total de minutos reportados.
+	 * @param mixed $idDepartamento
+	 * @return array{id:int,nombre:string,mostrar_clientes:bool,mostrar_ausencias:bool}|null
 	 */
-	private function getEmpleadosReportsData($periodo_inicio = null, $periodo_fin = null, $anio = null): array {
-		$user = $this->userSession->getUser();
-
-		if ($user === null) {
-			return [];
+	private function resolveAreaReporteContext($idDepartamento): ?array {
+		$id = $this->normalizeIdDepartamento($idDepartamento);
+		if ($id === null) {
+			return null;
 		}
 
-		$userId = $user->getUID();
-		$boss = $this->empleadosMapper->GetMyEmployeeInfo($userId);
-		$equipoEmpleado = $this->empleadosMapper->GetSubordinates($userId);
+		return $this->departamentosMapper->getAreaReporteContext($id);
+	}
 
-		if (!is_array($equipoEmpleado)) {
-			$equipoEmpleado = [];
+	/**
+	 * @param mixed $value
+	 */
+	private function normalizeIdDepartamento($value): ?int {
+		if ($value === null || $value === '') {
+			return null;
+		}
+		$id = filter_var($value, FILTER_VALIDATE_INT);
+		if ($id === false || (int)$id <= 0) {
+			throw new \InvalidArgumentException('El área seleccionada no es válida.');
+		}
+		return (int)$id;
+	}
+
+	/**
+	 * @param array<string,mixed>|null $areaContext
+	 * @param array<string,mixed> $filters
+	 */
+	private function assertAdminAreaFilters(?array $areaContext, array $filters): void {
+		if (
+			($areaContext['mostrar_clientes'] ?? true) === false
+			&& (
+				($filters['tipo_trabajo'] ?? null) === reportetiempo::TIPO_CLIENTE
+				|| ($filters['id_cliente'] ?? null) !== null
+			)
+		) {
+			throw new \InvalidArgumentException('El área seleccionada no admite filtros de cliente.');
+		}
+	}
+
+	/**
+	 * Normaliza una sola vez los filtros compartidos por pantalla, detalle y XLSX.
+	 * Las fechas exactas tienen prioridad; los meses heredados siguen aceptándose.
+	 *
+	 * @return array{
+	 *   fecha_inicio:string,
+	 *   fecha_fin:string,
+	 *   tipo_trabajo:?string,
+	 *   id_empleado:?int,
+	 *   id_cliente:?int,
+	 *   id_actividad:?int
+	 * }
+	 */
+	private function normalizeAdminReportFilters(
+		$fechaInicio,
+		$fechaFin,
+		$periodoInicio,
+		$periodoFin,
+		$anio,
+		$tipoTrabajo,
+		$idEmpleado,
+		$idCliente,
+		$idActividad
+	): array {
+		$inicio = $this->normalizeAdminDate($fechaInicio);
+		$fin = $this->normalizeAdminDate($fechaFin);
+
+		if ($inicio === null && $fin === null) {
+			$year = $this->normalizeSelectYear($anio);
+			$startMonth = $this->normalizeSelectMonth($periodoInicio);
+			$endMonth = $this->normalizeSelectMonth($periodoFin);
+			$now = new \DateTimeImmutable('now');
+			$year ??= (int)$now->format('Y');
+			$startMonth ??= (int)$now->format('n');
+			$endMonth ??= $startMonth;
+			if ($startMonth > $endMonth) {
+				[$startMonth, $endMonth] = [$endMonth, $startMonth];
+			}
+			$inicio = sprintf('%04d-%02d-01', $year, $startMonth);
+			$fin = (new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $endMonth)))
+				->modify('last day of this month')
+				->format('Y-m-d');
+		} elseif ($inicio === null || $fin === null) {
+			// Un filtro abierto se interpreta como un solo día para evitar rangos ambiguos.
+			$inicio ??= $fin;
+			$fin ??= $inicio;
 		}
 
-		if (!empty($boss)) {
-			// Si viene como lista, toma el primer registro
-			$bossRow = isset($boss[0]) && is_array($boss[0])
-				? $boss[0]
-				: $boss;
+		if ($inicio > $fin) {
+			[$inicio, $fin] = [$fin, $inicio];
+		}
 
-			$bossFiltrado = [
-				'Id_empleados' => $bossRow['Id_empleados'] ?? $bossRow['id_empleados'] ?? null,
-				'Id_user'      => $bossRow['Id_user'] ?? $bossRow['id_user'] ?? null,
-				'displayname'  => $bossRow['displayname'] ?? $bossRow['Id_user'] ?? '',
-				'Sueldo'       => $bossRow['Sueldo'] ?? $bossRow['sueldo'] ?? 0,
-			];
+		$type = strtolower(trim((string)$tipoTrabajo));
+		$type = match ($type) {
+			'', 'all', 'todos', 'todo' => null,
+			'client_work', 'client', reportetiempo::TIPO_CLIENTE => reportetiempo::TIPO_CLIENTE,
+			'internal_work', 'internal', reportetiempo::TIPO_INTERNO => reportetiempo::TIPO_INTERNO,
+			reportetiempo::TIPO_AUSENCIA => reportetiempo::TIPO_AUSENCIA,
+			default => throw new \InvalidArgumentException('El tipo de trabajo no es válido.'),
+		};
 
-			if (!empty($bossFiltrado['Id_empleados'])) {
-				array_unshift($equipoEmpleado, $bossFiltrado);
+		$clientId = $type === reportetiempo::TIPO_INTERNO
+			? null
+			: $this->normalizePositiveId($idCliente);
+
+		return [
+			'fecha_inicio' => $inicio,
+			'fecha_fin' => $fin,
+			'tipo_trabajo' => $type,
+			'id_empleado' => $this->normalizePositiveId($idEmpleado),
+			'id_cliente' => $clientId,
+			'id_actividad' => $this->normalizePositiveId($idActividad),
+		];
+	}
+
+	private function normalizeAdminDate($value): ?string {
+		if ($value === null || $value === '') {
+			return null;
+		}
+		if (!is_string($value)) {
+			throw new \InvalidArgumentException('La fecha del reporte no es válida.');
+		}
+		$date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+		$errors = \DateTimeImmutable::getLastErrors();
+		if (
+			$date === false
+			|| $date->format('Y-m-d') !== trim($value)
+			|| (is_array($errors) && ((int)$errors['warning_count'] > 0 || (int)$errors['error_count'] > 0))
+		) {
+			throw new \InvalidArgumentException('La fecha del reporte no es válida.');
+		}
+		return $date->format('Y-m-d');
+	}
+
+	private function normalizePositiveId($value): ?int {
+		if ($value === null || $value === '') {
+			return null;
+		}
+		$id = filter_var($value, FILTER_VALIDATE_INT);
+		if ($id === false || (int)$id <= 0) {
+			throw new \InvalidArgumentException('Uno de los filtros seleccionados no es válido.');
+		}
+		return (int)$id;
+	}
+
+	private function normalizeSelectMonth($value): ?int {
+		$id = $this->normalizePositiveId($value);
+		return $id !== null && $id <= 12 ? $id : null;
+	}
+
+	private function normalizeSelectYear($value): ?int {
+		$id = $this->normalizePositiveId($value);
+		return $id !== null && $id <= 9999 ? $id : null;
+	}
+
+	/**
+	 * Directorio visible y normalizado. No consulta reportes y conserva empleados
+	 * sin registros para que el administrador pueda detectar pendientes.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function getAdminEmployeeDirectory($idDepartamento = null, $idEmpleado = null): array {
+		$departmentId = $this->normalizeIdDepartamento($idDepartamento);
+		$employeeId = $this->normalizePositiveId($idEmpleado);
+		$areaNames = [];
+		foreach ($this->departamentosMapper->findHierarchy() as $area) {
+			$id = (int)($area['Id_departamento'] ?? $area['id_departamento'] ?? 0);
+			if ($id > 0) {
+				$areaNames[$id] = (string)($area['Nombre'] ?? $area['nombre'] ?? '');
 			}
 		}
 
-		$empleadosData = [];
-
-		foreach ($equipoEmpleado as $empleado) {
-			$idEmpleado = $empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? null;
-
-			if (empty($idEmpleado)) {
+		$directory = [];
+		foreach ($this->getEmpleadosVisiblesBasico() as $employee) {
+			$id = (int)($employee['Id_empleados'] ?? $employee['id_empleados'] ?? 0);
+			$areaId = (int)($employee['Id_departamento'] ?? $employee['id_departamento'] ?? 0);
+			if ($id <= 0 || ($departmentId !== null && $areaId !== $departmentId)) {
+				continue;
+			}
+			if ($employeeId !== null && $id !== $employeeId) {
 				continue;
 			}
 
-			$total = 0.0;
-
-			$reportes = $this->reportetiempoMapper->findById(
-				(int)$idEmpleado,
-				0,
-				0,
-				$periodo_inicio,
-				$periodo_fin,
-				$anio
-			);
-
-			foreach ($reportes as $item) {
-				$total += (float)($item['tiempo_registrado'] ?? 0);
-			}
-
-			$horasReportadas = $total / 60;
-			$sueldo = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
-
-			$empleado['total_tiempo_registrado'] = $total;
-			$empleado['horas_reportadas'] = $horasReportadas;
-			$empleado['costo_total'] = $horasReportadas * $sueldo;
-
-			$empleadosData[] = $empleado;
+			$uid = (string)($employee['Id_user'] ?? $employee['id_user'] ?? '');
+			$name = trim((string)($employee['displayname'] ?? $employee['DisplayName'] ?? $uid));
+			$directory[$id] = [
+				'id_empleado' => $id,
+				'Id_empleados' => $id,
+				'id_user' => $uid,
+				'Id_user' => $uid,
+				'nombre' => $name !== '' ? $name : $uid,
+				'displayname' => $name !== '' ? $name : $uid,
+				'id_departamento' => $areaId > 0 ? $areaId : null,
+				'Id_departamento' => $areaId > 0 ? $areaId : null,
+				'area' => $areaNames[$areaId] ?? '',
+				'Sueldo' => (float)($employee['Sueldo'] ?? $employee['sueldo'] ?? 0),
+				'Ingreso' => $employee['Ingreso'] ?? $employee['ingreso'] ?? null,
+				'Estado' => $employee['Estado'] ?? $employee['estado'] ?? null,
+			];
 		}
 
-		return $empleadosData;
+		return array_values($directory);
+	}
+
+	/** @param array<int,array<string,mixed>> $employees */
+	private function employeeIds(array $employees): array {
+		return array_values(array_map(
+			static fn (array $employee): int => (int)$employee['id_empleado'],
+			$employees,
+		));
+	}
+
+	/**
+	 * @param array<int,array<string,mixed>> $employees
+	 * @param array<int,array<string,mixed>> $hoursRows
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function mergeAdminEmployeeHours(array $employees, array $hoursRows): array {
+		$hoursByEmployee = [];
+		foreach ($hoursRows as $row) {
+			$hoursByEmployee[(int)($row['id_empleado'] ?? 0)] = $row;
+		}
+
+		return array_map(static function (array $employee) use ($hoursByEmployee): array {
+			$id = (int)$employee['id_empleado'];
+			$hours = $hoursByEmployee[$id] ?? [];
+			$totalMinutes = (float)($hours['total_minutos'] ?? 0);
+			$employee['total_tiempo_registrado'] = $totalMinutes;
+			$employee['horas_reportadas'] = round($totalMinutes / 60, 2);
+			$employee['horas_cliente'] = round(((float)($hours['minutos_cliente'] ?? 0)) / 60, 2);
+			$employee['horas_internas'] = round(((float)($hours['minutos_internos'] ?? 0)) / 60, 2);
+			$employee['horas_ausencia'] = round(((float)($hours['minutos_ausencia'] ?? 0)) / 60, 2);
+			$employee['total_reportes'] = (int)($hours['total_reportes'] ?? 0);
+			$employee['costo_total'] = round(
+				($totalMinutes / 60) * (float)($employee['Sueldo'] ?? 0),
+				2,
+			);
+			return $employee;
+		}, $employees);
+	}
+
+	/**
+	 * Construye todo el contrato del dashboard con un número constante de queries.
+	 *
+	 * @param array<string,mixed> $filters
+	 * @param array<int,array<string,mixed>> $employees
+	 * @param array<string,mixed>|null $areaContext
+	 * @return array<string,mixed>
+	 */
+	private function buildAdminReportsData(array $filters, array $employees, ?array $areaContext): array {
+		$periods = $this->reporteTiempoComplianceService->buildPeriods(
+			$filters['fecha_inicio'],
+			$filters['fecha_fin'],
+		);
+		$employeeIds = $this->employeeIds($employees);
+		$dailyHours = $this->reporteTiempoComplianceService->normalizeDailyHours((float)$this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_horas_minimas',
+			'0',
+		));
+
+		$hoursByRange = [];
+		$loadEmployeeHours = function (array $period) use (&$hoursByRange, $employeeIds, $filters): array {
+			$key = $period['fecha_inicio'] . ':' . $period['fecha_fin'];
+			if (!array_key_exists($key, $hoursByRange)) {
+				$hoursByRange[$key] = $this->reportetiempoMapper->getAdminHoursByEmployee(
+					$period['fecha_inicio'],
+					$period['fecha_fin'],
+					$employeeIds,
+					$filters,
+				);
+			}
+			return $hoursByRange[$key];
+		};
+		$periodRows = $loadEmployeeHours($periods['periodo']);
+		$fortnightRows = $loadEmployeeHours($periods['quincena']);
+		$monthRows = $loadEmployeeHours($periods['mes']);
+
+		$summary = $this->reportetiempoMapper->getAdminSummary(
+			$periods['periodo']['fecha_inicio'],
+			$periods['periodo']['fecha_fin'],
+			$employeeIds,
+			$filters,
+		);
+		$workType = $filters['tipo_trabajo'];
+		$showClients = $areaContext === null || ($areaContext['mostrar_clientes'] ?? true);
+		$clientRows = $showClients
+			&& ($workType === null || $workType === reportetiempo::TIPO_CLIENTE)
+			? $this->reportetiempoMapper->getAdminHoursByClient(
+				$periods['periodo']['fecha_inicio'],
+				$periods['periodo']['fecha_fin'],
+				$employeeIds,
+				$filters,
+			)
+			: [];
+		$internalRows = ($workType === null || $workType === reportetiempo::TIPO_INTERNO)
+			&& $filters['id_cliente'] === null
+			? $this->reportetiempoMapper->getAdminHoursByInternalActivity(
+				$periods['periodo']['fecha_inicio'],
+				$periods['periodo']['fecha_fin'],
+				$employeeIds,
+				$filters,
+			)
+			: [];
+		$dayRows = $this->reportetiempoMapper->getAdminHoursByDay(
+			$periods['periodo']['fecha_inicio'],
+			$periods['periodo']['fecha_fin'],
+			$employeeIds,
+			$filters,
+		);
+		$breakdown = $this->reportetiempoMapper->getAdminEmployeeBreakdown(
+			$periods['periodo']['fecha_inicio'],
+			$periods['periodo']['fecha_fin'],
+			$employeeIds,
+			$filters,
+		);
+
+		$periodByEmployee = $this->indexAdminHoursByEmployee($periodRows);
+		$fortnightByEmployee = $this->indexAdminHoursByEmployee($fortnightRows);
+		$monthByEmployee = $this->indexAdminHoursByEmployee($monthRows);
+		$clientTotals = [];
+		$internalActivityTotals = [];
+		foreach ($breakdown as $item) {
+			$id = (int)($item['id_empleado'] ?? 0);
+			$type = (string)($item['tipo_trabajo'] ?? '');
+			$minutes = (float)($item['total_minutos'] ?? 0);
+			if ($type === reportetiempo::TIPO_CLIENTE && $showClients) {
+				$label = trim((string)($item['cliente_nombre'] ?? ''));
+				if ($label === '') {
+					$label = 'Cliente #' . (int)($item['id_cliente'] ?? 0);
+				}
+				$clientTotals[$id][$label] = ($clientTotals[$id][$label] ?? 0.0) + $minutes;
+			}
+			if ($type === reportetiempo::TIPO_INTERNO) {
+				$label = trim((string)($item['actividad_nombre'] ?? ''));
+				if ($label === '') {
+					$label = 'Actividad #' . (int)($item['id_actividad'] ?? 0);
+				}
+				$internalActivityTotals[$id][$label] = ($internalActivityTotals[$id][$label] ?? 0.0) + $minutes;
+			}
+		}
+
+		$employeeSummaries = [];
+		foreach ($employees as $employee) {
+			$id = (int)$employee['id_empleado'];
+			$periodHours = $periodByEmployee[$id] ?? [];
+			$periodCompliance = $this->reporteTiempoComplianceService->summarize(
+				$periods['periodo'],
+				1,
+				(float)($periodHours['total_minutos'] ?? 0),
+				$dailyHours,
+			);
+			$fortnightCompliance = $this->reporteTiempoComplianceService->summarize(
+				$periods['quincena'],
+				1,
+				(float)($fortnightByEmployee[$id]['total_minutos'] ?? 0),
+				$dailyHours,
+			);
+			$monthCompliance = $this->reporteTiempoComplianceService->summarize(
+				$periods['mes'],
+				1,
+				(float)($monthByEmployee[$id]['total_minutos'] ?? 0),
+				$dailyHours,
+			);
+			$employeeSummaries[] = array_merge($employee, [
+				'total_tiempo_registrado' => (float)($periodHours['total_minutos'] ?? 0),
+				'total_reportes' => (int)($periodHours['total_reportes'] ?? 0),
+				'horas_esperadas' => $periodCompliance['horas_esperadas'],
+				'horas_reportadas' => $periodCompliance['horas_reportadas'],
+				'horas_pendientes' => $periodCompliance['horas_pendientes'],
+				'porcentaje_cumplimiento' => $periodCompliance['porcentaje_cumplimiento'],
+				'horas_cliente' => round(((float)($periodHours['minutos_cliente'] ?? 0)) / 60, 2),
+				'horas_internas' => round(((float)($periodHours['minutos_internos'] ?? 0)) / 60, 2),
+				'horas_ausencia' => round(((float)($periodHours['minutos_ausencia'] ?? 0)) / 60, 2),
+				'cliente_principal' => $this->topAdminLabel($clientTotals[$id] ?? []),
+				'actividad_principal' => $this->topAdminLabel($internalActivityTotals[$id] ?? []),
+				'cumplimiento' => [
+					'periodo' => $periodCompliance,
+					'quincena' => $fortnightCompliance,
+					'mes' => $monthCompliance,
+				],
+			]);
+		}
+
+		$employeeCount = count($employees);
+		$compliance = [
+			'periodo' => $this->reporteTiempoComplianceService->summarize(
+				$periods['periodo'],
+				$employeeCount,
+				(float)($summary['total_minutos'] ?? 0),
+				$dailyHours,
+			),
+			'quincena' => $this->reporteTiempoComplianceService->summarize(
+				$periods['quincena'],
+				$employeeCount,
+				$this->sumAdminMinutes($fortnightRows),
+				$dailyHours,
+			),
+			'mes' => $this->reporteTiempoComplianceService->summarize(
+				$periods['mes'],
+				$employeeCount,
+				$this->sumAdminMinutes($monthRows),
+				$dailyHours,
+			),
+		];
+
+		$summary = $this->enrichAdminSummary($summary, $employeeSummaries);
+		$distribution = $this->buildAdminDistribution($summary);
+		$clients = array_map(static function (array $row): array {
+			$row['nombre'] = (string)($row['cliente_nombre'] ?? '');
+			return $row;
+		}, $clientRows);
+		$internalActivities = array_map(static function (array $row): array {
+			$row['nombre'] = (string)($row['actividad_nombre'] ?? '');
+			return $row;
+		}, $internalRows);
+		$employeeCompliance = array_map(static fn (array $employee): array => [
+			'id_empleado' => (int)$employee['id_empleado'],
+			'nombre' => (string)$employee['nombre'],
+			'area' => (string)($employee['area'] ?? ''),
+			'porcentaje_cumplimiento' => (float)$employee['porcentaje_cumplimiento'],
+			'horas_reportadas' => (float)$employee['horas_reportadas'],
+			'horas_esperadas' => (float)$employee['horas_esperadas'],
+			'horas_pendientes' => (float)$employee['horas_pendientes'],
+		], $employeeSummaries);
+		usort($employeeCompliance, static fn (array $a, array $b): int =>
+			$a['porcentaje_cumplimiento'] <=> $b['porcentaje_cumplimiento']
+		);
+
+		return [
+			'area' => $areaContext,
+			'filtros' => $filters,
+			'periodos' => $periods,
+			'kpis' => $summary,
+			'cumplimiento' => $compliance,
+			'distribucion' => $distribution,
+			'empleados' => $employeeSummaries,
+			'graficas' => [
+				'horas_por_cliente' => $clients,
+				'actividades_internas' => $internalActivities,
+				'cumplimiento_empleados' => $employeeCompliance,
+				'horas_por_dia' => $dayRows,
+				// Alias compatibles para consumidores previos del endpoint.
+				'horas_por_empleado' => $periodRows,
+				'horas_por_proyecto' => $clients,
+				'horas_por_actividad' => $internalActivities,
+				'reportes_por_dia' => array_map(static fn (array $row): array => [
+					'fecha_registro' => (string)($row['fecha'] ?? ''),
+					'total_reportes' => (int)($row['total_reportes'] ?? 0),
+				], $dayRows),
+			],
+		];
+	}
+
+	/** @param array<int,array<string,mixed>> $rows */
+	private function indexAdminHoursByEmployee(array $rows): array {
+		$indexed = [];
+		foreach ($rows as $row) {
+			$id = (int)($row['id_empleado'] ?? 0);
+			if ($id > 0) {
+				$indexed[$id] = $row;
+			}
+		}
+		return $indexed;
+	}
+
+	/** @param array<int,array<string,mixed>> $rows */
+	private function sumAdminMinutes(array $rows): float {
+		return array_reduce(
+			$rows,
+			static fn (float $total, array $row): float => $total + (float)($row['total_minutos'] ?? 0),
+			0.0,
+		);
+	}
+
+	/** @param array<string,float> $totals */
+	private function topAdminLabel(array $totals): ?string {
+		if ($totals === []) {
+			return null;
+		}
+		arsort($totals, SORT_NUMERIC);
+		$label = array_key_first($totals);
+		return $label === null ? null : (string)$label;
+	}
+
+	/**
+	 * @param array<string,mixed> $summary
+	 * @param array<int,array<string,mixed>> $employees
+	 * @return array<string,mixed>
+	 */
+	private function enrichAdminSummary(array $summary, array $employees): array {
+		$totalMinutes = (float)($summary['total_minutos'] ?? 0);
+		$clientMinutes = (float)($summary['minutos_cliente'] ?? 0);
+		$internalMinutes = (float)($summary['minutos_internos'] ?? 0);
+		$workedMinutes = $clientMinutes + $internalMinutes;
+		$costTotal = 0.0;
+		$costClient = 0.0;
+		$costInternal = 0.0;
+		$costAbsence = 0.0;
+		foreach ($employees as $employee) {
+			$wage = (float)($employee['Sueldo'] ?? 0);
+			$costTotal += (float)($employee['horas_reportadas'] ?? 0) * $wage;
+			$costClient += (float)($employee['horas_cliente'] ?? 0) * $wage;
+			$costInternal += (float)($employee['horas_internas'] ?? 0) * $wage;
+			$costAbsence += (float)($employee['horas_ausencia'] ?? 0) * $wage;
+		}
+		$reportCount = (int)($summary['total_reportes'] ?? 0);
+		$summary['horas_reportadas'] = round($totalMinutes / 60, 2);
+		$summary['horas_cliente'] = round($clientMinutes / 60, 2);
+		$summary['horas_internas'] = round($internalMinutes / 60, 2);
+		$summary['horas_ausencia'] = round(((float)($summary['minutos_ausencia'] ?? 0)) / 60, 2);
+		$summary['promedio_horas_reporte'] = $reportCount > 0 ? round(($totalMinutes / 60) / $reportCount, 2) : 0.0;
+		$summary['porcentaje_interno'] = $workedMinutes > 0 ? round(($internalMinutes / $workedMinutes) * 100, 2) : 0.0;
+		$summary['proyectos_activos'] = (int)($summary['clientes_con_reportes'] ?? 0);
+		$summary['actividades'] = (int)($summary['actividades_con_reportes'] ?? 0);
+		$summary['costo_total'] = round($costTotal, 2);
+		$summary['costo_laboral_cliente'] = round($costClient, 2);
+		$summary['costo_laboral_interno'] = round($costInternal, 2);
+		$summary['costo_laboral_ausencia'] = round($costAbsence, 2);
+		return $summary;
+	}
+
+	/** @param array<string,mixed> $summary */
+	private function buildAdminDistribution(array $summary): array {
+		$clientMinutes = (float)($summary['minutos_cliente'] ?? 0);
+		$internalMinutes = (float)($summary['minutos_internos'] ?? 0);
+		$absenceMinutes = (float)($summary['minutos_ausencia'] ?? 0);
+		$workedMinutes = $clientMinutes + $internalMinutes;
+		$totalMinutes = $workedMinutes + $absenceMinutes;
+		return [
+			'client_work' => [
+				'horas' => round($clientMinutes / 60, 2),
+				'porcentaje' => $totalMinutes > 0 ? round(($clientMinutes / $totalMinutes) * 100, 2) : 0.0,
+			],
+			'internal_work' => [
+				'horas' => round($internalMinutes / 60, 2),
+				'porcentaje' => $totalMinutes > 0 ? round(($internalMinutes / $totalMinutes) * 100, 2) : 0.0,
+			],
+			'ausencias' => [
+				'horas' => round($absenceMinutes / 60, 2),
+				'porcentaje' => $totalMinutes > 0 ? round(($absenceMinutes / $totalMinutes) * 100, 2) : 0.0,
+			],
+		];
 	}
 
 	#[UseSession]
@@ -1173,11 +1702,27 @@ class reportetiempoController extends BaseController {
 
 		$estado = $registros > 0 ? 'reportado' : 'pendiente';
 
+		$horasObjetivo = (float)$this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_horas_minimas',
+			'0'
+		);
+		if (!is_finite($horasObjetivo) || $horasObjetivo <= 0) {
+			$horasObjetivo = 0.0;
+		}
+
+		$progreso = null;
+		if ($horasObjetivo > 0) {
+			$progreso = (int)min(100, round(($horas / $horasObjetivo) * 100));
+		}
+
 		return new DataResponse([
 			'fecha' => $fecha,
 			'registros' => $registros,
 			'minutos_reportados' => $minutos,
 			'horas_reportadas' => round($horas, 2),
+			'horas_objetivo' => $horasObjetivo > 0 ? round($horasObjetivo, 2) : null,
+			'progreso' => $progreso,
 			'estado' => $estado,
 		], Http::STATUS_OK);
 	}
@@ -1312,6 +1857,9 @@ class reportetiempoController extends BaseController {
 					?? $bossRow['id_user']
 					?? '',
 				'Sueldo' => $bossRow['Sueldo'] ?? $bossRow['sueldo'] ?? 0,
+				'Id_departamento' => $bossRow['Id_departamento'] ?? $bossRow['id_departamento'] ?? null,
+				'Ingreso' => $bossRow['Ingreso'] ?? $bossRow['ingreso'] ?? null,
+				'Estado' => $bossRow['Estado'] ?? $bossRow['estado'] ?? null,
 			];
 
 			if (!empty($bossFiltrado['Id_empleados'])) {
@@ -2218,7 +2766,9 @@ class reportetiempoController extends BaseController {
 		array $empleadosData,
 		$periodoInicio,
 		$periodoFin,
-		$anio
+		$anio,
+		bool $mostrarClientes = true,
+		array $filters = []
 	): array {
 		$rows = [];
 
@@ -2235,7 +2785,10 @@ class reportetiempoController extends BaseController {
 
 		$rows[] = [
 			'<style bgcolor="#E5E7EB" color="#374151"><center>'
-			. $this->escapeXlsxText($this->getPeriodoLabel($periodoInicio, $periodoFin, $anio))
+			. $this->escapeXlsxText(
+				$this->getPeriodoLabel($periodoInicio, $periodoFin, $anio)
+				. ' · Tipo: ' . $this->adminWorkTypeLabel($filters['tipo_trabajo'] ?? null)
+			)
 			. '</center></style>',
 			null,
 			null,
@@ -2259,16 +2812,29 @@ class reportetiempoController extends BaseController {
 			$this->kpiValue((string)((int)($resumen['empleados_con_reportes'] ?? 0))),
 		];
 
-		$rows[] = [
-			$this->kpiLabel('Horas cliente'),
-			$this->kpiValue(number_format((float)($resumen['horas_cliente'] ?? 0), 2)),
-			$this->kpiLabel('Horas internas'),
-			$this->kpiValue(number_format((float)($resumen['horas_internas'] ?? 0), 2)),
-			$this->kpiLabel('Porcentaje interno'),
-			$this->kpiValue(number_format((float)($resumen['porcentaje_interno'] ?? 0), 2) . '%'),
-			$this->kpiLabel('Costo laboral interno'),
-			$this->moneyCell((float)($resumen['costo_laboral_interno'] ?? 0)),
-		];
+		if ($mostrarClientes) {
+			$rows[] = [
+				$this->kpiLabel('Horas cliente'),
+				$this->kpiValue(number_format((float)($resumen['horas_cliente'] ?? 0), 2)),
+				$this->kpiLabel('Horas internas'),
+				$this->kpiValue(number_format((float)($resumen['horas_internas'] ?? 0), 2)),
+				$this->kpiLabel('Porcentaje interno'),
+				$this->kpiValue(number_format((float)($resumen['porcentaje_interno'] ?? 0), 2) . '%'),
+				$this->kpiLabel('Costo laboral interno'),
+				$this->moneyCell((float)($resumen['costo_laboral_interno'] ?? 0)),
+			];
+		} else {
+			$rows[] = [
+				$this->kpiLabel('Horas internas'),
+				$this->kpiValue(number_format((float)($resumen['horas_internas'] ?? 0), 2)),
+				$this->kpiLabel('Porcentaje interno'),
+				$this->kpiValue(number_format((float)($resumen['porcentaje_interno'] ?? 0), 2) . '%'),
+				$this->kpiLabel('Costo laboral interno'),
+				$this->moneyCell((float)($resumen['costo_laboral_interno'] ?? 0)),
+				'',
+				'',
+			];
+		}
 
 		$rows[] = ['', '', '', '', '', '', '', ''];
 
@@ -2310,7 +2876,9 @@ class reportetiempoController extends BaseController {
 		array $empleadosData,
 		$periodoInicio,
 		$periodoFin,
-		$anio
+		$anio,
+		bool $mostrarClientes = true,
+		array $reportesData = []
 	): array {
 		$rows = [];
 
@@ -2330,8 +2898,6 @@ class reportetiempoController extends BaseController {
 			null,
 		];
 
-	// resto igual...
-
 		$rows[] = [
 			'<style bgcolor="#E5E7EB" color="#374151"><center>'
 			. $this->escapeXlsxText($this->getPeriodoLabel($periodoInicio, $periodoFin, $anio))
@@ -2349,10 +2915,14 @@ class reportetiempoController extends BaseController {
 
 		$rows[] = ['', '', '', '', '', '', '', '', '', ''];
 
-		$rows[] = [
+		$header = [
 			$this->headerCell('Empleado'),
 			$this->headerCell('Tipo de trabajo'),
-			$this->headerCell('Cliente / proyecto'),
+		];
+		if ($mostrarClientes) {
+			$header[] = $this->headerCell('Cliente / proyecto');
+		}
+		$header = array_merge($header, [
 			$this->headerCell('Actividad'),
 			$this->headerCell('Descripción'),
 			$this->headerCell('Minutos'),
@@ -2364,7 +2934,16 @@ class reportetiempoController extends BaseController {
 			$this->headerCell('ID soporte'),
 			$this->headerCell('Clasificación'),
 			$this->headerCell('Dispositivo'),
-		];
+		]);
+		$rows[] = $header;
+
+		$reportsByEmployee = [];
+		foreach ($reportesData as $report) {
+			$employeeId = (int)($report['id_empleado'] ?? 0);
+			if ($employeeId > 0) {
+				$reportsByEmployee[$employeeId][] = $report;
+			}
+		}
 
 		foreach ($empleadosData as $empleado) {
 			$idEmpleado = (int)($empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? $empleado['id'] ?? 0);
@@ -2381,16 +2960,7 @@ class reportetiempoController extends BaseController {
 
 			$sueldoHora = (float)($empleado['Sueldo'] ?? $empleado['sueldo'] ?? 0);
 
-			$reportes = $this->reportetiempoMapper->findById(
-				$idEmpleado,
-				0,
-				0,
-				$periodoInicio,
-				$periodoFin,
-				$anio
-			);
-
-			foreach ($reportes as $reporte) {
+			foreach ($reportsByEmployee[$idEmpleado] ?? [] as $reporte) {
 				$minutos = (float)($reporte['tiempo_registrado'] ?? 0);
 				$horas = $minutos / 60;
 				$costo = $horas * $sueldoHora;
@@ -2417,14 +2987,18 @@ class reportetiempoController extends BaseController {
 					?? $actividadesMap[$idActividad]
 					?? ('Actividad #' . $idActividad);
 
-				$rows[] = [
+				$row = [
 					$this->bodyCell((string)$nombreEmpleado),
 					$this->bodyCell(match ($tipoTrabajo) {
 						reportetiempo::TIPO_INTERNO => 'Interno',
 						reportetiempo::TIPO_AUSENCIA => 'Ausencia',
 						default => 'Cliente',
 					}),
-					$this->bodyCell((string)$nombreCliente),
+				];
+				if ($mostrarClientes) {
+					$row[] = $this->bodyCell((string)$nombreCliente);
+				}
+				$row = array_merge($row, [
 					$this->bodyCell((string)$nombreActividad),
 					$this->wrapCell((string)($reporte['descripcion'] ?? '')),
 					$this->numberCell($minutos),
@@ -2440,7 +3014,8 @@ class reportetiempoController extends BaseController {
 					$this->bodyCell((string)($reporte['origen_id'] ?? '')),
 					$this->bodyCell((int)($reporte['cargable'] ?? 0) === 1 ? 'Cargable' : 'No cargable'),
 					$this->bodyCell((string)($reporte['nombre_dispositivo'] ?? '')),
-				];
+				]);
+				$rows[] = $row;
 			}
 		}
 
@@ -2494,6 +3069,15 @@ class reportetiempoController extends BaseController {
 	}
 
 	private function getPeriodoLabel($periodoInicio, $periodoFin, $anio): string {
+		if (
+			is_string($periodoInicio)
+			&& is_string($periodoFin)
+			&& preg_match('/^\d{4}-\d{2}-\d{2}$/', $periodoInicio) === 1
+			&& preg_match('/^\d{4}-\d{2}-\d{2}$/', $periodoFin) === 1
+		) {
+			return 'Periodo: ' . $periodoInicio . ' - ' . $periodoFin;
+		}
+
 		$meses = [
 			1 => 'Enero',
 			2 => 'Febrero',
@@ -2518,6 +3102,15 @@ class reportetiempoController extends BaseController {
 		$year = $anio ?: date('Y');
 
 		return 'Periodo: ' . $inicio . ' - ' . $fin . ' (' . $year . ')';
+	}
+
+	private function adminWorkTypeLabel(?string $workType): string {
+		return match ($workType) {
+			reportetiempo::TIPO_CLIENTE => 'Trabajo para clientes',
+			reportetiempo::TIPO_INTERNO => 'Trabajo interno',
+			reportetiempo::TIPO_AUSENCIA => 'Ausencias',
+			default => 'Todos',
+		};
 	}
 	
 

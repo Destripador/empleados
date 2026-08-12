@@ -1,12 +1,5 @@
 <template id="content">
 	<section class="anniversary-info">
-		<header class="info-header">
-			<h2>{{ t('empleados', 'Vacation Table') }}</h2>
-			<p>
-				{{ t('empleados', 'This table shows how many vacation days you are entitled to based on your years with the company. It is a guide based on the Federal Labor Law, reformed in 2023.') }}
-			</p>
-		</header>
-
 		<div class="faq-section">
 			<h3>{{ t('empleados', 'Frequently Asked Questions') }}</h3>
 
@@ -26,36 +19,73 @@
 			</div>
 		</div>
 
-		<NcNoteCard type="info" :heading="t('empleados', 'Recommendation')">
-			<p>
-				{{ t('empleados', 'Check this table every time you reach a work anniversary. That way you can plan your time off in advance and enjoy your days to the fullest.') }}
-			</p>
-		</NcNoteCard>
+		<div v-if="finishTutorialMode" class="tutorial-finish">
+			<span class="tutorial-finish__progress">
+				{{ tutorialStepLabel }}
+			</span>
+			<NcButton type="primary"
+				:disabled="finishingTutorial"
+				@click="$emit('finish-tutorial')">
+				<template #icon>
+					<NcLoadingIcon v-if="finishingTutorial" :size="20" />
+				</template>
+				{{ finishingTutorial
+					? t('empleados', 'Saving...')
+					: t('empleados', 'Finalize') }}
+			</NcButton>
+		</div>
+		<div v-else class="tutorial-reset">
+			<NcButton type="tertiary"
+				:disabled="resettingTutorial"
+				@click="$emit('reset-tutorial')">
+				<template #icon>
+					<NcLoadingIcon v-if="resettingTutorial" :size="20" />
+					<Replay v-else :size="20" />
+				</template>
+				{{ resettingTutorial
+					? t('empleados', 'Saving...')
+					: t('empleados', 'Restart tutorial') }}
+			</NcButton>
+		</div>
 	</section>
 </template>
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
-import { NcNoteCard } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
+import Replay from 'vue-material-design-icons/Replay.vue'
 
 export default {
 	name: 'MensajeAniversarios',
 	components: {
 		ChevronDown,
 		ChevronUp,
-		NcNoteCard,
+		NcButton,
+		NcLoadingIcon,
+		Replay,
 	},
 
 	props: {
 		info: { type: Object, required: true },
 		acumular: { type: String, required: true },
+		resettingTutorial: { type: Boolean, default: false },
+		finishTutorialMode: { type: Boolean, default: false },
+		finishingTutorial: { type: Boolean, default: false },
+		tutorialStepLabel: { type: String, default: '' },
 	},
+
+	emits: ['reset-tutorial', 'finish-tutorial'],
 
 	data() {
 		return {
 			preguntas: [
+				{
+					titulo: t('empleados', 'Anniversary table?'),
+					contenido: t('empleados', 'This table shows how many vacation days you are entitled to based on your years with the company. It is a guide based on the Federal Labor Law, reformed in 2023.'),
+					abierto: true,
+				},
 				{
 					titulo: t('empleados', 'From when do I have the right to vacation?'),
 					contenido: t('empleados', 'From your first full year worked you can already take vacation. The minimum is 12 days and it increases each year.'),
@@ -75,7 +105,7 @@ export default {
 					titulo: t('empleados', 'What happens if I do not take my vacation?'),
 					contenido: this.acumular === 'true'
 						? t('empleados', 'Unused vacation is not lost, but it is important to use it. Resting is a right and also helps your health and performance.')
-						: t('empleados', 'If you do not take your vacation, it is lost. It is important to use it to take care of your health and wellbeing.'),
+						: t('empleados', 'If you do not take your vacation, you will lose it within the six months following the expiration date. It is important to make use of it to look after your health and well-being.'),
 					abierto: false,
 				},
 			],
@@ -146,5 +176,20 @@ export default {
 .faq-content {
 	padding: 0 12px 12px;
 	border: none;
+}
+
+.tutorial-reset,
+.tutorial-finish {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 1rem;
+	margin-top: 4px;
+}
+
+.tutorial-finish__progress {
+	margin-right: auto;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.875rem;
 }
 </style>

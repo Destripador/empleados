@@ -22,10 +22,10 @@
 		<!-- main details -->
 		<div class="Details">
 			<div class="contacts-list__item-wrapper">
-				<div v-if="custom == true && Object.keys(select).length == 0">
+				<div v-if="custom == true && !selectionActive">
 					<slot name="custom" />
 				</div>
-				<div v-else-if="custom == false && Object.keys(select).length == 0">
+				<div v-else-if="custom == false && !selectionActive">
 					<div class="emptycontent">
 						<DatabaseSearchOutline :size="60" />
 						<h2>{{ t('empleados', 'Select something') }}</h2>
@@ -151,6 +151,7 @@ export default {
 		showOptions: { type: Boolean, default: false, required: false },
 		showToggleEstado: { type: Boolean, default: false, required: false },
 		toggleEstadoLabel: { type: String, default: 'Toggle status' },
+		detailsActive: { type: Boolean, default: false, required: false },
 		// reloadBus: { type: Object, required: true },
 	},
 
@@ -162,6 +163,9 @@ export default {
 	},
 
 	computed: {
+		selectionActive() {
+			return this.detailsActive || Object.keys(this.select).length > 0
+		},
 		buttons() {
 			return [
 				{
@@ -179,6 +183,9 @@ export default {
 
 	async mounted() {
 		window.addEventListener('keydown', this.onKeyDown)
+	},
+	beforeDestroy() {
+		window.removeEventListener('keydown', this.onKeyDown)
 	},
 
 	methods: {
