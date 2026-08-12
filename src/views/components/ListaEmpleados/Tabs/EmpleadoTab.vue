@@ -690,6 +690,23 @@ export default {
 		if (this.inventoryEnabled && this.canAccessInventory) {
 			await this.getInventarioEquipos(this.data.Id_empleados)
 		}
+		// Importar NOI
+		// Escuchar el evento 'fill-noi-data' para llenar los campos con los datos de NOI
+		this.$bus.on('fill-noi-data', (noiData) => {
+			if (noiData.Numero_empleado !== undefined) this.Numero_empleado = noiData.Numero_empleado
+			// --- Regla para la Fecha de Ingreso ---
+			if (noiData.Ingreso !== undefined && noiData.Ingreso !== null) {
+				const estaVacio = !this.Ingreso || String(this.Ingreso).trim() === ''
+
+				// Se asigna si el campo está vacío O si está habilitada la edición (this.show es true)
+				if (estaVacio || this.show) {
+					this.Ingreso = noiData.Ingreso
+				}
+			}
+			if (noiData.Fondo_clave !== undefined) this.Fondo_clave = noiData.Fondo_clave
+			if (noiData.Numero_cuenta !== undefined) this.Numero_cuenta = noiData.Numero_cuenta
+			if (noiData.Sueldo !== undefined) this.Sueldo = noiData.Sueldo
+		})
 	},
 
 	methods: {

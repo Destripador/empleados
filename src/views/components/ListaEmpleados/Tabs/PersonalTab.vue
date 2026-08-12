@@ -335,6 +335,20 @@ export default {
 	mounted() {
 		this.setAttr(this.data)
 		this.loadContacts()
+		// NOI
+		this.$bus.on('fill-noi-data', (noiData) => {
+			// eslint-disable-next-line no-console
+			console.log(noiData)
+			if (noiData.Fecha_nacimiento !== undefined) this.Fecha_nacimiento = noiData.Fecha_nacimiento
+			if (noiData.Direccion !== undefined) this.Direccion = noiData.Direccion
+			if (noiData.Estado_civil !== undefined) this.Estado_civil = noiData.Estado_civil
+			if (noiData.Telefono_contacto !== undefined) this.Telefono_contacto = noiData.Telefono_contacto
+			if (noiData.Curp !== undefined) this.Curp = noiData.Curp
+			if (noiData.Rfc !== undefined) this.Rfc = noiData.Rfc
+			if (noiData.Imss !== undefined) this.Imss = noiData.Imss
+			if (noiData.Genero !== undefined) this.Genero = noiData.Genero
+			if (noiData.Email !== undefined) this.Correo_contacto = noiData.Email
+		})
 	},
 
 	methods: {
