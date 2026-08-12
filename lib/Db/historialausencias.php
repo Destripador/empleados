@@ -18,6 +18,7 @@ class HistorialAusencias extends Entity {
 	protected string $timestamp = '';
 	protected ?bool $a_socio = false;
 	protected ?bool $a_gerente = false;
+	protected ?bool $a_supervisor = false;
 	protected ?bool $a_capital_humano = false;
     protected string $notas = '';
 	protected float $dias_solicitados = 0.0;
@@ -35,6 +36,7 @@ class HistorialAusencias extends Entity {
 		$this->addType('timestamp', 'string');
 		$this->addType('a_socio', 'bool');
 		$this->addType('a_gerente', 'bool');
+		$this->addType('a_supervisor', 'bool');
 		$this->addType('a_capital_humano', 'bool');
 		$this->addType('notas', 'string');
 		$this->addType('dias_solicitados', 'float');
@@ -54,6 +56,7 @@ class HistorialAusencias extends Entity {
 			'timestamp' => $this->timestamp,
 			'a_socio' => $this->a_socio,
 			'a_gerente' => $this->a_gerente,
+			'a_supervisor' => $this->a_supervisor,
 			'a_capital_humano' => $this->a_capital_humano,
 			'notas' => $this->notas,
 			'dias_solicitados' => $this->dias_solicitados,

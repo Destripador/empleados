@@ -65,6 +65,22 @@ class historialausenciasMapper extends QBMapper {
 		return $ausencias;
 	}
 
+	public function GetAusenciasHistorialSupervisor(int $id): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('h.*', 't.nombre AS tipo_nombre')
+			->from($this->getTableName(), 'h')
+			->innerJoin('h', 'tipo_ausencia', 't', $qb->expr()->eq('h.id_tipo_ausencia', 't.id_tipo_ausencia'))
+			->where($qb->expr()->eq('h.id_ausencias', $qb->createNamedParameter($id)))
+			->andWhere($qb->expr()->lte('h.a_supervisor', $qb->createNamedParameter(0)));
+
+		$result = $qb->executeQuery();
+		$ausencias = $result->fetchAll();
+		$result->closeCursor();
+
+		return $ausencias;
+	}
+
 	public function GetAusenciasHistorialGerente(int $id): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -117,7 +133,7 @@ class historialausenciasMapper extends QBMapper {
 	}
 
 	/**
-	 * Cancela una ausencia marcando a_gerente y a_socio como 3.
+	 * Cancela una ausencia
 	 */
 	public function CancelarAusencia(int $id): void {
 		$qb = $this->db->getQueryBuilder();
@@ -125,6 +141,7 @@ class historialausenciasMapper extends QBMapper {
 		$qb->update($this->getTableName())
 			->set('a_gerente', $qb->createNamedParameter(3))
 			->set('a_socio',   $qb->createNamedParameter(3))
+			->set('a_supervisor', $qb->createNamedParameter(3))
 			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
 
 		$qb->executeStatement();
@@ -181,7 +198,8 @@ class historialausenciasMapper extends QBMapper {
 					$qb->expr()->neq('a_gerente', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
 					$qb->expr()->neq('a_socio',   $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
 					$qb->expr()->neq('a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
-					$qb->expr()->neq('a_socio',   $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+					$qb->expr()->neq('a_socio',   $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
+					$qb->expr()->neq('a_supervisor', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
 				)
 			);
 
@@ -279,6 +297,14 @@ class historialausenciasMapper extends QBMapper {
 		return $rows;
 	}
 
+	public function SetEstadoSupervisor(int $id, int $estado): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('a_supervisor', $qb->createNamedParameter($estado, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('id_historial_ausencias', $qb->createNamedParameter($id)));
+		$qb->executeStatement();
+	}
+
 	public function SetEstadoGerente(int $id, int $estado): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->getTableName())
@@ -304,7 +330,7 @@ class historialausenciasMapper extends QBMapper {
 	}
 
 	/**
-	 * Marca los 3 roles como rechazados de una sola vez (se usa cuando cualquiera rechaza).
+	 * Marca los 4 roles como rechazados de una sola vez (se usa cuando cualquiera rechaza).
 	 * Si se recibe un $motivo, se guarda en la columna motivo_rechazo.
 	 */
 	public function RechazarTodo(int $id, ?string $motivo = null): void {
@@ -312,6 +338,7 @@ class historialausenciasMapper extends QBMapper {
 		$qb->update($this->getTableName())
 			->set('a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
 			->set('a_socio', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
+			->set('a_supervisor', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
 			->set('a_capital_humano', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT));
 
 		if ($motivo !== null && $motivo !== '') {
@@ -340,18 +367,19 @@ class historialausenciasMapper extends QBMapper {
 			->innerJoin('h', 'ausencias', 'a', $qb->expr()->eq('h.id_ausencias', 'a.id_ausencias'))
 			->innerJoin('a', 'empleados', 'e', $qb->expr()->eq('a.id_empleado', 'e.Id_empleados'))
 			->where(
-				// no está 100% aprobada todavía
 				$qb->expr()->orX(
 					$qb->expr()->neq('h.a_gerente', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
 					$qb->expr()->neq('h.a_socio', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
+					$qb->expr()->neq('h.a_supervisor', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)),
 					$qb->expr()->neq('h.a_capital_humano', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT))
 				)
 			)
-			// y tampoco está rechazada ni cancelada
 			->andWhere($qb->expr()->neq('h.a_gerente', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->neq('h.a_gerente', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->neq('h.a_socio', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->neq('h.a_socio', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('h.a_supervisor', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->neq('h.a_supervisor', $qb->createNamedParameter(3, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->neq('h.a_capital_humano', $qb->createNamedParameter(2, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
 
 		$result = $qb->executeQuery();

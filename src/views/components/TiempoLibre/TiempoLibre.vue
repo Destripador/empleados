@@ -154,6 +154,23 @@
 									</div>
 								</div>
 
+								<!-- Filtro visual: ocultar canceladas/rechazadas -->
+								<div class="acordeon-item acordeon-item--filter">
+									<label class="switch-toggle">
+										<input
+											type="checkbox"
+											v-model="ocultarCanceladasRechazadas"
+											@change="onToggleOcultarCanceladasRechazadas">
+										<span class="switch-toggle__track">
+											<span class="switch-toggle__thumb" />
+										</span>
+										<span class="switch-toggle__label">
+											{{ t('empleados', 'Hide cancelled/rejected') }}
+										</span>
+									</label>
+								</div>
+								<!-- FIN Filtro visual -->
+
 								<!-- Administración -->
 								<div
 									v-if="isAdmin()"
@@ -691,6 +708,7 @@ export default {
 			ausenciaEditar: null,
 			mostrarReporte: false,
 			usuarioAusenciaSeleccionada: null,
+			ocultarCanceladasRechazadas: false,
 		}
 	},
 
@@ -1009,7 +1027,7 @@ export default {
 		},
 
 		estiloEventoAusencia(item, fallbackUsername) {
-			const roles = [item.a_gerente, item.a_socio, item.a_capital_humano]
+			const roles = [item.a_gerente, item.a_socio, item.a_supervisor, item.a_capital_humano]
 				.filter(v => v !== undefined && v !== null)
 				.map(Number)
 
@@ -1031,6 +1049,27 @@ export default {
 				return { classNames: ['event-pending-anticipada'] }
 			}
 			return { classNames: ['event-pending'] }
+		},
+
+		/**
+		 * Filtra del arreglo de eventos las ausencias canceladas o
+		 * rechazadas cuando el switch "Ocultar canceladas/rechazadas"
+		 * está activo. Esto solo afecta lo que se dibuja en el
+		 * calendario: no borra ni modifica nada en el backend.
+		 * Se aplica igual en cualquier vista (personal, equipo,
+		 * empleados, todos).
+		 */
+		filtrarSiOcultos(events) {
+			if (!this.ocultarCanceladasRechazadas) return events
+			return events.filter(ev => !ev.classNames.some(
+				c => c === 'event-cancelled' || c === 'event-rejected',
+			))
+		},
+
+		onToggleOcultarCanceladasRechazadas() {
+			this.$nextTick(() => {
+				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+			})
 		},
 
 		getMyAusencias(fetchInfo, success, failure) {
@@ -1055,7 +1094,7 @@ export default {
 							nombre_empleado: this.employee[0].Id_user,
 						}
 					})
-					success(events)
+					success(this.filtrarSiOcultos(events))
 				})
 				.catch(error => { console.error(error); failure(error) })
 		},
@@ -1082,7 +1121,7 @@ export default {
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
-					success(events)
+					success(this.filtrarSiOcultos(events))
 				})
 				.catch(error => { console.error(error); failure(error) })
 		},
@@ -1109,7 +1148,7 @@ export default {
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
-					success(events)
+					success(this.filtrarSiOcultos(events))
 				})
 				.catch(error => { console.error(error); failure(error) })
 		},
@@ -1141,7 +1180,7 @@ export default {
 							nombre_empleado: item.nombre_empleado,
 						}
 					})
-					success(events)
+					success(this.filtrarSiOcultos(events))
 				})
 				.catch(error => {
 					console.error(error)
@@ -1504,7 +1543,7 @@ export default {
 					})
 					.filter(Boolean)
 
-				success(events)
+				success(this.filtrarSiOcultos(events))
 			} catch (error) {
 				console.error('Error mostrando ausencias pendientes:', error)
 				failure(error)
@@ -1957,6 +1996,10 @@ export default {
 	transition:
 		border-color 0.18s ease,
 		box-shadow 0.18s ease;
+}
+
+.acordeon-item--filter {
+	padding: 4px 10px;
 }
 
 :is(.acordeon-titulo, .acordeon-notification) {
@@ -2819,5 +2862,87 @@ export default {
 
 .pending-card:active {
 	transform: translateY(0);
+}
+
+/* ========================================
+ * SWITCH TOGGLE (Ocultar canceladas/rechazadas)
+ * ======================================== */
+
+.switch-toggle {
+	display: flex;
+	align-items: center;
+
+	width: 100%;
+	padding: 6px 2px;
+	gap: 10px;
+
+	cursor: pointer;
+	user-select: none;
+}
+
+.switch-toggle input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+
+	opacity: 0;
+	clip: rect(0 0 0 0);
+}
+
+.switch-toggle__track {
+	position: relative;
+	flex: 0 0 38px;
+
+	width: 38px;
+	height: 21px;
+
+	background: #cbd8e2;
+	border-radius: 999px;
+
+	transition: background-color 0.2s ease;
+}
+
+.switch-toggle__thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+
+	width: 17px;
+	height: 17px;
+
+	background: white;
+	border-radius: 50%;
+
+	box-shadow: 0 1px 3px rgba(15, 47, 74, 0.35);
+
+	transition: transform 0.2s ease;
+}
+
+.switch-toggle:hover .switch-toggle__track {
+	box-shadow: 0 0 0 3px rgba(35, 137, 215, 0.12);
+}
+
+.switch-toggle input:checked + .switch-toggle__track {
+	background: var(--sidebar-primary);
+}
+
+.switch-toggle input:checked + .switch-toggle__track .switch-toggle__thumb {
+	transform: translateX(17px);
+}
+
+.switch-toggle input:focus-visible + .switch-toggle__track {
+	outline: 2px solid var(--sidebar-primary);
+	outline-offset: 2px;
+}
+
+.switch-toggle__label {
+	overflow: hidden;
+
+	color: var(--sidebar-text);
+	font-size: 0.76rem;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>

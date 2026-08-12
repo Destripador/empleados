@@ -16,6 +16,7 @@ class empleados extends Entity {
 	protected string $correocontacto = '';
 	protected string $iddepartamento = '';
 	protected string $idpuesto = '';
+	protected string $idsupervisor = '';
 	protected string $idgerente = '';
 	protected string $idsocio = '';
 	protected string $fondoclave = '';
@@ -48,6 +49,7 @@ class empleados extends Entity {
 		$this->addType('Correo_contacto', 'string');
 		$this->addType('Id_departamento', 'integer');
 		$this->addType('Id_puesto', 'integer');
+		$this->addType('Id_supervisor', 'integer');
 		$this->addType('Id_gerente', 'integer');
 		$this->addType('Id_socio', 'integer');
 		$this->addType('Fondo_clave', 'string');
@@ -81,6 +83,7 @@ class empleados extends Entity {
 			'Correo_contacto' => $this->correocontacto,
 			'Id_departamento' => $this->iddepartamento,
 			'Id_puesto' => $this->idpuesto,
+			'Id_supervisor' => $this->idsupervisor,
 			'Id_gerente' => $this->idgerente,
 			'Id_socio' => $this->idsocio,
 			'Fondo_clave' => $this->fondoclave,

@@ -177,7 +177,7 @@
 				v-if="show"
 				:aria-label="t('empleados', 'Apply changes')"
 				type="primary"
-				@click="CambiosPersonal">
+				@click="$bus.emit('empleados:guardar-todo')">
 				{{ t('empleados', 'Apply changes') }}
 			</NcButton>
 		</div>
@@ -335,6 +335,11 @@ export default {
 	mounted() {
 		this.setAttr(this.data)
 		this.loadContacts()
+		this.$bus.on('empleados:guardar-todo', this.CambiosPersonal)
+	},
+
+	beforeDestroy() {
+		this.$bus.off('empleados:guardar-todo', this.CambiosPersonal)
 	},
 
 	methods: {
@@ -459,7 +464,6 @@ export default {
 				})
 				this.$bus.emit('getall')
 				this.$bus.emit('show', false)
-				showSuccess(t('empleados', 'Data updated'))
 			} catch (err) {
 				showError(t('empleados', 'An exception has occurred [03] [{error}]', { error: String(err) }))
 			}

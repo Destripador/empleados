@@ -374,6 +374,15 @@
 										:user-select="true"
 										:input-label="t('empleados','Manager')" />
 								</div>
+
+								<div class="label-input-trabajo">
+									<NcSelect v-model="supervisor"
+										class="select"
+										:disabled="!show"
+										:options="EmpleadosList"
+										:user-select="true"
+										:input-label="t('empleados','Supervisor')" />
+								</div>
 							</div>
 
 							<!-- Team -->
@@ -487,7 +496,7 @@
 						v-if="show"
 						aria-label="Guardar"
 						type="primary"
-						@click="CambiosEmpleado()">
+						@click="$bus.emit('empleados:guardar-todo')">
 						{{ t('empleados', 'Apply changes') }}
 					</NcButton>
 				</div>
@@ -638,6 +647,7 @@ export default {
 			puesto: '',
 			gerente: null,
 			socio: null,
+			supervisor: null,
 			optionsarea: [],
 			optionspuesto: [],
 			optionsequipos: [],
@@ -707,6 +717,7 @@ export default {
 					news.Ingreso,
 					news.Id_departamento,
 					news.Id_puesto,
+					news.Id_supervisor,
 					news.Id_gerente,
 					news.Id_socio,
 					news.Fondo_clave,
@@ -759,6 +770,7 @@ export default {
 			this.data.Ingreso,
 			this.data.Id_departamento,
 			this.data.Id_puesto,
+			this.data.Id_supervisor,
 			this.data.Id_gerente,
 			this.data.Id_socio,
 			this.data.Fondo_clave,
@@ -774,6 +786,11 @@ export default {
 		if (this.inventoryEnabled && this.canAccessInventory) {
 			await this.getInventarioEquipos(this.data.Id_empleados)
 		}
+		this.$bus.on('empleados:guardar-todo', this.CambiosEmpleado)
+	},
+
+	beforeDestroy() {
+		this.$bus.off('empleados:guardar-todo', this.CambiosEmpleado)
 	},
 
 	methods: {
@@ -843,11 +860,12 @@ export default {
 			})
 		},
 
-		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, Sueldo, Vacaciones, Aniversario, state) {
+		setAttr(NumeroEmpleado, Ingreso, Area, Puesto, Supervisor, Gerente, Socio, FondoClave, FondoAhorro, NumeroCuenta, Equipo, Sueldo, Vacaciones, Aniversario, state) {
 			this.Numero_empleado = this.checknull(NumeroEmpleado)
 			this.Ingreso = this.checknull(Ingreso)
 			this.area = Area
 			this.puesto = Puesto
+			this.supervisor = this.checknull(Supervisor)
 			this.gerente = this.checknull(Gerente)
 			this.socio = this.checknull(Socio)
 			this.Fondo_clave = this.checknull(FondoClave)
@@ -985,13 +1003,21 @@ export default {
 
 				this.socio = this.socio?.id || this.socio
 				this.gerente = this.gerente?.id || this.gerente
+				this.supervisor = this.supervisor?.id || this.supervisor
 
+				// eslint-disable-next-line no-console
+				console.log('SUPERVISOR', this.supervisor)
+				// eslint-disable-next-line no-console
+				console.log('SOCIO', this.socio)
+				// eslint-disable-next-line no-console
+				console.log('GERENTE', this.gerente)
 				await axios.post(generateUrl('/apps/empleados/CambiosEmpleado'), {
 					id_empleados: this.data.Id_empleados,
 					numeroempleado: this.checknull(this.Numero_empleado),
 					ingreso: this.checknull(this.Ingreso),
 					area: this.checknull(this.areaSend),
 					puesto: this.checknull(this.puestoSend),
+					supervisor: this.checknull(this.supervisor),
 					socio: this.socio,
 					gerente: this.checknull(this.gerente),
 					fondoclave: this.checknull(this.Fondo_clave),

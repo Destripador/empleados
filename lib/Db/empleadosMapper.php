@@ -28,7 +28,8 @@ class empleadosMapper extends QBMapper {
 			->where(
 				$qb->expr()->orX(
 					$qb->expr()->eq('e.Id_gerente', $qb->createNamedParameter($id)),
-					$qb->expr()->eq('e.Id_socio', $qb->createNamedParameter($id))
+					$qb->expr()->eq('e.Id_socio', $qb->createNamedParameter($id)),
+					$qb->expr()->eq('e.Id_supervisor', $qb->createNamedParameter($id))
 				)
 			)
 			->andWhere(
@@ -163,7 +164,8 @@ class empleadosMapper extends QBMapper {
 		string $Ingreso, 
 		string $Correo_contacto, 
 		string $Id_departamento, 
-		string $Id_puesto, 
+		string $Id_puesto,
+		string $Id_supervisor,
 		string $Id_gerente, 
 		string $Id_socio, 
 		string $Fondo_clave, 
@@ -191,6 +193,7 @@ class empleadosMapper extends QBMapper {
 			if(empty($Correo_contacto) && $Correo_contacto != 0){ $Correo_contacto = null; }
 			if(empty($Id_departamento) && $Id_departamento != 0){ $Id_departamento = null; }
 			if(empty($Id_puesto) && $Id_puesto != 0){ $Id_puesto = null; }
+			if(empty($Id_supervisor) && $Id_supervisor != 0){ $Id_supervisor = null; }
 			if(empty($Id_gerente) && $Id_gerente != 0){ $Id_gerente = null; }
 			if(empty($Id_socio) && $Id_socio != 0){ $Id_socio = null; }
 			if(empty($Fondo_clave) && $Fondo_clave != 0){ $Fondo_clave = null; }
@@ -216,6 +219,7 @@ class empleadosMapper extends QBMapper {
 				->set('Correo_contacto', $query->createNamedParameter($Correo_contacto))
 				->set('Id_departamento', $query->createNamedParameter($Id_departamento))
 				->set('Id_puesto', $query->createNamedParameter($Id_puesto))
+				->set('Id_supervisor', $query->createNamedParameter($Id_supervisor)) 
 				->set('Id_gerente', $query->createNamedParameter($Id_gerente))
 				->set('Id_socio', $query->createNamedParameter($Id_socio))
 				->set('Fondo_clave', $query->createNamedParameter($Fondo_clave))
@@ -331,7 +335,8 @@ class empleadosMapper extends QBMapper {
 		$Numero_empleado, 
 		$Ingreso, 
 		$Id_departamento, 
-		$Id_puesto, 
+		$Id_puesto,
+		$Id_supervisor, 
 		$Id_socio, 
 		$Id_gerente, 
 		$Fondo_clave, 
@@ -348,6 +353,7 @@ class empleadosMapper extends QBMapper {
 			if(empty($Ingreso) && $Ingreso != 0){ $Ingreso = null; }
 			if(empty($Id_departamento) && $Id_departamento != 0){ $Id_departamento = null; }
 			if(empty($Id_puesto) && $Id_puesto != 0){ $Id_puesto = null; }
+			if(empty($Id_supervisor) && $Id_supervisor != 0){ $Id_supervisor = null; }
 			if(empty($Id_gerente) && $Id_gerente != 0){ $Id_gerente = null; }
 			if(empty($Id_socio) && $Id_socio != 0){ $Id_socio = null; }
 			if(empty($Fondo_clave) && $Fondo_clave != 0){ $Fondo_clave = null; }
@@ -362,6 +368,7 @@ class empleadosMapper extends QBMapper {
 				->set('Ingreso', $query->createNamedParameter($Ingreso))
 				->set('Id_departamento', $query->createNamedParameter($Id_departamento))
 				->set('Id_puesto', $query->createNamedParameter($Id_puesto))
+				->set('Id_supervisor', $query->createNamedParameter($Id_supervisor))
 				->set('Id_gerente', $query->createNamedParameter($Id_gerente))
 				->set('Id_socio', $query->createNamedParameter($Id_socio))
 				->set('Fondo_clave', $query->createNamedParameter($Fondo_clave))
@@ -376,8 +383,8 @@ class empleadosMapper extends QBMapper {
 			$query->executeStatement();
 			
 		}
-		catch(Exception $e){
-			console.log($e);
+		catch (Exception $e) {
+			error_log((string) $e);
 		}
 	}
 

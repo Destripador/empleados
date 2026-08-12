@@ -415,18 +415,18 @@ class EmpleadosController extends BaseController {
                     (string) $row[13], (string) $row[14], $this->convertExcelDate($row[15]),
                     (string) $row[16], (string) $row[17], (string) $row[18], (string) $row[19],
                     (string) $row[20], (string) $row[21], (string) $row[22], (string) $row[23],
-                    (string) $row[24], (string) $row[25],
+                    (string) $row[24], (string) $row[25], (string) $row[26],
                 );
                 
                 $this->ausenciasMapper->updateAusenciasById(
                     (int)$row[0], 
-                    (int)$row[25], 
-                    (float)$row[26],
+                    (int)$row[26], 
+                    (float)$row[27],
                 );
 
                 $this->userahorroMapper->updatePermisionByEmpleadoId(
                     (int) $row[0], 
-                    (string) $row[11],
+                    (string) $row[12],
                 );
             }
 
@@ -452,6 +452,7 @@ class EmpleadosController extends BaseController {
         $ingreso,
         $area,
         $puesto,
+        $supervisor,
         $socio,
         $gerente,
         $fondoclave,
@@ -485,6 +486,7 @@ class EmpleadosController extends BaseController {
             $ingreso,
             $area,
             $puesto,
+            $supervisor,
             $socio,
             $gerente,
             $fondoclave,
@@ -730,6 +732,7 @@ class EmpleadosController extends BaseController {
 		'Correo_contacto', 
 		'Id_departamento', 
 		'Id_puesto', 
+        'Id_supervisor',
 		'Id_gerente', 
 		'Id_socio', 
 		'Fondo_clave',
@@ -766,6 +769,7 @@ class EmpleadosController extends BaseController {
 					$datas['Correo_contacto'], 
 					$datas['Id_departamento'], 
 					$datas['Id_puesto'], 
+                    $datas['Id_supervisor'], 
 					$datas['Id_gerente'], 
 					$datas['Id_socio'], 
 					$datas['Fondo_clave'], 
