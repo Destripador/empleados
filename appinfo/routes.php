@@ -354,5 +354,9 @@ return [
 		['name' => 'tutorial#status', 'url' => '/tutoriales/{lessonId}', 'verb' => 'GET'],
 		['name' => 'tutorial#complete', 'url' => '/tutoriales/{lessonId}/complete', 'verb' => 'POST'],
 		['name' => 'tutorial#reset', 'url' => '/tutoriales/{lessonId}', 'verb' => 'DELETE'],
+
+		/************************** SIMULACIÓN DE OFICINA **********************************/
+		['name' => 'simulacionOficina#getEmpleados', 'url' => '/simulacion-oficina/empleados', 'verb' => 'GET'],
+		['name' => 'simulacionOficina#getStatuses', 'url' => '/simulacion-oficina/statuses', 'verb' => 'GET'],
 	],
 ];

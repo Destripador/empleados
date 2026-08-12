@@ -2766,4 +2766,110 @@ class reportetiempoMapper extends QBMapper {
 		unset($row);
 		return $rows;
 	}
+
+	/**
+	 * Conteos de reportes por empleado en un rango de fechas (una sola consulta).
+	 *
+	 * @return array<int, int> mapa id_empleado => total_reportes
+	 */
+	public function getReportCountsByDateRange(string $fechaInicio, string $fechaFin): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('id_empleado')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->from($this->getTableName())
+			->where($qb->expr()->gte('fecha_registro', $qb->createNamedParameter($fechaInicio)))
+			->andWhere($qb->expr()->lte('fecha_registro', $qb->createNamedParameter($fechaFin)))
+			->groupBy('id_empleado');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$counts = [];
+		foreach ($rows as $row) {
+			$id = (int)($row['id_empleado'] ?? 0);
+			if ($id > 0) {
+				$counts[$id] = (int)($row['total_reportes'] ?? 0);
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Agregados de actividad para la simulación (una sola consulta).
+	 *
+	 * @return array<int, array{
+	 *   reportes_periodo: int,
+	 *   reportes_hoy: int,
+	 *   reportes_semana: int,
+	 *   minutos_hoy: float,
+	 *   minutos_semana: float,
+	 *   ultimo_reporte: string|null,
+	 *   ultimo_created_at: string|null
+	 * }>
+	 */
+	public function getSimulacionActivityByEmployee(
+		string $fechaHoy,
+		string $fechaInicioSemana,
+		string $fechaInicioPeriodo,
+		string $fechaFinPeriodo
+	): array {
+		$qb = $this->db->getQueryBuilder();
+		$hoyParam = $qb->createNamedParameter($fechaHoy);
+		$semanaParam = $qb->createNamedParameter($fechaInicioSemana);
+
+		$qb->select('id_empleado')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'reportes_periodo')
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN fecha_registro = {$hoyParam} THEN 1 ELSE 0 END), 0)"),
+				'reportes_hoy'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN fecha_registro >= {$semanaParam} THEN 1 ELSE 0 END), 0)"),
+				'reportes_semana'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN fecha_registro = {$hoyParam} THEN tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_hoy'
+			)
+			->selectAlias(
+				$qb->createFunction("COALESCE(SUM(CASE WHEN fecha_registro >= {$semanaParam} THEN tiempo_registrado ELSE 0 END), 0)"),
+				'minutos_semana'
+			)
+			->selectAlias($qb->createFunction('MAX(fecha_registro)'), 'ultimo_reporte')
+			->selectAlias($qb->createFunction('MAX(created_at)'), 'ultimo_created_at')
+			->from($this->getTableName())
+			->where($qb->expr()->gte('fecha_registro', $qb->createNamedParameter($fechaInicioPeriodo)))
+			->andWhere($qb->expr()->lte('fecha_registro', $qb->createNamedParameter($fechaFinPeriodo)))
+			->groupBy('id_empleado');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$map = [];
+		foreach ($rows as $row) {
+			$id = (int)($row['id_empleado'] ?? 0);
+			if ($id <= 0) {
+				continue;
+			}
+			$map[$id] = [
+				'reportes_periodo' => (int)($row['reportes_periodo'] ?? 0),
+				'reportes_hoy' => (int)($row['reportes_hoy'] ?? 0),
+				'reportes_semana' => (int)($row['reportes_semana'] ?? 0),
+				'minutos_hoy' => (float)($row['minutos_hoy'] ?? 0),
+				'minutos_semana' => (float)($row['minutos_semana'] ?? 0),
+				'ultimo_reporte' => isset($row['ultimo_reporte']) && $row['ultimo_reporte'] !== ''
+					? (string)$row['ultimo_reporte']
+					: null,
+				'ultimo_created_at' => isset($row['ultimo_created_at']) && $row['ultimo_created_at'] !== ''
+					? (string)$row['ultimo_created_at']
+					: null,
+			];
+		}
+
+		return $map;
+	}
 }
