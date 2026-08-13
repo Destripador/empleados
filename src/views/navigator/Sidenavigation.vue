@@ -210,6 +210,23 @@
 					</NcAppNavigationItem>
 				</NcAppNavigationList>
 			</div>
+
+			<!-- ESTACIONAMIENTO -->
+			<div>
+				<NcAppNavigationCaption
+					:heading-id="t('empleados', 'Estacionamiento')"
+					is-heading
+					:name="t('empleados', 'Estacionamiento')" />
+				<NcAppNavigationList :aria-labelledby="t('empleados', 'Estacionamiento')">
+					<NcAppNavigationItem
+						:name="t('empleados', 'Estacionamiento')"
+						:to="{ name: 'Estacionamiento' }">
+						<template #icon>
+							<HexagonMultipleOutline :size="20" />
+						</template>
+					</NcAppNavigationItem>
+				</NcAppNavigationList>
+			</div>
 		</div>
 	</NcAppNavigation>
 </template>

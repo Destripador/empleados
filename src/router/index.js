@@ -21,6 +21,7 @@ import CumplimientoReportes from '../views/components/reports/CumplimientoReport
 import Inventario from '../views/components/Inventario/Inventario.vue'
 import MisSolicitudesCompras from '../views/components/Compras/MisSolicitudes.vue'
 import SimulacionOficina from '../views/components/SimulacionOficina/SimulacionOficina.vue'
+import Estacionamiento from '../views/components/Estacionamiento/Estacionamiento.vue'
 
 Vue.use(Router)
 
@@ -140,6 +141,11 @@ export default new Router({
 			path: '/office-simulation',
 			name: 'SimulacionOficina',
 			component: SimulacionOficina,
+		},
+		{
+			path: '/Estacionamiento',
+			component: Estacionamiento,
+			name: 'Estacionamiento',
 		},
 	],
 })

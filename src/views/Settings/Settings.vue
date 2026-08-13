@@ -44,6 +44,10 @@
 				<VTab :title="t('empleados', 'Global settings')">
 					<ListSettings />
 				</VTab>
+
+				<VTab :title="t('empleados', 'Estacionamiento')">
+					<EstacionamientoSettings />
+				</VTab>
 			</VueTabs>
 		</div>
 	</div>
@@ -67,6 +71,7 @@ import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import 'vue-nav-tabs/themes/vue-tabs.css'
 
 import { NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
+import EstacionamientoSettings from './EstacionamientoSettings.vue'
 
 export default {
 	name: 'Settings',
@@ -80,6 +85,7 @@ export default {
 		NcEmptyContent,
 		AlertCircleOutline,
 		NcLoadingIcon,
+		EstacionamientoSettings,
 	},
 
 	data() {
