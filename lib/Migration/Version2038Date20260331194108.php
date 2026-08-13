@@ -61,7 +61,7 @@ class Version2038Date20260331194108 extends SimpleMigrationStep {
             
             $table->setPrimaryKey(['id_espacio_empleado']);
 			$table->addForeignKeyConstraint('espacio', ['id_espacio'], ['id_espacio'], ['onDelete' => 'CASCADE']);
-            $table->addForeignKeyConstraint('empleados', ['id_empleados'], ['id_empleado'], ['onDelete' => 'CASCADE']);
+            $table->addForeignKeyConstraint('empleados', ['id_empleados'], ['id_empleados'], ['onDelete' => 'CASCADE']);
         }
 
         // 3. Tabla: empleados_espacio_disponible

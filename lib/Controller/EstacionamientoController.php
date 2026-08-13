@@ -110,7 +110,7 @@ class EstacionamientoController extends BaseController {
         foreach ($id_empleados as $id_empleado) {
             $entidad = new espacioEmpleados();
             $entidad->setidEspacio($id_espacio);
-            $entidad->setidEmpleado((int)$id_empleado);
+            $entidad->setidEmpleados((int)$id_empleado);
             $entidad->setcreatedAt(new DateTime());
             $entidad->setupdatedAt(new DateTime());
             $this->espacioEmpleadosMapper->insert($entidad);
@@ -305,9 +305,9 @@ class EstacionamientoController extends BaseController {
             $entidad = $this->empleadosEspacioDisponibleMapper->findById($id);
             $uidLogueado = $this->userSession->getUser()->getUID();
             $asignacion = $this->espacioEmpleadosMapper->findById($entidad->getIdEspacioEmpleado());
-            $empleado = $this->empleadosMapper->findByIdAsArray($asignacion->getidEmpleado());
+            $empleado = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado($asignacion->getidEmpleados());
 
-            if ($empleado['Id_user'] !== $uidLogueado) {
+            if (empty($empleado) || ((string)($empleado[0]['Id_user']) !== $uidLogueado)) {
                 return new DataResponse(['message' => 'No autorizado'], Http::STATUS_FORBIDDEN);
             }
             $this->empleadosEspacioDisponibleMapper->deleteById($id);

@@ -9,7 +9,7 @@ use OCP\AppFramework\Db\Entity;
 class empleadosEspacioDisponible extends Entity {
 
     // Nextcloud mapeará id_emp_esp_disp a esta variable
-    protected $idEmpleadoEspacioDisponible;
+    protected $idEmpEspDisp;
     protected $idEspacioEmpleado;
     protected $fecha;
     protected $todoDia;
@@ -20,7 +20,7 @@ class empleadosEspacioDisponible extends Entity {
 
     public function __construct() {
         // Los nombres aquí deben coincidir con las variables declaradas arriba
-        $this->addType('idEmpleadoEspacioDisponible', 'integer');
+        $this->addType('idEmpEspDisp', 'integer');
         $this->addType('idEspacioEmpleado', 'integer');
         $this->addType('fecha', 'datetime');
         $this->addType('todoDia', 'boolean');
@@ -32,7 +32,7 @@ class empleadosEspacioDisponible extends Entity {
 
     public function read(): array {
         return [
-            'id_emp_esp_disp' => $this->idEmpleadoEspacioDisponible,
+            'id_emp_esp_disp' => $this->idEmpEspDisp,
             'id_espacio_empleado'            => $this->idEspacioEmpleado,
             'fecha'                          => $this->fecha,
             'todo_dia'                       => $this->todoDia,
