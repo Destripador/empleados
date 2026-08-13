@@ -49,10 +49,12 @@ class Version2039Date20260421004413 extends SimpleMigrationStep {
         }
 
         // Agregar campo 'disponible'
-        $tableEspacio->addColumn('disponible', 'smallint', [
-            'notnull' => true,
-            'default' => 1,
-        ]);
+        if (!$tableEspacio->hasColumn('disponible')) {
+            $tableEspacio->addColumn('disponible', 'smallint', [
+                'notnull' => true,
+                'default' => 1,
+            ]);
+        }
 
         // 2. Crear tabla 'espacio_obstruye'
         if (!$schema->hasTable('espacio_obstruye')) {

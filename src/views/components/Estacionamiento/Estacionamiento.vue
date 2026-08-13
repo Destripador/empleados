@@ -573,7 +573,7 @@
 						<p>{{ t('empleados', 'No tienes registros previos.') }}</p>
 					</div>
 					<ul v-else class="history-list">
-						<li v-for="item in history" :key="item.id_empleado_espacio_disponible">
+						<li v-for="item in history" :key="item.id_emp_esp_disp">
 							<div class="history-item-info">
 								<strong>{{ formatDateDisplay(item.fecha) }}</strong>
 								<span v-if="item.todo_dia">{{ t('empleados', 'Todo el día') }}</span>
@@ -582,7 +582,7 @@
 							<NcButton
 								type="error"
 								:aria-label="t('empleados', 'Eliminar')"
-								@click="deleteAvailability(item.id_empleado_espacio_disponible)">
+								@click="deleteAvailability(item.id_emp_esp_disp)">
 								<template #icon>
 									<span class="icon-delete" />
 								</template>
@@ -623,7 +623,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="day in publicHistory" :key="day.id_empleado_espacio_disponible">
+							<tr v-for="day in publicHistory" :key="day.id_emp_esp_disp">
 								<td class="date-cell">
 									{{ formatDateDisplay(day.fecha) }}
 								</td>
@@ -823,12 +823,14 @@ export default {
 				const resp = await axios.get(generateUrl(`/apps/empleados/espacios/historial/${this.myAsignacionId}`))
 				this.history = resp.data.ocs.data.historial
 			} catch (e) {
+				console.error('Error ', e)
 				showError(t('empleados', 'Error al obtener historial'))
 			}
 		},
 		async deleteAvailability(id) {
 			if (!confirm(t('empleados', '¿Estás seguro de eliminar esta disponibilidad?'))) return
 			try {
+				console.error('Id: ', id)
 				const respuesta = await axios.delete(generateUrl(`/apps/empleados/espacios/liberar/${id}`))
 				if (respuesta.data?.ocs?.data?.status !== 'success') {
 					throw new Error(respuesta.data?.ocs?.data?.message || 'Desconocido')
