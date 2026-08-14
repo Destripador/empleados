@@ -52,6 +52,7 @@ class clientesMapper extends QBMapper {
 				'p.nombre_contacto',
 				'p.telefono',
 				'p.correo',
+				'p.rfc',
 				'p.ubicacion',
 				'p.especial',
 				'p.cliente_padre',
@@ -75,6 +76,7 @@ class clientesMapper extends QBMapper {
 				'p.nombre_contacto',
 				'p.telefono',
 				'p.correo',
+				'p.rfc',
 				'p.ubicacion',
 				'p.especial',
 				'p.cliente_padre',
@@ -119,6 +121,7 @@ class clientesMapper extends QBMapper {
 		?string $nombre_contacto,
 		?string $telefono,
 		?string $correo,
+		?string $rfc,
 		?string $ubicacion,
 		?bool $especial,
 		?int $cliente_padre,
@@ -137,6 +140,7 @@ class clientesMapper extends QBMapper {
 			->set('nombre_contacto', $query->createNamedParameter($nombre_contacto))
 			->set('telefono', $query->createNamedParameter($telefono))
 			->set('correo', $query->createNamedParameter($correo))
+			->set('rfc', $query->createNamedParameter($rfc))
 			->set('ubicacion', $query->createNamedParameter($ubicacion))
 			->set('especial', $query->createNamedParameter((int)($especial ?? false), IQueryBuilder::PARAM_INT))
 			->set('cliente_padre', $query->createNamedParameter($cliente_padre))

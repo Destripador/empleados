@@ -66,7 +66,7 @@
 					</div>
 				</template>
 				<template #custombuttons>
-					<NcActions :open="button" @click="toggle">
+					<NcActions :open="button">
 						<template #icon>
 							<FilterVariant :size="20" />
 						</template>
@@ -89,6 +89,9 @@
 						<NcActionCheckbox v-model="onlyParents">
 							{{ t('empleados', 'Only Main Groups') }}
 						</NcActionCheckbox>
+						<NcActionCheckbox v-model="hideMainGroups">
+							{{ t('empleados', 'Hide Main Groups') }}
+						</NcActionCheckbox>
 						<NcActionCheckbox v-model="onlySpecial">
 							{{ t('empleados', 'Only Special Clients') }}
 						</NcActionCheckbox>
@@ -106,6 +109,12 @@
 								{{ t('empleados', 'Settings') }}
 							</NcActionButton>
 
+							<NcActionButton @click="AbrirImportarModal()">
+								<template #icon>
+									<Upload :size="20" />
+								</template>
+								{{ t('empleados', 'Importar') }}
+							</NcActionButton>
 							<NcActionButton @click="AgregarNuevo()">
 								<template #icon>
 									<AccountMultiplePlusOutline :size="20" />
@@ -130,9 +139,9 @@
 					</NcActions>
 
 					<span
-						v-if="(onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) > 0"
+						v-if="(onlyParents ? 1 : 0) + (hideMainGroups ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) > 0"
 						class="filter-badge">
-						{{ (onlyParents ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) +
+						{{ (onlyParents ? 1 : 0) + (hideMainGroups ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) +
 							(onlyDisabled ? 1 : 0) }}
 					</span>
 				</template>
@@ -209,6 +218,11 @@
 												<div class="detail-card">
 													<span>{{ t('empleados', 'Email Address') }}</span>
 													<span class="value-text">{{ selectedClient.correo || '-' }}</span>
+												</div>
+
+												<div class="detail-card">
+													<span>{{ t('empleados', 'RFC') }}</span>
+													<span class="value-text">{{ selectedClient.rfc || '-' }}</span>
 												</div>
 
 												<div class="detail-card">
@@ -736,6 +750,9 @@
 					<!-- correo -->
 					<NcTextField :value.sync="correo" :label="t('empleados', 'Email')" />
 
+					<!-- rfc -->
+					<NcTextField :value.sync="rfc" :label="t('empleados', 'RFC')" />
+
 					<!-- nombre_contacto -->
 					<NcTextField :value.sync="nombre_contacto" :label="t('empleados', 'Primary contact')" />
 
@@ -897,6 +914,9 @@
 				</div>
 			</div>
 		</NcModal>
+
+		<!-- Modal: Importar -->
+		<ModalClientes v-if="showImportarModal" @close="showImportarModal = false" />
 
 		<!-- Modal - Honorarios -->
 		<NcModal v-if="honorarioModal && canAdminCustomers" :name="honorarioModalTitle" @close="closeHonorarioModal">
@@ -1072,6 +1092,7 @@ import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
 import List from '../Helpers/Lists/List.vue'
+import ModalClientes from './ModalClientes.vue'
 import permissionsMixin from '../../../mixins/permissions.js'
 
 import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOutline.vue'
@@ -1120,6 +1141,7 @@ export default {
 	name: 'CompaniesGroups',
 
 	components: {
+		ModalClientes,
 		TrashCanOutline,
 		Restore,
 		CalendarPlus,
@@ -1181,6 +1203,7 @@ export default {
 			nombre_contacto: null,
 			telefono: null,
 			correo: null,
+			rfc: null,
 			ubicacion: null,
 			lider_proyecto: null,
 			colaboradores: [],
@@ -1189,6 +1212,7 @@ export default {
 			cliente_padre: null,
 			sortOrder: [],
 			onlyParents: false,
+			hideMainGroups: false,
 			onlySpecial: false,
 			showDisabled: false,
 			showFilters: false,
@@ -1280,6 +1304,7 @@ export default {
 			],
 			editingHonorarioId: null,
 			reporteModal: false,
+			showImportarModal: false,
 			honorarioParaReporte: null,
 			generandoReporte: false,
 			rep_departamento: null,
@@ -1394,6 +1419,12 @@ export default {
 			if (this.onlyParents) {
 				data = data.filter(item =>
 					Number(item.cliente_padre || 0) === 0,
+				)
+			}
+
+			if (this.hideMainGroups) {
+				data = data.filter(item =>
+					Number(item.cliente_padre || 0) !== 0,
 				)
 			}
 
@@ -1586,6 +1617,18 @@ export default {
 				this.GetHonorariosByCliente(newId)
 			}
 		},
+
+		onlyParents(value) {
+			if (value && this.hideMainGroups) {
+				this.hideMainGroups = false
+			}
+		},
+
+		hideMainGroups(value) {
+			if (value && this.onlyParents) {
+				this.onlyParents = false
+			}
+		},
 	},
 
 	mounted() {
@@ -1761,10 +1804,16 @@ export default {
 			this.nombre_contacto = ''
 			this.telefono = ''
 			this.correo = ''
+			this.rfc = ''
 			this.ubicacion = ''
 			this.especial = false
 			this.cliente_padre = null
 			this.estado = true
+		},
+
+		AbrirImportarModal() {
+			this.toggle()
+			this.showImportarModal = true
 		},
 
 		triggerImport() {
@@ -1879,6 +1928,7 @@ export default {
 				nombre_contacto: String(this.nombre_contacto || '').trim(),
 				telefono: String(this.telefono || '').trim(),
 				correo: String(this.correo || '').trim(),
+				rfc: String(this.rfc || '').trim(),
 				ubicacion: String(this.ubicacion || '').trim(),
 				detalles: String(this.detalles || '').trim(),
 				especial: this.especial ? 1 : 0,
@@ -1977,6 +2027,7 @@ export default {
 			this.nombre_contacto = this.selectedClient.nombre_contacto || ''
 			this.telefono = this.selectedClient.telefono || ''
 			this.correo = this.selectedClient.correo || ''
+			this.rfc = this.selectedClient.rfc || ''
 			this.ubicacion = this.selectedClient.ubicacion || ''
 			this.especial = Boolean(Number(this.selectedClient.especial))
 			this.estado = Boolean(Number(this.selectedClient.estado ?? 1))
@@ -2424,6 +2475,7 @@ export default {
 					nombre_contacto: this.selectedClient.nombre_contacto || '',
 					telefono: this.selectedClient.telefono || '',
 					correo: this.selectedClient.correo || '',
+					rfc: this.selectedClient.rfc || '',
 					ubicacion: this.selectedClient.ubicacion || '',
 					detalles: this.selectedClient.detalles || '',
 					especial: Number(this.selectedClient.especial) || 0,

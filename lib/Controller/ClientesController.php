@@ -142,6 +142,7 @@ class ClientesController extends BaseController {
         ?string $nombre_contacto = null,
         ?string $telefono = null,
         ?string $correo = null,
+        ?string $rfc = null,
         ?string $ubicacion = null,
         ?int $especial = null,
         ?int $cliente_padre = null,
@@ -161,6 +162,7 @@ class ClientesController extends BaseController {
             $nombre_contacto ?: null,
             $telefono ?: null,
             $correo ?: null,
+            $rfc ?: null,
             $ubicacion ?: null,
             (bool)($especial ?? 0),
             $cliente_padre,
@@ -182,6 +184,7 @@ class ClientesController extends BaseController {
         ?string $nombre_contacto = null,
         ?string $telefono = null,
         ?string $correo = null,
+        ?string $rfc = null,
         ?string $ubicacion = null,
         ?int $especial = null,
         ?int $cliente_padre = null,
@@ -201,6 +204,7 @@ class ClientesController extends BaseController {
             $cliente->setNombre_contacto($nombre_contacto ?: null);
             $cliente->setTelefono($telefono ?: null);
             $cliente->setCorreo($correo ?: null);
+            $cliente->setRfc($rfc ?: null);
             $cliente->setUbicacion($ubicacion ?: null);
             $cliente->setEspecial((bool)($especial ?? 0));
             $cliente->setCliente_padre($cliente_padre);
@@ -266,6 +270,7 @@ class ClientesController extends BaseController {
             '<style bgcolor="#DDEBF7"><b>Nombre Contacto</b></style>',
             '<style bgcolor="#DDEBF7"><b>Teléfono</b></style>',
             '<style bgcolor="#DDEBF7"><b>Correo</b></style>',
+            '<style bgcolor="#DDEBF7"><b>RFC</b></style>',
             '<style bgcolor="#DDEBF7"><b>Ubicación</b></style>',
             '<style bgcolor="#DDEBF7"><b>Cliente Especial</b></style>',
             '<style bgcolor="#DDEBF7"><b>Estado</b></style>',
@@ -306,6 +311,7 @@ class ClientesController extends BaseController {
                 $cliente['nombre_contacto'] ?? '',
                 $cliente['telefono'] ?? '',
                 $cliente['correo'] ?? '',
+                $cliente['rfc'] ?? '',
                 $cliente['ubicacion'] ?? '',
                 ($cliente['especial'] ? 'Sí' : 'No'),
                 ($cliente['estado'] ? 'Activo' : 'Inactivo'),
@@ -355,6 +361,7 @@ class ClientesController extends BaseController {
             'nombre_contacto' => ['nombre_contacto'],
             'telefono' => ['telefono'],
             'correo' => ['correo'],
+            'rfc' => ['rfc'],
             'ubicacion' => ['ubicacion'],
             'especial' => ['especial'],
             'estado' => ['estado'],
@@ -411,6 +418,7 @@ class ClientesController extends BaseController {
                 $padre->setNombre_contacto(null);
                 $padre->setTelefono(null);
                 $padre->setCorreo(null);
+                $padre->setRfc(null);
                 $padre->setUbicacion(null);
                 $padre->setEspecial(false);
                 $padre->setCliente_padre(null);
@@ -449,6 +457,7 @@ class ClientesController extends BaseController {
             $cliente->setNombre_contacto($get($row, 'nombre_contacto'));
             $cliente->setTelefono($get($row, 'telefono'));
             $cliente->setCorreo($get($row, 'correo'));
+            $cliente->setRfc($get($row, 'rfc'));
             $cliente->setUbicacion($get($row, 'ubicacion'));
 
             $especialRaw = $get($row, 'especial');
