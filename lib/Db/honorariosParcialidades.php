@@ -22,6 +22,7 @@ class honorariosParcialidades extends Entity {
 	/*--------------- Pago -----------------*/
 	protected int $pagado = 0;
 	protected ?string $fecha_pago = null;
+	protected ?int $id_cliente_pagador = null;
 
 	public function __construct() {
 
@@ -35,6 +36,7 @@ class honorariosParcialidades extends Entity {
 
 		$this->addType('pagado', 'integer');
 		$this->addType('fecha_pago', 'string');
+		$this->addType('id_cliente_pagador', 'integer');
 	}
 
 	public function read(): array {
@@ -49,6 +51,7 @@ class honorariosParcialidades extends Entity {
 
 			'pagado' => $this->pagado,
 			'fecha_pago' => $this->fecha_pago,
+			'id_cliente_pagador' => $this->id_cliente_pagador,
 		];
 	}
 }

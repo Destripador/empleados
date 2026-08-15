@@ -126,7 +126,8 @@ class HonorariosController extends BaseController {
 		string $fecha_fin,
 		?string $tipo_servicio,
 		bool $especial,
-		string $tipo_honorario = 'parcial'
+		string $tipo_honorario = 'parcial',
+    	int $periodicidad_parcialidad = 1
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
@@ -142,7 +143,7 @@ class HonorariosController extends BaseController {
 		$honorario->setEspecial($especial);
 		$honorario->setActivo(true);
 
-		$this->honorariosMapper->crearHonorario($honorario);
+		$this->honorariosMapper->crearHonorario($honorario, $periodicidad_parcialidad);
 
 		return new DataResponse(
 			['status' => 'ok'],
@@ -197,6 +198,7 @@ class HonorariosController extends BaseController {
 		$tipoServicio = $this->request->getParam('tipo_servicio');
 		$especial = (bool)$this->request->getParam('especial', false);
 		$tipoHonorario = (string)$this->request->getParam('tipo_honorario', 'parcial');
+		$periodicidadParcialidad = (int)$this->request->getParam('periodicidad_parcialidad', 1);
 
 		try {
 			$this->honorariosMapper->updateHonorario(
@@ -208,7 +210,8 @@ class HonorariosController extends BaseController {
 				$fechaFin,
 				$tipoServicio !== null ? (string)$tipoServicio : null,
 				$especial,
-				$tipoHonorario
+				$tipoHonorario,
+				$periodicidadParcialidad
 			);
 		} catch (\Exception $e) {
 			return new DataResponse(

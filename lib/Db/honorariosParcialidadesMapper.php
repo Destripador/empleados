@@ -42,15 +42,61 @@ class honorariosParcialidadesMapper extends QBMapper {
 	public function findByHonorario(int $id_honorario): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
+		$qb->select('p.*')
+			->selectAlias('c.nombre', 'pagador_nombre')
+			->from($this->getTableName(), 'p')
+			->leftJoin(
+				'p',
+				'empleados_clientes',
+				'c',
+				$qb->expr()->eq('p.id_cliente_pagador', 'c.id')
+			)
 			->where(
 				$qb->expr()->eq(
-					'id_honorario',
+					'p.id_honorario',
 					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
 				)
 			)
-			->orderBy('numero_parcialidad', 'ASC');
+			->orderBy('p.numero_parcialidad', 'ASC');
+
+		$result = $qb->executeQuery();
+		$data = $result->fetchAll();
+		$result->closeCursor();
+
+		return $data;
+	}
+
+	/**
+	 * Parcialidades de OTROS clientes que fueron pagadas por $idClientePagador.
+	 */
+	public function findPagadasPorCliente(int $idClientePagador): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('p.*')
+			->selectAlias('h.id_cliente', 'id_cliente')
+			->selectAlias('h.tipo_servicio', 'tipo_servicio')
+			->selectAlias('h.tipo_moneda', 'tipo_moneda')
+			->selectAlias('c.nombre', 'cliente_nombre')
+			->from($this->getTableName(), 'p')
+			->innerJoin(
+				'p',
+				'empleados_honorarios',
+				'h',
+				$qb->expr()->eq('p.id_honorario', 'h.id_honorario')
+			)
+			->innerJoin(
+				'h',
+				'empleados_clientes',
+				'c',
+				$qb->expr()->eq('h.id_cliente', 'c.id')
+			)
+			->where(
+				$qb->expr()->eq(
+					'p.id_cliente_pagador',
+					$qb->createNamedParameter($idClientePagador, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->orderBy('p.pfecha_inicio', 'DESC');
 
 		$result = $qb->executeQuery();
 		$data = $result->fetchAll();
@@ -80,7 +126,8 @@ class honorariosParcialidadesMapper extends QBMapper {
 	private function cambiarEstado(
 		int $id_parcialidad,
 		int $estado,
-		?string $fecha_pago = null
+		?string $fecha_pago = null,
+		?int $id_cliente_pagador = null
 	): ?int {
 		$qb = $this->db->getQueryBuilder();
 
@@ -91,6 +138,13 @@ class honorariosParcialidadesMapper extends QBMapper {
 		if ($fecha_pago !== null) {
 			$qb->set('fecha_pago', $qb->createNamedParameter($fecha_pago));
 		}
+
+		$qb->set(
+			'id_cliente_pagador',
+			$id_cliente_pagador !== null
+				? $qb->createNamedParameter($id_cliente_pagador, IQueryBuilder::PARAM_INT)
+				: $qb->createNamedParameter(null)
+		);
 
 		$qb->where(
 			$qb->expr()->eq(
@@ -158,12 +212,14 @@ class honorariosParcialidadesMapper extends QBMapper {
 	 */
 	public function marcarPagada(
 		int $id_parcialidad,
-		string $fecha_pago
+		string $fecha_pago,
+		?int $id_cliente_pagador = null
 	): ?int {
 		return $this->cambiarEstado(
 			$id_parcialidad,
 			honorariosParcialidades::PAGADO,
-			$fecha_pago
+			$fecha_pago,
+			$id_cliente_pagador
 		);
 	}
 
@@ -250,6 +306,55 @@ class honorariosParcialidadesMapper extends QBMapper {
 					$fecha->modify('+1 month');
 					break;
 			}
+		}
+	}
+
+	/**
+	 * Genera parcialidades agrupando meses según la periodicidad elegida.
+	 * cuadre exactamente con $importe_total.
+	 */
+	public function generarParcialidadesPorGrupos(
+		int $id_honorario,
+		array $grupos,
+		float $importe_total,
+		string $fecha_inicio
+	): void {
+		if (empty($grupos)) {
+			return;
+		}
+
+		$totalMeses = array_sum($grupos);
+		$importePorMes = $totalMeses > 0 ? $importe_total / $totalMeses : 0;
+
+		$fecha = new \DateTime($fecha_inicio);
+		$acumulado = 0.0;
+		$numGrupos = count($grupos);
+
+		foreach ($grupos as $i => $mesesEnGrupo) {
+			$numero = $i + 1;
+
+			$pfechaInicio = clone $fecha;
+			$pfechaFin = (clone $fecha)->modify("+{$mesesEnGrupo} months")->modify('-1 day');
+
+			if ($numero === $numGrupos) {
+				// La última absorbe el residuo de centavos
+				$importeParcialidad = round($importe_total - $acumulado, 2);
+			} else {
+				$importeParcialidad = round($importePorMes * $mesesEnGrupo, 2);
+				$acumulado += $importeParcialidad;
+			}
+
+			$parcialidad = new honorariosParcialidades();
+			$parcialidad->setId_honorario($id_honorario);
+			$parcialidad->setNumero_parcialidad($numero);
+			$parcialidad->setPfecha_inicio($pfechaInicio->format('Y-m-d'));
+			$parcialidad->setPfecha_fin($pfechaFin->format('Y-m-d'));
+			$parcialidad->setImporte_parcialidad($importeParcialidad);
+			$parcialidad->setPagado(honorariosParcialidades::NO_PAGADO);
+
+			$this->insert($parcialidad);
+
+			$fecha->modify("+{$mesesEnGrupo} months");
 		}
 	}
 

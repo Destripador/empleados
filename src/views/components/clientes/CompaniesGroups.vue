@@ -587,15 +587,15 @@
 																	<NcButton v-if="canAdminCustomers && Number(p.pagado) === 0"
 																		class="btn-pagar"
 																		type="primary"
-																		@click="abrirDialogPago(p.id_parcialidad, honorario.id_honorario)">
-																		{{ t('empleados', 'Mark as paid') }}
+																		@click="abrirDialogPago(p, honorario.id_honorario)">
+																		{{ t('empleados', 'Mark as invoiced') }}
 																	</NcButton>
 
 																	<template v-else-if="canAdminCustomers && Number(p.pagado) === 1">
 																		<NcButton class="btn-factura"
 																			type="secondary"
 																			@click="confirmarFactura(p.id_parcialidad, honorario.id_honorario)">
-																			{{ t('empleados', 'Mark as invoiced') }}
+																			{{ t('empleados', 'Mark as completed') }}
 																		</NcButton>
 																	</template>
 
@@ -609,6 +609,12 @@
 															<div v-if="detalleAbierto[p.id_parcialidad]" class="parcialidad-detalle">
 																<span v-if="p.fecha_pago" class="parcialidad-detail-text">
 																	💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
+																	<template v-if="p.id_cliente_pagador">
+																		—
+																		<button type="button" class="pagador-link" @click="irAClientePagador(p.id_cliente_pagador)">
+																			{{ p.pagador_nombre || t('empleados', 'Another company') }}
+																		</button>
+																	</template>
 																</span>
 
 																<NcActions v-if="canAdminCustomers && Number(p.pagado) === 1" class="parcialidad-detalle-actions">
@@ -635,6 +641,31 @@
 											</div>
 										</div>
 									</div>
+									<div v-if="pagosRealizados.length > 0" class="info-section billing-section">
+										<div class="section-head">
+											<div>
+												<p class="section-label">{{ t('empleados', 'Billing') }}</p>
+												<h3>{{ t('empleados', 'Payments made for other companies') }}</h3>
+											</div>
+										</div>
+
+										<div class="children-grid">
+											<button v-for="pago in pagosRealizados"
+												:key="pago.id_parcialidad"
+												type="button"
+												class="child-card"
+												@click="irAClienteOriginal(pago.id_cliente)">
+												<div class="child-icon">
+													<OfficeBuilding :size="20" />
+												</div>
+
+												<div class="child-info">
+													<span class="value-text">{{ pago.cliente_nombre }} — {{ pago.tipo_servicio || t('empleados', 'Service') }}</span>
+													<span>#{{ pago.numero_parcialidad }} · {{ formatImporte(pago.importe_parcialidad) }} {{ pago.tipo_moneda }} · {{ pago.fecha_pago }}</span>
+												</div>
+											</button>
+										</div>
+									</div>
 								</VTab>
 							</VueTabs>
 						</div>
@@ -643,7 +674,7 @@
 						<NcModal
 							v-if="showPagoDialog"
 							size="small"
-							:name="t('empleados', 'Register payment')"
+							:name="t('empleados', 'Register Invoice')"
 							@close="showPagoDialog = false">
 							<div class="payment-modal">
 								<div class="payment-icon-wrapper">
@@ -651,16 +682,39 @@
 										💳
 									</div>
 								</div>
-								<h2>{{ t('empleados', 'Register payment') }}</h2>
+								<h2>{{ t('empleados', 'Register Invoice') }}</h2>
 								<p class="payment-subtitle">
-									{{ t('empleados', 'Select the payment date for this installment.') }}
+									{{ t('empleados', 'Select the invoice date for this installment.') }}
 								</p>
 								<div class="payment-field">
 									<NcTextField
 										v-model="fechaPago"
 										type="date"
-										:label="t('empleados', 'Payment date')" />
+										:label="t('empleados', 'Invoice date')" />
 								</div>
+
+								<div class="payment-advanced">
+									<button type="button"
+										class="payment-advanced__toggle"
+										@click="showAdvancedPago = !showAdvancedPago">
+										<DotsHorizontal :size="16" />
+										{{ t('empleados', 'Advanced options') }}
+										<ChevronDown :size="14" class="payment-advanced__chevron" :class="{ open: showAdvancedPago }" />
+									</button>
+
+									<div v-if="showAdvancedPago" class="payment-advanced__body">
+										<NcSelect v-model="pagoClientePagador"
+											:options="clientesPagadorOptions"
+											:clearable="true"
+											:placeholder="t('empleados', 'Paid by another company')"
+											label="label"
+											track-by="value" />
+										<p class="payment-advanced__hint">
+											{{ t('empleados', 'Only fill this in if a related company (parent or sister) paid this installment instead.') }}
+										</p>
+									</div>
+								</div>
+
 								<div class="payment-actions">
 									<NcButton @click="showPagoDialog = false">
 										{{ t('empleados', 'Cancel') }}
@@ -1038,15 +1092,23 @@
 							track-by="value"
 							:searchable="false"
 							:disabled="isEditingHonorario" />
+						<NcSelect v-model="h_periodicidad"
+							class="span-2"
+							:options="periodicidadOptions"
+							:input-label="t('empleados', 'Select installment period')"
+							label="label"
+							track-by="value"
+							:searchable="false"
+							:disabled="isEditingHonorario" />
 					</template>
 
 					<!-- Preview -->
-					<NcNoteCard v-if="!isEditingHonorario && h_tipo_honorario === 'parcial' && h_numero_parcialidades > 0"
+					<NcNoteCard v-if="!isEditingHonorario && h_tipo_honorario === 'parcial' && periodBreakdown.length > 0"
 						type="info"
 						class="span-2">
-						{{ t('empleados', '{n} installment(s) of {amount} {currency}', {
-							n: h_numero_parcialidades,
-							amount: formatImporte(h_importe_parcialidad),
+						{{ t('empleados', '{n} installment(s): {detail} {currency}', {
+							n: periodBreakdown.length,
+							detail: periodAmounts.map(a => formatImporte(a)).join(' + '),
 							currency: h_tipo_moneda ? h_tipo_moneda.value : ''
 						}) }}
 					</NcNoteCard>
@@ -1232,6 +1294,13 @@ export default {
 			h_importe_total: '',
 			h_fecha_inicio: '',
 			h_fecha_fin: '',
+			h_periodicidad: { label: t('empleados', 'Monthly'), value: 1 },
+			periodicidadOptions: [
+				{ label: t('empleados', 'Monthly'), value: 1 },
+				{ label: t('empleados', 'Bimonthly'), value: 2 },
+				{ label: t('empleados', 'Quarterly'), value: 3 },
+				{ label: t('empleados', 'Annual'), value: 12 },
+			],
 			parcialidadesAbiertas: {},
 			loadingParcialidades: {},
 			parcialidades: {},
@@ -1321,6 +1390,10 @@ export default {
 			rep_nombreOtro: '',
 			rep_nombreGerente: '',
 			rep_nombreSocio: '',
+			showAdvancedPago: false,
+			pagoClientePagador: null,
+			pagosRealizados: [],
+			loadingPagosRealizados: false,
 		}
 	},
 
@@ -1464,11 +1537,10 @@ export default {
 			]
 		},
 
-		h_numero_parcialidades() {
+		totalMesesRango() {
 			if (!this.h_mes_inicio || !this.h_anio_inicio || !this.h_mes_fin || !this.h_anio_fin) {
 				return 0
 			}
-
 			const inicioYear = this.h_anio_inicio.value
 			const inicioMes = this.h_mes_inicio.value
 			const finYear = this.h_anio_fin.value
@@ -1477,19 +1549,34 @@ export default {
 			if (finYear < inicioYear || (finYear === inicioYear && finMes < inicioMes)) {
 				return 0
 			}
-
 			return (finYear - inicioYear) * 12 + (finMes - inicioMes) + 1
 		},
 
-		h_importe_parcialidad() {
-			const total = Number(this.h_importe_total || 0)
-			const partes = this.h_numero_parcialidades
+		periodBreakdown() {
+			const totalMeses = this.totalMesesRango
+			const periodo = this.h_periodicidad?.value || 1
+			if (!totalMeses || !periodo) return []
 
-			if (!total || !partes) {
-				return 0
+			const grupos = []
+			let restante = totalMeses
+			while (restante > 0) {
+				grupos.push(Math.min(periodo, restante))
+				restante -= periodo
 			}
+			return grupos
+		},
 
-			return Math.round((total / partes) * 100) / 100
+		h_numero_parcialidades() {
+			return this.periodBreakdown.length
+		},
+
+		periodAmounts() {
+			const total = Number(this.h_importe_total || 0)
+			const totalMeses = this.totalMesesRango
+			if (!total || !totalMeses) return []
+
+			const porMes = total / totalMeses
+			return this.periodBreakdown.map(meses => Math.round(porMes * meses * 100) / 100)
 		},
 
 		isHonorarioValid() {
@@ -1604,6 +1691,11 @@ export default {
 				? t('empleados', 'Save changes')
 				: t('empleados', 'Create fee')
 		},
+
+		clientesPagadorOptions() {
+			const currentId = this.selectedClient?.id
+			return this.options.filter(o => !currentId || Number(o.value) !== Number(currentId))
+		},
 	},
 
 	watch: {
@@ -1612,9 +1704,11 @@ export default {
 			this.parcialidadesAbiertas = {}
 			this.parcialidades = {}
 			this.loadingParcialidades = {}
+			this.pagosRealizados = []
 
 			if (newId) {
 				this.GetHonorariosByCliente(newId)
+				this.GetPagosRealizadosPorCliente(newId)
 			}
 		},
 
@@ -2138,6 +2232,7 @@ export default {
 			this.h_titulo_mes = null
 			this.h_titulo_anio = { label: String(currentYear), value: currentYear }
 			this.h_especial = false
+			this.h_periodicidad = this.periodicidadOptions[0]
 		},
 
 		resetHonorarioFilters() {
@@ -2211,6 +2306,7 @@ export default {
 						? `${this.h_anio_inicio.value}-${String(this.h_mes_inicio.value).padStart(2, '0')}-01`
 						: '',
 					fecha_fin: fechaFin,
+					periodicidad_parcialidad: this.h_periodicidad?.value || 1,
 					tipo_servicio: (() => {
 						const base = String(this.h_tipo_servicio || '').trim()
 						const mes = this.h_titulo_mes?.label || ''
@@ -2353,10 +2449,12 @@ export default {
 			}
 		},
 
-		abrirDialogPago(idParcialidad, idHonorario) {
-			this.parcialidadSeleccionada = idParcialidad
+		abrirDialogPago(p, idHonorario) {
+			this.parcialidadSeleccionada = p.id_parcialidad
 			this.honorarioSeleccionado = idHonorario
 			this.fechaPago = new Date().toISOString().split('T')[0]
+			this.showAdvancedPago = false
+			this.pagoClientePagador = null
 			this.showPagoDialog = true
 		},
 
@@ -2367,23 +2465,14 @@ export default {
 					{
 						id_parcialidad: this.parcialidadSeleccionada,
 						fecha_pago: this.fechaPago,
+						id_cliente_pagador: this.pagoClientePagador?.value ?? null,
 					},
 				)
 
 				this.showPagoDialog = false
-
-				await this.GetParcialidades(
-					this.honorarioSeleccionado,
-				)
-
-				await this.GetHonorariosByCliente(
-					this.selectedClient.id,
-				)
-
-				showSuccess(
-					t('empleados', 'Installment marked as paid'),
-				)
-
+				await this.GetParcialidades(this.honorarioSeleccionado)
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+				showSuccess(t('empleados', 'Installment marked as paid'))
 			} catch (err) {
 				showError(String(err))
 			}
@@ -2393,6 +2482,10 @@ export default {
 			this.parcialidadSeleccionada = p.id_parcialidad
 			this.honorarioSeleccionado = idHonorario
 			this.fechaPago = p.fecha_pago || new Date().toISOString().split('T')[0]
+			this.showAdvancedPago = Boolean(p.id_cliente_pagador)
+			this.pagoClientePagador = p.id_cliente_pagador
+				? this.options.find(o => Number(o.value) === Number(p.id_cliente_pagador)) || null
+				: null
 			this.showPagoDialog = true
 		},
 
@@ -2719,6 +2812,31 @@ export default {
 			} finally {
 				this.generandoReporte = false
 			}
+		},
+
+		async GetPagosRealizadosPorCliente(idCliente) {
+			this.loadingPagosRealizados = true
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/empleados/findParcialidadesPagadasPorCliente'),
+					{ id_cliente: idCliente },
+				)
+				const data = this.getOcsData(response)
+				this.pagosRealizados = Array.isArray(data) ? data : []
+			} catch (err) {
+				showError(t('empleados', 'Error loading payments made: {error}', { error: String(err) }))
+				this.pagosRealizados = []
+			} finally {
+				this.loadingPagosRealizados = false
+			}
+		},
+
+		irAClientePagador(idCliente) {
+			this.GetCompanieGroup(idCliente)
+		},
+
+		irAClienteOriginal(idCliente) {
+			this.GetCompanieGroup(idCliente)
 		},
 	},
 }
@@ -3805,5 +3923,58 @@ export default {
 
 .top {
 	margin-top: 40px;
+}
+
+.payment-advanced {
+	width: 100%;
+	margin-top: -12px;
+	margin-bottom: 20px;
+}
+
+.payment-advanced__toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border: none;
+	background: transparent;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.78rem;
+	cursor: pointer;
+	border-radius: var(--border-radius);
+
+	&:hover {
+		background: var(--color-background-hover);
+		color: var(--color-main-text);
+	}
+}
+
+.payment-advanced__chevron {
+	transition: transform 0.15s ease;
+
+	&.open {
+		transform: rotate(180deg);
+	}
+}
+
+.payment-advanced__body {
+	margin-top: 10px;
+	text-align: left;
+}
+
+.payment-advanced__hint {
+	margin: 6px 0 0;
+	font-size: 0.72rem;
+	color: var(--color-text-maxcontrast);
+}
+
+.pagador-link {
+	border: none;
+	background: none;
+	padding: 0;
+	color: var(--color-primary-element);
+	font-weight: 600;
+	cursor: pointer;
+	text-decoration: underline;
 }
 </style>
