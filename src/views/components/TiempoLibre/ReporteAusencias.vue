@@ -264,6 +264,14 @@
 
 											<span
 												class="chip-mini"
+												:class="chipAprobacion(item.a_supervisor).clase"
+												:title="t('empleados', 'Supervisor')">
+												{{ t('empleados', 'Sup:') }}
+												{{ chipAprobacion(item.a_supervisor).texto }}
+											</span>
+
+											<span
+												class="chip-mini"
 												:class="chipAprobacion(item.a_capital_humano).clase"
 												:title="t('empleados', 'Capital Humano')">
 												{{ t('empleados', 'RH:') }}
@@ -362,6 +370,9 @@
 							<td class="col-aprobacion">
 								<span class="chip-mini" :class="chipAprobacion(item.a_gerente).clase" :title="t('empleados', 'Gerente')">
 									{{ t('empleados', 'G:') }} {{ chipAprobacion(item.a_gerente).texto }}
+								</span>
+								<span class="chip-mini" :class="chipAprobacion(item.a_supervisor).clase" :title="t('empleados', 'Supervisor')">
+									{{ t('empleados', 'Sup:') }} {{ chipAprobacion(item.a_supervisor).texto }}
 								</span>
 								<span class="chip-mini" :class="chipAprobacion(item.a_socio).clase" :title="t('empleados', 'Socio')">
 									{{ t('empleados', 'S:') }} {{ chipAprobacion(item.a_socio).texto }}
@@ -583,7 +594,7 @@ export default {
 				if (this.filtroEstado && this.chipEstado(item).texto !== this.filtroEstado) return false
 				if (this.filtroAprobacion !== '') {
 					const v = parseInt(this.filtroAprobacion)
-					if (parseInt(item.a_gerente) !== v && parseInt(item.a_socio) !== v) return false
+					if (parseInt(item.a_gerente) !== v && parseInt(item.a_socio) !== v && parseInt(item.a_supervisor ?? 0) !== v) return false
 				}
 				return true
 			})
@@ -839,7 +850,8 @@ export default {
 		rowClass(item) {
 			const g = parseInt(item.a_gerente)
 			const s = parseInt(item.a_socio)
-			if (g === 3 || s === 3 || g === 2 || s === 2) return 'row-cancelado'
+			const sup = parseInt(item.a_supervisor ?? 0)
+			if (g === 3 || s === 3 || sup === 3 || g === 2 || s === 2 || sup === 2) return 'row-cancelado'
 			const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
 			const hasta = this.parseFecha(item.fecha_hasta)
 			return hasta < hoy ? 'row-pasado' : 'row-futuro'
@@ -848,7 +860,8 @@ export default {
 		chipEstado(item) {
 			const g = parseInt(item.a_gerente)
 			const s = parseInt(item.a_socio)
-			if (g === 3 || s === 3 || g === 2 || s === 2) {
+			const sup = parseInt(item.a_supervisor ?? 0)
+			if (g === 3 || s === 3 || sup === 3 || g === 2 || s === 2 || sup === 2) {
 				return { texto: t('empleados', 'Cancelada'), clase: 'chip-cancelado' }
 			}
 			const hoy = new Date(); hoy.setHours(0, 0, 0, 0)

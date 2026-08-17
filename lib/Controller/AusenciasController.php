@@ -151,7 +151,18 @@ class AusenciasController extends BaseController {
         $event->setMessage('Desde "' . $fechaInicio . '" hasta "' . $fechaFin . '"');
         $this->activityManager->publish($event);
 
-        foreach ([$employe_info[0]['Id_gerente'], $employe_info[0]['Id_socio'], $this->configuracionesMapper->GetGestor()[0]['Data']] as $usuario) {
+        $destinatarios = [
+            $employe_info[0]['Id_gerente'] ?? null,
+            $employe_info[0]['Id_socio'] ?? null,
+            $employe_info[0]['Id_supervisor'] ?? null,
+            $this->configuracionesMapper->GetGestor()[0]['Data'] ?? null,
+        ];
+
+        foreach ($destinatarios as $usuario) {
+            if (empty($usuario)) {
+                continue;
+            }
+
             $userM = $this->userManager->get($usuario);
 
             if (!$userM) {
@@ -208,7 +219,7 @@ class AusenciasController extends BaseController {
         $empleados_data = [];
         $ids_vistos = [];
 
-        // 1) Jerarquía: gerente / socio
+        // 1) Jerarquía: gerente / socio / supervisor
         foreach ($this->empleadosMapper->GetSubordinates($uid) as $empleado) {
             $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($empleado['Id_user']);
             $ausencias = $this->ausenciasMapper->GetAusenciasByUser($id_empleado[0]['Id_empleados']);
@@ -220,6 +231,9 @@ class AusenciasController extends BaseController {
             }
             if ($id_empleado[0]['Id_socio'] === $uid) {
                 $historial = array_merge($historial, $this->historialausenciasMapper->GetAusenciasHistorialSocio($ausencias[0]['id_ausencias']));
+            }
+            if (!empty($id_empleado[0]['Id_supervisor']) && $id_empleado[0]['Id_supervisor'] === $uid) {
+                $historial = array_merge($historial, $this->historialausenciasMapper->GetAusenciasHistorialSupervisor($ausencias[0]['id_ausencias']));
             }
 
             foreach ($historial as $item) {
@@ -1066,6 +1080,8 @@ class AusenciasController extends BaseController {
 
             $ausencia['es_gerente'] = !empty($empleadoInfo) && $empleadoInfo[0]['Id_gerente'] === $uid;
             $ausencia['es_socio'] = !empty($empleadoInfo) && $empleadoInfo[0]['Id_socio'] === $uid;
+            $ausencia['es_supervisor'] = !empty($empleadoInfo) && !empty($empleadoInfo[0]['Id_supervisor']) && $empleadoInfo[0]['Id_supervisor'] === $uid;
+            $ausencia['tiene_supervisor'] = !empty($empleadoInfo) && !empty($empleadoInfo[0]['Id_supervisor']); // <-- nueva línea
             $ausencia['es_privilegiado'] = $isPrivileged;
             $ausencia['gerente_es_socio'] = !empty($empleadoInfo) && $this->gerenteEsSocio($empleadoInfo);
 
@@ -1123,14 +1139,14 @@ class AusenciasController extends BaseController {
                 }
             }
 
-            if ((int) $ausencia['a_gerente'] === 3 || (int) $ausencia['a_socio'] === 3) {
+            if ((int) $ausencia['a_gerente'] === 3 || (int) $ausencia['a_socio'] === 3 || (int) ($ausencia['a_supervisor'] ?? 0) === 3) {
                 return new DataResponse(
                     ['success' => false, 'message' => 'La ausencia ya está cancelada'],
                     Http::STATUS_BAD_REQUEST
                 );
             }
 
-            if ((int) $ausencia['a_gerente'] === 2 || (int) $ausencia['a_socio'] === 2 || (int) ($ausencia['a_capital_humano'] ?? 0) === 2) {
+            if ((int) $ausencia['a_gerente'] === 2 || (int) $ausencia['a_socio'] === 2 || (int) ($ausencia['a_supervisor'] ?? 0) === 2 || (int) ($ausencia['a_capital_humano'] ?? 0) === 2) {
                 return new DataResponse(
                     ['success' => false, 'message' => 'La ausencia ya fue rechazada'],
                     Http::STATUS_BAD_REQUEST
@@ -1707,15 +1723,15 @@ class AusenciasController extends BaseController {
 
     /**
      * Aprobar una ausencia según el rol de quien aprueba.
-     * $rol puede ser: 'gerente' | 'socio' | 'capital_humano' | 'capital_humano_como_socio'
+     * $rol puede ser: 'gerente' | 'socio' | 'supervisor' | 'capital_humano' | 'capital_humano_como_socio'
      */
     #[UseSession]
     #[NoAdminRequired]
     public function AprobarAusencia(): DataResponse {
         $id = (int) $this->request->getParam('id');
-        $rol = (string) $this->request->getParam('rol');
+        $rol = (string) ($this->request->getParam('rol') ?? '');
 
-        if ($id <= 0 || empty($rol)) {
+        if ($id <= 0) {
             return new DataResponse([
                 'success' => false,
                 'message' => 'Parámetros inválidos'
@@ -1732,7 +1748,6 @@ class AusenciasController extends BaseController {
 
         $ausencia = $detalle[0];
 
-        // Ya fue rechazada o cancelada
         if ((int)$ausencia['a_gerente'] === 2 || (int)$ausencia['a_gerente'] === 3) {
             return new DataResponse([
                 'success' => false,
@@ -1758,72 +1773,98 @@ class AusenciasController extends BaseController {
             $this->groupManager->isInGroup($uid, 'admin') ||
             $this->groupManager->isInGroup($uid, 'recursos_humanos');
 
-        $esGerente = !empty($empleadoInfo)
-            && $empleadoInfo[0]['Id_gerente'] === $uid;
+        $esGerente = !empty($empleadoInfo) && $empleadoInfo[0]['Id_gerente'] === $uid;
+        $esSocio = !empty($empleadoInfo) && $empleadoInfo[0]['Id_socio'] === $uid;
+        $tieneSupervisorAsignado = !empty($empleadoInfo[0]['Id_supervisor'] ?? null);
+        $esSupervisor = !empty($empleadoInfo) && $tieneSupervisorAsignado && $empleadoInfo[0]['Id_supervisor'] === $uid;
 
-        $esSocio = !empty($empleadoInfo)
-            && $empleadoInfo[0]['Id_socio'] === $uid;
-
-        $autorizado = match ($rol) {
-            'gerente' => $esGerente,
-            'socio' => $esSocio,
-            'capital_humano',
-            'capital_humano_como_socio' => $isPrivileged,
-            default => false,
-        };
-
-        if (!$autorizado) {
-            return new DataResponse([
-                'success' => false,
-                'message' => 'No tienes permiso para aprobar con este rol'
-            ], Http::STATUS_FORBIDDEN);
-        }
-
-        // RH "puro" (no gerente ni socio) solo puede aprobar como capital_humano
-        // después de que gerente y socio ya hayan aprobado.
-        if ($rol === 'capital_humano' && !$esGerente && !$esSocio) {
-            if ((int) $ausencia['a_gerente'] !== 1 || (int) $ausencia['a_socio'] !== 1) {
+        // Caso especial: RH aprueba EN NOMBRE del socio 
+        if ($rol === 'capital_humano_como_socio') {
+            if (!$isPrivileged || $esSocio) {
                 return new DataResponse([
                     'success' => false,
-                    'message' => 'RH solo puede aprobar una vez que gerente y socio hayan aprobado'
+                    'message' => 'No tienes permiso para aprobar en nombre del socio'
+                ], Http::STATUS_FORBIDDEN);
+            }
+
+            if ((int) $ausencia['a_socio'] === 1) {
+                return new DataResponse([
+                    'success' => false,
+                    'message' => 'El socio ya había aprobado esta solicitud'
                 ], Http::STATUS_BAD_REQUEST);
             }
-        }
 
-        if (
-            $rol === 'capital_humano_como_socio' &&
-            (int)$ausencia['a_socio'] === 1
-        ) {
-            return new DataResponse([
-                'success' => false,
-                'message' => 'El socio ya aprobó esta solicitud'
-            ], Http::STATUS_BAD_REQUEST);
-        }
+            $faltaSupervisor = $tieneSupervisorAsignado && (int) ($ausencia['a_supervisor'] ?? 0) !== 1;
 
-        if ($esGerente && (int)$ausencia['a_gerente'] !== 1) {
-            $this->historialausenciasMapper->SetEstadoGerente($id, 1);
-        }
+            if ((int) $ausencia['a_gerente'] !== 1 || $faltaSupervisor) {
+                return new DataResponse([
+                    'success' => false,
+                    'message' => 'Debes esperar a que el gerente y el supervisor aprueben antes de aprobar en nombre del socio'
+                ], Http::STATUS_BAD_REQUEST);
+            }
 
-        if ($esSocio && (int)$ausencia['a_socio'] !== 1) {
             $this->historialausenciasMapper->SetEstadoSocio($id, 1);
+            $ausencia['a_socio'] = 1; // para el chequeo final de abajo
+
+        } else {
+            // Ya fue rechazada o cancelada
+            if ((int)$ausencia['a_gerente'] === 2 || (int)$ausencia['a_gerente'] === 3) {
+                return new DataResponse([
+                    'success' => false,
+                    'message' => 'Esta solicitud ya fue rechazada o cancelada'
+                ], Http::STATUS_BAD_REQUEST);
+            }
+
+            // Debe tener al menos uno de los 4 roles para poder aprobar algo
+            if (!$esGerente && !$esSocio && !$esSupervisor && !$isPrivileged) {
+                return new DataResponse([
+                    'success' => false,
+                    'message' => 'No tienes permiso para aprobar esta solicitud'
+                ], Http::STATUS_FORBIDDEN);
+            }
+
+            // RH "puro" (no gerente/socio/supervisor de este empleado) solo puede
+            // aprobar hasta que los demás roles requeridos ya hayan aprobado.
+            if ($isPrivileged && !$esGerente && !$esSocio && !$esSupervisor) {
+                $faltaSupervisor = $tieneSupervisorAsignado && (int) ($ausencia['a_supervisor'] ?? 0) !== 1;
+
+                if ((int) $ausencia['a_gerente'] !== 1 || (int) $ausencia['a_socio'] !== 1 || $faltaSupervisor) {
+                    return new DataResponse([
+                        'success' => false,
+                        'message' => 'RH solo puede aprobar una vez que gerente, socio y supervisor hayan aprobado'
+                    ], Http::STATUS_BAD_REQUEST);
+                }
+            }
+
+            if ($esGerente && (int)$ausencia['a_gerente'] !== 1) {
+                $this->historialausenciasMapper->SetEstadoGerente($id, 1);
+            }
+
+            if ($esSocio && (int)$ausencia['a_socio'] !== 1) {
+                $this->historialausenciasMapper->SetEstadoSocio($id, 1);
+            }
+
+            if ($esSupervisor && (int)($ausencia['a_supervisor'] ?? 0) !== 1) {
+                $this->historialausenciasMapper->SetEstadoSupervisor($id, 1);
+            }
+
+            if ($isPrivileged && (int)$ausencia['a_capital_humano'] !== 1) {
+                $this->historialausenciasMapper->SetEstadoCapitalHumano($id, 1);
+            }
+
+            $ausencia['a_gerente'] = $esGerente ? 1 : (int) $ausencia['a_gerente'];
+            $ausencia['a_socio'] = $esSocio ? 1 : (int) $ausencia['a_socio'];
+            $ausencia['a_supervisor'] = !$tieneSupervisorAsignado ? 1 : ($esSupervisor ? 1 : (int) ($ausencia['a_supervisor'] ?? 0));
+            $ausencia['a_capital_humano'] = $isPrivileged ? 1 : (int) ($ausencia['a_capital_humano'] ?? 0);
         }
 
-        if ($isPrivileged && (int)$ausencia['a_capital_humano'] !== 1) {
-            $this->historialausenciasMapper->SetEstadoCapitalHumano($id, 1);
-        }
+        // Estado final considerando lo que se acaba de marcar en esta misma llamada
+        $gerenteFinal = (int) $ausencia['a_gerente'];
+        $socioFinal = (int) $ausencia['a_socio'];
+        $supervisorFinal = !$tieneSupervisorAsignado ? 1 : (int) ($ausencia['a_supervisor'] ?? 0);
+        $capitalHumanoFinal = (int) ($ausencia['a_capital_humano'] ?? 0);
 
-        if (
-            $rol === 'capital_humano_como_socio' &&
-            (int)$ausencia['a_socio'] !== 1
-        ) {
-            $this->historialausenciasMapper->SetEstadoSocio($id, 1);
-        }
-
-        $gerenteFinal = $esGerente ? 1 : (int) $ausencia['a_gerente'];
-        $socioFinal = ($esSocio || $rol === 'capital_humano_como_socio') ? 1 : (int) $ausencia['a_socio'];
-        $capitalHumanoFinal = $isPrivileged ? 1 : (int) ($ausencia['a_capital_humano'] ?? 0);
-
-        if ($gerenteFinal === 1 && $socioFinal === 1 && $capitalHumanoFinal === 1) {
+        if ($gerenteFinal === 1 && $socioFinal === 1 && $supervisorFinal === 1 && $capitalHumanoFinal === 1) {
             $this->notificarAusenciaAprobada($ausencia);
         }
 
@@ -1865,9 +1906,10 @@ class AusenciasController extends BaseController {
             $uid = $user->getUID();
             $isPrivileged = $this->groupManager->isInGroup($uid, 'admin') || $this->groupManager->isInGroup($uid, 'recursos_humanos');
  
-           $autorizado = match ($rol) {
+            $autorizado = match ($rol) {
                 'gerente' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_gerente'] === $uid,
                 'socio' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_socio'] === $uid,
+                'supervisor' => !empty($empleadoInfo) && $empleadoInfo[0]['Id_supervisor'] === $uid,
                 default => false,
             };
  

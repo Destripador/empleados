@@ -224,7 +224,7 @@ export default {
 		esRechazoDeJefe() {
 			if (!this.ausencia) return false
 			return this.statusKey === 'pending'
-				&& (this.ausencia.es_gerente || this.ausencia.es_socio)
+				&& (this.ausencia.es_gerente || this.ausencia.es_socio || this.ausencia.es_supervisor)
 		},
 
 		canCancel() {
@@ -243,7 +243,9 @@ export default {
 
 		canEdit() {
 			if (!this.ausencia) return false
-			const pendiente = Number(this.ausencia.a_gerente) <= 0 && Number(this.ausencia.a_socio) <= 0
+			const pendiente = Number(this.ausencia.a_gerente) <= 0
+				&& Number(this.ausencia.a_socio) <= 0
+				&& Number(this.ausencia.a_supervisor ?? 0) <= 0
 			const fechaInicio = new Date(this.ausencia.fecha_de)
 			const hoy = new Date()
 			hoy.setHours(0, 0, 0, 0)
@@ -254,21 +256,26 @@ export default {
 			if (!this.ausencia) return 'pending'
 			const g = Number(this.ausencia.a_gerente)
 			const s = Number(this.ausencia.a_socio)
+			const sup = Number(this.ausencia.a_supervisor ?? 0)
 			const ch = Number(this.ausencia.a_capital_humano ?? 0)
-			if (g === 3 || s === 3) return 'cancelled'
-			if (g === 2 || s === 2 || ch === 2) return 'rejected'
-			if (g === 1 && s === 1 && ch === 1) return 'approved'
+			if (g === 3 || s === 3 || sup === 3) return 'cancelled'
+			if (g === 2 || s === 2 || sup === 2 || ch === 2) return 'rejected'
+			if (g === 1 && s === 1 && sup === 1 && ch === 1) return 'approved'
 			return 'pending'
 		},
 
 		puedeAprobar() {
-			return this.puedeAprobarGerente || this.puedeAprobarSocio || this.puedeAprobarCapitalHumano
+			return this.puedeAprobarGerente || this.puedeAprobarSocio || this.puedeAprobarSupervisor || this.puedeAprobarCapitalHumano
 		},
 		rolPrincipalAprobar() {
 			if (this.puedeAprobarGerente) return 'gerente'
 			if (this.puedeAprobarSocio) return 'socio'
+			if (this.puedeAprobarSupervisor) return 'supervisor'
 			if (this.puedeAprobarCapitalHumano) return 'capital_humano'
 			return null
+		},
+		puedeAprobarSupervisor() {
+			return this.ausencia?.es_supervisor && Number(this.ausencia.a_supervisor ?? 0) === 0
 		},
 
 		puedeAprobarGerente() {
@@ -280,15 +287,18 @@ export default {
 		puedeAprobarCapitalHumano() {
 			if (!this.ausencia?.es_privilegiado) return false
 			if (Number(this.ausencia.a_capital_humano ?? 0) !== 0) return false
-			// Si RH también es gerente o socio, el botón aparece de inmediato
-			if (this.ausencia?.es_gerente || this.ausencia?.es_socio) return true
-			// RH "puro": espera a que gerente y socio ya hayan aprobado
-			return Number(this.ausencia.a_gerente) === 1 && Number(this.ausencia.a_socio) === 1
+			if (this.ausencia?.es_gerente || this.ausencia?.es_socio || this.ausencia?.es_supervisor) return true
+			return Number(this.ausencia.a_gerente) === 1
+				&& Number(this.ausencia.a_socio) === 1
+				&& Number(this.ausencia.a_supervisor ?? 0) === 1
 		},
 		puedeAprobarComoSocioRH() {
-			return this.ausencia?.es_privilegiado
-				&& !this.ausencia?.es_socio
-				&& Number(this.ausencia.a_socio) === 0
+			if (!this.ausencia?.es_privilegiado) return false
+			if (this.ausencia?.es_socio) return false
+			if (Number(this.ausencia.a_socio) === 1) return false
+
+			const supervisorOk = !this.ausencia.tiene_supervisor || Number(this.ausencia.a_supervisor ?? 0) === 1
+			return Number(this.ausencia.a_gerente) === 1 && supervisorOk
 		},
 
 		statusLabel() {
@@ -305,24 +315,10 @@ export default {
 			if (!this.ausencia) return []
 
 			const roles = [
-				{
-					key: 'socio',
-					label: t('empleados', 'Partner'),
-					estado: Number(this.ausencia.a_socio),
-					nombre: this.ausencia.nombre_socio,
-				},
-				{
-					key: 'gerente',
-					label: t('empleados', 'Manager'),
-					estado: Number(this.ausencia.a_gerente),
-					nombre: this.ausencia.nombre_gerente,
-				},
-				{
-					key: 'capital_humano',
-					label: t('empleados', 'Human resources'),
-					estado: Number(this.ausencia.a_capital_humano ?? 0),
-					nombre: this.ausencia.nombre_capital_humano,
-				},
+				{ key: 'socio', label: t('empleados', 'Partner'), estado: Number(this.ausencia.a_socio), nombre: this.ausencia.nombre_socio },
+				{ key: 'gerente', label: t('empleados', 'Manager'), estado: Number(this.ausencia.a_gerente), nombre: this.ausencia.nombre_gerente },
+				{ key: 'supervisor', label: t('empleados', 'Supervisor'), estado: Number(this.ausencia.a_supervisor ?? 0), nombre: this.ausencia.nombre_supervisor },
+				{ key: 'capital_humano', label: t('empleados', 'Human resources'), estado: Number(this.ausencia.a_capital_humano ?? 0), nombre: this.ausencia.nombre_capital_humano },
 			]
 
 			return roles.map((rol) => {
@@ -330,9 +326,7 @@ export default {
 				let estadoKey
 				if (rol.estado === 1) {
 					estadoKey = 'aprobado'
-					texto = rol.nombre
-						? t('empleados', 'Approved by {nombre}', { nombre: rol.nombre })
-						: t('empleados', 'Approved')
+					texto = rol.nombre ? t('empleados', 'Approved by {nombre}', { nombre: rol.nombre }) : t('empleados', 'Approved')
 				} else if (rol.estado === 2) {
 					estadoKey = 'rechazado'
 					texto = t('empleados', 'Rejected')
@@ -409,7 +403,13 @@ export default {
 		},
 
 		async rechazar() {
-			const rol = this.ausencia.es_gerente ? 'gerente' : this.ausencia.es_socio ? 'socio' : 'capital_humano'
+			const rol = this.ausencia.es_gerente
+				? 'gerente'
+				: this.ausencia.es_socio
+					? 'socio'
+					: this.ausencia.es_supervisor
+						? 'supervisor'
+						: 'capital_humano'
 			const motivo = this.motivoRechazo.trim()
 
 			this.procesando = true
