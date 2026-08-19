@@ -214,6 +214,9 @@ return [
 		['name' => 'honorarios#reactivarHonorario', 'url' => '/reactivarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#actualizarMetadatos', 'url' => '/actualizarMetadatosHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#generarSolicitudRecibo', 'url' => '/generarSolicitudRecibo', 'verb' => 'GET'],
+		['name' => 'honorarios#enviarSolicitudRecibo', 'url' => '/enviarSolicitudRecibo', 'verb' => 'POST'],
+		['name' => 'honorarios#descargarSolicitudesMultiples', 'url' => '/descargarSolicitudesMultiples', 'verb' => 'POST'],
+		['name' => 'honorarios#notificarHonorariosPendientes', 'url' => '/notificarHonorariosPendientes', 'verb' => 'POST'],
 
 		/****************************** ACTIVIDADES ***************************************/
 		['name' => 'actividades#crearActividad', 'url' => '/crearActividad', 'verb' => 'POST'],

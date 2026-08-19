@@ -113,7 +113,7 @@
 								<template #icon>
 									<Upload :size="20" />
 								</template>
-								{{ t('empleados', 'Importar') }}
+								{{ t('empleados', 'Import from Customer System') }}
 							</NcActionButton>
 							<NcActionButton @click="AgregarNuevo()">
 								<template #icon>
@@ -412,6 +412,15 @@
 										</div>
 
 										<div v-if="selectMode" class="select-bar">
+											<div class="select-all">
+												<NcCheckboxRadioSwitch
+													:checked="allFilteredSelected"
+													:indeterminate="someFilteredSelected"
+													@update:checked="toggleSelectAll">
+													{{ t('empleados', 'Select all') }}
+												</NcCheckboxRadioSwitch>
+											</div>
+
 											<span>{{ selectedHonorarios.length }} {{ t('empleados', 'selected') }}</span>
 											<div class="select-bar__actions">
 												<NcButton @click="toggleSelectMode">
@@ -419,8 +428,8 @@
 												</NcButton>
 												<NcButton type="primary"
 													:disabled="selectedHonorarios.length === 0"
-													@click="generarReporteHonorarios">
-													{{ t('empleados', 'Generate report') }}
+													@click="abrirReporteMultiple">
+													{{ t('empleados', 'Generate request') }}
 												</NcButton>
 											</div>
 										</div>
@@ -530,7 +539,7 @@
 																	<template #icon>
 																		<FileDocumentOutline :size="20" />
 																	</template>
-																	{{ t('empleados', 'Report') }}
+																	{{ t('empleados', 'Request') }}
 																</NcActionButton>
 
 																<NcActionButton @click="askDeleteHonorario(honorario.id_honorario)">
@@ -937,14 +946,14 @@
 			</div>
 		</NcModal>
 
-		<!-- Modal - Reporte-Honorarios -->
+		<!-- Modal - Solicitud de recibo -->
 		<NcModal v-if="reporteModal && canAdminCustomers"
 			size="normal"
-			:name="t('empleados', 'Generate report')"
+			:name="t('empleados', 'Generate request')"
 			@close="reporteModal = false">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h2>{{ t('empleados', 'Generate service fee report') }}</h2>
+					<h2>{{ t('empleados', 'Generate service fee request') }}</h2>
 				</div>
 
 				<div class="form-grid">
@@ -962,8 +971,49 @@
 					<NcButton @click="reporteModal = false">
 						{{ t('empleados', 'Cancel') }}
 					</NcButton>
-					<NcButton type="primary" :disabled="generandoReporte" @click="generarReporte">
-						{{ generandoReporte ? t('empleados', 'Generating...') : t('empleados', 'Generate') }}
+					<NcButton :disabled="generandoReporte || enviandoReporte" @click="generarReporte">
+						{{ generandoReporte ? t('empleados', 'Generating...') : t('empleados', 'Download request') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="generandoReporte || enviandoReporte" @click="enviarSolicitudHonorario">
+						{{ enviandoReporte ? t('empleados', 'Sending...') : t('empleados', 'Generate request and send') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
+		<!-- Modal - Solicitudes múltiples -->
+		<NcModal v-if="reporteMultipleModal && canAdminCustomers"
+			size="normal"
+			:name="t('empleados', 'Generate request')"
+			@close="reporteMultipleModal = false">
+			<div class="modal-content">
+				<div class="modal-header">
+					<p class="section-label">
+						{{ t('empleados', 'Billing') }}
+					</p>
+					<h2>{{ t('empleados', 'Generate service fee requests') }}</h2>
+					<p>
+						{{ t('empleados', '{n} fee(s) selected', { n: honorariosSeleccionadosDetalle.length }) }}
+					</p>
+				</div>
+
+				<div class="multi-request-list">
+					<div v-for="honorario in honorariosSeleccionadosDetalle"
+						:key="honorario.id_honorario"
+						class="multi-request-item">
+						{{ honorario.tipo_servicio || t('empleados', 'Service') }}
+					</div>
+				</div>
+
+				<div class="modal-actions">
+					<NcButton @click="reporteMultipleModal = false">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton :disabled="descargandoMultiple || notificandoMultiple" @click="descargarSolicitudesMultiples">
+						{{ descargandoMultiple ? t('empleados', 'Downloading...') : t('empleados', 'Download requests') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="descargandoMultiple || notificandoMultiple" @click="notificarHonorariosPendientes">
+						{{ notificandoMultiple ? t('empleados', 'Sending...') : t('empleados', 'Notify by email') }}
 					</NcButton>
 				</div>
 			</div>
@@ -1376,6 +1426,10 @@ export default {
 			showImportarModal: false,
 			honorarioParaReporte: null,
 			generandoReporte: false,
+			enviandoReporte: false,
+			reporteMultipleModal: false,
+			descargandoMultiple: false,
+			notificandoMultiple: false,
 			rep_departamento: null,
 			rep_departamentoOptions: [],
 			rep_asunto: '',
@@ -1695,6 +1749,20 @@ export default {
 		clientesPagadorOptions() {
 			const currentId = this.selectedClient?.id
 			return this.options.filter(o => !currentId || Number(o.value) !== Number(currentId))
+		},
+
+		honorariosSeleccionadosDetalle() {
+			return this.honorarios.filter(h => this.selectedHonorarios.includes(h.id_honorario))
+		},
+
+		allFilteredSelected() {
+			return this.filteredHonorarios.length > 0
+				&& this.filteredHonorarios.every(h => this.selectedHonorarios.includes(h.id_honorario))
+		},
+
+		someFilteredSelected() {
+			return this.filteredHonorarios.some(h => this.selectedHonorarios.includes(h.id_honorario))
+				&& !this.allFilteredSelected
 		},
 	},
 
@@ -2603,11 +2671,91 @@ export default {
 			}
 		},
 
-		generarReporteHonorarios() {
-			// Falta agregar todo el reporte
-			showSuccess(
-				t('empleados', '{n} fees selected for report', { n: this.selectedHonorarios.length }),
-			)
+		toggleSelectAll(checked) {
+			const idsFiltrados = this.filteredHonorarios.map(h => h.id_honorario)
+
+			if (checked) {
+				const nuevos = idsFiltrados.filter(id => !this.selectedHonorarios.includes(id))
+				this.selectedHonorarios = [...this.selectedHonorarios, ...nuevos]
+			} else {
+				this.selectedHonorarios = this.selectedHonorarios.filter(id => !idsFiltrados.includes(id))
+			}
+		},
+
+		abrirReporteMultiple() {
+			if (this.selectedHonorarios.length === 0) {
+				return
+			}
+			this.reporteMultipleModal = true
+		},
+
+		async descargarSolicitudesMultiples() {
+			if (this.selectedHonorarios.length === 0) {
+				return
+			}
+
+			this.descargandoMultiple = true
+
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/empleados/descargarSolicitudesMultiples'),
+					{ ids: this.selectedHonorarios },
+					{ responseType: 'blob' },
+				)
+
+				if (response.data.type === 'application/json') {
+					const text = await response.data.text()
+					const parsed = JSON.parse(text)
+					throw new Error(parsed?.ocs?.data?.message || parsed?.message || 'Error desconocido')
+				}
+
+				const url = URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }))
+
+				const link = document.createElement('a')
+				link.href = url
+				link.setAttribute('download', `Solicitudes_Recibo_${new Date().toISOString().split('T')[0]}.zip`)
+				document.body.appendChild(link)
+				link.click()
+				link.remove()
+				URL.revokeObjectURL(url)
+
+				this.reporteMultipleModal = false
+				this.selectMode = false
+				this.selectedHonorarios = []
+			} catch (err) {
+				showError(t('empleados', 'Error downloading requests: {error}', { error: String(err) }))
+			} finally {
+				this.descargandoMultiple = false
+			}
+		},
+
+		async notificarHonorariosPendientes() {
+			if (this.selectedHonorarios.length === 0) {
+				return
+			}
+
+			this.notificandoMultiple = true
+
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/empleados/notificarHonorariosPendientes'),
+					{ ids: this.selectedHonorarios },
+				)
+
+				const data = this.getOcsData(response) || response.data
+
+				showSuccess(
+					t('empleados', 'Notification sent to {n} recipient(s)', { n: data?.sent ?? 0 }),
+				)
+
+				this.reporteMultipleModal = false
+				this.selectMode = false
+				this.selectedHonorarios = []
+			} catch (err) {
+				showError(t('empleados', 'Error sending notification: {error}', { error: String(err) }))
+			} finally {
+				this.notificandoMultiple = false
+			}
 		},
 
 		async agregarParcialidadIguala(idHonorario) {
@@ -2811,6 +2959,49 @@ export default {
 				showError(t('empleados', 'Error generating report: {error}', { error: String(err) }))
 			} finally {
 				this.generandoReporte = false
+			}
+		},
+
+		async enviarSolicitudHonorario() {
+			if (!this.honorarioParaReporte?.id_honorario) {
+				showError(t('empleados', 'No fee selected for the request.'))
+				return
+			}
+
+			this.enviandoReporte = true
+
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/empleados/enviarSolicitudRecibo'),
+					{
+						id_honorario: this.honorarioParaReporte.id_honorario,
+						departamento: this.rep_departamento?.value || null,
+						asunto: this.rep_asunto || null,
+						quienSolicita: this.rep_quienSolicita || null,
+						claveGerenteJunior: this.rep_claveGerenteJunior || null,
+						nombreGerenteJunior: this.rep_nombreGerenteJunior || null,
+						claveSupervisorSenior: this.rep_claveSupervisorSenior || null,
+						nombreSupervisorSenior: this.rep_nombreSupervisorSenior || null,
+						claveSupervisorJunior: this.rep_claveSupervisorJunior || null,
+						nombreSupervisorJunior: this.rep_nombreSupervisorJunior || null,
+						claveOtro: this.rep_claveOtro || null,
+						nombreOtro: this.rep_nombreOtro || null,
+						nombreGerente: this.rep_nombreGerente || null,
+						nombreSocio: this.rep_nombreSocio || null,
+					},
+				)
+
+				const data = this.getOcsData(response) || response.data
+
+				showSuccess(
+					t('empleados', 'Request sent to {n} recipient(s)', { n: data?.sent ?? 0 }),
+				)
+
+				this.reporteModal = false
+			} catch (err) {
+				showError(t('empleados', 'Error sending request: {error}', { error: String(err) }))
+			} finally {
+				this.enviandoReporte = false
 			}
 		},
 
@@ -3830,6 +4021,12 @@ export default {
 	flex-wrap: wrap;
 }
 
+.select-all {
+	display: flex;
+	align-items: center;
+	margin-right: auto;
+}
+
 .honorario-checkbox {
 	width: 16px;
 	height: 16px;
@@ -3976,5 +4173,22 @@ export default {
 	font-weight: 600;
 	cursor: pointer;
 	text-decoration: underline;
+}
+
+.multi-request-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.multi-request-item {
+	padding: 8px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-background-soft);
+	font-size: 0.875rem;
+	color: var(--color-main-text);
 }
 </style>

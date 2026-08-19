@@ -280,6 +280,13 @@
 							:input-label="t('empleados', 'Group with access to admin reports and compliance tracking')"
 							:options="optionsGroups"
 							class="fit" />
+
+						<NcSelect
+							v-model="selected_honorarios_group"
+							:input-label="t('empleados', 'Groups with access to honorarios')"
+							:options="optionsGroups"
+							:multiple="true"
+							class="fit" />
 					</div>
 
 					<div class="actions-row">
@@ -411,6 +418,8 @@ export default {
 			optionsGroups: [],
 			selected_admin_reports_group: null,
 			reportes_admin_reports_group: '',
+			selected_honorarios_group: [],
+			reportes_honorarios_group: [],
 			modulo_compras: false,
 			logoDocumentoUrl: '',
 			loadingLogoDocumento: false,
@@ -473,6 +482,11 @@ export default {
 						label: this.reportes_admin_reports_group,
 					}
 					: null)
+				this.reportes_honorarios_group = reportes.honorarios_group || []
+
+				this.selected_honorarios_group = this.optionsGroups.filter(
+					group => this.reportes_honorarios_group.includes(group.id),
+				)
 
 				this.loading = false
 			} catch (err) {
@@ -685,6 +699,7 @@ export default {
 					recordatorios_email: this.reportes_recordatorios_email.toString(),
 					horas_minimas: Number(this.reportes_horas_minimas),
 					admin_reports_group: this.selected_admin_reports_group?.id || this.reportes_admin_reports_group,
+					honorarios_group: (this.selected_honorarios_group || []).map(group => group.id),
 				})
 
 				showSuccess(t('empleados', 'Configuration updated'))
