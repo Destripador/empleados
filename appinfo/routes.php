@@ -209,10 +209,14 @@ return [
 		['name' => 'honorariosParcialidades#marcar_facturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#cancelarPago', 'url' => '/cancelarPagoParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#agregarParcialidadIguala', 'url' => '/agregarParcialidadIguala', 'verb' => 'POST'],
+		['name' => 'HonorariosParcialidades#findPagadasPorCliente', 'url' => '/findParcialidadesPagadasPorCliente', 'verb' => 'POST'],
 		['name' => 'honorarios#finalizarHonorario', 'url' => '/finalizarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#reactivarHonorario', 'url' => '/reactivarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#actualizarMetadatos', 'url' => '/actualizarMetadatosHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#generarSolicitudRecibo', 'url' => '/generarSolicitudRecibo', 'verb' => 'GET'],
+		['name' => 'honorarios#enviarSolicitudRecibo', 'url' => '/enviarSolicitudRecibo', 'verb' => 'POST'],
+		['name' => 'honorarios#descargarSolicitudesMultiples', 'url' => '/descargarSolicitudesMultiples', 'verb' => 'POST'],
+		['name' => 'honorarios#notificarHonorariosPendientes', 'url' => '/notificarHonorariosPendientes', 'verb' => 'POST'],
 
 		/****************************** ACTIVIDADES ***************************************/
 		['name' => 'actividades#crearActividad', 'url' => '/crearActividad', 'verb' => 'POST'],

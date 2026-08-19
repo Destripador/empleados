@@ -84,23 +84,28 @@ class HonorariosParcialidadesController extends BaseController {
 	#[NoAdminRequired]
 	public function marcarPagada(
 		int $id_parcialidad,
-		string $fecha_pago
+		string $fecha_pago,
+		?int $id_cliente_pagador = null
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
 		$idHonorarioFinalizado = $this->honorariosParcialidadesMapper
-			->marcarPagada(
-				$id_parcialidad,
-				$fecha_pago
-			);
+			->marcarPagada($id_parcialidad, $fecha_pago, $id_cliente_pagador);
 
 		if ($idHonorarioFinalizado !== null) {
-			$this->honorariosMapper
-				->desactivarHonorario($idHonorarioFinalizado);
+			$this->honorariosMapper->desactivarHonorario($idHonorarioFinalizado);
 		}
 
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function findPagadasPorCliente(int $id_cliente): DataResponse {
+		$this->requireClientesAccess();
+
 		return new DataResponse(
-			['status' => 'ok'],
+			$this->honorariosParcialidadesMapper->findPagadasPorCliente($id_cliente),
 			Http::STATUS_OK
 		);
 	}

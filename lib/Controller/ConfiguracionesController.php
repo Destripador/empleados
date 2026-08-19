@@ -189,11 +189,17 @@ class ConfiguracionesController extends Controller {
                     'reportes_admin_reports_group',
                     'recursos_humanos'
                 ),
+                'honorarios_group' => array_values(array_filter(explode(
+                    ',',
+                    $this->config->getAppValue(Application::APP_ID, 'reportes_honorarios_group', '')
+                ))),
             ],
 
             'modulo_inventario' => $configMap['modulo_inventario'] ?? 'false',
             'modulo_soporte' => $configMap['modulo_soporte'] ?? 'false',
             'modulo_compras' => $configMap['modulo_compras'] ?? 'false',
+            'CanAdminReports' => $this->canAccessAdminReports(),
+            'CanHonorarios' => $this->canAccessHonorarios(),
         );
 
         return $data;
@@ -217,6 +223,33 @@ class ConfiguracionesController extends Controller {
                 'message' => 'El grupo configurado para reportes administrativos no existe.',
             ], Http::STATUS_BAD_REQUEST);
         }
+
+        $honorariosGroupInput = $this->request->getParam('honorarios_group', []);
+
+        if (!is_array($honorariosGroupInput)) {
+            $honorariosGroupInput = [];
+        }
+
+        $honorariosGroups = [];
+
+        foreach ($honorariosGroupInput as $gid) {
+            $gid = trim((string)$gid);
+
+            if ($gid === '') {
+                continue;
+            }
+
+            if ($this->groupManager->get($gid) === null) {
+                return new DataResponse([
+                    'status' => 'error',
+                    'message' => "El grupo '{$gid}' configurado para honorarios no existe.",
+                ], Http::STATUS_BAD_REQUEST);
+            }
+
+            $honorariosGroups[] = $gid;
+        }
+
+        $honorariosGroups = array_values(array_unique($honorariosGroups));
 
         $recordatoriosEnabled = filter_var(
             $this->request->getParam('recordatorios_enabled', 'true'),
@@ -265,6 +298,11 @@ class ConfiguracionesController extends Controller {
             'reportes_admin_reports_group',
             $adminReportsGroup
         );
+        $this->config->setAppValue(
+            Application::APP_ID,
+            'reportes_honorarios_group',
+            implode(',', $honorariosGroups)
+        );
 
         return new DataResponse([
             'status' => 'ok',
@@ -276,8 +314,34 @@ class ConfiguracionesController extends Controller {
                 'recordatorios_email' => $recordatoriosEmail,
                 'horas_minimas' => $horasMinimas,
                 'admin_reports_group' => $adminReportsGroup,
+                'honorarios_group' => $honorariosGroups,
             ],
         ], Http::STATUS_OK);
+    }
+
+    private function canAccessHonorarios(): bool {
+        $user = $this->userSession->getUser();
+
+        if ($user === null) {
+            return false;
+        }
+
+        $uid = $user->getUID();
+
+        if ($this->groupManager->isAdmin($uid)) {
+            return true;
+        }
+
+        $groupsCsv = $this->config->getAppValue(Application::APP_ID, 'reportes_honorarios_group', '');
+        $groups = array_filter(explode(',', $groupsCsv));
+
+        if (empty($groups)) {
+            return false;
+        }
+
+        $userGroupIds = $this->groupManager->getUserGroupIds($user);
+
+        return count(array_intersect($groups, $userGroupIds)) > 0;
     }
 
     #[NoCSRFRequired]
