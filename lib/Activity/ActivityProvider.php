@@ -7,9 +7,17 @@ namespace OCA\Empleados\Activity;
 use OCP\Activity\IProvider;
 use OCP\Activity\IEvent;
 use OCP\Activity\Exceptions\UnknownActivityException;
+use OCP\IURLGenerator;
+use OCP\L10N\IFactory as L10NFactory;
 use OCA\Empleados\Activity\ActivityExtension;
 
 class ActivityProvider implements IProvider {
+    public function __construct(
+        private L10NFactory $l10nFactory,
+        private IURLGenerator $urlGenerator,
+    ) {
+    }
+
     public function parse($language, IEvent $event, ?IEvent $previousEvent = null): IEvent {
         if ($event->getApp() !== 'empleados') {
             throw new UnknownActivityException();
@@ -18,13 +26,16 @@ class ActivityProvider implements IProvider {
         $subjectID = $event->getSubject();
         $parameters = $event->getSubjectParameters();  // ✅ Ahora sí funciona
 
-        $template = $this->getTemplateForSubject($subjectID);
+        $l10n = $this->l10nFactory->get('empleados', $language);
+        $template = $l10n->t($this->getTemplateForSubject($subjectID));
         $subjectFinal = $this->render($template, $parameters);
 
         $event->setParsedSubject($subjectFinal);
-        $event->setParsedMessage($event->getMessage() ?: 'Nueva actividad registrada en el módulo de empleados.');
-        $event->setIcon('avatar/luis/64?v=29');
-        $event->setLink('/apps/empleados/');
+        $event->setParsedMessage($event->getMessage() ?: $l10n->t('New activity registered in the Employees module.'));
+        $event->setIcon($this->urlGenerator->getAbsoluteURL(
+            $this->urlGenerator->imagePath('empleados', 'app.svg')
+        ));
+        $event->setLink($this->urlGenerator->linkToRouteAbsolute('empleados.page.index'));
 
         return $event;
     }
@@ -40,8 +51,12 @@ class ActivityProvider implements IProvider {
                 return 'La solicitud de "{tipo_ausencia}" de {nombre} fue aprobada';
             case 'ausencia_rechazada':
                 return 'La solicitud de "{tipo_ausencia}" de {nombre} fue rechazada';
-            case 'test':
-                return '{nombre} ha realizado una prueba actualizado';
+			case 'test':
+				return '{nombre} ha realizado una prueba actualizado';
+			case 'parking_maintenance_activated':
+				return '{nombre} activated parking maintenance mode';
+			case 'parking_published':
+				return '{nombre} published the parking map';
             // Puedes seguir agregando casos aquí.
             default:
                 return $subjectID; // En caso de no tener plantilla, usa el ID literal como fallback.

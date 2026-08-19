@@ -358,11 +358,16 @@ return [
 		/************************** SIMULACIÓN DE OFICINA **********************************/
 		['name' => 'simulacionOficina#getEmpleados', 'url' => '/simulacion-oficina/empleados', 'verb' => 'GET'],
 		['name' => 'simulacionOficina#getStatuses', 'url' => '/simulacion-oficina/statuses', 'verb' => 'GET'],
+		['name' => 'simulacionOficina#getOnboarding', 'url' => '/simulacion-oficina/onboarding', 'verb' => 'GET'],
+		['name' => 'simulacionOficina#completeOnboarding', 'url' => '/simulacion-oficina/onboarding/complete', 'verb' => 'POST'],
 
 		# IMPORTAR EMPLEADOS NOI
 		['name' => 'empleados#ImportarNoiEmpleado', 'url' => '/ImportarNoiEmpleado/{id_user}', 'verb' => 'POST'],
 
 		/************************** ESTACIONAMIENTO ************************************/
+		['name' => 'Estacionamiento#GetParkingStatus', 'url' => '/espacios/status', 'verb' => 'GET'],
+		['name' => 'Estacionamiento#ActivateMaintenance', 'url' => '/espacios/maintenance', 'verb' => 'POST'],
+		['name' => 'Estacionamiento#PublishParking', 'url' => '/espacios/publish', 'verb' => 'POST'],
 		['name' => 'Espacio#GetEspacios', 'url' => '/GetEspacios', 'verb' => 'GET'],
 		['name' => 'Estacionamiento#GetEmpleadosAsignados', 'url' => '/espacios/{id_espacio}/empleados', 'verb' => 'GET'],
 		['name' => 'Estacionamiento#GuardarAsignacion', 'url' => '/espacios/guardarAsignacion', 'verb' => 'POST'],

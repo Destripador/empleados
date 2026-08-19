@@ -12,6 +12,18 @@
 
 				<div class="office-sim__controls">
 					<NcButton
+						ref="helpButton"
+						type="tertiary"
+						:aria-label="t('empleados', 'How Office Simulation works')"
+						:title="t('empleados', 'How Office Simulation works')"
+						@click="openHelp">
+						<template #icon>
+							<HelpCircleOutline :size="20" />
+						</template>
+						<span class="office-sim__help-label">{{ t('empleados', 'How it works') }}</span>
+					</NcButton>
+
+					<NcButton
 						v-if="!paused"
 						type="secondary"
 						:disabled="!ready"
@@ -53,6 +65,11 @@
 					</label>
 				</div>
 			</header>
+
+			<div v-if="onboardingState === 'loading'" class="office-sim__onboarding-loading">
+				<NcLoadingIcon :size="36" />
+				<p>{{ t('empleados', 'Checking the introduction…') }}</p>
+			</div>
 
 			<div v-if="loading" class="office-sim__state">
 				<NcLoadingIcon :size="36" />
@@ -99,7 +116,7 @@
 				</div>
 				<OfficeSimulationCanvas
 					:employees="employees"
-					:paused="paused"
+					:paused="simulationPaused"
 					:speed-mode="speedMode"
 					:show-names="showNames"
 					:show-furniture="showFurniture"
@@ -110,16 +127,34 @@
 					@select="onSelect"
 					@follow="followSelected = $event" />
 			</div>
+
+			<OfficeSimulationIntro
+				:show="showIntro && introVersion > 0"
+				:version="introVersion"
+				@complete="onIntroComplete"
+				@error="onIntroError" />
+
+			<OfficeSimulationHelp
+				:show="showHelp"
+				:version="introVersion"
+				@close="closeHelp" />
 		</div>
 	</NcAppContent>
 </template>
 
 <script>
 import { NcAppContent, NcButton, NcLoadingIcon } from '@nextcloud/vue'
+import { showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
-import { getSimulacionEmpleados } from '../../../services/simulacionOficinaService.js'
+import HelpCircleOutline from 'vue-material-design-icons/HelpCircleOutline.vue'
+import {
+	getOfficeSimulationOnboardingStatus,
+	getSimulacionEmpleados,
+} from '../../../services/simulacionOficinaService.js'
 import { buildTodayEventsSummary } from '../../../utils/dailyOfficeEvents.js'
 import OfficeSimulationCanvas from './OfficeSimulationCanvas.vue'
+import OfficeSimulationHelp from './OfficeSimulationHelp.vue'
+import OfficeSimulationIntro from './OfficeSimulationIntro.vue'
 
 export default {
 	name: 'SimulacionOficina',
@@ -128,7 +163,10 @@ export default {
 		NcAppContent,
 		NcButton,
 		NcLoadingIcon,
+		HelpCircleOutline,
 		OfficeSimulationCanvas,
+		OfficeSimulationHelp,
+		OfficeSimulationIntro,
 	},
 
 	data() {
@@ -147,10 +185,17 @@ export default {
 			resetToken: 0,
 			highlightUids: [],
 			highlightClearTimer: null,
+			onboardingState: 'loading',
+			showIntro: false,
+			introVersion: 0,
+			showHelp: false,
 		}
 	},
 
 	computed: {
+		simulationPaused() {
+			return this.paused || this.showIntro || this.showHelp
+		},
 		ready() {
 			return !this.loading && !this.error && this.employees.length > 0
 		},
@@ -185,10 +230,49 @@ export default {
 
 	mounted() {
 		this.load()
+		this.loadOnboardingStatus()
 	},
 
 	methods: {
 		t,
+
+		async loadOnboardingStatus() {
+			this.onboardingState = 'loading'
+
+			try {
+				const status = await getOfficeSimulationOnboardingStatus()
+				if (status.requiredVersion < 1) {
+					throw new Error('Invalid office simulation onboarding version')
+				}
+
+				this.introVersion = status.requiredVersion
+				this.onboardingState = status.completed ? 'completed' : 'required'
+				this.showIntro = !status.completed
+			} catch (err) {
+				this.onboardingState = 'error'
+				this.showIntro = false
+				console.error('Could not load Office Simulation onboarding status', err)
+			}
+		},
+
+		openHelp() {
+			this.showHelp = true
+		},
+
+		closeHelp() {
+			this.showHelp = false
+			this.$nextTick(() => this.$refs.helpButton?.$el?.focus())
+		},
+
+		onIntroComplete() {
+			this.onboardingState = 'completed'
+			this.showIntro = false
+		},
+
+		onIntroError(err) {
+			console.error('Could not save Office Simulation onboarding progress', err)
+			showError(t('empleados', 'Could not save the introduction. Please try again.'))
+		},
 
 		highlightEvent(type) {
 			const list = type === 'birthday'
@@ -241,6 +325,7 @@ export default {
 
 <style scoped lang="scss">
 .office-sim {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: 14px;
@@ -249,6 +334,19 @@ export default {
 	height: calc(100vh - 54px);
 	min-height: 480px;
 	padding: 16px 18px 18px;
+}
+
+.office-sim__onboarding-loading {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: grid;
+	place-content: center;
+	place-items: center;
+	gap: 12px;
+	background: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	text-align: center;
 }
 
 .office-sim__header {
@@ -284,6 +382,10 @@ export default {
 	flex-wrap: wrap;
 	gap: 10px;
 	align-items: center;
+}
+
+.office-sim__help-label {
+	white-space: nowrap;
 }
 
 .office-sim__select {
@@ -395,6 +497,12 @@ export default {
 	.office-sim__stage {
 		min-height: 420px;
 		height: 60vh;
+	}
+}
+
+@media (max-width: 560px) {
+	.office-sim__help-label {
+		display: none;
 	}
 }
 </style>

@@ -8,6 +8,8 @@ use OCA\Empleados\AppInfo\Application;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\reportetiempoMapper;
+use OCA\Empleados\Service\TutorialProgressService;
+use OCA\Empleados\Tutorial\TutorialCatalog;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\UseSession;
@@ -30,6 +32,7 @@ class SimulacionOficinaController extends BaseController {
 	private IURLGenerator $urlGenerator;
 	private IUserStatusManager $userStatusManager;
 	private LoggerInterface $logger;
+	private TutorialProgressService $tutorialProgressService;
 
 	public function __construct(
 		IRequest $request,
@@ -40,7 +43,8 @@ class SimulacionOficinaController extends BaseController {
 		reportetiempoMapper $reportetiempoMapper,
 		IURLGenerator $urlGenerator,
 		IUserStatusManager $userStatusManager,
-		LoggerInterface $logger
+		LoggerInterface $logger,
+		TutorialProgressService $tutorialProgressService
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -55,6 +59,7 @@ class SimulacionOficinaController extends BaseController {
 		$this->urlGenerator = $urlGenerator;
 		$this->userStatusManager = $userStatusManager;
 		$this->logger = $logger;
+		$this->tutorialProgressService = $tutorialProgressService;
 	}
 
 	/**
@@ -199,6 +204,67 @@ class SimulacionOficinaController extends BaseController {
 			$this->logger->error('Simulacion oficina statuses: ' . $e->getMessage(), ['exception' => $e]);
 			return new DataResponse([
 				'error' => $e->getMessage(),
+			], Http::STATUS_INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function getOnboarding(): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		try {
+			$userId = $this->userSession->getUser()->getUID();
+			$status = $this->tutorialProgressService->getVersionStatus(
+				$userId,
+				TutorialCatalog::OFFICE_SIMULATION_INTRO
+			);
+
+			return new DataResponse($status, Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			$this->logger->error('Simulacion oficina onboarding: ' . $e->getMessage(), ['exception' => $e]);
+			return new DataResponse([
+				'error' => 'onboarding_status_unavailable',
+			], Http::STATUS_INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function completeOnboarding(mixed $version = null): DataResponse {
+		$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
+
+		if (!is_int($version) && !(is_string($version) && ctype_digit($version))) {
+			return new DataResponse([
+				'success' => false,
+				'error' => 'invalid_onboarding_version',
+				'requiredVersion' => TutorialCatalog::OFFICE_SIMULATION_INTRO_VERSION,
+			], Http::STATUS_BAD_REQUEST);
+		}
+
+		try {
+			$userId = $this->userSession->getUser()->getUID();
+			$status = $this->tutorialProgressService->completeVersion(
+				$userId,
+				TutorialCatalog::OFFICE_SIMULATION_INTRO,
+				(int)$version
+			);
+
+			return new DataResponse([
+				'success' => true,
+				...$status,
+			], Http::STATUS_OK);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse([
+				'success' => false,
+				'error' => 'invalid_onboarding_version',
+				'requiredVersion' => TutorialCatalog::OFFICE_SIMULATION_INTRO_VERSION,
+			], Http::STATUS_BAD_REQUEST);
+		} catch (\Throwable $e) {
+			$this->logger->error('Simulacion oficina onboarding complete: ' . $e->getMessage(), ['exception' => $e]);
+			return new DataResponse([
+				'success' => false,
+				'error' => 'onboarding_progress_unavailable',
 			], Http::STATUS_INTERNAL_SERVER_ERROR);
 		}
 	}
