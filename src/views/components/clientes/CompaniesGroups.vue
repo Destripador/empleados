@@ -66,7 +66,7 @@
 					</div>
 				</template>
 				<template #custombuttons>
-					<NcActions :open="button">
+					<NcActions :open.sync="button">
 						<template #icon>
 							<FilterVariant :size="20" />
 						</template>
@@ -952,6 +952,8 @@
 			:name="t('empleados', 'Generate request')"
 			@close="reporteModal = false">
 			<div class="modal-content">
+				<span tabindex="0" class="focus-catcher" aria-hidden="true" />
+
 				<div class="modal-header">
 					<h2>{{ t('empleados', 'Generate service fee request') }}</h2>
 				</div>
@@ -1974,7 +1976,7 @@ export default {
 		},
 
 		AbrirImportarModal() {
-			this.toggle()
+			this.button = false
 			this.showImportarModal = true
 		},
 
@@ -2898,6 +2900,12 @@ export default {
 			this.rep_nombreGerente = ''
 			this.rep_nombreSocio = ''
 			this.reporteModal = true
+
+			this.$nextTick(() => {
+				if (document.activeElement && typeof document.activeElement.blur === 'function') {
+					document.activeElement.blur()
+				}
+			})
 		},
 
 		async generarReporte() {
