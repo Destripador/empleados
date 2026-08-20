@@ -64,10 +64,23 @@
 
 			<!-- Estatus de aprobación por rol -->
 			<div class="detalle-ausencia__aprobaciones">
-				<button class="aprobaciones__toggle" @click="showAprobaciones = !showAprobaciones">
-					<ChevronDown :size="18" :class="{ 'is-open': showAprobaciones }" />
-					{{ t('empleados', 'Approval status') }}
-				</button>
+				<div class="aprobaciones__header">
+					<button class="aprobaciones__toggle" @click="showAprobaciones = !showAprobaciones">
+						<ChevronDown :size="18" :class="{ 'is-open': showAprobaciones }" />
+						{{ t('empleados', 'Approval status') }}
+					</button>
+
+					<button
+						v-if="canShowNotificar"
+						:title="notifyTitle"
+						class="btn-notificar"
+						:disabled="!canNotify"
+						@click.stop="notificar">
+						<NcLoadingIcon v-if="notifying" :size="14" />
+						<BellOutline v-else :size="14" />
+						<span>{{ notifyButtonLabel }}</span>
+					</button>
+				</div>
 
 				<div v-if="showAprobaciones" class="aprobaciones__body">
 					<div v-for="rol in estadosAprobacion" :key="rol.key" class="aprobaciones__row">
@@ -176,12 +189,15 @@ import { translate as t } from '@nextcloud/l10n'
 import Cancel from 'vue-material-design-icons/Cancel.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import BellOutline from 'vue-material-design-icons/BellOutline.vue'
 
 import {
 	NcButton,
 	NcLoadingIcon,
 	NcNoteCard,
 } from '@nextcloud/vue'
+
+const NOTIFY_COOLDOWN_MS = 2 * 60 * 60 * 1000 // 2 horas, igual que el backend
 
 export default {
 	name: 'DetalleAusencia',
@@ -193,6 +209,7 @@ export default {
 		Cancel,
 		Pencil,
 		ChevronDown,
+		BellOutline,
 	},
 
 	props: {
@@ -217,6 +234,10 @@ export default {
 			procesando: false,
 			showAprobaciones: false,
 			motivoRechazo: '',
+			notifying: false,
+			ultimoNotificadoEn: null,
+			tick: 0,
+			notifTimer: null,
 		}
 	},
 
@@ -347,10 +368,54 @@ export default {
 				? t('empleados', 'Morning')
 				: t('empleados', 'Afternoon')
 		},
+
+		// ── Botón "Notificar" ──────────────────────────
+		canShowNotificar() {
+			return !!this.ausencia?.es_propietario && this.statusKey === 'pending'
+		},
+
+		cooldownRestanteMin() {
+			// eslint-disable-next-line no-unused-expressions
+			this.tick // fuerza recálculo cada minuto mientras el cooldown está activo
+			if (!this.ultimoNotificadoEn) return 0
+			const restante = (this.ultimoNotificadoEn + NOTIFY_COOLDOWN_MS) - Date.now()
+			return restante > 0 ? Math.ceil(restante / 60000) : 0
+		},
+
+		canNotify() {
+			return !this.notifying && this.cooldownRestanteMin === 0
+		},
+
+		notifyButtonLabel() {
+			if (this.notifying) return t('empleados', 'Sending…')
+			if (this.cooldownRestanteMin > 0) return t('empleados', 'Sent')
+			return t('empleados', 'Notify')
+		},
+
+		notifyTitle() {
+			if (this.cooldownRestanteMin > 0) {
+				return t('empleados', 'You can send another reminder in {min} min', { min: this.cooldownRestanteMin })
+			}
+			return t('empleados', 'Send a reminder to whoever still needs to approve')
+		},
 	},
 
 	mounted() {
 		this.fetchDetalle()
+
+		const stored = localStorage.getItem(`empleados_notif_${this.idHistorial}`)
+		if (stored) {
+			this.ultimoNotificadoEn = Number(stored)
+		}
+		this.notifTimer = setInterval(() => {
+			this.tick++
+		}, 60000)
+	},
+
+	beforeUnmount() {
+		if (this.notifTimer) {
+			clearInterval(this.notifTimer)
+		}
 	},
 
 	methods: {
@@ -382,6 +447,30 @@ export default {
 
 		handleEdit() {
 			this.$emit('edit', this.ausencia)
+		},
+
+		async notificar() {
+			if (!this.canNotify) return
+
+			this.notifying = true
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/empleados/NotificarRecordatorioAprobacion'),
+					{ id: this.idHistorial },
+				)
+				if (response.data?.ocs?.data?.success) {
+					showSuccess(t('empleados', 'Reminder sent'))
+					this.ultimoNotificadoEn = Date.now()
+					localStorage.setItem(`empleados_notif_${this.idHistorial}`, String(this.ultimoNotificadoEn))
+				} else {
+					showError(response.data?.ocs?.data?.message || t('empleados', 'Could not send reminder'))
+				}
+			} catch (err) {
+				const message = err?.response?.data?.ocs?.data?.message
+				showError(message || t('empleados', 'Error sending reminder: {error}', { error: String(err) }))
+			} finally {
+				this.notifying = false
+			}
 		},
 
 		async aprobar(rol) {
@@ -617,13 +706,22 @@ export default {
 	overflow: hidden;
 }
 
+.aprobaciones__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	background: var(--color-background-hover);
+	padding-right: 10px;
+}
+
 .aprobaciones__toggle {
-	width: 100%;
+	flex: 1;
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	padding: 10px 14px;
-	background: var(--color-background-hover);
+	background: none;
 	border: none;
 	cursor: pointer;
 	font-weight: 600;
@@ -636,6 +734,41 @@ export default {
 }
 .aprobaciones__toggle svg.is-open {
 	transform: rotate(180deg);
+}
+
+/* Botón "Notificar" — pequeño, tipo pill, discreto pero visible */
+.btn-notificar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 12px;
+	border-radius: 999px;
+	border: 1px solid var(--color-primary-element, #0082c9);
+	background: var(--color-main-background);
+	color: var(--color-primary-element, #0082c9);
+	font-size: 0.76rem;
+	font-weight: 600;
+	line-height: 1.4;
+	cursor: pointer;
+	white-space: nowrap;
+	flex-shrink: 0;
+	transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn-notificar:disabled {
+	opacity: 0.55;
+	cursor: default;
+	border-color: var(--color-border-dark, var(--color-border));
+	color: var(--color-text-maxcontrast);
+}
+
+.btn-notificar:hover:not(:disabled) {
+	background: var(--color-primary-element, #0082c9);
+	color: #fff;
+}
+
+.btn-notificar:active:not(:disabled) {
+	transform: scale(0.97);
 }
 
 .aprobaciones__body {
