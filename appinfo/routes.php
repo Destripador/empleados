@@ -159,6 +159,7 @@ return [
 
 		['name' => 'ausencias#AprobarAusencia', 'url' => '/AprobarAusencia', 'verb' => 'POST'],
 		['name' => 'ausencias#RechazarAusencia', 'url' => '/RechazarAusencia', 'verb' => 'POST'],
+		['name' => 'ausencias#NotificarRecordatorioAprobacion', 'url' => '/NotificarRecordatorioAprobacion', 'verb' => 'POST'],
 
 		['name' => 'ausencias#DescargarReportePeriodosExcel', 'url' => '/reporte-periodos-excel', 'verb' => 'GET'],
 
@@ -217,6 +218,7 @@ return [
 		['name' => 'honorarios#enviarSolicitudRecibo', 'url' => '/enviarSolicitudRecibo', 'verb' => 'POST'],
 		['name' => 'honorarios#descargarSolicitudesMultiples', 'url' => '/descargarSolicitudesMultiples', 'verb' => 'POST'],
 		['name' => 'honorarios#notificarHonorariosPendientes', 'url' => '/notificarHonorariosPendientes', 'verb' => 'POST'],
+		
 
 		/****************************** ACTIVIDADES ***************************************/
 		['name' => 'actividades#crearActividad', 'url' => '/crearActividad', 'verb' => 'POST'],

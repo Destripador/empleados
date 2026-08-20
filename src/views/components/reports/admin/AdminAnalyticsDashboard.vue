@@ -11,6 +11,7 @@
 		</div>
 
 		<div v-else class="dashboard-content">
+			<!-- 1. Cumplimiento general -->
 			<section class="dashboard-section" aria-labelledby="admin-compliance-heading">
 				<header class="section-heading">
 					<div>
@@ -30,7 +31,7 @@
 						class="compliance-card"
 						:class="complianceStatusClass(item)">
 						<div class="compliance-card__heading">
-							<div>
+							<div class="compliance-card__title">
 								<h3>{{ item.label }}</h3>
 								<p>{{ item.range }}</p>
 							</div>
@@ -64,6 +65,69 @@
 				</div>
 			</section>
 
+			<!-- 2. Cumplimiento por empleado -->
+			<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employee-compliance-heading">
+				<header class="section-heading section-heading--compact section-heading--with-control">
+					<div>
+						<p class="section-eyebrow">
+							{{ t('empleados', 'Employees') }}
+						</p>
+						<h2 id="admin-employee-compliance-heading">
+							{{ t('empleados', 'Compliance by employee') }}
+						</h2>
+					</div>
+					<label class="compliance-mode">
+						<span class="visually-hidden">{{ t('empleados', 'Compliance view') }}</span>
+						<select v-model="complianceViewMode" class="compliance-mode__select">
+							<option value="attention">
+								{{ t('empleados', 'Needs attention') }}
+							</option>
+							<option value="all">
+								{{ t('empleados', 'All employees') }}
+							</option>
+						</select>
+					</label>
+				</header>
+
+				<div v-if="employeeComplianceVisible.length > 0" class="compliance-list-wrap">
+					<ul class="compliance-list" role="list">
+						<li
+							v-for="employee in employeeComplianceVisible"
+							:key="employee.key"
+							class="compliance-list__item"
+							:class="complianceStatusClass(employee)">
+							<div class="compliance-list__meta">
+								<strong class="compliance-list__name">{{ employee.name }}</strong>
+								<span class="compliance-list__percent">{{ formatPercent(employee.percentage) }}</span>
+							</div>
+							<div
+								class="compliance-list__track"
+								role="progressbar"
+								:aria-valuenow="clampPercentage(employee.percentage)"
+								aria-valuemin="0"
+								aria-valuemax="100"
+								:aria-label="employee.name">
+								<div
+									class="compliance-list__value"
+									:style="{ width: `${clampPercentage(employee.percentage)}%` }" />
+							</div>
+						</li>
+					</ul>
+					<p
+						v-if="complianceViewMode === 'attention' && employeeCompliance.length > employeeComplianceVisible.length"
+						class="chart-note">
+						{{ t('empleados', 'Showing the {shown} employees with the lowest compliance out of {total}.', {
+							shown: employeeComplianceVisible.length,
+							total: employeeCompliance.length,
+						}) }}
+					</p>
+				</div>
+				<div v-else class="inline-state inline-state--compact">
+					{{ t('empleados', 'No employee compliance data for this selection.') }}
+				</div>
+			</section>
+
+			<!-- 3. Distribución del tiempo -->
 			<section class="dashboard-section" aria-labelledby="admin-distribution-heading">
 				<header class="section-heading">
 					<div>
@@ -110,6 +174,7 @@
 				</div>
 			</section>
 
+			<!-- 4. Rankings de trabajo -->
 			<section class="rankings-grid" :aria-label="t('empleados', 'Administrative time rankings')">
 				<article v-if="mostrarClientes" class="ranking-card">
 					<header class="section-heading section-heading--compact">
@@ -172,67 +237,7 @@
 				</article>
 			</section>
 
-			<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employee-compliance-heading">
-				<header class="section-heading section-heading--compact section-heading--with-control">
-					<div>
-						<p class="section-eyebrow">
-							{{ t('empleados', 'Employees') }}
-						</p>
-						<h2 id="admin-employee-compliance-heading">
-							{{ t('empleados', 'Compliance by employee') }}
-						</h2>
-					</div>
-					<label class="compliance-mode">
-						<span class="visually-hidden">{{ t('empleados', 'Compliance view') }}</span>
-						<select v-model="complianceViewMode" class="compliance-mode__select">
-							<option value="attention">
-								{{ t('empleados', 'Needs attention') }}
-							</option>
-							<option value="all">
-								{{ t('empleados', 'All employees') }}
-							</option>
-						</select>
-					</label>
-				</header>
-
-				<div v-if="employeeComplianceVisible.length > 0" class="compliance-list-wrap">
-					<ul class="compliance-list" role="list">
-						<li
-							v-for="employee in employeeComplianceVisible"
-							:key="employee.key"
-							class="compliance-list__item"
-							:class="complianceStatusClass(employee)">
-							<div class="compliance-list__meta">
-								<strong class="compliance-list__name">{{ employee.name }}</strong>
-								<span class="compliance-list__percent">{{ formatPercent(employee.percentage) }}</span>
-							</div>
-							<div
-								class="compliance-list__track"
-								role="progressbar"
-								:aria-valuenow="clampPercentage(employee.percentage)"
-								aria-valuemin="0"
-								aria-valuemax="100"
-								:aria-label="employee.name">
-								<div
-									class="compliance-list__value"
-									:style="{ width: `${clampPercentage(employee.percentage)}%` }" />
-							</div>
-						</li>
-					</ul>
-					<p
-						v-if="complianceViewMode === 'attention' && employeeCompliance.length > employeeComplianceVisible.length"
-						class="chart-note">
-						{{ t('empleados', 'Showing the {shown} employees with the lowest compliance out of {total}.', {
-							shown: employeeComplianceVisible.length,
-							total: employeeCompliance.length,
-						}) }}
-					</p>
-				</div>
-				<div v-else class="inline-state inline-state--compact">
-					{{ t('empleados', 'No employee compliance data for this selection.') }}
-				</div>
-			</section>
-
+			<!-- 5. Tabla detallada de empleados -->
 			<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employees-heading">
 				<header class="section-heading section-heading--compact">
 					<div>
@@ -261,8 +266,7 @@
 						</thead>
 						<tbody>
 							<template v-for="employee in employeeRows">
-								<tr
-									:key="employee.key"
+								<tr :key="employee.key"
 									class="employee-row"
 									:class="{ 'employee-row--expanded': isEmployeeExpanded(employee.key) }">
 									<td :data-label="t('empleados', 'Employee')" class="employee-cell">
@@ -774,23 +778,39 @@ export default {
 </script>
 
 <style scoped>
+/*
+ * Tokens locales del dashboard.
+ * Usar rem en vez de px para paddings/gaps hace que el layout escale
+ * de forma consistente con la fuente base del navegador (incluye zoom).
+ */
 .admin-analytics-dashboard {
+	--dash-radius: var(--border-radius-large);
+	--dash-gap: 1.25rem;
+	--dash-card-padding: 1.125rem;
 	width: 100%;
 	box-sizing: border-box;
 	color: var(--color-main-text);
 }
 
+.admin-analytics-dashboard,
+.admin-analytics-dashboard *,
+.admin-analytics-dashboard *::before,
+.admin-analytics-dashboard *::after {
+	box-sizing: border-box;
+}
+
 .dashboard-content {
 	display: grid;
-	gap: 20px;
+	gap: var(--dash-gap);
 }
 
 .dashboard-state,
 .dashboard-section,
 .ranking-card,
 .distribution-card {
+	min-width: 0;
 	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--dash-radius);
 	background: var(--color-main-background);
 }
 
@@ -798,9 +818,9 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
-	min-height: 180px;
-	padding: 24px;
+	gap: 0.75rem;
+	min-height: 11rem;
+	padding: 1.5rem;
 	color: var(--color-text-maxcontrast);
 	text-align: center;
 }
@@ -816,20 +836,26 @@ export default {
 
 .dashboard-section,
 .ranking-card {
-	min-width: 0;
-	padding: 20px;
+	padding: var(--dash-card-padding);
 }
 
+.dashboard-section--compact {
+	padding-top: 1rem;
+	padding-bottom: 1rem;
+}
+
+/* ── Encabezados de sección ── */
 .section-heading {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: 16px;
-	margin-bottom: 16px;
+	gap: 0.75rem 1rem;
+	margin-bottom: 1rem;
 }
 
 .section-heading--compact {
-	margin-bottom: 12px;
+	margin-bottom: 0.75rem;
 }
 
 .section-heading h2,
@@ -838,34 +864,58 @@ export default {
 }
 
 .section-heading h2 {
-	font-size: 1.15rem;
+	font-size: clamp(1rem, 0.85rem + 0.4vw, 1.2rem);
 	line-height: 1.3;
+	overflow-wrap: anywhere;
 }
 
 .section-eyebrow {
-	margin-bottom: 4px !important;
+	margin: 0 0 0.25rem !important;
 	color: var(--color-text-maxcontrast);
-	font-size: .75rem;
+	font-size: 0.72rem;
 	font-weight: 700;
-	letter-spacing: .04em;
+	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
 
+.compliance-card__heading p {
+	margin-top: 0.2rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.76rem;
+}
+
+.compliance-card__heading h3,
+.compliance-card__heading p,
+.compliance-card__hours {
+	margin: 0;
+}
+
+.distribution-empty-messages p {
+	margin: 0;
+}
+
+.section-heading h2 + p {
+	margin-top: 0.3rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.88rem;
+}
+
+/* ── Tarjetas de cumplimiento ── */
 .compliance-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 14px;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	gap: 0.875rem;
 }
 
 .compliance-card {
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 0.875rem;
 	min-width: 0;
-	padding: 18px;
+	padding: 1.125rem;
 	border: 1px solid var(--color-border);
 	border-left-width: 4px;
-	border-radius: var(--border-radius-large);
+	border-radius: var(--dash-radius);
 	background: var(--color-background-hover);
 }
 
@@ -878,7 +928,7 @@ export default {
 }
 
 .compliance-card.status-attention {
-	border-left-color: var(--color-error);
+	border-left-color: #dd681a;
 }
 
 .compliance-card.status-neutral {
@@ -889,38 +939,33 @@ export default {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: 12px;
+	gap: 0.75rem;
 }
 
-.compliance-card__heading h3,
-.compliance-card__heading p,
-.compliance-card__hours {
-	margin: 0;
+.compliance-card__title {
+	min-width: 0;
 }
 
 .compliance-card__heading h3 {
-	font-size: .95rem;
-}
-
-.compliance-card__heading p {
-	margin-top: 3px;
-	color: var(--color-text-maxcontrast);
-	font-size: .78rem;
+	font-size: 0.92rem;
+	overflow-wrap: anywhere;
 }
 
 .compliance-card__percent {
-	font-size: 1.45rem;
+	flex: 0 0 auto;
+	font-size: clamp(1.15rem, 1rem + 0.5vw, 1.4rem);
 	line-height: 1;
 }
 
 .compliance-card__hours {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: baseline;
-	gap: 5px;
+	gap: 0.3rem;
 }
 
 .compliance-card__hours strong {
-	font-size: 1.35rem;
+	font-size: 1.25rem;
 }
 
 .compliance-card__hours span,
@@ -937,13 +982,14 @@ export default {
 }
 
 .progress-track {
-	height: 9px;
+	height: 0.5625rem;
 }
 
 .progress-value {
 	height: 100%;
 	border-radius: inherit;
 	background: var(--color-primary-element);
+	transition: width 0.2s ease;
 }
 
 .status-complete .progress-value {
@@ -955,7 +1001,7 @@ export default {
 }
 
 .status-attention .progress-value {
-	background: var(--color-error);
+	background: #dd681a;
 }
 
 .status-neutral .progress-value {
@@ -966,12 +1012,147 @@ export default {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
-	gap: 6px 12px;
-	font-size: .8rem;
+	gap: 0.4rem 0.75rem;
+	font-size: 0.8rem;
 }
 
+/* ── Cumplimiento por empleado ── */
+.section-heading--with-control {
+	align-items: center;
+}
+
+.compliance-mode {
+	flex: 0 0 auto;
+	margin: 0;
+}
+
+.compliance-mode__select {
+	min-width: 9.375rem;
+	max-width: 100%;
+	height: 2rem;
+	padding: 0 0.5rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 0.82rem;
+}
+
+.compliance-list-wrap {
+	max-height: 22.5rem;
+	overflow: auto;
+	padding-right: 0.125rem;
+}
+
+.compliance-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.compliance-list__item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(5.5rem, 8.75rem);
+	gap: 0.5rem 0.75rem;
+	align-items: center;
+	min-height: 2rem;
+	padding: 0.25rem 0.375rem;
+	border-radius: var(--border-radius);
+}
+
+.compliance-list__item:hover {
+	background: var(--color-background-hover);
+}
+
+.compliance-list__meta {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.625rem;
+	min-width: 0;
+}
+
+.compliance-list__name {
+	overflow: hidden;
+	font-size: 0.85rem;
+	font-weight: 600;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.compliance-list__percent {
+	flex: 0 0 auto;
+	font-size: 0.82rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.compliance-list__item.status-complete .compliance-list__percent {
+	color: var(--color-success);
+}
+
+.compliance-list__item.status-warning .compliance-list__percent {
+	color: var(--color-warning);
+}
+
+.compliance-list__item.status-attention .compliance-list__percent {
+	color: #dd681a;
+}
+
+.compliance-list__item.status-neutral .compliance-list__percent {
+	color: var(--color-text-maxcontrast);
+}
+
+.compliance-list__track,
+.mini-compliance__track {
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--color-background-darker);
+}
+
+.compliance-list__track {
+	height: 0.4375rem;
+}
+
+.compliance-list__value,
+.mini-compliance__value {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: #dd681a;
+	min-width: 0;
+	transition: width 0.2s ease;
+}
+
+.compliance-list__item.status-complete .compliance-list__value {
+	background: var(--color-success);
+}
+
+.compliance-list__item.status-warning .compliance-list__value {
+	background: var(--color-warning);
+}
+
+.compliance-list__item.status-attention .compliance-list__value {
+	background: #dd681a;
+}
+
+.compliance-list__item.status-neutral .compliance-list__value {
+	background: var(--color-text-maxcontrast);
+}
+
+.chart-note {
+	margin: 0.5rem 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.78rem;
+}
+
+/* ── Distribución ── */
 .distribution-card {
-	padding: 18px;
+	padding: 1.125rem;
 	background: var(--color-background-hover);
 }
 
@@ -984,12 +1165,12 @@ export default {
 
 .distribution-list {
 	display: grid;
-	gap: 16px;
+	gap: 1rem;
 }
 
 .distribution-item {
 	display: grid;
-	gap: 7px;
+	gap: 0.4375rem;
 }
 
 .distribution-item__heading,
@@ -1002,17 +1183,20 @@ export default {
 
 .distribution-item__heading,
 .ranking-item__heading {
+	flex-wrap: wrap;
 	justify-content: space-between;
-	gap: 12px;
+	gap: 0.5rem 0.75rem;
 }
 
 .distribution-item__label {
-	gap: 8px;
+	gap: 0.5rem;
+	min-width: 0;
 }
 
 .distribution-dot {
-	width: 10px;
-	height: 10px;
+	flex: 0 0 auto;
+	width: 0.625rem;
+	height: 0.625rem;
 	border-radius: 50%;
 	background: var(--color-primary-element);
 }
@@ -1028,37 +1212,29 @@ export default {
 }
 
 .distribution-track {
-	height: 10px;
+	height: 0.625rem;
 }
 
 .distribution-value {
 	height: 100%;
 	border-radius: inherit;
 	background: var(--color-primary-element);
+	transition: width 0.2s ease;
 }
 
 .distribution-empty-messages {
 	display: grid;
-	gap: 4px;
-	margin-top: 14px;
+	gap: 0.25rem;
+	margin-top: 0.875rem;
 	color: var(--color-text-maxcontrast);
-	font-size: .85rem;
+	font-size: 0.85rem;
 }
 
-.distribution-empty-messages p {
-	margin: 0;
-}
-
-.section-heading h2 + p {
-	margin-top: 5px;
-	color: var(--color-text-maxcontrast);
-	font-size: .9rem;
-}
-
+/* ── Rankings ── */
 .rankings-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 20px;
+	grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+	gap: var(--dash-gap);
 }
 
 .ranking-card--wide {
@@ -1067,15 +1243,15 @@ export default {
 
 .ranking-list {
 	display: grid;
-	gap: 4px;
-	max-height: 520px;
+	gap: 0.25rem;
+	max-height: 32.5rem;
 	overflow: auto;
 }
 
 .ranking-item {
 	align-items: flex-start;
-	gap: 10px;
-	padding: 10px 0;
+	gap: 0.625rem;
+	padding: 0.625rem 0;
 	border-bottom: 1px solid var(--color-border);
 }
 
@@ -1087,20 +1263,20 @@ export default {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	flex: 0 0 26px;
-	width: 26px;
-	height: 26px;
+	flex: 0 0 1.625rem;
+	width: 1.625rem;
+	height: 1.625rem;
 	border-radius: 50%;
 	background: var(--color-background-dark);
 	color: var(--color-text-maxcontrast);
-	font-size: .78rem;
+	font-size: 0.78rem;
 	font-weight: 700;
 }
 
 .ranking-item__content {
 	display: grid;
 	flex: 1;
-	gap: 6px;
+	gap: 0.375rem;
 	min-width: 0;
 }
 
@@ -1116,12 +1292,13 @@ export default {
 }
 
 .ranking-track {
-	height: 7px;
+	height: 0.4375rem;
 }
 
 .ranking-value {
 	height: 100%;
 	border-radius: inherit;
+	transition: width 0.2s ease;
 }
 
 .ranking-value--client {
@@ -1132,164 +1309,27 @@ export default {
 	background: var(--color-success);
 }
 
+/* ── Estados vacíos ── */
 .inline-state {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 90px;
-	padding: 16px;
+	min-height: 5.625rem;
+	padding: 1rem;
 	border: 1px dashed var(--color-border);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--dash-radius);
 	color: var(--color-text-maxcontrast);
 	text-align: center;
 }
 
 .inline-state--compact {
-	min-height: 56px;
-	padding: 12px;
+	min-height: 3.5rem;
+	padding: 0.75rem;
 }
 
-.dashboard-section--compact {
-	padding-top: 14px;
-	padding-bottom: 14px;
-}
-
-.section-heading--with-control {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 12px;
-}
-
-.compliance-mode {
-	flex: 0 0 auto;
-	margin: 0;
-}
-
-.compliance-mode__select {
-	min-width: 150px;
-	height: 32px;
-	padding: 0 8px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius);
-	background: var(--color-main-background);
-	color: var(--color-main-text);
-	font-size: .82rem;
-}
-
-.compliance-list-wrap {
-	max-height: 360px;
-	overflow: auto;
-	padding-right: 2px;
-}
-
-.compliance-list {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-
-.compliance-list__item {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(90px, 140px);
-	gap: 8px 12px;
-	align-items: center;
-	min-height: 32px;
-	padding: 4px 6px;
-	border-radius: var(--border-radius);
-}
-
-.compliance-list__item:hover {
-	background: var(--color-background-hover);
-}
-
-.compliance-list__meta {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 10px;
-	min-width: 0;
-}
-
-.compliance-list__name {
-	overflow: hidden;
-	font-size: .85rem;
-	font-weight: 600;
-	line-height: 1.2;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.compliance-list__percent {
-	flex: 0 0 auto;
-	font-size: .82rem;
-	font-weight: 700;
-	font-variant-numeric: tabular-nums;
-}
-
-.compliance-list__item.status-complete .compliance-list__percent {
-	color: var(--color-success);
-}
-
-.compliance-list__item.status-warning .compliance-list__percent {
-	color: var(--color-warning);
-}
-
-.compliance-list__item.status-attention .compliance-list__percent {
-	color: var(--color-error);
-}
-
-.compliance-list__item.status-neutral .compliance-list__percent {
-	color: var(--color-text-maxcontrast);
-}
-
-.compliance-list__track,
-.mini-compliance__track {
-	overflow: hidden;
-	border-radius: 999px;
-	background: var(--color-background-darker);
-}
-
-.compliance-list__track {
-	height: 7px;
-}
-
-.compliance-list__value,
-.mini-compliance__value {
-	display: block;
-	height: 100%;
-	border-radius: inherit;
-	background: var(--color-error);
-	min-width: 0;
-}
-
-.compliance-list__item.status-complete .compliance-list__value {
-	background: var(--color-success);
-}
-
-.compliance-list__item.status-warning .compliance-list__value {
-	background: var(--color-warning);
-}
-
-.compliance-list__item.status-attention .compliance-list__value {
-	background: var(--color-error);
-}
-
-.compliance-list__item.status-neutral .compliance-list__value {
-	background: var(--color-text-maxcontrast);
-}
-
-.chart-note {
-	margin: 8px 0 0;
-	color: var(--color-text-maxcontrast);
-	font-size: .78rem;
-}
-
+/* ── Tabla de resumen de empleados ── */
 .employee-table-wrap {
-	max-height: 420px;
+	max-height: 26.25rem;
 	overflow: auto;
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius);
@@ -1297,14 +1337,14 @@ export default {
 
 .employee-table {
 	width: 100%;
-	min-width: 640px;
+	min-width: 40rem;
 	border-collapse: collapse;
 	background: var(--color-main-background);
 }
 
 .employee-table th,
 .employee-table td {
-	padding: 6px 10px;
+	padding: 0.375rem 0.625rem;
 	border-bottom: 1px solid var(--color-border);
 	text-align: left;
 	vertical-align: middle;
@@ -1316,18 +1356,18 @@ export default {
 	z-index: 2;
 	background: var(--color-background-hover);
 	color: var(--color-text-maxcontrast);
-	font-size: .7rem;
+	font-size: 0.7rem;
 	font-weight: 700;
-	letter-spacing: .03em;
+	letter-spacing: 0.03em;
 	text-transform: uppercase;
 }
 
 .employee-row td {
-	height: 44px;
+	height: 2.75rem;
 }
 
 .employee-detail-row td {
-	padding: 0 10px 8px;
+	padding: 0 0.625rem 0.5rem;
 	background: var(--color-background-hover);
 	border-bottom: 1px solid var(--color-border);
 	height: auto;
@@ -1342,8 +1382,8 @@ export default {
 }
 
 .employee-cell {
-	min-width: 150px;
-	max-width: 220px;
+	min-width: 9.375rem;
+	max-width: 13.75rem;
 }
 
 .employee-cell strong,
@@ -1355,38 +1395,38 @@ export default {
 }
 
 .employee-cell strong {
-	font-size: .85rem;
+	font-size: 0.85rem;
 	line-height: 1.2;
 }
 
 .employee-cell small {
-	margin-top: 1px;
+	margin-top: 0.0625rem;
 	color: var(--color-text-maxcontrast);
-	font-size: .7rem;
+	font-size: 0.7rem;
 	line-height: 1.2;
 }
 
 .employee-metric {
-	font-size: .82rem;
+	font-size: 0.82rem;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
 .employee-compliance-cell {
-	min-width: 110px;
+	min-width: 6.875rem;
 }
 
 .mini-compliance {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 0.5rem;
 	min-width: 0;
 }
 
 .mini-compliance__percent {
 	flex: 0 0 auto;
 	min-width: 2.6em;
-	font-size: .82rem;
+	font-size: 0.82rem;
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 }
@@ -1400,7 +1440,7 @@ export default {
 }
 
 .mini-compliance.status-attention .mini-compliance__percent {
-	color: var(--color-error);
+	color: #dd681a;
 }
 
 .mini-compliance.status-neutral .mini-compliance__percent {
@@ -1409,8 +1449,8 @@ export default {
 
 .mini-compliance__track {
 	flex: 1 1 auto;
-	height: 6px;
-	min-width: 48px;
+	height: 0.375rem;
+	min-width: 3rem;
 }
 
 .mini-compliance.status-complete .mini-compliance__value {
@@ -1422,7 +1462,7 @@ export default {
 }
 
 .mini-compliance.status-attention .mini-compliance__value {
-	background: var(--color-error);
+	background: #dd681a;
 }
 
 .mini-compliance.status-neutral .mini-compliance__value {
@@ -1431,7 +1471,7 @@ export default {
 
 .employee-table__action-heading,
 .employee-table__action {
-	width: 40px;
+	width: 2.5rem;
 	text-align: right !important;
 }
 
@@ -1439,8 +1479,8 @@ export default {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	width: 1.75rem;
+	height: 1.75rem;
 	padding: 0;
 	border: 0;
 	border-radius: var(--border-radius);
@@ -1457,35 +1497,35 @@ export default {
 .employee-detail {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	padding: 8px 4px 4px;
+	gap: 0.5rem;
+	padding: 0.5rem 0.25rem 0.25rem;
 }
 
 .employee-detail__contexts,
 .employee-detail__extras {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-	gap: 6px 12px;
+	grid-template-columns: repeat(auto-fit, minmax(8.75rem, 1fr));
+	gap: 0.375rem 0.75rem;
 }
 
 .employee-detail__item {
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
+	gap: 0.0625rem;
 	min-width: 0;
 }
 
 .employee-detail__item span {
 	color: var(--color-text-maxcontrast);
-	font-size: .68rem;
+	font-size: 0.68rem;
 	font-weight: 700;
-	letter-spacing: .03em;
+	letter-spacing: 0.03em;
 	text-transform: uppercase;
 }
 
 .employee-detail__item strong {
 	overflow: hidden;
-	font-size: .82rem;
+	font-size: 0.82rem;
 	font-weight: 600;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1508,40 +1548,16 @@ export default {
 	border: 0;
 }
 
-@media (max-width: 1000px) {
-	.compliance-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
-	.compliance-card:last-child {
-		grid-column: 1 / -1;
-	}
-}
-
+/* ── Responsive ── */
 @media (max-width: 760px) {
-	.rankings-grid,
-	.compliance-grid {
-		grid-template-columns: 1fr;
-	}
-
-	.compliance-card:last-child,
-	.ranking-card--wide {
-		grid-column: auto;
-	}
-
 	.dashboard-section,
 	.ranking-card {
-		padding: 16px;
-	}
-
-	.section-heading--with-control {
-		flex-direction: column;
-		align-items: stretch;
+		padding: 1rem;
 	}
 
 	.compliance-list__item {
 		grid-template-columns: 1fr;
-		gap: 4px;
+		gap: 0.25rem;
 	}
 
 	.employee-table-wrap {
@@ -1561,7 +1577,6 @@ export default {
 		display: block;
 		width: 100%;
 		min-width: 0;
-		box-sizing: border-box;
 	}
 
 	.employee-table thead {
@@ -1570,11 +1585,11 @@ export default {
 
 	.employee-table tbody {
 		display: grid;
-		gap: 8px;
+		gap: 0.5rem;
 	}
 
 	.employee-row {
-		padding: 6px 10px;
+		padding: 0.375rem 0.625rem;
 		border: 1px solid var(--color-border);
 		border-radius: var(--border-radius);
 		background: var(--color-main-background);
@@ -1584,26 +1599,26 @@ export default {
 		border: 1px solid var(--color-border);
 		border-top: 0;
 		border-radius: 0 0 var(--border-radius) var(--border-radius);
-		margin-top: -8px;
 		background: var(--color-background-hover);
+	}
+
+	.employee-row--expanded {
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
 	}
 
 	.employee-detail-row td {
 		display: block;
-		padding: 8px 10px 10px;
+		padding: 0.5rem 0.625rem 0.625rem;
 		border: 0;
-	}
-
-	.employee-detail-row td::before {
-		content: none;
 	}
 
 	.employee-row td {
 		display: grid;
-		grid-template-columns: minmax(90px, .7fr) minmax(0, 1.3fr);
-		gap: 8px;
+		grid-template-columns: minmax(5.5rem, 0.7fr) minmax(0, 1.3fr);
+		gap: 0.5rem;
 		height: auto;
-		padding: 5px 0;
+		padding: 0.3125rem 0;
 		border-bottom: 1px solid var(--color-border);
 		text-align: right;
 	}
@@ -1611,7 +1626,7 @@ export default {
 	.employee-row td::before {
 		content: attr(data-label);
 		color: var(--color-text-maxcontrast);
-		font-size: .7rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		text-align: left;
 		text-transform: uppercase;

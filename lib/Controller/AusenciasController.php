@@ -21,6 +21,7 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCP\Files\IRootFolder;
 
 use DateTime;
+use OCP\IConfig;
 
 use OCA\Empleados\Db\reportetiempoMapper;
 use OCA\Empleados\Db\reportetiempo;
@@ -39,6 +40,7 @@ use OCA\Empleados\Service\AniversarioSyncService;
 use OCP\AppFramework\Http;
 use OCP\IURLGenerator;
 use OCP\Activity\IManager;
+use OCP\Notification\IManager as INotificationManager;
 
 use OCA\Empleados\Helper\MailHelper;
 
@@ -66,6 +68,8 @@ class AusenciasController extends BaseController {
     protected $userManager;
 
     protected IRootFolder $rootFolder;
+    private IConfig $config;
+    private INotificationManager $notificationManager;
 
     private IManager $activityManager;
 	private IURLGenerator $urlGenerator;
@@ -94,7 +98,9 @@ class AusenciasController extends BaseController {
         reportetiempoMapper $reportetiempoMapper,
         aniversarioMapper $aniversarioMapper,
         actividadesMapper $actividadesMapper,
-        AniversarioSyncService $aniversarioSyncService
+        AniversarioSyncService $aniversarioSyncService,
+        IConfig $config,
+        INotificationManager $notificationManager 
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
         
@@ -118,6 +124,8 @@ class AusenciasController extends BaseController {
         $this->actividadesMapper = $actividadesMapper;
         $this->primavacacionalpagoMapper = $primavacacionalpagoMapper;
         $this->aniversarioSyncService = $aniversarioSyncService;
+        $this->config = $config;
+        $this->notificationManager = $notificationManager;
     }
     /**
      * Obtiene la lista de ausencias.
@@ -151,12 +159,12 @@ class AusenciasController extends BaseController {
         $event->setMessage('Desde "' . $fechaInicio . '" hasta "' . $fechaFin . '"');
         $this->activityManager->publish($event);
 
-        $destinatarios = [
+        $destinatarios = array_unique(array_filter([
             $employe_info[0]['Id_gerente'] ?? null,
             $employe_info[0]['Id_socio'] ?? null,
             $employe_info[0]['Id_supervisor'] ?? null,
             $this->configuracionesMapper->GetGestor()[0]['Data'] ?? null,
-        ];
+        ]));
 
         foreach ($destinatarios as $usuario) {
             if (empty($usuario)) {
@@ -191,6 +199,24 @@ class AusenciasController extends BaseController {
 
             $event->setMessage('Desde "' . $fechaInicio . '" hasta "' . $fechaFin . '"');
             $this->activityManager->publish($event);
+
+            $this->enviarNotificacionInterna(
+                $usuario,
+                'ausencia_solicitada',
+                [
+                    'nombre_empleado' => $nombreEmpleado,
+                    'tipo_ausencia' => $tipoAusencia,
+                    'fecha_de' => $fechaInicio,
+                    'fecha_hasta' => $fechaFin,
+                    'id_historial_ausencias' => $idHistorialAusencia,
+                ]
+            );
+
+            $mail = $userM->getEMailAddress();
+
+            if (!$mail) {
+                continue;
+            }
 
             // FIX: el correo mostraba $fechaFin dos veces (también como "fecha de inicio").
             $this->mailHelper->enviarCorreo(
@@ -1084,6 +1110,7 @@ class AusenciasController extends BaseController {
             $ausencia['tiene_supervisor'] = !empty($empleadoInfo) && !empty($empleadoInfo[0]['Id_supervisor']); // <-- nueva línea
             $ausencia['es_privilegiado'] = $isPrivileged;
             $ausencia['gerente_es_socio'] = !empty($empleadoInfo) && $this->gerenteEsSocio($empleadoInfo);
+            $ausencia['es_propietario'] = !empty($empleadoInfo) && ($empleadoInfo[0]['Id_user'] ?? null) === $uid;
 
             return new DataResponse($ausencia, Http::STATUS_OK);
         } catch (\Exception $e) {
@@ -1155,6 +1182,7 @@ class AusenciasController extends BaseController {
 
             $this->historialausenciasMapper->CancelarAusencia($id);
             $this->revertirEfectosAusencia($ausencia);
+            $this->notificarAusenciaCancelada($ausencia, $uid);
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
@@ -1866,11 +1894,46 @@ class AusenciasController extends BaseController {
 
         if ($gerenteFinal === 1 && $socioFinal === 1 && $supervisorFinal === 1 && $capitalHumanoFinal === 1) {
             $this->notificarAusenciaAprobada($ausencia);
+        } else {
+            // Notificación de aprobación
+            $this->notificarAprobacionParcial($ausencia, $rol);
         }
 
         return new DataResponse([
             'success' => true
         ], Http::STATUS_OK);
+    }
+
+    /**
+     * Notifica al empleado que UN aprobador (no todos) ya aprobó su solicitud.
+     */
+    private function notificarAprobacionParcial(array $ausencia, string $rolQueAprobo): void {
+        $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+        if (empty($reg)) {
+            return;
+        }
+
+        $idEmpleado = (int) $reg[0]['id_empleado'];
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $idEmpleado);
+        if (empty($empleadoInfo) || empty($empleadoInfo[0]['Id_user'])) {
+            return;
+        }
+
+        $uidEmpleado = $empleadoInfo[0]['Id_user'];
+        $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+
+        $this->enviarNotificacionInterna(
+            $uidEmpleado,
+            'ausencia_aprobada_parcial',
+            [
+                'tipo_ausencia' => $nombreTipo,
+                'rol' => $rolQueAprobo,
+                'fecha_de' => $ausencia['fecha_de'],
+                'fecha_hasta' => $ausencia['fecha_hasta'],
+                'id_historial_ausencias' => $ausencia['id_historial_ausencias'] ?? null,
+            ]
+        );
     }
 
     /**
@@ -1926,6 +1989,49 @@ class AusenciasController extends BaseController {
             return new DataResponse(
                 ['success' => false, 'message' => $e->getMessage()],
                 Http::STATUS_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    /**
+     * Notifica a los aprobadores involucrados que el empleado canceló su solicitud.
+     */
+    private function notificarAusenciaCancelada(array $ausencia, string $uidQuienCancela): void {
+        $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+        if (empty($reg)) {
+            return;
+        }
+
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado']);
+        if (empty($empleadoInfo)) {
+            return;
+        }
+
+        $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+        $nombreEmpleado = $empleadoInfo[0]['Nombre'] ?? $empleadoInfo[0]['Id_user'] ?? 'Empleado';
+
+        $destinatarios = array_unique(array_filter([
+            $empleadoInfo[0]['Id_gerente'] ?? null,
+            $empleadoInfo[0]['Id_socio'] ?? null,
+            $empleadoInfo[0]['Id_supervisor'] ?? null,
+        ]));
+
+        foreach ($destinatarios as $uidAprobador) {
+            if ($uidAprobador === $uidQuienCancela) {
+                continue;
+            }
+
+            $this->enviarNotificacionInterna(
+                $uidAprobador,
+                'ausencia_cancelada',
+                [
+                    'nombre_empleado' => $nombreEmpleado,
+                    'tipo_ausencia' => $nombreTipo,
+                    'fecha_de' => $ausencia['fecha_de'],
+                    'fecha_hasta' => $ausencia['fecha_hasta'],
+                    'id_historial_ausencias' => $ausencia['id_historial_ausencias'] ?? null,
+                ]
             );
         }
     }
@@ -2015,6 +2121,17 @@ class AusenciasController extends BaseController {
         $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
         $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
 
+        $this->enviarNotificacionInterna(
+            $uidEmpleado,
+            'ausencia_aprobada_completa',
+            [
+                'tipo_ausencia' => $nombreTipo,
+                'fecha_de' => $ausencia['fecha_de'],
+                'fecha_hasta' => $ausencia['fecha_hasta'],
+                'id_historial_ausencias' => $ausencia['id_historial_ausencias'] ?? null,
+            ]
+        );
+
         $this->mailHelper->enviarCorreo(
             $mail,
             'Solicitud aprobada',
@@ -2069,6 +2186,18 @@ class AusenciasController extends BaseController {
 
         $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
         $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+
+        $this->enviarNotificacionInterna(
+            $uidEmpleado,
+            'ausencia_rechazada',
+            [
+                'tipo_ausencia' => $nombreTipo,
+                'motivo' => $motivo,
+                'fecha_de' => $ausencia['fecha_de'],
+                'fecha_hasta' => $ausencia['fecha_hasta'],
+                'id_historial_ausencias' => $ausencia['id_historial_ausencias'] ?? null,
+            ]
+        );
 
         $cuerpo = [
             'Hola ' . $userEmpleado->getDisplayName() . '',
@@ -2338,5 +2467,186 @@ class AusenciasController extends BaseController {
     
     private function formatNumeroReporte(float $n): string {
         return floor($n) == $n ? (string) (int) $n : rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
+    }
+
+    /**
+     * Recordatorio manual (botón "Notificar"): el propio empleado dispara
+     * un correo a los aprobadores que aún no han confirmado su ausencia.
+     * Límite: 1 vez cada 2 horas por solicitud.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function NotificarRecordatorioAprobacion(): DataResponse {
+        $this->checkAccess(['admin', 'empleados']);
+
+        $id = (int) $this->request->getParam('id');
+        if ($id <= 0) {
+            return new DataResponse(['success' => false, 'message' => 'ID inválido'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $detalle = $this->historialausenciasMapper->GetDetalleById($id);
+        if (empty($detalle)) {
+            return new DataResponse(['success' => false, 'message' => 'Ausencia no encontrada'], Http::STATUS_NOT_FOUND);
+        }
+        $ausencia = $detalle[0];
+
+        $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+        if (empty($reg)) {
+            return new DataResponse(['success' => false, 'message' => 'No se encontró el empleado dueño'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado']);
+        if (empty($empleadoInfo)) {
+            return new DataResponse(['success' => false, 'message' => 'Empleado no encontrado'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $user = $this->userSession->getUser();
+        $uid = $user->getUID();
+
+        if (($empleadoInfo[0]['Id_user'] ?? null) !== $uid) {
+            return new DataResponse(['success' => false, 'message' => 'Sin permiso para notificar esta solicitud'], Http::STATUS_FORBIDDEN);
+        }
+
+        $gerenteEstado = (int) ($ausencia['a_gerente'] ?? 0);
+        $socioEstado = (int) ($ausencia['a_socio'] ?? 0);
+        $supervisorEstado = (int) ($ausencia['a_supervisor'] ?? 0);
+        $capitalHumanoEstado = (int) ($ausencia['a_capital_humano'] ?? 0);
+
+        if (in_array($gerenteEstado, [2, 3], true)
+            || in_array($socioEstado, [2, 3], true)
+            || in_array($supervisorEstado, [2, 3], true)
+            || $capitalHumanoEstado === 2) {
+            return new DataResponse(['success' => false, 'message' => 'Esta solicitud ya está cerrada'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $tieneSupervisor = !empty($empleadoInfo[0]['Id_supervisor'] ?? null);
+        $gerenteOk = $gerenteEstado === 1;
+        $socioOk = $socioEstado === 1;
+        $supervisorOk = !$tieneSupervisor || $supervisorEstado === 1;
+        $capitalHumanoOk = $capitalHumanoEstado === 1;
+
+        if ($gerenteOk && $socioOk && $supervisorOk && $capitalHumanoOk) {
+            return new DataResponse(['success' => false, 'message' => 'Esta solicitud ya fue aprobada por completo'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $configKey = 'notif_ausencia_' . $id;
+        $ultimoEnvio = (int) $this->config->getAppValue(Application::APP_ID, $configKey, '0');
+        $segundosRestantes = ($ultimoEnvio + 7200) - time();
+
+        if ($segundosRestantes > 0) {
+            $minutosRestantes = (int) ceil($segundosRestantes / 60);
+            return new DataResponse([
+                'success' => false,
+                'message' => 'Ya se envió un recordatorio recientemente. Intenta de nuevo en ' . $minutosRestantes . ' minuto(s).'
+            ], Http::STATUS_BAD_REQUEST);
+        }
+
+        $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+        $nombreEmpleado = $user->getDisplayName();
+
+        $idGerente = $empleadoInfo[0]['Id_gerente'] ?? null;
+        $idSocio = $empleadoInfo[0]['Id_socio'] ?? null;
+        $idSupervisor = $empleadoInfo[0]['Id_supervisor'] ?? null;
+
+        $pendientesPorRol = [];
+
+        if (!$gerenteOk && !empty($idGerente)) {
+            $pendientesPorRol[$idGerente] = 'gerente';
+        }
+        if (!$socioOk && !empty($idSocio) && $idSocio !== $idGerente) {
+            $pendientesPorRol[$idSocio] = $pendientesPorRol[$idSocio] ?? 'socio';
+        }
+        if ($tieneSupervisor && !$supervisorOk && $idSupervisor !== $idGerente && $idSupervisor !== $idSocio) {
+            $pendientesPorRol[$idSupervisor] = $pendientesPorRol[$idSupervisor] ?? 'supervisor';
+        }
+        if (!$capitalHumanoOk) {
+            $grupo = $this->groupManager->get('recursos_humanos');
+            if ($grupo) {
+                foreach ($grupo->getUsers() as $userRH) {
+                    $uidRH = $userRH->getUID();
+                    if (!isset($pendientesPorRol[$uidRH])) {
+                        $pendientesPorRol[$uidRH] = 'recursos_humanos';
+                    }
+                }
+            }
+        }
+
+        if (empty($pendientesPorRol)) {
+            return new DataResponse(['success' => false, 'message' => 'No hay aprobadores pendientes por notificar'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $enviados = 0;
+        foreach ($pendientesPorRol as $uidAprobador => $rol) {
+            $userAprobador = $this->userManager->get($uidAprobador);
+            if (!$userAprobador) {
+                continue;
+            }
+
+            $this->enviarNotificacionInterna(
+                $uidAprobador,
+                'ausencia_recordatorio_aprobacion',
+                [
+                    'nombre_empleado' => $nombreEmpleado,
+                    'tipo_ausencia' => $nombreTipo,
+                    'fecha_de' => $ausencia['fecha_de'],
+                    'fecha_hasta' => $ausencia['fecha_hasta'],
+                    'id_historial_ausencias' => $id,
+                ]
+            );
+
+            $mail = $userAprobador->getEMailAddress();
+            if (!$mail) {
+                continue;
+            }
+
+            $this->mailHelper->enviarCorreo(
+                $mail,
+                'Recordatorio: solicitud de ausencia pendiente',
+                [
+                    'Hola ' . $userAprobador->getDisplayName(),
+                    'El empleado ' . $nombreEmpleado . ' tiene una solicitud de "' . $nombreTipo . '" pendiente de tu aprobación.',
+                    'Fecha de inicio: ' . $ausencia['fecha_de'] . '  - Fecha de finalización: ' . $ausencia['fecha_hasta'] . '',
+                    '',
+                ]
+            );
+            $enviados++;
+        }
+
+        if ($enviados === 0) {
+            return new DataResponse(['success' => false, 'message' => 'Los aprobadores pendientes no tienen correo configurado'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $this->config->setAppValue(Application::APP_ID, $configKey, (string) time());
+
+        return new DataResponse(['success' => true, 'message' => 'Recordatorio enviado'], Http::STATUS_OK);
+    }
+
+    /**
+     * Envía una notificación interna de Nextcloud (campanita).
+     */
+    private function enviarNotificacionInterna(
+        string $uid,
+        string $subject,
+        array $params = [],
+        ?string $link = null
+    ): void {
+        try {
+            $notification = $this->notificationManager->createNotification();
+
+            $notification->setApp(Application::APP_ID)
+                ->setUser($uid)
+                ->setDateTime(new \DateTime())
+                ->setObject('ausencia', (string) ($params['id_historial_ausencias'] ?? uniqid('aus_', true)))
+                ->setSubject($subject, $params);
+
+            if ($link !== null) {
+                $notification->setLink($link);
+            }
+
+            $this->notificationManager->notify($notification);
+        } catch (\Throwable $e) {
+            error_log('Error al enviar notificación interna (' . $subject . '): ' . $e->getMessage());
+        }
     }
 }

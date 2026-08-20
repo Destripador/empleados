@@ -10,6 +10,7 @@ use OCA\Empleados\Listener\MovimientoArchivoListener;
 use OCP\IDBConnection;
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
 use OCA\Empleados\Cron\RecordatorioPrimaVacacional;
+use OCA\Empleados\Cron\RecordatorioAprobadoresPendientes;
 use OCA\Empleados\BackgroundJob\RecalcularVacacionesJob;
 use OCA\Empleados\Service\AniversarioSyncService;
 use OCA\Empleados\Db\historialvacacionesMapper;
@@ -85,6 +86,10 @@ class Application extends App implements IBootstrap {
 
 			if (!$jobList->has(RecordatorioPrimaVacacional::class, null)) {
 				$jobList->add(RecordatorioPrimaVacacional::class);
+			}
+
+			if (!$jobList->has(RecordatorioAprobadoresPendientes::class, null)) {
+				$jobList->add(RecordatorioAprobadoresPendientes::class);
 			}
 		});
 	}
