@@ -410,7 +410,7 @@
 				<div class="div-center">
 					<NcButton
 						v-if="show"
-						aria-label="Guardar"
+						:aria-label="t('empleados', 'Apply changes')"
 						type="primary"
 						@click="$bus.emit('empleados:guardar-todo')">
 						{{ t('empleados', 'Apply changes') }}

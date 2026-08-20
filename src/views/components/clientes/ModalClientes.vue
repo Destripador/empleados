@@ -1,8 +1,8 @@
 <template>
-	<NcModal :name="t('empleados', 'Importar clientes')" @close="$emit('close')">
+	<NcModal :name="t('empleados', 'Import customers')" @close="$emit('close')">
 		<div class="modal-content">
-			<h2>{{ t('empleados', 'Importar clientes') }}</h2>
-			<p>{{ t('empleados', 'Funciona') }}</p>
+			<h2>{{ t('empleados', 'Import customers') }}</h2>
+			<p>{{ t('empleados', 'This feature is not available yet.') }}</p>
 		</div>
 	</NcModal>
 </template>

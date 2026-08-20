@@ -1,5 +1,5 @@
 <template>
-	<NcAppContent name="Loading">
+	<NcAppContent :name="t('empleados', 'Loading...')">
 		<div class="">
 			<div class="text-center section-calendar">
 				<div v-if="configuraciones.modulo_ausencias_readonly === 'true'">

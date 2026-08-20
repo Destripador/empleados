@@ -2,7 +2,7 @@
 	<div v-if="loading">
 		<!-- Loading section -->
 		<div class="center-screen">
-			<NcLoadingIcon :size="64" appearance="dark" name="Loading on light background" />
+			<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
 		</div>
 	</div>
 	<div v-else id="admin">
@@ -37,9 +37,9 @@
 						<table>
 							<thead>
 								<tr>
-									<th>Espacio</th>
-									<th>Empleados</th>
-									<th>Acción</th>
+									<th>{{ t('empleados', 'Space') }}</th>
+									<th>{{ t('empleados', 'Employees') }}</th>
+									<th>{{ t('empleados', 'Action') }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -52,14 +52,14 @@
 											:input-label="t('empleados','Usuarios que ocupa el espacio')" />
 									</td>
 									<td v-else>
-										Listo para editar
+										{{ t('empleados', 'Ready to edit') }}
 									</td>
 									<td>
 										<NcButton v-if="casillaEdit == espacio.id_espacio" @click="guardar(espacio.id_espacio)">
-											Guardar
+											{{ t('empleados', 'Save') }}
 										</NcButton>
 										<NcButton v-else @click="edit(espacio.id_espacio)">
-											Editar
+											{{ t('empleados', 'Edit') }}
 										</NcButton>
 									</td>
 								</tr>
@@ -72,9 +72,9 @@
 						<table>
 							<thead>
 								<tr>
-									<th>Espacio</th>
-									<th>Espacios a los que obstruye</th>
-									<th>Acción</th>
+									<th>{{ t('empleados', 'Space') }}</th>
+									<th>{{ t('empleados', 'Blocked spaces') }}</th>
+									<th>{{ t('empleados', 'Action') }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -87,14 +87,14 @@
 											:input-label="t('empleados','Espacios a los que obstruye')" />
 									</td>
 									<td v-else>
-										Listo para editar
+										{{ t('empleados', 'Ready to edit') }}
 									</td>
 									<td>
 										<NcButton v-if="casillaEditObs == espacio.id_espacio" @click="guardarObstruye(espacio.id_espacio)">
-											Guardar
+											{{ t('empleados', 'Save') }}
 										</NcButton>
 										<NcButton v-else @click="editObstruye(espacio.id_espacio)">
-											Editar
+											{{ t('empleados', 'Edit') }}
 										</NcButton>
 									</td>
 								</tr>

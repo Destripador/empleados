@@ -30,7 +30,7 @@
 						+
 					</button>
 					<button type="button" class="zoom-btn" @click="resetView">
-						Reset
+						{{ t('empleados', 'Reset') }}
 					</button>
 				</div>
 
@@ -508,7 +508,7 @@
 								</div>
 							</div>
 						</div>
-						<NcLoadingIcon v-else name="Cargando mapa..." />
+						<NcLoadingIcon v-else :name="t('empleados', 'Loading map...')" />
 					</div>
 				</div>
 			</div>
@@ -523,11 +523,11 @@
 						+
 					</button>
 					<button type="button" class="zoom-btn" @click="resetView">
-						Reset
+						{{ t('empleados', 'Reset') }}
 					</button>
 				</div>
 				<p class="helper-text">
-					Mapa fijo del estacionamiento. En móvil se escala completo sin alterar proporciones.
+					{{ t('empleados', 'Fixed parking map. On mobile it scales fully without changing proportions.') }}
 				</p>
 			</div>
 		</div>

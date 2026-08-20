@@ -17,8 +17,6 @@
 							<FilterVariant :size="23" />
 						</template>
 
-						{{ t('empleados') }}
-
 						<span
 							v-if="activeFilterCount > 0"
 							class="filter-badge">
@@ -35,10 +33,10 @@
 							</p>
 							<select v-model="sortOrder">
 								<option value="az">
-									A to Z
+									{{ t('empleados', 'A to Z') }}
 								</option>
 								<option value="za">
-									Z to A
+									{{ t('empleados', 'Z to A') }}
 								</option>
 							</select>
 						</div>
@@ -360,7 +358,7 @@ export default {
 				const response = await axios.post(generateUrl('/apps/empleados/GetActividad'), { id })
 				this.select = response?.data?.ocs?.data
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -397,7 +395,7 @@ export default {
 				})
 				this.loading = false
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -426,7 +424,7 @@ export default {
 					alcance: this.activity_scope,
 					area_ids: this.selected_areas.map(area => Number(area.id)),
 				})
-				showSuccess(t('empleados', 'Actividad creada exitosamente'))
+				showSuccess(t('empleados', 'Activity created successfully'))
 				this.GetActividades()
 				this.closeModal()
 			} catch (err) {
@@ -443,7 +441,7 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/DeleteActividad'), {
 					id: this.select[0].id_actividad,
 				})
-				showSuccess(t('empleados', 'Actividad eliminada exitosamente'))
+				showSuccess(t('empleados', 'Activity deleted successfully'))
 				this.GetActividades()
 				this.closeModal()
 				this.select = []
@@ -465,7 +463,7 @@ export default {
 					alcance: this.activity_scope,
 					area_ids: this.selected_areas.map(area => Number(area.id)),
 				})
-				showSuccess(t('empleados', 'Modificación exitosa'))
+				showSuccess(t('empleados', 'Updated successfully'))
 				// Actualizar select con valores frescos (en minutos, ya convertidos)
 				const minutos = this.type_time === 'horas'
 					? Number(this.time_activity) * 60
@@ -510,9 +508,9 @@ export default {
 					headers: { 'Content-Type': 'multipart/form-data' },
 				})
 				this.GetActividades()
-				showSuccess(t('empleados', 'Base de datos actualizada exitosamente'))
+				showSuccess(t('empleados', 'Database updated successfully'))
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [03] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -529,7 +527,7 @@ export default {
 					link.click()
 				})
 				.catch((err) => {
-					showError(t('empleados', 'Error al exportar: {error}', { error: String(err) }))
+					showError(t('empleados', 'Error exporting: {error}', { error: String(err) }))
 				})
 		},
 		backendError(error) {
