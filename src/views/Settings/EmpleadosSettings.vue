@@ -356,19 +356,17 @@ import AccountOff from 'vue-material-design-icons/AccountOff.vue'
 import AccountPlus from 'vue-material-design-icons/AccountPlus.vue'
 
 // Components & utils
-import {
-	NcActions,
-	NcActionButton,
-	NcLoadingIcon,
-	NcAvatar,
-	NcDialog,
-	NcEmptyContent,
-	NcButton,
-	NcCheckboxRadioSwitch,
-	NcNoteCard,
-	NcTextField,
-	NcModal,
-} from '@nextcloud/vue'
+import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
+import NcActions from '@nextcloud/vue/dist/Components/NcActions.js'
+import NcAvatar from '@nextcloud/vue/dist/Components/NcAvatar.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcDialog from '@nextcloud/vue/dist/Components/NcDialog.js'
+import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'

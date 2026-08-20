@@ -70,7 +70,8 @@ import { translate as t } from '@nextcloud/l10n'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import 'vue-nav-tabs/themes/vue-tabs.css'
 
-import { NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
+import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import EstacionamientoSettings from './EstacionamientoSettings.vue'
 
 export default {

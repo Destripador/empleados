@@ -2,150 +2,197 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import { generateUrl } from '@nextcloud/router'
 
-import Employees from '../views/components/ListaEmpleados/Employees.vue'
-import Calendario from '../views/components/TiempoLibre/TiempoLibre.vue'
-import Equipos from '../views/components/Equipos/Equipos.vue'
-import Puestos from '../views/components/puestos/Puestos.vue'
-import Areas from '../views/components/areas/Areas.vue'
-import Ahorros from '../views/components/ahorros/Solicitar.vue'
-import PanelAhorros from '../views/components/ahorros/PanelAhorros.vue'
-import Dashboard from '../views/components/Dashboard/Dashboard.vue'
-import CompaniesGroups from '../views/components/clientes/CompaniesGroups.vue'
-import Actividades from '../views/components/clientes/Actividades.vue'
-import Costos from '../views/components/costos/Costos.vue'
-import Reports from '../views/components/reports/Reports.vue'
-import Adminreports from '../views/components/reports/admin/Adminreports.vue'
-import Ejemplo from '../views/components/ejemplo/Ejemplo.vue'
-import QuickReport from '../views/components/reports/QuickReport.vue'
-import CumplimientoReportes from '../views/components/reports/CumplimientoReportes.vue'
-import Inventario from '../views/components/Inventario/Inventario.vue'
-import MisSolicitudesCompras from '../views/components/Compras/MisSolicitudes.vue'
-import SimulacionOficina from '../views/components/SimulacionOficina/SimulacionOficina.vue'
-import Estacionamiento from '../views/components/Estacionamiento/Estacionamiento.vue'
-
 Vue.use(Router)
 
 export default new Router({
 	mode: 'hash',
 	linkActiveClass: 'active',
-	// if index.php is in the url AND we got this far, then it's working:
-	// let's keep using index.php in the url
 	base: generateUrl('/apps/empleados', ''),
+
 	routes: [
 		{
 			path: '/',
-			component: Dashboard,
 			name: 'Home',
+			component: () => import(
+				/* webpackChunkName: "dashboard" */
+				'../views/components/Dashboard/Dashboard.vue'
+			),
 		},
 		{
 			path: '/Empleados',
-			component: Employees,
 			name: 'Empleados',
+			component: () => import(
+				/* webpackChunkName: "empleados-lista" */
+				'../views/components/ListaEmpleados/Employees.vue'
+			),
 		},
 		{
 			path: '/Puestos',
-			component: Puestos,
 			name: 'Puestos',
+			component: () => import(
+				/* webpackChunkName: "puestos" */
+				'../views/components/puestos/Puestos.vue'
+			),
 		},
 		{
 			path: '/Areas',
-			component: Areas,
 			name: 'Areas',
+			component: () => import(
+				/* webpackChunkName: "areas" */
+				'../views/components/areas/Areas.vue'
+			),
 		},
 		{
 			path: '/Equipos',
-			component: Equipos,
 			name: 'Equipos',
+			component: () => import(
+				/* webpackChunkName: "equipos" */
+				'../views/components/Equipos/Equipos.vue'
+			),
 		},
 		{
 			path: '/Calendario',
-			component: Calendario,
 			name: 'Calendario',
+			component: () => import(
+				/* webpackChunkName: "tiempo-libre" */
+				'../views/components/TiempoLibre/TiempoLibre.vue'
+			),
 		},
 		{
 			path: '/Solicitar',
-			component: Ahorros,
 			name: 'Ahorros',
+			component: () => import(
+				/* webpackChunkName: "ahorros-solicitar" */
+				'../views/components/ahorros/Solicitar.vue'
+			),
 		},
 		{
 			path: '/PanelAhorros',
-			component: PanelAhorros,
 			name: 'PanelAhorros',
+			component: () => import(
+				/* webpackChunkName: "ahorros-panel" */
+				'../views/components/ahorros/PanelAhorros.vue'
+			),
 		},
 		{
 			path: '/Activities',
-			component: Actividades,
 			name: 'Activities',
+			component: () => import(
+				/* webpackChunkName: "actividades" */
+				'../views/components/clientes/Actividades.vue'
+			),
 		},
 		{
 			path: '/CompaniesGroups',
-			component: CompaniesGroups,
 			name: 'CompaniesGroups',
+			component: () => import(
+				/* webpackChunkName: "clientes-empresas" */
+				'../views/components/clientes/CompaniesGroups.vue'
+			),
 		},
 		{
 			path: '/Costs',
-			component: Costos,
 			name: 'Costs',
+			component: () => import(
+				/* webpackChunkName: "costos" */
+				'../views/components/costos/Costos.vue'
+			),
 		},
 		{
 			path: '/Reports',
-			component: Reports,
 			name: 'Reports',
+			component: () => import(
+				/* webpackChunkName: "reportes" */
+				'../views/components/reports/Reports.vue'
+			),
 		},
 		{
 			path: '/Adminreports',
-			component: Adminreports,
 			name: 'Adminreports',
+			component: () => import(
+				/* webpackChunkName: "reportes-admin" */
+				'../views/components/reports/admin/Adminreports.vue'
+			),
 		},
 		{
-			path: '/ejemplo', // Nueva ruta
-			component: Ejemplo, // Asumiendo que el componente se llama Sidenavitaion.vue
+			path: '/ejemplo',
 			name: 'ejemplo',
+			component: () => import(
+				/* webpackChunkName: "ejemplo" */
+				'../views/components/ejemplo/Ejemplo.vue'
+			),
 		},
 		{
 			path: '/quick-report',
 			name: 'quick-report',
-			component: QuickReport,
+			component: () => import(
+				/* webpackChunkName: "quick-report" */
+				'../views/components/reports/QuickReport.vue'
+			),
 		},
 		{
 			path: '/cumplimiento-reportes',
 			name: 'cumplimiento-reportes',
-			component: CumplimientoReportes,
+			component: () => import(
+				/* webpackChunkName: "cumplimiento-reportes" */
+				'../views/components/reports/CumplimientoReportes.vue'
+			),
 		},
 		{
 			path: '/Inventario',
-			component: Inventario,
 			name: 'Inventario',
+			component: () => import(
+				/* webpackChunkName: "inventario" */
+				'../views/components/Inventario/Inventario.vue'
+			),
 		},
 		{
 			path: '/Inventario/Mantenimientos',
 			name: 'Mantenimientos',
-			component: () => import('../views/components/Inventario/Mantenimientos/MantenimientosView.vue'),
+			component: () => import(
+				/* webpackChunkName: "inventario-mantenimientos" */
+				'../views/components/Inventario/Mantenimientos/MantenimientosView.vue'
+			),
 		},
 		{
 			path: '/Inventario/Mantenimientos/Grupos/:id',
 			name: 'MantenimientoGrupo',
-			component: () => import('../views/components/Inventario/Mantenimientos/MantenimientoGrupoDetail.vue'),
+			component: () => import(
+				/* webpackChunkName: "inventario-mantenimiento-grupo" */
+				'../views/components/Inventario/Mantenimientos/MantenimientoGrupoDetail.vue'
+			),
 		},
 		{
 			path: '/Inventario/Mantenimientos/:id',
 			name: 'MantenimientoDetalle',
-			component: () => import('../views/components/Inventario/Mantenimientos/MantenimientoDetail.vue'),
+			component: () => import(
+				/* webpackChunkName: "inventario-mantenimiento-detalle" */
+				'../views/components/Inventario/Mantenimientos/MantenimientoDetail.vue'
+			),
 		},
 		{
 			path: '/compras',
 			name: 'compras',
-			component: MisSolicitudesCompras,
+			component: () => import(
+				/* webpackChunkName: "compras" */
+				'../views/components/Compras/MisSolicitudes.vue'
+			),
 		},
 		{
 			path: '/office-simulation',
 			name: 'SimulacionOficina',
-			component: SimulacionOficina,
+			component: () => import(
+				/* webpackChunkName: "simulacion-oficina" */
+				'../views/components/SimulacionOficina/SimulacionOficina.vue'
+			),
 		},
 		{
 			path: '/Estacionamiento',
-			component: Estacionamiento,
 			name: 'Estacionamiento',
+			component: () => import(
+				/* webpackChunkName: "estacionamiento" */
+				'../views/components/Estacionamiento/Estacionamiento.vue'
+			),
 		},
 	],
 })

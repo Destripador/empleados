@@ -15,7 +15,8 @@
 
 <script>
 import navigator from './navigator/Sidenavigation.vue'
-import { NcContent, NcEmptyContent } from '@nextcloud/vue'
+import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
+import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import { translate as t } from '@nextcloud/l10n'
 
 import AlertCircleOutline from 'vue-material-design-icons/AlertCircleOutline.vue'

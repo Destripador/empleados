@@ -386,18 +386,16 @@ import ContentSave from 'vue-material-design-icons/ContentSave.vue'
 
 import ShieldCheck from 'vue-material-design-icons/ShieldCheck.vue'
 
-import {
-	NcActions,
-	NcActionButton,
-	NcButton,
-	NcCheckboxRadioSwitch,
-	NcEmptyContent,
-	NcLoadingIcon,
-	NcModal,
-	NcNoteCard,
-	NcTextField,
-	NcSelect,
-} from '@nextcloud/vue'
+import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
+import NcActions from '@nextcloud/vue/dist/Components/NcActions.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'

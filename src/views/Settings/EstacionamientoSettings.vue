@@ -163,13 +163,11 @@
 // icons
 
 // nextcloud/vue
-import {
-	NcButton,
-	NcLoadingIcon,
-	NcModal,
-	NcSelect,
-	NcTextField,
-} from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 // import { ref } from 'vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'

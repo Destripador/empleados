@@ -357,15 +357,13 @@
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
 // @nextcloud/vue components
-import {
-	NcButton,
-	NcLoadingIcon,
-	NcSelect,
-	NcNoteCard,
-	NcCheckboxRadioSwitch,
-	NcPasswordField,
-	NcTextField,
-} from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcPasswordField from '@nextcloud/vue/dist/Components/NcPasswordField.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 // Nextcloud utils
 import { showError, showSuccess } from '@nextcloud/dialogs'

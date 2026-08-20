@@ -602,14 +602,12 @@ import CalendarMultiple from 'vue-material-design-icons/CalendarMultiple.vue'
 import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 import AccountArrowRightOutline from 'vue-material-design-icons/AccountArrowRightOutline.vue'
 
-import {
-	NcActions,
-	NcActionButton,
-	NcModal,
-	NcTextField,
-	NcButton,
-	NcCheckboxRadioSwitch,
-} from '@nextcloud/vue'
+import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
+import NcActions from '@nextcloud/vue/dist/Components/NcActions.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import { ref } from 'vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'

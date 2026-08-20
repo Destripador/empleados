@@ -27,7 +27,7 @@ const REACTION_BY_TYPE = {
 
 /**
  * Normaliza eventos crudos del backend en la forma usada por nodos.
- * @param {Array<{type?: string, icon?: string, years?: number}>|null|undefined} raw
+ * @param {Array<{type?: string, icon?: string, years?: number}>|null|undefined} raw Eventos crudos recibidos del backend.
  */
 export function normalizeDailyEvents(raw) {
 	if (!Array.isArray(raw) || raw.length === 0) {
@@ -77,6 +77,7 @@ export function primaryCelebration(events) {
  * 1. evento especial del día
  * 2. icono de estado Nextcloud
  * 3. ninguno
+ * @param {object} entity Entidad cuyo badge principal se resolverá.
  */
 export function resolvePrimaryBadge(entity) {
 	const celebration = primaryCelebration(entity?.specialEvents)
@@ -104,8 +105,8 @@ export function randomCelebrationReaction(type) {
 
 /**
  * Resumen a partir de eventosHoy del backend o de la lista de empleados.
- * @param {{work_anniversary?: Array, birthday?: Array}|null} eventosHoy
- * @param {Array} employees
+ * @param {{work_anniversary?: Array, birthday?: Array}|null} eventosHoy Eventos del día recibidos del backend.
+ * @param {Array} employees Empleados usados para generar el resumen alternativo.
  */
 export function buildTodayEventsSummary(eventosHoy, employees = []) {
 	if (eventosHoy && (eventosHoy.work_anniversary || eventosHoy.birthday)) {

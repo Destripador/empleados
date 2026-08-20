@@ -111,15 +111,13 @@ import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
-import {
-	NcButton,
-	NcModal,
-	NcSelect,
-	NcDateTimePicker,
-	NcTextField,
-	NcTextArea,
-	NcCheckboxRadioSwitch,
-} from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcDateTimePicker from '@nextcloud/vue/dist/Components/NcDateTimePicker.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextArea from '@nextcloud/vue/dist/Components/NcTextArea.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 export default {
 	name: 'ReportTimeModal',

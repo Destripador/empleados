@@ -250,12 +250,10 @@ import Cash from 'vue-material-design-icons/Cash.vue'
 import CalendarMonth from 'vue-material-design-icons/CalendarMonth.vue'
 import OfficeBuildingMarker from 'vue-material-design-icons/OfficeBuildingMarker.vue'
 
-import {
-	NcAppNavigation,
-	NcAppNavigationItem,
-	NcAppNavigationList,
-	NcAppNavigationCaption,
-} from '@nextcloud/vue'
+import NcAppNavigation from '@nextcloud/vue/dist/Components/NcAppNavigation.js'
+import NcAppNavigationCaption from '@nextcloud/vue/dist/Components/NcAppNavigationCaption.js'
+import NcAppNavigationItem from '@nextcloud/vue/dist/Components/NcAppNavigationItem.js'
+import NcAppNavigationList from '@nextcloud/vue/dist/Components/NcAppNavigationList.js'
 
 import { translate as t } from '@nextcloud/l10n'
 import permissionsMixin from '../../mixins/permissions.js'

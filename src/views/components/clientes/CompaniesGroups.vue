@@ -653,7 +653,9 @@
 									<div v-if="pagosRealizados.length > 0" class="info-section billing-section">
 										<div class="section-head">
 											<div>
-												<p class="section-label">{{ t('empleados', 'Billing') }}</p>
+												<p class="section-label">
+													{{ t('empleados', 'Billing') }}
+												</p>
 												<h3>{{ t('empleados', 'Payments made for other companies') }}</h3>
 											</div>
 										</div>

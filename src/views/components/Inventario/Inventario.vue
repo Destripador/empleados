@@ -305,7 +305,9 @@
 											type="tertiary"
 											:aria-label="t('empleados', 'Unassign device')"
 											@click="unassignEmployee(equipo)">
-											<template #icon><Close :size="16" /></template>
+											<template #icon>
+												<Close :size="16" />
+											</template>
 										</NcButton>
 									</div>
 									<button

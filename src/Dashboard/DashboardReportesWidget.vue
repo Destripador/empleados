@@ -74,11 +74,12 @@ import { generateUrl } from '@nextcloud/router'
 import { showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
-import ReportTimeModal from '../views/components/reports/ReportTimeModal.vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
-import {
-	NcButton,
-} from '@nextcloud/vue'
+const ReportTimeModal = () => import(
+	/* webpackChunkName: "dashboard-report-time-modal" */
+	'../views/components/reports/ReportTimeModal.vue'
+)
 
 export default {
 	name: 'DashboardReportesWidget',

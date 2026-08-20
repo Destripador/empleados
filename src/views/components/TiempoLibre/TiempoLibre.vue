@@ -158,8 +158,8 @@
 								<div class="acordeon-item acordeon-item--filter">
 									<label class="switch-toggle">
 										<input
-											type="checkbox"
 											v-model="ocultarCanceladasRechazadas"
+											type="checkbox"
 											@change="onToggleOcultarCanceladasRechazadas">
 										<span class="switch-toggle__track">
 											<span class="switch-toggle__thumb" />
@@ -976,7 +976,8 @@ export default {
 
 		/**
 		 * Convierte un Date a 'MM-DD' (mismo formato que usa la tabla de festivos).
-		 * @param date
+		 * @param {Date|string} date Fecha que se desea formatear.
+		 * @return {string} Fecha formateada.
 		 */
 		formatMesDia(date) {
 			const mes = String(date.getMonth() + 1).padStart(2, '0')
@@ -987,7 +988,7 @@ export default {
 		/**
 		 * Indica si una fecha determinada corresponde a un día festivo
 		 * registrado (usa el mismo diccionario 'MM-DD' -> nombre).
-		 * @param date
+		 * @param {Date} date Fecha que se comprobará.
 		 */
 		esFestivo(date) {
 			return Boolean(this.festivosPorFecha[this.formatMesDia(date)])
@@ -1004,7 +1005,7 @@ export default {
 		 * verde desaparecía. Como excepción: si la celda es "hoy", dejamos
 		 * que se vea el resaltado amarillo propio de FullCalendar aunque
 		 * el día sea festivo (solo se mantienen la etiqueta y el bloqueo).
-		 * @param arg
+		 * @param {object} arg Información de montaje proporcionada por FullCalendar.
 		 */
 		onDayCellDidMount(arg) {
 			const mesDia = this.formatMesDia(arg.date)
@@ -1229,6 +1230,7 @@ export default {
 		 * calendario: no borra ni modifica nada en el backend.
 		 * Se aplica igual en cualquier vista (personal, equipo,
 		 * empleados, todos).
+		 * @param {Array<object>} events Eventos del calendario que se filtrarán.
 		 */
 		filtrarSiOcultos(events) {
 			if (!this.ocultarCanceladasRechazadas) return events

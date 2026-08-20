@@ -54,7 +54,7 @@ import { completeTutorial } from '../../services/tutorials.js'
  * Convert a YouTube watch/share URL into an embeddable URL.
  * Leaves already-embed URLs and non-YouTube links untouched.
  *
- * @param {string} url
+ * @param {string} url description
  * @return {string}
  */
 function toEmbedUrl(url) {

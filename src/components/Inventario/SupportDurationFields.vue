@@ -28,7 +28,7 @@
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
-import { NcTextField } from '@nextcloud/vue'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 import { formatSupportDuration, normalizeSupportDuration, splitSupportDuration } from '../../utils/supportDuration.js'
 
