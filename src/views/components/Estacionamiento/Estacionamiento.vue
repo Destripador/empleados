@@ -1,6 +1,25 @@
 <template>
-	<NcAppContent name="Ejemplo – Dashboard">
-		<div class="wrap">
+	<NcAppContent :name="t('empleados', 'Parking')">
+		<div v-if="statusLoading" class="parking-status-loading">
+			<NcLoadingIcon :size="48" :name="t('empleados', 'Loading parking status')" />
+		</div>
+		<div v-else-if="statusError" class="parking-status-error" role="alert">
+			<h2>{{ t('empleados', 'Parking status is unavailable') }}</h2>
+			<p>{{ t('empleados', 'The map cannot be displayed safely until its publication status is known.') }}</p>
+			<NcButton @click="initializeParking">
+				{{ t('empleados', 'Retry') }}
+			</NcButton>
+		</div>
+		<ParkingMaintenanceNotice
+			v-else-if="isMaintenance && !canManage"
+			:status="parkingStatus" />
+		<ParkingMaintenanceBanner
+			v-if="!statusLoading && !statusError && isMaintenance && canManage"
+			:status="parkingStatus"
+			:can-publish="canManage"
+			:publishing="publishing"
+			@publish="showPublishModal = true" />
+		<div v-if="!statusLoading && !statusError && canViewSensitiveData" class="wrap">
 			<div class="main-content">
 				<div class="toolbar toolbar-mobile">
 					<button type="button" class="zoom-btn" @click="zoomOut">
@@ -11,7 +30,7 @@
 						+
 					</button>
 					<button type="button" class="zoom-btn" @click="resetView">
-						Reset
+						{{ t('empleados', 'Reset') }}
 					</button>
 				</div>
 
@@ -42,6 +61,10 @@
 							ref="parking"
 							class="parking"
 							:style="parkingStyle">
+							<div v-if="isMaintenance && canManage" class="parking-watermark" aria-hidden="true">
+								<span>{{ t('empleados', 'DRAFT · MAINTENANCE') }}</span>
+								<small>{{ t('empleados', 'NOT PUBLISHED') }}</small>
+							</div>
 							<div class="side">
 								<div class="slot medium empty top space"
 									:class="{
@@ -268,7 +291,7 @@
 										{{ spaces[15].nombre || spaces[15].estado }}
 									</div>
 									<div class="slot empty hidden-spot">
-						&nbsp;
+					&nbsp;
 									</div>
 									<div class="slot empty"
 										:class="{
@@ -485,7 +508,7 @@
 								</div>
 							</div>
 						</div>
-						<NcLoadingIcon v-else name="Cargando mapa..." />
+						<NcLoadingIcon v-else :name="t('empleados', 'Loading map...')" />
 					</div>
 				</div>
 			</div>
@@ -500,11 +523,11 @@
 						+
 					</button>
 					<button type="button" class="zoom-btn" @click="resetView">
-						Reset
+						{{ t('empleados', 'Reset') }}
 					</button>
 				</div>
 				<p class="helper-text">
-					Mapa fijo del estacionamiento. En móvil se escala completo sin alterar proporciones.
+					{{ t('empleados', 'Fixed parking map. On mobile it scales fully without changing proportions.') }}
 				</p>
 			</div>
 		</div>
@@ -642,6 +665,24 @@
 				</NcButton>
 			</template>
 		</NcModal>
+		<NcModal v-if="showPublishModal"
+			:name="t('empleados', 'Publish parking')"
+			size="normal"
+			@close="showPublishModal = false">
+			<div class="publish-confirmation">
+				<h3>{{ t('empleados', 'Confirm parking publication') }}</h3>
+				<p>{{ t('empleados', 'The current assignments will become visible to all parking users.') }}</p>
+				<p>{{ t('empleados', 'Make sure the map is complete and correct before publishing.') }}</p>
+				<div class="publish-confirmation__actions">
+					<NcButton :disabled="publishing" @click="showPublishModal = false">
+						{{ t('empleados', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="publishing" @click="publishParking">
+						{{ publishing ? t('empleados', 'Publishing…') : t('empleados', 'Publish parking') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
 	</NcAppContent>
 </template>
 
@@ -651,6 +692,8 @@ import { t } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
+import ParkingMaintenanceBanner from './ParkingMaintenanceBanner.vue'
+import ParkingMaintenanceNotice from './ParkingMaintenanceNotice.vue'
 
 const MAP_WIDTH = 760
 const MAP_HEIGHT = 1120
@@ -664,9 +707,27 @@ export default {
 		NcButton,
 		NcCheckboxRadioSwitch,
 		NcTextField,
+		ParkingMaintenanceBanner,
+		ParkingMaintenanceNotice,
 	},
 	data() {
 		return {
+			statusLoading: true,
+			statusError: false,
+			parkingStatus: {
+				mode: 'operational',
+				maintenance: false,
+				canManage: false,
+				canViewSensitiveData: false,
+				reason: null,
+				startedAt: null,
+				until: null,
+			},
+			statusPollTimer: null,
+			dragEventsBound: false,
+			resizeFallbackBound: false,
+			showPublishModal: false,
+			publishing: false,
 			loading: true,
 			zoomLevel: 1,
 			maxZoom: 3,
@@ -702,6 +763,17 @@ export default {
 		}
 	},
 	computed: {
+		isMaintenance() {
+			return this.parkingStatus.maintenance === true
+		},
+		canManage() {
+			return this.parkingStatus.canManage === true
+		},
+		canViewSensitiveData() {
+			return this.parkingStatus.canViewSensitiveData === true
+				|| !this.isMaintenance
+				|| this.canManage
+		},
 		effectiveScale() {
 			return this.baseScale * this.zoomLevel
 		},
@@ -726,18 +798,107 @@ export default {
 		},
 	},
 	mounted() {
-		this.bindDragEvents()
-		this.setupResizeObserver()
-		this.updateBaseScale()
-		this.fetchEstacionamientoDatos()
+		this.initializeParking()
+		this.statusPollTimer = window.setInterval(this.refreshParkingStatus, 30000)
 	},
-	beforeUnmount() {
-		this.unbindDragEvents()
-		if (this.resizeObserver) {
-			this.resizeObserver.disconnect()
+	beforeDestroy() {
+		if (this.statusPollTimer) {
+			window.clearInterval(this.statusPollTimer)
 		}
+		this.teardownMapInteractions()
 	},
 	methods: {
+		async initializeParking() {
+			this.statusLoading = true
+			this.statusError = false
+			try {
+				await this.loadParkingStatus()
+			} catch (error) {
+				this.statusError = true
+				showError(t('empleados', 'Could not load the parking publication status.'))
+				return
+			} finally {
+				this.statusLoading = false
+			}
+
+			if (this.canViewSensitiveData) {
+				await this.prepareMap()
+			}
+		},
+		async loadParkingStatus() {
+			const response = await axios.get(generateUrl('/apps/empleados/espacios/status'))
+			this.parkingStatus = response?.data?.ocs?.data || this.parkingStatus
+		},
+		async refreshParkingStatus() {
+			const couldView = this.canViewSensitiveData
+			try {
+				await this.loadParkingStatus()
+				this.statusError = false
+			} catch (error) {
+				return
+			}
+
+			if (!this.canViewSensitiveData) {
+				this.teardownMapInteractions()
+				this.closeSensitiveDialogs()
+				this.spaces = []
+				this.loading = false
+				return
+			}
+			if (!this.isMaintenance) {
+				this.showPublishModal = false
+			}
+
+			if (!couldView) {
+				await this.prepareMap()
+			}
+		},
+		async prepareMap() {
+			await this.$nextTick()
+			this.bindDragEvents()
+			this.setupResizeObserver()
+			this.updateBaseScale()
+			await this.fetchEstacionamientoDatos()
+		},
+		closeSensitiveDialogs() {
+			this.showModal = false
+			this.showPublicModal = false
+			this.history = []
+			this.publicHistory = []
+		},
+		teardownMapInteractions() {
+			this.unbindDragEvents()
+			if (this.resizeObserver) {
+				this.resizeObserver.disconnect()
+				this.resizeObserver = null
+			}
+		},
+		applyMaintenanceBlock(error) {
+			const blocked = error?.response?.data?.ocs?.data
+			if (!blocked?.maintenance) {
+				return false
+			}
+
+			this.teardownMapInteractions()
+			this.parkingStatus = blocked
+			this.closeSensitiveDialogs()
+			this.spaces = []
+			return true
+		},
+		async publishParking() {
+			this.publishing = true
+			try {
+				const response = await axios.post(generateUrl('/apps/empleados/espacios/publish'))
+				this.parkingStatus = response?.data?.ocs?.data?.parking || this.parkingStatus
+				this.showPublishModal = false
+				showSuccess(t('empleados', 'Parking published successfully.'))
+			} catch (error) {
+				const message = error?.response?.data?.ocs?.data?.message
+				showError(message || t('empleados', 'Could not publish the parking map.'))
+			} finally {
+				this.publishing = false
+			}
+		},
 		async fetchEstacionamientoDatos() {
 			this.loading = true
 			try {
@@ -793,8 +954,11 @@ export default {
 				})
 
 			} catch (error) {
+				if (this.applyMaintenanceBlock(error)) {
+					return
+				}
 				console.error('Error cargando datos del estacionamiento', error)
-				showError('Error cargando datos del estacionamiento')
+				showError(t('empleados', 'Error loading parking data'))
 			} finally {
 				this.loading = false
 			}
@@ -887,9 +1051,14 @@ export default {
 			}
 		},
 		setupResizeObserver() {
+			if (this.resizeObserver || this.resizeFallbackBound) {
+				return
+			}
+
 			const viewport = this.$refs.viewport
 			if (!viewport || typeof ResizeObserver === 'undefined') {
 				window.addEventListener('resize', this.updateBaseScale)
+				this.resizeFallbackBound = true
 				return
 			}
 
@@ -912,6 +1081,10 @@ export default {
 			this.baseScale = Math.min(widthScale, heightScale, 1)
 		},
 		bindDragEvents() {
+			if (this.dragEventsBound) {
+				return
+			}
+
 			const parkingContainer = this.$refs.parkingContainer
 			if (!parkingContainer) {
 				return
@@ -921,6 +1094,7 @@ export default {
 			document.addEventListener('pointermove', this.onPointerMove, { passive: false })
 			document.addEventListener('pointerup', this.onPointerUp)
 			document.addEventListener('pointercancel', this.onPointerUp)
+			this.dragEventsBound = true
 		},
 		unbindDragEvents() {
 			const parkingContainer = this.$refs.parkingContainer
@@ -932,6 +1106,8 @@ export default {
 			document.removeEventListener('pointerup', this.onPointerUp)
 			document.removeEventListener('pointercancel', this.onPointerUp)
 			window.removeEventListener('resize', this.updateBaseScale)
+			this.dragEventsBound = false
+			this.resizeFallbackBound = false
 		},
 		onPointerDown(e) {
 			const parking = this.$refs.parking
@@ -1006,6 +1182,24 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.parking-status-loading,
+.parking-status-error {
+	display: grid;
+	place-items: center;
+	align-content: center;
+	gap: 12px;
+	box-sizing: border-box;
+	min-height: min(70vh, 620px);
+	padding: 24px;
+	text-align: center;
+}
+
+.parking-status-error p {
+	max-width: 58ch;
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+}
+
 .wrap {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 280px;
@@ -1094,6 +1288,8 @@ export default {
 }
 
 .parking {
+	position: relative;
+	isolation: isolate;
 	background: #dcdcdc;
 	display: flex;
 	justify-content: space-between;
@@ -1102,6 +1298,40 @@ export default {
 	padding: 10px;
 	box-sizing: border-box;
 	will-change: transform;
+}
+
+.parking-watermark {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: grid;
+	place-content: center;
+	gap: 12px;
+	overflow: hidden;
+	pointer-events: none;
+	color: var(--color-error);
+	font-weight: 900;
+	letter-spacing: 0.09em;
+	opacity: 0.22;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.parking-watermark span,
+.parking-watermark small {
+	display: block;
+	width: 900px;
+	max-width: 145%;
+	transform: rotate(-32deg);
+}
+
+.parking-watermark span {
+	font-size: 66px;
+	line-height: 1.05;
+}
+
+.parking-watermark small {
+	font-size: 34px;
 }
 
 .side {
@@ -1298,6 +1528,32 @@ export default {
 	gap: 18px;
 	width: min(100vw - 32px, 560px);
 	padding: 20px 24px 24px;
+}
+
+.publish-confirmation {
+	display: grid;
+	gap: 12px;
+	width: min(520px, calc(100vw - 32px));
+	box-sizing: border-box;
+	padding: 22px 24px 24px;
+}
+
+.publish-confirmation h3,
+.publish-confirmation p {
+	margin: 0;
+}
+
+.publish-confirmation__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+@media (max-width: 520px) {
+	.publish-confirmation__actions {
+		flex-direction: column-reverse;
+	}
 }
 
 .availability-modal__description {

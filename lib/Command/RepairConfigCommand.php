@@ -41,6 +41,7 @@ final class RepairConfigCommand extends Command {
 		'reportes_recordatorios_email' => 'true',
 		'reportes_horas_minimas' => '0',
 		'reportes_admin_reports_group' => 'recursos_humanos',
+		'parking_mode' => 'operational',
 	];
 
 	/**

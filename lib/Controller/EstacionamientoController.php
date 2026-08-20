@@ -24,6 +24,7 @@ use OCA\Empleados\Db\espacioObstruyeMapper;
 use OCA\Empleados\Db\espacioObstruye;
 use OCA\Empleados\Db\empleadosEspacioDisponibleMapper;
 use OCA\Empleados\Db\empleadosEspacioDisponible;
+use OCA\Empleados\Service\ParkingModeService;
 
 use OCP\IAvatarManager;
 
@@ -55,6 +56,7 @@ class EstacionamientoController extends BaseController {
     protected $espacioEmpleadosMapper;
     protected $espacioObstruyeMapper;
     protected $empleadosEspacioDisponibleMapper;
+	protected ParkingModeService $parkingModeService;
 
     protected IRootFolder $rootFolder;
 
@@ -72,6 +74,7 @@ class EstacionamientoController extends BaseController {
         espacioEmpleadosMapper $espacioEmpleadosMapper,
         espacioObstruyeMapper $espacioObstruyeMapper,
         empleadosEspacioDisponibleMapper $empleadosEspacioDisponibleMapper,
+		ParkingModeService $parkingModeService,
         
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper, $espacioMapper, $espacioEmpleadosMapper, $espacioObstruyeMapper, $empleadosEspacioDisponibleMapper);
@@ -87,14 +90,74 @@ class EstacionamientoController extends BaseController {
         $this->espacioEmpleadosMapper = $espacioEmpleadosMapper;
         $this->espacioObstruyeMapper = $espacioObstruyeMapper;
         $this->empleadosEspacioDisponibleMapper = $empleadosEspacioDisponibleMapper;
+		$this->parkingModeService = $parkingModeService;
 
         $this->rootFolder = $rootFolder;
     }
 
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetParkingStatus(): DataResponse {
+		$uid = $this->currentUserId();
+		if ($uid === null) {
+			return new DataResponse(['message' => $this->l10n->t('Authentication required.')], Http::STATUS_UNAUTHORIZED);
+		}
+
+		return new DataResponse($this->parkingModeService->getStatus($uid), Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	public function ActivateMaintenance(?string $reason = null, ?string $until = null): DataResponse {
+		$uid = $this->currentUserId();
+		if ($uid === null || !$this->parkingModeService->canManage($uid)) {
+			return $this->managerForbiddenResponse();
+		}
+
+		try {
+			return new DataResponse([
+				'status' => 'success',
+				'parking' => $this->parkingModeService->activate($uid, $reason, $until),
+			], Http::STATUS_OK);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse([
+				'status' => 'error',
+				'message' => $this->l10n->t($e->getMessage()),
+			], Http::STATUS_BAD_REQUEST);
+		} catch (\DomainException $e) {
+			return new DataResponse([
+				'status' => 'error',
+				'message' => $this->l10n->t($e->getMessage()),
+			], Http::STATUS_CONFLICT);
+		}
+	}
+
+	#[UseSession]
+	public function PublishParking(): DataResponse {
+		$uid = $this->currentUserId();
+		if ($uid === null || !$this->parkingModeService->canManage($uid)) {
+			return $this->managerForbiddenResponse();
+		}
+
+		try {
+			return new DataResponse([
+				'status' => 'success',
+				'parking' => $this->parkingModeService->publish($uid),
+			], Http::STATUS_OK);
+		} catch (\DomainException $e) {
+			return new DataResponse([
+				'status' => 'error',
+				'message' => $this->l10n->t($e->getMessage()),
+			], Http::STATUS_CONFLICT);
+		}
+	}
+
     /** Devuelve los IDs de los empleados asignados a un espacio */
     #[UseSession]
-    #[NoAdminRequired]
     public function GetEmpleadosAsignados(int $id_espacio): DataResponse {
+		if (!$this->parkingModeService->canManage($this->currentUserId())) {
+			return $this->managerForbiddenResponse();
+		}
+
         return new DataResponse([
             'empleados' => $this->espacioEmpleadosMapper->findIdsByEspacio($id_espacio),
         ], Http::STATUS_OK);
@@ -102,8 +165,11 @@ class EstacionamientoController extends BaseController {
 
     /** Guarda la nueva selección */
     #[UseSession]
-    #[NoAdminRequired]
     public function GuardarAsignacion(int $id_espacio, array $id_empleados): DataResponse {
+		if (!$this->parkingModeService->canManage($this->currentUserId())) {
+			return $this->managerForbiddenResponse();
+		}
+
         // Limpiar anteriores
         $this->espacioEmpleadosMapper->deleteByEspacio($id_espacio);
 
@@ -123,8 +189,11 @@ class EstacionamientoController extends BaseController {
 
     /** Devuelve los IDs de los que obstruyen a un espacio */
     #[UseSession]
-    #[NoAdminRequired]
     public function GetEspaciosObstruyen(int $id_espacio): DataResponse {
+		if (!$this->parkingModeService->canManage($this->currentUserId())) {
+			return $this->managerForbiddenResponse();
+		}
+
         return new DataResponse([
             'espacios' => $this->espacioObstruyeMapper->findIdsObstruyen($id_espacio),
         ], Http::STATUS_OK);
@@ -132,8 +201,11 @@ class EstacionamientoController extends BaseController {
 
     /** Guarda selección de id de espacios que obstryen al id espacio enviado */
     #[UseSession]
-    #[NoAdminRequired]
     public function GuardarEspaciosObstruyen(int $id_espacio, array $id_espacios_obstruyen): DataResponse {
+		if (!$this->parkingModeService->canManage($this->currentUserId())) {
+			return $this->managerForbiddenResponse();
+		}
+
         // Limpiar anteriores
         $this->espacioObstruyeMapper->deleteByEspacio($id_espacio);
 
@@ -153,6 +225,10 @@ class EstacionamientoController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEmpleadosConEspacio(): DataResponse {
+		if (($blocked = $this->sensitiveDataBlockedResponse()) !== null) {
+			return $blocked;
+		}
+
         return new DataResponse([
             'empleados' => $this->espacioEmpleadosMapper->getEspacioEmpleado(),
         ], Http::STATUS_OK);
@@ -177,6 +253,10 @@ class EstacionamientoController extends BaseController {
         ?string $hora_inicial, 
         ?string $hora_final
         ): DataResponse {
+			if (($blocked = $this->sensitiveDataBlockedResponse()) !== null) {
+				return $blocked;
+			}
+
             try {
                 $inicio = new DateTime($fecha_inicio);
                 $fin = new DateTime($fecha_fin);
@@ -266,6 +346,10 @@ class EstacionamientoController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEspaciosLiberadosHoy(): DataResponse {
+		if (($blocked = $this->sensitiveDataBlockedResponse()) !== null) {
+			return $blocked;
+		}
+
         return new DataResponse([
             'espacios' => $this->empleadosEspacioDisponibleMapper->findCurrentLiberados(),
         ], Http::STATUS_OK);
@@ -274,6 +358,10 @@ class EstacionamientoController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetHistorial(int $id_espacio_empleado): DataResponse {
+		if (($blocked = $this->sensitiveDataBlockedResponse()) !== null) {
+			return $blocked;
+		}
+
         $historial = $this->empleadosEspacioDisponibleMapper->findByAsignacion($id_espacio_empleado);
         
         // Formateamos las fechas para que el frontend las lea más fácil
@@ -301,6 +389,10 @@ class EstacionamientoController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function EliminarDisponibilidad(int $id): DataResponse {
+		if (($blocked = $this->sensitiveDataBlockedResponse()) !== null) {
+			return $blocked;
+		}
+
         try {
             $entidad = $this->empleadosEspacioDisponibleMapper->findById($id);
             $uidLogueado = $this->userSession->getUser()->getUID();
@@ -326,6 +418,10 @@ class EstacionamientoController extends BaseController {
      * @NoAdminRequired
      */
     public function GetHistorialPublico(int $id_espacio): DataResponse {
+		if (($blocked = $this->sensitiveDataBlockedResponse()) !== null) {
+			return $blocked;
+		}
+
         try {
             $data = $this->empleadosEspacioDisponibleMapper->findPublicHistory($id_espacio);
 
@@ -351,4 +447,34 @@ class EstacionamientoController extends BaseController {
             ], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
+
+	private function currentUserId(): ?string {
+		return $this->userSession->getUser()?->getUID();
+	}
+
+	private function managerForbiddenResponse(): DataResponse {
+		return new DataResponse([
+			'status' => 'error',
+			'message' => $this->l10n->t('You do not have permission to manage parking.'),
+		], Http::STATUS_FORBIDDEN);
+	}
+
+	private function sensitiveDataBlockedResponse(): ?DataResponse {
+		$uid = $this->currentUserId();
+		if ($uid === null) {
+			return new DataResponse(['message' => $this->l10n->t('Authentication required.')], Http::STATUS_UNAUTHORIZED);
+		}
+
+		if ($this->parkingModeService->canViewSensitiveData($uid)) {
+			return null;
+		}
+
+		return new DataResponse(array_merge(
+			$this->parkingModeService->getStatus($uid),
+			[
+				'blocked' => true,
+				'message' => $this->l10n->t('Parking information is temporarily hidden during maintenance.'),
+			],
+		), Http::STATUS_FORBIDDEN);
+	}
 }

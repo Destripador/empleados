@@ -18,6 +18,7 @@ use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\departamentosMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\espacioMapper;
+use OCA\Empleados\Service\ParkingModeService;
 
 use OCP\IAvatarManager;
 
@@ -45,6 +46,7 @@ class EspacioController extends BaseController {
     protected $session;
     protected $l10n;
     protected $espacioMapper;
+	protected ParkingModeService $parkingModeService;
 
     protected IRootFolder $rootFolder;
 
@@ -59,6 +61,7 @@ class EspacioController extends BaseController {
         IGroupManager $groupManager,
         IRootFolder $rootFolder,
         espacioMapper $espacioMapper,
+		ParkingModeService $parkingModeService,
         
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper, $espacioMapper);
@@ -71,6 +74,7 @@ class EspacioController extends BaseController {
         $this->configuracionesMapper = $configuracionesMapper;
         $this->l10n = $l10n;
         $this->espacioMapper = $espacioMapper;
+		$this->parkingModeService = $parkingModeService;
 
         $this->rootFolder = $rootFolder;
     }
@@ -78,6 +82,21 @@ class EspacioController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetEspacios(): DataResponse {
+		$uid = $this->userSession->getUser()?->getUID();
+		if ($uid === null) {
+			return new DataResponse(['message' => $this->l10n->t('Authentication required.')], Http::STATUS_UNAUTHORIZED);
+		}
+
+		if (!$this->parkingModeService->canViewSensitiveData($uid)) {
+			return new DataResponse(array_merge(
+				$this->parkingModeService->getStatus($uid),
+				[
+					'blocked' => true,
+					'message' => $this->l10n->t('Parking information is temporarily hidden during maintenance.'),
+				],
+			), Http::STATUS_FORBIDDEN);
+		}
+
         return new DataResponse([
             'Espacio' => $this->espacioMapper->findAllOrdered('numero', 'ASC'),
         ], Http::STATUS_OK);

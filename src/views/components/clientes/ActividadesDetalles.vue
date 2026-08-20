@@ -248,10 +248,12 @@ export default {
 			if (v >= 60) {
 				const h = Math.floor(v / 60)
 				const m = v % 60
-				const label = m > 0 ? `${h}h ${m}min` : `${h}h`
+				const label = m > 0
+					? t('empleados', '{hours}h {minutes}min', { hours: h, minutes: m })
+					: t('empleados', '{hours}h', { hours: h })
 				return value < 0 ? `-${label}` : label
 			}
-			return `${value} min`
+			return t('empleados', '{minutes} min', { minutes: value })
 		},
 	},
 }

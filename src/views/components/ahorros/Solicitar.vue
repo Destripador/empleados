@@ -1,9 +1,9 @@
 <template id="content">
-	<NcAppContent v-if="loading == true" name="Loading">
+	<NcAppContent v-if="loading == true" :name="t('empleados', 'Loading...')">
 		<NcLoadingIcon />
 	</NcAppContent>
 
-	<NcAppContent v-else name="Loading">
+	<NcAppContent v-else :name="t('empleados', 'Loading...')">
 		<div class="savings-page">
 			<section class="savings-hero">
 				<div class="savings-hero__copy">

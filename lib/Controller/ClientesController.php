@@ -259,22 +259,26 @@ class ClientesController extends BaseController {
             $honorariosMap[(int)$row['id_cliente']] = $row;
         }
 
+        $header = function (string $label): string {
+            return '<style bgcolor="#DDEBF7"><b>' . $label . '</b></style>';
+        };
+
         $books[] = [
-            '<style bgcolor="#DDEBF7"><b>Empresa</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Detalles</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Razón Social</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Total Honorarios</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Moneda(s)</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Periodo</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Líder Proyecto</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Nombre Contacto</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Teléfono</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Correo</b></style>',
-            '<style bgcolor="#DDEBF7"><b>RFC</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Ubicación</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Cliente Especial</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Estado</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Cliente Padre</b></style>',
+            $header($this->l10n->t('Company')),
+            $header($this->l10n->t('Details')),
+            $header($this->l10n->t('Legal Business Name')),
+            $header($this->l10n->t('Total fees')),
+            $header($this->l10n->t('Currency')),
+            $header($this->l10n->t('Period')),
+            $header($this->l10n->t('Project Manager')),
+            $header($this->l10n->t('Primary Contact')),
+            $header($this->l10n->t('Phone Number')),
+            $header($this->l10n->t('Email')),
+            $header($this->l10n->t('RFC')),
+            $header($this->l10n->t('Location')),
+            $header($this->l10n->t('Special Client')),
+            $header($this->l10n->t('Status')),
+            $header($this->l10n->t('Parent group')),
         ];
 
         foreach ($clientes as $cliente) {
@@ -313,8 +317,8 @@ class ClientesController extends BaseController {
                 $cliente['correo'] ?? '',
                 $cliente['rfc'] ?? '',
                 $cliente['ubicacion'] ?? '',
-                ($cliente['especial'] ? 'Sí' : 'No'),
-                ($cliente['estado'] ? 'Activo' : 'Inactivo'),
+                ($cliente['especial'] ? $this->l10n->t('Yes') : $this->l10n->t('No')),
+                ($cliente['estado'] ? $this->l10n->t('Active') : $this->l10n->t('Inactive')),
                 $clientesMap[(int)($cliente['cliente_padre'] ?? 0)] ?? '',
             ];
         }
@@ -324,7 +328,7 @@ class ClientesController extends BaseController {
         $xlsx->setDefaultFont('Calibri');
 
         $xlsx->downloadAs(
-            'Clientes_' . date('Y-m-d') . '.xlsx'
+            $this->l10n->t('Customers') . '_' . date('Y-m-d') . '.xlsx'
         );
 
         return new DataResponse(
@@ -346,7 +350,7 @@ class ClientesController extends BaseController {
         $rows = $xlsx->rows();
 
         if (count($rows) < 2) {
-            return new DataResponse(['status' => 'error', 'message' => 'Sin datos'], Http::STATUS_BAD_REQUEST);
+            return new DataResponse(['status' => 'error', 'message' => $this->l10n->t('No data')], Http::STATUS_BAD_REQUEST);
         }
 
         $rawHeaders = array_map(
@@ -355,18 +359,18 @@ class ClientesController extends BaseController {
         );
 
         $aliases = [
-            'nombre' => ['nombre', 'empresa', 'company', 'nombre_empresa', 'cliente'],
-            'detalles' => ['detalles', 'descripcion', 'informacion', 'info'],
-            'razon_social' => ['razon_social', 'subnombre', 'razon'],
-            'nombre_contacto' => ['nombre_contacto'],
-            'telefono' => ['telefono'],
-            'correo' => ['correo'],
+            'nombre' => ['nombre', 'empresa', 'company', 'nombre_empresa', 'cliente', 'client'],
+            'detalles' => ['detalles', 'descripcion', 'descripción', 'informacion', 'información', 'info', 'details'],
+            'razon_social' => ['razon_social', 'razón social', 'subnombre', 'razon', 'legal business name', 'business name'],
+            'nombre_contacto' => ['nombre_contacto', 'nombre contacto', 'primary contact', 'contacto'],
+            'telefono' => ['telefono', 'teléfono', 'phone', 'phone number'],
+            'correo' => ['correo', 'email', 'email address'],
             'rfc' => ['rfc'],
-            'ubicacion' => ['ubicacion'],
-            'especial' => ['especial'],
-            'estado' => ['estado'],
-            'grupo' => ['grupo', 'group', 'cliente_padre', 'parent', 'grupo_empresarial'],
-            'importe_total' => ['importe_total', 'importe', 'honorario', 'honorarios', 'total', 'monto'],
+            'ubicacion' => ['ubicacion', 'ubicación', 'location'],
+            'especial' => ['especial', 'special client', 'cliente especial'],
+            'estado' => ['estado', 'status'],
+            'grupo' => ['grupo', 'group', 'cliente_padre', 'parent', 'grupo_empresarial', 'parent group'],
+            'importe_total' => ['importe_total', 'importe', 'honorario', 'honorarios', 'total', 'monto', 'total fees', 'total honorarios'],
         ];
 
         $colIndex = [];
@@ -381,7 +385,7 @@ class ClientesController extends BaseController {
 
         if (!isset($colIndex['nombre'])) {
             return new DataResponse(
-                ['status' => 'error', 'message' => 'No se encontró columna de nombre/empresa'],
+                ['status' => 'error', 'message' => $this->l10n->t('The company/name column was not found')],
                 Http::STATUS_BAD_REQUEST
             );
         }
@@ -439,7 +443,7 @@ class ClientesController extends BaseController {
         foreach ($dataRows as $lineaNum => $row) {
             $nombre = $get($row, 'nombre');
             if (!$nombre) {
-                $errores[] = 'Fila ' . ($lineaNum + 2) . ': nombre vacío, se omitió.';
+                $errores[] = $this->l10n->t('Row %s: empty name, skipped.', [(string)($lineaNum + 2)]);
                 continue;
             }
 
@@ -464,7 +468,7 @@ class ClientesController extends BaseController {
             $cliente->setEspecial($especialRaw !== null && in_array(mb_strtolower($especialRaw), ['1', 'si', 'sí', 'yes', 'true'], true));
 
             $estadoRaw = $get($row, 'estado');
-            $cliente->setEstado($estadoRaw === null || !in_array(mb_strtolower($estadoRaw), ['0', 'no', 'false', 'inactivo', 'disabled'], true));
+            $cliente->setEstado($estadoRaw === null || !in_array(mb_strtolower($estadoRaw), ['0', 'no', 'false', 'inactivo', 'inactive', 'disabled'], true));
 
             $cliente->setCliente_padre($clientePadreId);
 
@@ -498,7 +502,7 @@ class ClientesController extends BaseController {
         $file = $this->request->getUploadedFile($key);
 
         if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            throw new UploadException($this->l10n->t('Error en la subida del archivo.'));
+            throw new UploadException($this->l10n->t('Error uploading the file.'));
         }
 
         return $file;

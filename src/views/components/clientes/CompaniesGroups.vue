@@ -15,7 +15,7 @@
 							<div class="areas-empty-card">
 								<img class="areas-empty-image"
 									src="../../../../img/crowesito-think.png"
-									alt="Empty area state">
+									:alt="t('empleados', 'Companies and groups')">
 
 								<h2>{{ t('empleados', 'Companies and groups') }}</h2>
 								<h1>{{ t('empleados', 'Select a client for more details') }}</h1>
