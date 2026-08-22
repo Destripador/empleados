@@ -15,6 +15,8 @@ use OCA\Empleados\Service\PermisosService;
 use OCA\Empleados\Service\SoporteReporteTiempoService;
 use OCP\AppFramework\Http;
 use OCP\IDBConnection;
+use OCP\IGroup;
+use OCP\IGroupManager;
 use OCP\IUser;
 use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
@@ -152,6 +154,38 @@ class InventarioMovimientoServiceTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $controller->CrearInventarioNota(8, 'Nota')->getStatus());
 	}
 
+	public function testAsignarEquipoAGrupoDisponibleRegistraMovimiento(): void {
+		[$service, $db, $computo, $movimientos, $empleados, $soporte, $groups] = $this->dependencies();
+		$group = $this->createMock(IGroup::class);
+		$group->method('getDisplayName')->willReturn('Auditoría');
+		$groups->method('get')->with('auditoria')->willReturn($group);
+		$computo->method('findById')->with(15)->willReturn(['id_equipo' => 15, 'id_empleado' => null, 'gid' => null, 'estado' => 'activo']);
+		$computo->expects($this->once())->method('updateGrupo')->with(15, 'auditoria', null)->willReturn(true);
+		$movimientos->expects($this->once())->method('insert')->willReturnCallback(function (InventarioMovimiento $movimiento): InventarioMovimiento {
+			$this->assertSame(InventarioMovimiento::TIPO_ASIGNACION, $movimiento->getTipoMovimiento());
+			$this->assertSame('grupo:auditoria', $movimiento->getEmpleadoNuevoUid());
+			$this->assertSame('Auditoría', $movimiento->getEmpleadoNuevoNombre());
+			return $movimiento;
+		});
+		$db->expects($this->once())->method('commit');
+
+		$service->asignarEquipoAGrupo(15, 'auditoria');
+	}
+
+	public function testAsignarEquipoAGrupoRechazaSiYaTieneEmpleado(): void {
+		[$service, $db, $computo, $movimientos, $empleados, $soporte, $groups] = $this->dependencies();
+		$group = $this->createMock(IGroup::class);
+		$group->method('getDisplayName')->willReturn('Auditoría');
+		$groups->method('get')->with('auditoria')->willReturn($group);
+		$computo->method('findById')->with(15)->willReturn(['id_equipo' => 15, 'id_empleado' => 4, 'gid' => null, 'estado' => 'activo']);
+		$computo->expects($this->never())->method('updateGrupo');
+		$movimientos->expects($this->never())->method('insert');
+		$db->expects($this->once())->method('rollBack');
+
+		$this->expectException(\DomainException::class);
+		$service->asignarEquipoAGrupo(15, 'auditoria');
+	}
+
 	private function dependencies(): array {
 		$db = $this->createMock(IDBConnection::class);
 		$session = $this->createMock(IUserSession::class);
@@ -164,10 +198,11 @@ class InventarioMovimientoServiceTest extends TestCase {
 		$empleados = $this->createMock(empleadosMapper::class);
 		$soporte = $this->createMock(SoporteHistorialMapper::class);
 		$integration = $this->createMock(SoporteReporteTiempoService::class);
+		$groups = $this->createMock(IGroupManager::class);
 
 		return [
-			new InventarioMovimientoService($db, $session, $computo, $movimientos, $empleados, $soporte, $integration),
-			$db, $computo, $movimientos, $empleados, $soporte,
+			new InventarioMovimientoService($db, $session, $computo, $movimientos, $empleados, $soporte, $integration, $groups),
+			$db, $computo, $movimientos, $empleados, $soporte, $groups,
 		];
 	}
 }

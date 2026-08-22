@@ -10,6 +10,7 @@ class InventarioComputo extends Entity {
 
 	protected ?int $id_equipo = null;
 	protected ?int $id_empleado = null;
+	protected ?string $gid = null;
 	protected ?int $id_modelo = null;
 	protected ?string $nombre_dispositivo = null;
 	protected ?string $nombre_sistema = null;
@@ -22,6 +23,7 @@ class InventarioComputo extends Entity {
 	public function __construct() {
 		$this->addType('id_equipo', 'integer');
 		$this->addType('id_empleado', 'integer');
+		$this->addType('gid', 'string');
 		$this->addType('id_modelo', 'integer');
 		$this->addType('nombre_dispositivo', 'string');
 		$this->addType('nombre_sistema', 'string');
@@ -36,6 +38,7 @@ class InventarioComputo extends Entity {
 		return [
 			'id_equipo' => $this->id_equipo,
 			'id_empleado' => $this->id_empleado,
+			'gid' => $this->gid,
 			'id_modelo' => $this->id_modelo,
 			'nombre_dispositivo' => $this->nombre_dispositivo,
 			'nombre_sistema' => $this->nombre_sistema,

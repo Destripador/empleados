@@ -53,6 +53,26 @@ export default {
 		return response.data?.ocs?.data ?? response.data
 	},
 
+	async getGrupos(params = {}) {
+		const response = await axios.get(appUrl('/inventario/grupos'), { params })
+		return response.data?.ocs?.data ?? response.data
+	},
+
+	async asignarEquipo(id_equipo, id_empleado) {
+		const response = await axios.post(appUrl(`/inventario/equipos/${id_equipo}/asignar`), { id_empleado })
+		return response.data?.ocs?.data ?? response.data
+	},
+
+	async asignarEquipoGrupo(id_equipo, gid) {
+		const response = await axios.post(appUrl(`/inventario/equipos/${id_equipo}/asignar-grupo`), { gid })
+		return response.data?.ocs?.data ?? response.data
+	},
+
+	async desasignarEquipo(id_equipo) {
+		const response = await axios.delete(appUrl(`/inventario/equipos/${id_equipo}/asignacion`))
+		return response.data?.ocs?.data ?? response.data
+	},
+
 	async getEquiposEmpleado(id_empleado) {
 		const response = await axios.post(appUrl('/GetInventarioEmpleado'), { id_empleado })
 		return response.data?.ocs?.data ?? response.data

@@ -155,6 +155,18 @@
 				</label>
 
 				<label class="compact-filter">
+					<span>{{ t('empleados', 'Group') }}</span>
+					<select v-model="filters.gid" @change="applyFilters">
+						<option value="">{{ t('empleados', 'All groups') }}</option>
+						<option v-for="grupo in gruposFiltro"
+							:key="grupo.gid"
+							:value="grupo.gid">
+							{{ grupo.displayname }}
+						</option>
+					</select>
+				</label>
+
+				<label class="compact-filter">
 					<span>{{ t('empleados', 'Model') }}</span>
 					<select v-model="filters.idModelo" @change="applyFilters">
 						<option value="">{{ t('empleados', 'All models') }}</option>
@@ -261,7 +273,7 @@
 								<th>{{ t('empleados', 'Serial number') }}</th>
 								<th>{{ t('empleados', 'Model') }}</th>
 								<th>{{ t('empleados', 'Status') }}</th>
-								<th>{{ t('empleados', 'Assigned employee') }}</th>
+								<th>{{ t('empleados', 'Assigned to') }}</th>
 								<th>{{ t('empleados', 'Actions') }}</th>
 							</tr>
 						</thead>
@@ -270,9 +282,13 @@
 								v-for="equipo in equipos"
 								:key="equipo.id_equipo"
 								:data-device-id="equipo.id_equipo"
+								class="inventario-table__row--clickable"
 								:class="{ 'inventory-device-highlight': focusedDeviceId === Number(equipo.id_equipo) }"
 								:aria-current="focusedDeviceId === Number(equipo.id_equipo) ? 'true' : null"
-								tabindex="-1">
+								:title="t('empleados', 'Open support records for this device')"
+								tabindex="-1"
+								@click="onDeviceRowClick($event, equipo)"
+								@keydown.enter.prevent="selectEquipoSoporte(equipo)">
 								<td class="strong-cell">
 									{{ displayValue(equipo.nombre_dispositivo) }}
 								</td>
@@ -286,7 +302,7 @@
 										{{ displayValue(equipo.estado) }}
 									</span>
 								</td>
-								<td>
+								<td @click.stop>
 									<div v-if="equipo.empleado_uid" class="employee-cell">
 										<NcAvatar
 											:user="equipo.empleado_uid"
@@ -310,11 +326,28 @@
 											</template>
 										</NcButton>
 									</div>
+									<div v-else-if="equipo.gid" class="employee-cell">
+										<span class="neutral-avatar"><AccountGroup :size="22" /></span>
+										<div>
+											<strong>{{ grupoAsignadoName(equipo) }}</strong>
+											<small>{{ t('empleados', 'Group') }}</small>
+										</div>
+										<NcButton
+											v-if="canAssignEmployee"
+											size="small"
+											type="tertiary"
+											:aria-label="t('empleados', 'Unassign device')"
+											@click="unassignEmployee(equipo)">
+											<template #icon>
+												<Close :size="16" />
+											</template>
+										</NcButton>
+									</div>
 									<button
 										v-else-if="canAssignEmployee"
 										type="button"
 										class="employee-cell employee-cell--empty employee-cell--assignable"
-										:aria-label="t('empleados', 'Assign employee to this device')"
+										:aria-label="t('empleados', 'Assign this device')"
 										@click="openAssignEmployeeModal(equipo)">
 										<span class="neutral-avatar"><AccountOutline :size="22" /></span>
 										<strong>{{ t('empleados', 'Unassigned') }}</strong>
@@ -324,7 +357,7 @@
 										<strong>{{ t('empleados', 'Unassigned') }}</strong>
 									</div>
 								</td>
-								<td class="actions-cell">
+								<td class="actions-cell" @click.stop>
 									<div class="row-actions">
 										<NcButton
 											size="small"
@@ -349,12 +382,6 @@
 													<History :size="18" />
 												</template>
 												{{ t('empleados', 'History') }}
-											</NcActionButton>
-											<NcActionButton close-after-click @click="selectEquipoSoporte(equipo)">
-												<template #icon>
-													<Wrench :size="18" />
-												</template>
-												{{ t('empleados', 'Register support') }}
 											</NcActionButton>
 										</NcActions>
 									</div>
@@ -387,7 +414,12 @@
 							<span>{{ t('empleados', 'Selected device') }}</span>
 							<strong>{{ displayValue(selectedEquipo.nombre_dispositivo) }}</strong>
 						</div>
-						<span>{{ displayValue(selectedEquipo.numero_serie) }}</span>
+						<div class="selected-equipo__meta">
+							<span>{{ displayValue(selectedEquipo.numero_serie) }}</span>
+							<NcButton type="tertiary" @click="setTab('equipos')">
+								{{ t('empleados', 'Back to devices') }}
+							</NcButton>
+						</div>
 					</div>
 
 					<NcEmptyContent
@@ -442,6 +474,7 @@
 		<NcModal
 			v-if="showModal"
 			class="inventario-nc-modal"
+			:size="isReadonly ? 'large' : 'normal'"
 			:name="modalTitle"
 			@close="closeModal">
 			<div class="inventario-modal">
@@ -476,72 +509,194 @@
 					</NcCheckboxRadioSwitch>
 				</div>
 
-				<!-- Crear equipo -->
-				<div v-if="tab === 'equipos'" class="form-grid">
-					<div class="select-field">
-						<label>{{ t('empleados', 'Model') }}</label>
+				<!-- Crear / editar / ver equipo -->
+				<div v-if="tab === 'equipos'">
+					<template v-if="isReadonly && editingItem">
+						<div class="device-details">
+							<header class="device-details__hero">
+								<span class="device-details__icon"><Laptop :size="28" /></span>
+								<div>
+									<h3>{{ displayValue(editingItem.nombre_dispositivo) }}</h3>
+									<p>{{ displayValue(editingItem.numero_serie) }}</p>
+								</div>
+								<span class="status-pill" :class="statusClass(editingItem.estado)">
+									{{ displayValue(editingItem.estado) }}
+								</span>
+							</header>
 
-						<select v-model="formEquipo.id_modelo" :disabled="isReadonly">
-							<option value="">
-								{{ t('empleados', 'Select a model') }}
-							</option>
+							<div class="device-details__tabs" role="tablist">
+								<button
+									type="button"
+									role="tab"
+									:aria-selected="detailsTab === 'ficha'"
+									:class="{ active: detailsTab === 'ficha' }"
+									@click="detailsTab = 'ficha'">
+									{{ t('empleados', 'Details') }}
+								</button>
+								<button
+									type="button"
+									role="tab"
+									:aria-selected="detailsTab === 'historial'"
+									:class="{ active: detailsTab === 'historial' }"
+									@click="detailsTab = 'historial'">
+									{{ t('empleados', 'History') }}
+								</button>
+							</div>
 
-							<option
-								v-for="modelo in modelosCatalogo"
-								:key="modelo.id_modelo"
-								:value="modelo.id_modelo">
-								{{ modeloLabel(modelo) }}
-							</option>
-						</select>
-					</div>
+							<div v-if="detailsTab === 'ficha'" class="device-details__body">
+								<section class="device-details__section">
+									<h4>{{ t('empleados', 'Identification') }}</h4>
+									<dl class="device-details__grid">
+										<div>
+											<dt>{{ t('empleados', 'Device name') }}</dt>
+											<dd>{{ displayValue(editingItem.nombre_dispositivo) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'System name') }}</dt>
+											<dd>{{ displayValue(editingItem.nombre_sistema) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'Serial number') }}</dt>
+											<dd>{{ displayValue(editingItem.numero_serie) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'Status') }}</dt>
+											<dd>{{ displayValue(editingItem.estado) }}</dd>
+										</div>
+									</dl>
+								</section>
 
-					<NcTextField
-						:value.sync="formEquipo.nombre_dispositivo"
-						:disabled="isReadonly"
-						:label="t('empleados', 'Device name')" />
+								<section class="device-details__section">
+									<h4>{{ t('empleados', 'Model') }}</h4>
+									<dl class="device-details__grid">
+										<div>
+											<dt>{{ t('empleados', 'Brand') }}</dt>
+											<dd>{{ displayValue(editingItem.marca) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'Model') }}</dt>
+											<dd>{{ displayValue(editingItem.modelo) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'CPU') }}</dt>
+											<dd>{{ displayValue(editingItem.procesador) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'RAM') }}</dt>
+											<dd>{{ displayValue(editingItem.ram) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'Storage') }}</dt>
+											<dd>{{ displayValue(editingItem.disco_duro) }}</dd>
+										</div>
+										<div>
+											<dt>{{ t('empleados', 'Type') }}</dt>
+											<dd>{{ displayValue(editingItem.tipo) }}</dd>
+										</div>
+									</dl>
+								</section>
 
-					<NcTextField
-						:value.sync="formEquipo.nombre_sistema"
-						:disabled="isReadonly"
-						:label="t('empleados', 'System name')" />
+								<section class="device-details__section">
+									<h4>{{ t('empleados', 'Assignment') }}</h4>
+									<div v-if="editingItem.empleado_uid" class="employee-cell">
+										<NcAvatar
+											:user="editingItem.empleado_uid"
+											:display-name="empleadoAsignadoName(editingItem)"
+											:show-user-status="false"
+											:show-user-status-compact="false"
+											:size="36"
+											disable-menu />
+										<div>
+											<strong>{{ empleadoAsignadoName(editingItem) }}</strong>
+											<small>{{ editingItem.empleado_uid }}</small>
+										</div>
+									</div>
+									<div v-else-if="editingItem.gid" class="employee-cell">
+										<span class="neutral-avatar"><AccountGroup :size="22" /></span>
+										<div>
+											<strong>{{ grupoAsignadoName(editingItem) }}</strong>
+											<small>{{ t('empleados', 'Group') }}</small>
+										</div>
+									</div>
+									<div v-else class="employee-cell employee-cell--empty">
+										<span class="neutral-avatar"><AccountOutline :size="22" /></span>
+										<strong>{{ t('empleados', 'Unassigned') }}</strong>
+									</div>
+								</section>
 
-					<NcTextField
-						:value.sync="formEquipo.numero_serie"
-						:disabled="isReadonly"
-						:label="t('empleados', 'Serial number')" />
+								<section v-if="editingItem.info" class="device-details__section">
+									<h4>{{ t('empleados', 'Information') }}</h4>
+									<p class="device-details__notes">
+										{{ editingItem.info }}
+									</p>
+								</section>
+							</div>
 
-					<div class="select-field">
-						<label>{{ t('empleados', 'Status') }}</label>
+							<DeviceHistoryList
+								v-else
+								:entries="historyEntries"
+								:loading="historyLoading"
+								:error="historyError"
+								:total="historyTotal"
+								@retry="loadHistory(true)"
+								@load-more="loadHistory(false)" />
+						</div>
+					</template>
 
-						<select v-model="formEquipo.estado" :disabled="isReadonly">
-							<option value="activo">
-								{{ t('empleados', 'Active') }}
-							</option>
-							<option value="asignado">
-								{{ t('empleados', 'Assigned') }}
-							</option>
-							<option value="mantenimiento">
-								{{ t('empleados', 'Maintenance') }}
-							</option>
-							<option value="inactivo">
-								{{ t('empleados', 'Inactive') }}
-							</option>
-							<option value="baja">
-								{{ t('empleados', 'Retired') }}
-							</option>
-						</select>
-					</div>
+					<div v-else class="form-grid">
+						<div class="select-field">
+							<label>{{ t('empleados', 'Model') }}</label>
+							<select v-model="formEquipo.id_modelo">
+								<option value="">
+									{{ t('empleados', 'Select a model') }}
+								</option>
+								<option
+									v-for="modelo in modelosCatalogo"
+									:key="modelo.id_modelo"
+									:value="modelo.id_modelo">
+									{{ modeloLabel(modelo) }}
+								</option>
+							</select>
+						</div>
 
-					<NcTextArea
-						class="form-field--full"
-						:value.sync="formEquipo.info"
-						:disabled="isReadonly"
-						:label="t('empleados', 'Information')" />
+						<div class="select-field">
+							<label>{{ t('empleados', 'Status') }}</label>
+							<select v-model="formEquipo.estado">
+								<option value="activo">
+									{{ t('empleados', 'Active') }}
+								</option>
+								<option value="asignado">
+									{{ t('empleados', 'Assigned') }}
+								</option>
+								<option value="mantenimiento">
+									{{ t('empleados', 'Maintenance') }}
+								</option>
+								<option value="inactivo">
+									{{ t('empleados', 'Inactive') }}
+								</option>
+								<option value="baja">
+									{{ t('empleados', 'Retired') }}
+								</option>
+							</select>
+						</div>
 
-					<div v-if="isReadonly" class="readonly-field form-field--full">
-						<span>{{ t('empleados', 'Assigned employee') }}</span>
-						<strong>{{ empleadoAsignadoName(editingItem || {}) }}</strong>
-						<small v-if="editingItem && editingItem.empleado_uid">{{ editingItem.empleado_uid }}</small>
+						<NcTextField
+							:value.sync="formEquipo.nombre_dispositivo"
+							:label="t('empleados', 'Device name')" />
+
+						<NcTextField
+							:value.sync="formEquipo.nombre_sistema"
+							:label="t('empleados', 'System name')" />
+
+						<NcTextField
+							class="form-field--full"
+							:value.sync="formEquipo.numero_serie"
+							:label="t('empleados', 'Serial number')" />
+
+						<NcTextArea
+							class="form-field--full"
+							:value.sync="formEquipo.info"
+							:label="t('empleados', 'Information')" />
 					</div>
 				</div>
 
@@ -605,87 +760,6 @@
 						:disabled="loading || (tab === 'soporte' && !validSupportForm)"
 						@click="saveModal">
 						{{ editMode ? t('empleados', 'Update') : t('empleados', 'Save') }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
-
-		<NcModal
-			v-if="showHistoryModal"
-			class="inventario-nc-modal"
-			size="large"
-			:name="t('empleados', 'Device history')"
-			@close="closeHistory">
-			<div class="inventario-modal history-modal">
-				<div v-if="historyDevice" class="history-device-heading">
-					<Laptop :size="24" />
-					<div>
-						<strong>{{ displayValue(historyDevice.nombre_dispositivo) }}</strong>
-						<span>{{ displayValue(historyDevice.numero_serie) }}</span>
-					</div>
-				</div>
-
-				<div v-if="historyLoading && historyEntries.length === 0" class="loading-state">
-					<NcLoadingIcon :size="42" />
-				</div>
-
-				<div v-else-if="historyError" class="history-error" role="alert">
-					<p>{{ historyError }}</p>
-					<NcButton @click="loadHistory(true)">
-						{{ t('empleados', 'Try again') }}
-					</NcButton>
-				</div>
-
-				<NcEmptyContent
-					v-else-if="historyEntries.length === 0"
-					:name="t('empleados', 'No history records found')" />
-
-				<ol v-else class="history-list">
-					<li v-for="entry in historyEntries" :key="entry.id" class="history-entry">
-						<div class="history-entry__header">
-							<span class="history-type">{{ movementTypeLabel(entry.tipo_movimiento) }}</span>
-							<time :datetime="entry.fecha">{{ formatDateTime(entry.fecha) }}</time>
-						</div>
-						<dl class="history-details">
-							<div v-if="entry.actor_nombre || entry.actor_uid">
-								<dt>{{ t('empleados', 'Actor') }}</dt>
-								<dd>{{ entry.actor_nombre || entry.actor_uid }}</dd>
-							</div>
-							<div v-if="entry.empleado_anterior_nombre || entry.empleado_anterior_uid">
-								<dt>{{ t('empleados', 'Previous employee') }}</dt>
-								<dd>{{ entry.empleado_anterior_nombre || entry.empleado_anterior_uid }}</dd>
-							</div>
-							<div v-if="entry.empleado_nuevo_nombre || entry.empleado_nuevo_uid">
-								<dt>{{ t('empleados', 'New employee') }}</dt>
-								<dd>{{ entry.empleado_nuevo_nombre || entry.empleado_nuevo_uid }}</dd>
-							</div>
-							<div v-if="entry.estado_anterior">
-								<dt>{{ t('empleados', 'Previous status') }}</dt>
-								<dd>{{ entry.estado_anterior }}</dd>
-							</div>
-							<div v-if="entry.estado_nuevo">
-								<dt>{{ t('empleados', 'New status') }}</dt>
-								<dd>{{ entry.estado_nuevo }}</dd>
-							</div>
-						</dl>
-						<p v-if="entry.descripcion" class="history-description">
-							{{ entry.descripcion }}
-						</p>
-						<ul v-if="historyChanges(entry).length" class="history-changes">
-							<li v-for="change in historyChanges(entry)" :key="change.field">
-								<strong>{{ fieldLabel(change.field) }}:</strong>
-								<span>{{ displayValue(change.anterior) }} → {{ displayValue(change.nuevo) }}</span>
-							</li>
-						</ul>
-					</li>
-				</ol>
-
-				<div v-if="historyEntries.length < historyTotal && !historyError" class="history-load-more">
-					<NcButton :disabled="historyLoading" @click="loadHistory(false)">
-						<template #icon>
-							<NcLoadingIcon v-if="historyLoading" :size="20" />
-						</template>
-						{{ t('empleados', 'Load more') }}
 					</NcButton>
 				</div>
 			</div>
@@ -789,11 +863,11 @@
 				</div>
 			</div>
 		</NcModal>
-		<!-- MODAL ASIGNAR EMPLEADO -->
+		<!-- MODAL ASIGNAR -->
 		<NcModal
 			v-if="showAssignModal"
 			class="inventario-nc-modal"
-			:name="t('empleados', 'Assign employee')"
+			:name="t('empleados', 'Assign device')"
 			@close="closeAssignModal">
 			<div class="inventario-modal">
 				<p v-if="assignEquipo" class="modal-context">
@@ -801,11 +875,18 @@
 					{{ displayValue(assignEquipo.numero_serie) }}
 				</p>
 
-				<p class="modal-context">
-					{{ t('empleados', 'Seleccione un empleado para asignarlo:') }}
-				</p>
+				<div class="assign-type" role="radiogroup" :aria-label="t('empleados', 'Assignment type')">
+					<label>
+						<input v-model="assignType" type="radio" value="empleado">
+						{{ t('empleados', 'Employee') }}
+					</label>
+					<label>
+						<input v-model="assignType" type="radio" value="grupo">
+						{{ t('empleados', 'Group') }}
+					</label>
+				</div>
 
-				<div class="select-field">
+				<div v-if="assignType === 'empleado'" class="select-field">
 					<label>{{ t('empleados', 'Employee') }}</label>
 					<select v-model="assignSelectedEmpleado" :disabled="loadingEmpleadosActivos">
 						<option value="">
@@ -820,6 +901,21 @@
 					</select>
 				</div>
 
+				<div v-else class="select-field">
+					<label>{{ t('empleados', 'Group') }}</label>
+					<select v-model="assignSelectedGrupo" :disabled="loadingGrupos">
+						<option value="">
+							{{ loadingGrupos ? t('empleados', 'Loading…') : t('empleados', 'Select a group') }}
+						</option>
+						<option
+							v-for="grupo in gruposCatalogo"
+							:key="grupo.gid"
+							:value="grupo.gid">
+							{{ grupo.displayname }}
+						</option>
+					</select>
+				</div>
+
 				<div class="inventario-modal-actions">
 					<NcButton @click="closeAssignModal">
 						{{ t('empleados', 'Cancel') }}
@@ -827,7 +923,7 @@
 
 					<NcButton
 						type="primary"
-						:disabled="assigning || !assignSelectedEmpleado"
+						:disabled="assigning || !canConfirmAssignment"
 						@click="confirmAssignEmployee">
 						<template #icon>
 							<NcLoadingIcon v-if="assigning" :size="20" />
@@ -874,6 +970,7 @@ import Download from 'vue-material-design-icons/Download.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import AccountOutline from 'vue-material-design-icons/AccountOutline.vue'
+import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import FilterOff from 'vue-material-design-icons/FilterOff.vue'
 import CalendarMonth from 'vue-material-design-icons/CalendarMonth.vue'
 
@@ -881,6 +978,7 @@ import inventarioService from '../../../services/inventarioService.js'
 import { parseInventoryDeviceId } from '../../../utils/inventoryRoute.js'
 import { formatSupportDuration, isValidSupportDate } from '../../../utils/supportDuration.js'
 import SupportDurationFields from '../../../components/Inventario/SupportDurationFields.vue'
+import DeviceHistoryList from '../../../components/Inventario/DeviceHistoryList.vue'
 import permissionsMixin from '../../../mixins/permissions.js'
 import { maintenanceCapabilities } from '../../../utils/mantenimientoFormatters.js'
 
@@ -906,6 +1004,7 @@ export default {
 		NcActionButton,
 		NcAvatar,
 		AccountOutline,
+		AccountGroup,
 		CalendarMonth,
 		Check,
 		Close,
@@ -922,6 +1021,7 @@ export default {
 		Upload,
 		Wrench,
 		SupportDurationFields,
+		DeviceHistoryList,
 	},
 	mixins: [permissionsMixin],
 	inject: { configuraciones: { default: () => ({}) } },
@@ -935,12 +1035,14 @@ export default {
 			editMode: false,
 			modalMode: 'create',
 			editingItem: null,
+			detailsTab: 'ficha',
 
 			modelos: [],
 			modelosCatalogo: [],
 			equipos: [],
 			soporte: [],
 			empleadosFiltro: [],
+			gruposFiltro: [],
 			totalEquipos: 0,
 			pageLimit: 25,
 			pageOffset: 0,
@@ -948,6 +1050,7 @@ export default {
 				estado: '',
 				asignacion: '',
 				idEmpleado: '',
+				gid: '',
 				idModelo: '',
 			},
 			searchTimer: null,
@@ -957,7 +1060,6 @@ export default {
 			lastProcessedDeviceParam: null,
 			focusDeviceTimer: null,
 			skipNextTabReload: false,
-			showHistoryModal: false,
 			historyDevice: null,
 			historyEntries: [],
 			historyTotal: 0,
@@ -966,10 +1068,14 @@ export default {
 			historyError: '',
 			showAssignModal: false,
 			assignEquipo: null,
+			assignType: 'empleado',
 			assignSelectedEmpleado: '',
+			assignSelectedGrupo: '',
 			assigning: false,
 			empleadosActivos: [],
+			gruposCatalogo: [],
 			loadingEmpleadosActivos: false,
+			loadingGrupos: false,
 
 			formModelo: {
 				marca: '',
@@ -1033,6 +1139,11 @@ export default {
 
 		canAssignEmployee() {
 			return this.canSee('inventario.admin') || this.isAdminUser()
+		},
+		canConfirmAssignment() {
+			return this.assignType === 'grupo'
+				? this.assignSelectedGrupo !== ''
+				: this.assignSelectedEmpleado !== ''
 		},
 
 		summaryItems() {
@@ -1260,7 +1371,7 @@ export default {
 				if (this.tab !== 'equipos') this.skipNextTabReload = true
 				this.tab = 'equipos'
 				this.search = ''
-				this.filters = { estado: '', asignacion: '', idEmpleado: '', idModelo: '' }
+				this.filters = { estado: '', asignacion: '', idEmpleado: '', gid: '', idModelo: '' }
 				this.pageOffset = 0
 				this.persistFilters()
 				if (needsReload) await this.reload()
@@ -1313,7 +1424,7 @@ export default {
 
 		clearFilters() {
 			this.search = ''
-			this.filters = { estado: '', asignacion: '', idEmpleado: '', idModelo: '' }
+			this.filters = { estado: '', asignacion: '', idEmpleado: '', gid: '', idModelo: '' }
 			return this.applyFilters()
 		},
 
@@ -1351,6 +1462,7 @@ export default {
 					estado: String(stored.filters?.estado || ''),
 					asignacion: String(stored.filters?.asignacion || ''),
 					idEmpleado: String(stored.filters?.idEmpleado || ''),
+					gid: String(stored.filters?.gid || ''),
 					idModelo: String(stored.filters?.idModelo || ''),
 				}
 				this.pageOffset = Number.isSafeInteger(stored.offset) && stored.offset >= 0 ? stored.offset : 0
@@ -1375,6 +1487,7 @@ export default {
 							estado: this.filters.estado || undefined,
 							asignacion: this.filters.asignacion || undefined,
 							id_empleado: this.filters.idEmpleado ? Number(this.filters.idEmpleado) : undefined,
+							gid: this.filters.gid || undefined,
 							id_modelo: this.filters.idModelo ? Number(this.filters.idModelo) : undefined,
 							limit: this.pageLimit,
 							offset: this.pageOffset,
@@ -1387,6 +1500,9 @@ export default {
 					this.empleadosFiltro = Array.isArray(equiposRes?.filter_options?.empleados)
 						? equiposRes.filter_options.empleados
 						: this.empleadosFiltro
+					this.gruposFiltro = Array.isArray(equiposRes?.filter_options?.grupos)
+						? equiposRes.filter_options.grupos
+						: this.gruposFiltro
 					if (this.pageOffset >= this.totalEquipos && this.pageOffset > 0) {
 						this.pageOffset = Math.max(0, Math.floor(Math.max(0, this.totalEquipos - 1) / this.pageLimit) * this.pageLimit)
 						return this.reload()
@@ -1480,6 +1596,7 @@ export default {
 			this.editMode = false
 			this.modalMode = 'create'
 			this.editingItem = null
+			this.detailsTab = 'ficha'
 		},
 
 		async saveModal() {
@@ -1549,6 +1666,13 @@ export default {
 			await this.reload()
 		},
 
+		onDeviceRowClick(event, equipo) {
+			if (event.target.closest('button, a, select, input, .actions-cell, .action-item, .v-popper')) {
+				return
+			}
+			this.selectEquipoSoporte(equipo)
+		},
+
 		openEditModelo(modelo) {
 			this.editMode = true
 			this.modalMode = 'edit'
@@ -1577,13 +1701,19 @@ export default {
 			this.showModal = true
 		},
 
-		async openViewEquipo(equipo) {
+		async openViewEquipo(equipo, historyTab = false) {
 			this.editMode = false
 			this.modalMode = 'readonly'
 			this.editingItem = equipo
+			this.detailsTab = historyTab ? 'historial' : 'ficha'
 			await this.loadModelosCatalogo()
 			this.populateEquipoForm(equipo)
 			this.showModal = true
+			this.historyDevice = equipo
+			this.historyEntries = []
+			this.historyTotal = 0
+			this.historyError = ''
+			await this.loadHistory(true)
 		},
 
 		populateEquipoForm(equipo) {
@@ -1598,20 +1728,7 @@ export default {
 		},
 
 		async openHistory(equipo) {
-			this.historyDevice = equipo
-			this.historyEntries = []
-			this.historyTotal = 0
-			this.historyError = ''
-			this.showHistoryModal = true
-			await this.loadHistory(true)
-		},
-
-		closeHistory() {
-			this.showHistoryModal = false
-			this.historyDevice = null
-			this.historyEntries = []
-			this.historyTotal = 0
-			this.historyError = ''
+			await this.openViewEquipo(equipo, true)
 		},
 
 		async loadHistory(reset = false) {
@@ -1635,52 +1752,6 @@ export default {
 			} finally {
 				this.historyLoading = false
 			}
-		},
-
-		movementTypeLabel(type) {
-			const labels = {
-				alta: t('empleados', 'Registered'),
-				asignacion: t('empleados', 'Assignment'),
-				reasignacion: t('empleados', 'Reassignment'),
-				desasignacion: t('empleados', 'Unassignment'),
-				cambio_estado: t('empleados', 'Status change'),
-				actualizacion: t('empleados', 'Update'),
-				mantenimiento: t('empleados', 'Maintenance'),
-				reparacion: t('empleados', 'Repair'),
-				baja: t('empleados', 'Retirement'),
-				nota: t('empleados', 'Note'),
-			}
-			return labels[type] || type || t('empleados', 'Movement')
-		},
-
-		formatDateTime(value) {
-			if (!value) return ''
-			const date = new Date(String(value).replace(' ', 'T'))
-			return Number.isNaN(date.getTime())
-				? String(value)
-				: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
-		},
-
-		historyChanges(entry) {
-			if (!entry?.cambios || typeof entry.cambios !== 'object' || Array.isArray(entry.cambios)) return []
-			return Object.entries(entry.cambios).map(([field, values]) => ({
-				field,
-				anterior: values?.anterior,
-				nuevo: values?.nuevo,
-			}))
-		},
-
-		fieldLabel(field) {
-			const labels = {
-				id_modelo: t('empleados', 'Model'),
-				nombre_dispositivo: t('empleados', 'Device name'),
-				nombre_sistema: t('empleados', 'System name'),
-				numero_serie: t('empleados', 'Serial number'),
-				info: t('empleados', 'Information'),
-				categoria_soporte: t('empleados', 'Support category'),
-				prioridad_soporte: t('empleados', 'Support priority'),
-			}
-			return labels[field] || field
 		},
 
 		resetModelo() {
@@ -1767,6 +1838,27 @@ export default {
 				}))
 			} finally {
 				this.loadingEmpleadosActivos = false
+			}
+		},
+
+		async loadGruposCatalogo(force = false) {
+			if (!force && this.gruposCatalogo.length > 0) {
+				return
+			}
+
+			this.loadingGrupos = true
+			try {
+				const response = await inventarioService.getGrupos()
+				this.gruposCatalogo = this.normalizeCollection(response).map(grupo => ({
+					gid: grupo.gid || grupo.id || '',
+					displayname: grupo.displayname || grupo.label || grupo.gid || grupo.id,
+				})).filter(grupo => grupo.gid)
+			} catch (error) {
+				showError(t('empleados', 'Could not load the group list: {error}', {
+					error: String(error),
+				}))
+			} finally {
+				this.loadingGrupos = false
 			}
 		},
 
@@ -2093,6 +2185,7 @@ export default {
 					'estado',
 					'empleado_uid',
 					'empleado_id',
+					'gid',
 					'info',
 				]
 			}
@@ -2218,28 +2311,41 @@ export default {
 			return t('empleados', 'Unassigned')
 		},
 
+		grupoAsignadoName(equipo) {
+			return equipo.grupo_displayname || equipo.gid || t('empleados', 'Group')
+		},
+
 		async openAssignEmployeeModal(equipo) {
 			this.assignEquipo = equipo
+			this.assignType = 'empleado'
 			this.assignSelectedEmpleado = ''
+			this.assignSelectedGrupo = ''
 			this.showAssignModal = true
-			await this.loadEmpleadosActivos()
+			await Promise.all([
+				this.loadEmpleadosActivos(),
+				this.loadGruposCatalogo(),
+			])
 		},
 
 		closeAssignModal() {
 			this.showAssignModal = false
 			this.assignEquipo = null
+			this.assignType = 'empleado'
 			this.assignSelectedEmpleado = ''
+			this.assignSelectedGrupo = ''
 		},
 
 		async confirmAssignEmployee() {
-			if (!this.assignSelectedEmpleado || !this.assignEquipo || this.assigning) return
+			if (!this.canConfirmAssignment || !this.assignEquipo || this.assigning) return
 			this.assigning = true
 			try {
-				await axios.post(
-					generateUrl(`/apps/empleados/inventario/equipos/${this.assignEquipo.id_equipo}/asignar`),
-					{ id_empleado: Number(this.assignSelectedEmpleado) },
-				)
-				showSuccess(t('empleados', 'Device assigned successfully.'))
+				if (this.assignType === 'grupo') {
+					await inventarioService.asignarEquipoGrupo(this.assignEquipo.id_equipo, this.assignSelectedGrupo)
+					showSuccess(t('empleados', 'Device assigned to the group successfully.'))
+				} else {
+					await inventarioService.asignarEquipo(this.assignEquipo.id_equipo, Number(this.assignSelectedEmpleado))
+					showSuccess(t('empleados', 'Device assigned successfully.'))
+				}
 				this.closeAssignModal()
 				await this.reload()
 			} catch (error) {
@@ -2252,9 +2358,7 @@ export default {
 
 		async unassignEmployee(equipo) {
 			try {
-				await axios.delete(
-					generateUrl(`/apps/empleados/inventario/equipos/${equipo.id_equipo}/asignacion`),
-				)
+				await inventarioService.desasignarEquipo(equipo.id_equipo)
 				showSuccess(t('empleados', 'Device unassigned successfully.'))
 				await this.reload()
 			} catch (error) {
@@ -2493,6 +2597,10 @@ export default {
 	background-color: var(--color-background-hover);
 }
 
+.inventario-table tbody tr.inventario-table__row--clickable {
+	cursor: pointer;
+}
+
 .inventario-table tbody tr.inventory-device-highlight {
 	background-color: var(--color-primary-element-light);
 	box-shadow: inset 4px 0 0 var(--color-primary-element);
@@ -2643,6 +2751,12 @@ export default {
 
 .selected-equipo span {
 	color: var(--color-text-maxcontrast);
+}
+
+.selected-equipo__meta {
+	display: flex;
+	gap: 12px;
+	align-items: center;
 }
 
 .inventario-modal {
@@ -2985,10 +3099,143 @@ export default {
 	font-weight: 600;
 }
 
-.readonly-field strong {
+.assign-type {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.assign-type label {
+	display: inline-flex;
+	gap: 8px;
+	align-items: center;
+	min-height: 44px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.device-details {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.device-details__hero {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+	padding: 4px 0 8px;
+}
+
+.device-details__icon {
+	display: grid;
+	place-items: center;
+	width: 48px;
+	height: 48px;
+	border-radius: 12px;
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+}
+
+.device-details__hero h3 {
+	margin: 0;
+	font-size: 20px;
+	line-height: 1.3;
+}
+
+.device-details__hero p {
+	margin: 2px 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.device-details__hero .status-pill {
+	margin-left: auto;
+}
+
+.device-details__tabs {
+	display: flex;
+	gap: 4px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+/* stylelint-disable no-descending-specificity */
+.device-details__tabs button {
+	min-height: 40px;
+	margin: 0;
+	padding: 0 14px;
+	border: none;
+	border-bottom: 2px solid transparent;
+	background: transparent;
 	color: var(--color-main-text);
-	font-size: 14px;
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.device-details__tabs button.active {
+	border-bottom-color: var(--color-primary-element);
+	color: var(--color-primary-element);
+}
+/* stylelint-enable no-descending-specificity */
+
+.device-details__body {
+	display: grid;
+	gap: 16px;
+}
+
+.device-details__section {
+	display: grid;
+	gap: 10px;
+	padding: 14px 16px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 8px);
+	background: var(--color-background-hover);
+}
+
+.device-details__section h4 {
+	margin: 0;
+	font-size: 13px;
 	font-weight: 700;
+	color: var(--color-text-maxcontrast);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.device-details__grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px 16px;
+	margin: 0;
+}
+
+.device-details__grid dt {
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.device-details__grid dd {
+	margin: 2px 0 0;
+	font-weight: 700;
+}
+
+.device-details__notes {
+	margin: 0;
+	white-space: pre-wrap;
+	line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+	.device-details__hero {
+		flex-wrap: wrap;
+	}
+
+	.device-details__hero .status-pill {
+		margin-left: 0;
+	}
+
+	.device-details__grid {
+		grid-template-columns: 1fr;
+	}
 }
 
 @media (max-width: 700px) {

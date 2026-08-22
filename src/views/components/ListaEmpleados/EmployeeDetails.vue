@@ -87,16 +87,20 @@
 							:automaticsave="automatic_save_note" />
 					</VTab>
 
+					<VTab :title="t('empleados', 'Personal')">
+						<PersonalTab :data="data" :show="show" :empleados="Empleados" />
+					</VTab>
+
+					<VTab :title="t('empleados', 'Boarding')">
+						<BoardingTab :data="data" />
+					</VTab>
+
 					<VTab :title="t('empleados', 'Notes')">
 						<NotasTab
 							:data="data"
 							:show="show"
 							:empleados="Empleados"
 							:automaticsave="automatic_save_note" />
-					</VTab>
-
-					<VTab :title="t('empleados', 'Personal')">
-						<PersonalTab :data="data" :show="show" :empleados="Empleados" />
 					</VTab>
 
 					<VTab :title="t('empleados', 'Files')">
@@ -139,6 +143,7 @@
 import DatabaseImport from 'vue-material-design-icons/DatabaseImport.vue'
 import OrganigramaNetwork from './Organigrama/OrganigramaNetwork.vue'
 import EmpleadoTab from './Tabs/EmpleadoTab.vue'
+import BoardingTab from './Tabs/BoardingTab.vue'
 import PersonalTab from './Tabs/PersonalTab.vue'
 import NotasTab from './Tabs/NotasTab.vue'
 import FilesTab from './Tabs/FilesTab.vue'
@@ -164,6 +169,7 @@ export default {
 	name: 'EmployeeDetails',
 	components: {
 		EmpleadoTab,
+		BoardingTab,
 		PersonalTab,
 		NotasTab,
 		FilesTab,
@@ -360,7 +366,7 @@ export default {
 .contacts-list { max-height: calc(100vh - var(--header-height) - 48px); overflow: auto; }
 .contacts-list__header { min-height: 48px; }
 .margin-left-icon { margin-right: 20px; }
-.button-container-profile { margin-top: -30px; position: absolute; right: 30px; z-index: 9999; }
+.button-container-profile { position: absolute; right: 30px; z-index: 9999; }
 .well { margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
 .user-card { display: flex; align-items: center; padding: 0 10px 10px; }
 .info { display: flex; flex-direction: column; }

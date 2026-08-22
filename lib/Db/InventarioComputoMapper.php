@@ -21,7 +21,8 @@ class InventarioComputoMapper extends QBMapper {
 		?string $asignacion = null,
 		?int $idModelo = null,
 		?int $limit = 25,
-		int $offset = 0
+		int $offset = 0,
+		?string $gid = null
 	): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -30,13 +31,14 @@ class InventarioComputoMapper extends QBMapper {
 			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
 			->leftJoin('c', 'empleados', 'e', $qb->expr()->eq('c.id_empleado', 'e.Id_empleados'))
 			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin('c', 'groups', 'g', $qb->expr()->eq('g.gid', 'c.gid'))
 			->orderBy('c.id_equipo', 'DESC')
 			->setFirstResult($offset);
 		if ($limit !== null) {
 			$qb->setMaxResults($limit);
 		}
 
-		$this->applyEquipoFilters($qb, $search, $estado, $idEmpleado, $asignacion, $idModelo);
+		$this->applyEquipoFilters($qb, $search, $estado, $idEmpleado, $asignacion, $idModelo, $gid);
 
 		$result = $qb->executeQuery();
 		$data = $result->fetchAll();
@@ -45,15 +47,16 @@ class InventarioComputoMapper extends QBMapper {
 		return $data;
 	}
 
-	public function countAll(?string $search = null, ?string $estado = null, ?int $idEmpleado = null, ?string $asignacion = null, ?int $idModelo = null): int {
+	public function countAll(?string $search = null, ?string $estado = null, ?int $idEmpleado = null, ?string $asignacion = null, ?int $idModelo = null, ?string $gid = null): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select($qb->createFunction('COUNT(DISTINCT c.id_equipo)'))
 			->from($this->getTableName(), 'c')
 			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
 			->leftJoin('c', 'empleados', 'e', $qb->expr()->eq('c.id_empleado', 'e.Id_empleados'))
-			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'));
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin('c', 'groups', 'g', $qb->expr()->eq('g.gid', 'c.gid'));
 
-		$this->applyEquipoFilters($qb, $search, $estado, $idEmpleado, $asignacion, $idModelo);
+		$this->applyEquipoFilters($qb, $search, $estado, $idEmpleado, $asignacion, $idModelo, $gid);
 		$result = $qb->executeQuery();
 		$total = (int)$result->fetchOne();
 		$result->closeCursor();
@@ -82,9 +85,33 @@ class InventarioComputoMapper extends QBMapper {
 		], $rows);
 	}
 
+	public function findAssignedGroups(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('c.gid')
+			->addSelect('g.displayname')
+			->from($this->getTableName(), 'c')
+			->leftJoin('c', 'groups', 'g', $qb->expr()->eq('g.gid', 'c.gid'))
+			->where($qb->expr()->isNotNull('c.gid'))
+			->andWhere($qb->expr()->neq('c.gid', $qb->createNamedParameter('')))
+			->groupBy('c.gid')
+			->addGroupBy('g.displayname')
+			->orderBy('g.displayname', 'ASC')
+			->addOrderBy('c.gid', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static fn(array $row): array => [
+			'gid' => (string)$row['gid'],
+			'displayname' => (string)($row['displayname'] ?: $row['gid']),
+		], $rows);
+	}
+
 	private function selectEquipoDetalle(IQueryBuilder $qb): IQueryBuilder {
 		return $qb->selectAlias('c.id_equipo', 'id_equipo')
 			->selectAlias('c.id_empleado', 'id_empleado')
+			->selectAlias('c.gid', 'gid')
 			->selectAlias('c.id_modelo', 'id_modelo')
 			->selectAlias('c.nombre_dispositivo', 'nombre_dispositivo')
 			->selectAlias('c.nombre_sistema', 'nombre_sistema')
@@ -102,10 +129,11 @@ class InventarioComputoMapper extends QBMapper {
 			->selectAlias('e.Id_empleados', 'empleado_id')
 			->selectAlias('e.Id_user', 'empleado_uid')
 			->selectAlias('e.Numero_empleado', 'numero_empleado')
-			->selectAlias('u.displayname', 'empleado_displayname');
+			->selectAlias('u.displayname', 'empleado_displayname')
+			->selectAlias('g.displayname', 'grupo_displayname');
 	}
 
-	private function applyEquipoFilters(IQueryBuilder $qb, ?string $search, ?string $estado, ?int $idEmpleado, ?string $asignacion, ?int $idModelo): void {
+	private function applyEquipoFilters(IQueryBuilder $qb, ?string $search, ?string $estado, ?int $idEmpleado, ?string $asignacion, ?int $idModelo, ?string $gid = null): void {
 		if ($search !== null && trim($search) !== '') {
 			$like = '%' . $this->db->escapeLikeParameter(trim($search)) . '%';
 
@@ -118,7 +146,9 @@ class InventarioComputoMapper extends QBMapper {
 					$qb->expr()->iLike('m.modelo', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
 					$qb->expr()->iLike('e.Id_user', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
 					$qb->expr()->iLike('u.displayname', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
-					$qb->expr()->iLike('e.Numero_empleado', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR))
+					$qb->expr()->iLike('e.Numero_empleado', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('c.gid', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->iLike('g.displayname', $qb->createNamedParameter($like, IQueryBuilder::PARAM_STR))
 				)
 			);
 		}
@@ -136,13 +166,27 @@ class InventarioComputoMapper extends QBMapper {
 		}
 
 		if ($asignacion === 'asignado') {
-			$qb->andWhere($qb->expr()->isNotNull('c.id_empleado'));
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNotNull('c.id_empleado'),
+				$qb->expr()->andX(
+					$qb->expr()->isNotNull('c.gid'),
+					$qb->expr()->neq('c.gid', $qb->createNamedParameter('')),
+				),
+			));
 		} elseif ($asignacion === 'sin_asignar') {
 			$qb->andWhere($qb->expr()->isNull('c.id_empleado'));
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull('c.gid'),
+				$qb->expr()->eq('c.gid', $qb->createNamedParameter('')),
+			));
 		}
 
 		if ($idModelo !== null) {
 			$qb->andWhere($qb->expr()->eq('c.id_modelo', $qb->createNamedParameter($idModelo, IQueryBuilder::PARAM_INT)));
+		}
+
+		if ($gid !== null && trim($gid) !== '') {
+			$qb->andWhere($qb->expr()->eq('c.gid', $qb->createNamedParameter(trim($gid))));
 		}
 	}
 
@@ -154,6 +198,7 @@ class InventarioComputoMapper extends QBMapper {
 			->leftJoin('c', 'inventario_modelos', 'm', $qb->expr()->eq('m.id_modelo', 'c.id_modelo'))
 			->leftJoin('c', 'empleados', 'e', $qb->expr()->eq('c.id_empleado', 'e.Id_empleados'))
 			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin('c', 'groups', 'g', $qb->expr()->eq('g.gid', 'c.gid'))
 			->where(
 				$qb->expr()->eq('c.id_equipo', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT))
 			)
@@ -178,6 +223,7 @@ class InventarioComputoMapper extends QBMapper {
 		$qb->insert($this->getTableName())
 			->values([
 				'id_empleado' => $qb->createNamedParameter($data['id_empleado'] ?? null, IQueryBuilder::PARAM_INT),
+				'gid' => $qb->createNamedParameter($this->normalizeGid($data['gid'] ?? null)),
 				'id_modelo' => $qb->createNamedParameter($data['id_modelo'] ?? null, IQueryBuilder::PARAM_INT),
 				'nombre_dispositivo' => $qb->createNamedParameter($data['nombre_dispositivo'] ?? null),
 				'nombre_sistema' => $qb->createNamedParameter($data['nombre_sistema'] ?? null),
@@ -198,6 +244,7 @@ class InventarioComputoMapper extends QBMapper {
 
 		$qb->update($this->getTableName())
 			->set('id_empleado', $qb->createNamedParameter($data['id_empleado'] ?? null, IQueryBuilder::PARAM_INT))
+			->set('gid', $qb->createNamedParameter($this->normalizeGid($data['gid'] ?? null)))
 			->set('id_modelo', $qb->createNamedParameter($data['id_modelo'] ?? null, IQueryBuilder::PARAM_INT))
 			->set('nombre_dispositivo', $qb->createNamedParameter($data['nombre_dispositivo'] ?? null))
 			->set('nombre_sistema', $qb->createNamedParameter($data['nombre_sistema'] ?? null))
@@ -213,9 +260,24 @@ class InventarioComputoMapper extends QBMapper {
 	}
 
 	public function updateEmpleado(int $idEquipo, ?int $idEmpleado, ?int $expectedEmpleado): bool {
+		return $this->updateAsignacion($idEquipo, $idEmpleado, null, $expectedEmpleado, null);
+	}
+
+	public function updateGrupo(int $idEquipo, ?string $gid, ?string $expectedGid): bool {
+		return $this->updateAsignacion($idEquipo, null, $gid, null, $expectedGid);
+	}
+
+	public function updateAsignacion(
+		int $idEquipo,
+		?int $idEmpleado,
+		?string $gid,
+		?int $expectedEmpleado,
+		?string $expectedGid
+	): bool {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->getTableName())
 			->set('id_empleado', $qb->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT))
+			->set('gid', $qb->createNamedParameter($this->normalizeGid($gid)))
 			->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
 			->where($qb->expr()->eq('id_equipo', $qb->createNamedParameter($idEquipo, IQueryBuilder::PARAM_INT)));
 		if ($expectedEmpleado === null) {
@@ -223,8 +285,24 @@ class InventarioComputoMapper extends QBMapper {
 		} else {
 			$qb->andWhere($qb->expr()->eq('id_empleado', $qb->createNamedParameter($expectedEmpleado, IQueryBuilder::PARAM_INT)));
 		}
+		if ($expectedGid === null || $expectedGid === '') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull('gid'),
+				$qb->expr()->eq('gid', $qb->createNamedParameter('')),
+			));
+		} else {
+			$qb->andWhere($qb->expr()->eq('gid', $qb->createNamedParameter($expectedGid)));
+		}
 
 		return $qb->executeStatement() === 1;
+	}
+
+	private function normalizeGid(mixed $gid): ?string {
+		if ($gid === null) {
+			return null;
+		}
+		$value = trim((string)$gid);
+		return $value === '' ? null : $value;
 	}
 
 	public function deleteById(int $id): void {
@@ -249,6 +327,7 @@ class InventarioComputoMapper extends QBMapper {
 			->selectAlias('m.marca', 'marca')
 			->selectAlias('m.modelo', 'modelo')
 			->selectAlias('c.id_empleado', 'id_empleado')
+			->selectAlias('c.gid', 'gid')
 			->selectAlias('e.Id_empleados', 'empleado_id')
 			->selectAlias('e.Id_user', 'empleado_uid')
 			->selectAlias('e.Numero_empleado', 'numero_empleado')
@@ -285,7 +364,13 @@ class InventarioComputoMapper extends QBMapper {
 
 		if ($onlyAvailable) {
 			$availableOrCurrent = $qb->expr()->orX(
-				$qb->expr()->isNull('c.id_empleado')
+				$qb->expr()->andX(
+					$qb->expr()->isNull('c.id_empleado'),
+					$qb->expr()->orX(
+						$qb->expr()->isNull('c.gid'),
+						$qb->expr()->eq('c.gid', $qb->createNamedParameter('')),
+					),
+				)
 			);
 
 			if ($idEmpleado !== null && $idEmpleado > 0) {
@@ -322,6 +407,8 @@ class InventarioComputoMapper extends QBMapper {
 
 			if (!empty($row['empleado_uid'])) {
 				$label .= ' — asignado a ' . $row['empleado_uid'];
+			} elseif (!empty($row['gid'])) {
+				$label .= ' — asignado al grupo ' . $row['gid'];
 			}
 
 			return [
@@ -337,6 +424,7 @@ class InventarioComputoMapper extends QBMapper {
 				'empleado_id' => $row['empleado_id'] ?? null,
 				'empleado_uid' => $row['empleado_uid'] ?? null,
 				'empleado_displayname' => $row['empleado_displayname'] ?? null,
+				'gid' => $row['gid'] ?? null,
 				'numero_empleado' => $row['numero_empleado'] ?? null,
 			];
 		}, $rows);

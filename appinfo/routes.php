@@ -299,6 +299,8 @@ return [
 		['name' => 'inventario#CrearInventarioNota', 'url' => '/inventario/equipos/{id_equipo}/historial/notas', 'verb' => 'POST'],
 		['name' => 'inventario#GetEquiposEmpleado', 'url' => '/inventario/empleados/{id_empleado}/equipos', 'verb' => 'GET'],
 		['name' => 'inventario#AsignarEquipoEmpleado', 'url' => '/inventario/equipos/{id_equipo}/asignar', 'verb' => 'POST'],
+		['name' => 'inventario#AsignarEquipoGrupo', 'url' => '/inventario/equipos/{id_equipo}/asignar-grupo', 'verb' => 'POST'],
+		['name' => 'inventario#GetInventarioGrupos', 'url' => '/inventario/grupos', 'verb' => 'GET'],
 		['name' => 'inventario#DesasignarEquipoEmpleado', 'url' => '/inventario/equipos/{id_equipo}/asignacion', 'verb' => 'DELETE'],
 		['name' => 'inventario#SincronizarEquiposEmpleado', 'url' => '/inventario/empleados/{id_empleado}/equipos', 'verb' => 'PUT'],
 		// Historial de soporte

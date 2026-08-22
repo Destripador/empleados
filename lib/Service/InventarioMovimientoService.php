@@ -9,6 +9,7 @@ use OCA\Empleados\Db\InventarioComputoMapper;
 use OCA\Empleados\Db\InventarioMovimiento;
 use OCA\Empleados\Db\InventarioMovimientoMapper;
 use OCA\Empleados\Db\SoporteHistorialMapper;
+use OCP\IGroupManager;
 use OCP\IDBConnection;
 use OCP\IUserSession;
 
@@ -17,7 +18,7 @@ class InventarioMovimientoService {
 	public const SOPORTE_PRIORIDADES = ['baja', 'media', 'alta', 'critica'];
 
 	private const EQUIPO_FIELDS = [
-		'id_empleado', 'id_modelo', 'nombre_dispositivo', 'nombre_sistema',
+		'id_empleado', 'gid', 'id_modelo', 'nombre_dispositivo', 'nombre_sistema',
 		'numero_serie', 'estado', 'info',
 	];
 
@@ -29,13 +30,19 @@ class InventarioMovimientoService {
 		private empleadosMapper $empleadosMapper,
 		private SoporteHistorialMapper $soporteMapper,
 		private SoporteReporteTiempoService $soporteReporteService,
+		private IGroupManager $groupManager,
 	) {
 	}
 
 	public function crearEquipo(array $data): int {
 		return $this->transactional(function () use ($data): int {
 			$idEmpleado = empty($data['id_empleado']) ? null : (int)$data['id_empleado'];
+			$gid = $this->normalizarGid($data['gid'] ?? null);
+			if ($idEmpleado !== null && $gid !== null) {
+				throw new \InvalidArgumentException('Un equipo no puede asignarse a un empleado y a un grupo al mismo tiempo.');
+			}
 			$data['id_empleado'] = null;
+			$data['gid'] = null;
 			$idEquipo = $this->computoMapper->create($data);
 			$nuevo = $this->computoMapper->findById($idEquipo) ?? array_merge($data, ['id_equipo' => $idEquipo]);
 			$this->registrarMovimiento(
@@ -48,6 +55,8 @@ class InventarioMovimientoService {
 			);
 			if ($idEmpleado !== null) {
 				$this->asignarEquipoDentroTransaccion($idEquipo, $idEmpleado);
+			} elseif ($gid !== null) {
+				$this->asignarEquipoAGrupoDentroTransaccion($idEquipo, $gid);
 			}
 
 			return $idEquipo;
@@ -61,22 +70,34 @@ class InventarioMovimientoService {
 		$empleadoNuevo = array_key_exists('id_empleado', $data)
 			? (empty($data['id_empleado']) ? null : (int)$data['id_empleado'])
 			: $empleadoAnterior;
-		if ($empleadoAnterior !== $empleadoNuevo) {
-			if ($empleadoAnterior !== null && $empleadoNuevo !== null) {
-				throw new \DomainException('Desasigna el equipo antes de asignarlo a otro empleado.');
+		$grupoAnterior = $this->normalizarGid($anterior['gid'] ?? null);
+		$grupoNuevo = array_key_exists('gid', $data)
+			? $this->normalizarGid($data['gid'] ?? null)
+			: $grupoAnterior;
+		if ($empleadoNuevo !== null && $grupoNuevo !== null) {
+			throw new \InvalidArgumentException('Un equipo no puede asignarse a un empleado y a un grupo al mismo tiempo.');
+		}
+		if ($empleadoAnterior !== $empleadoNuevo || $grupoAnterior !== $grupoNuevo) {
+			if (($empleadoAnterior !== null && $empleadoNuevo !== null && $empleadoAnterior !== $empleadoNuevo)
+				|| ($grupoAnterior !== null && $grupoNuevo !== null && $grupoAnterior !== $grupoNuevo)
+				|| ($empleadoAnterior !== null && $grupoNuevo !== null)
+				|| ($grupoAnterior !== null && $empleadoNuevo !== null)) {
+				throw new \DomainException('Desasigna el equipo antes de asignarlo a otro empleado o grupo.');
 			}
-			unset($data['id_empleado']);
-			return $this->transactional(function () use ($idEquipo, $anterior, $data, $empleadoNuevo): bool {
+			unset($data['id_empleado'], $data['gid']);
+			return $this->transactional(function () use ($idEquipo, $anterior, $data, $empleadoNuevo, $grupoNuevo): bool {
 				$nuevo = array_merge($anterior, $data);
 				$cambios = $this->construirDiff($anterior, $nuevo);
 				if ($cambios !== []) {
 					$this->computoMapper->updateById($idEquipo, $nuevo);
 					$this->registrarMovimiento($idEquipo, $this->resolverTipoMovimiento($anterior, $nuevo), $anterior, $nuevo, 'Equipo actualizado.', $cambios);
 				}
-				if ($empleadoNuevo === null) {
+				if ($empleadoNuevo === null && $grupoNuevo === null) {
 					$this->desasignarEquipoDentroTransaccion($idEquipo);
-				} else {
+				} elseif ($empleadoNuevo !== null) {
 					$this->asignarEquipoDentroTransaccion($idEquipo, $empleadoNuevo);
+				} else {
+					$this->asignarEquipoAGrupoDentroTransaccion($idEquipo, $grupoNuevo);
 				}
 				return true;
 			});
@@ -113,6 +134,10 @@ class InventarioMovimientoService {
 		$this->transactional(fn() => $this->asignarEquipoDentroTransaccion($idEquipo, $idEmpleado));
 	}
 
+	public function asignarEquipoAGrupo(int $idEquipo, string $gid): void {
+		$this->transactional(fn() => $this->asignarEquipoAGrupoDentroTransaccion($idEquipo, $gid));
+	}
+
 	public function desasignarEquipo(int $idEquipo): void {
 		$this->transactional(fn() => $this->desasignarEquipoDentroTransaccion($idEquipo));
 	}
@@ -145,17 +170,19 @@ class InventarioMovimientoService {
 			throw new \InvalidArgumentException('No se puede asignar un equipo dado de baja o inactivo.');
 		}
 		$currentEmployee = empty($equipo['id_empleado']) ? null : (int)$equipo['id_empleado'];
-		if ($currentEmployee === $idEmpleado) {
+		$currentGid = $this->normalizarGid($equipo['gid'] ?? null);
+		if ($currentEmployee === $idEmpleado && $currentGid === null) {
 			return;
 		}
-		if ($currentEmployee !== null) {
-			throw new \DomainException('Este equipo ya está asignado a otro empleado.');
+		if ($currentEmployee !== null || $currentGid !== null) {
+			throw new \DomainException('Este equipo ya está asignado a otro empleado o grupo.');
 		}
 
 		$nuevo = $equipo;
 		$nuevo['id_empleado'] = $idEmpleado;
+		$nuevo['gid'] = null;
 		if (!$this->computoMapper->updateEmpleado($idEquipo, $idEmpleado, null)) {
-			throw new \DomainException('Este equipo ya está asignado a otro empleado.');
+			throw new \DomainException('Este equipo ya está asignado a otro empleado o grupo.');
 		}
 		$this->registrarMovimiento(
 			$idEquipo,
@@ -176,22 +203,85 @@ class InventarioMovimientoService {
 			throw new \RuntimeException('Equipo no encontrado.');
 		}
 		$currentEmployee = empty($equipo['id_empleado']) ? null : (int)$equipo['id_empleado'];
-		if ($currentEmployee === null) {
+		$currentGid = $this->normalizarGid($equipo['gid'] ?? null);
+		if ($currentEmployee === null && $currentGid === null) {
 			return;
 		}
 
 		$nuevo = $equipo;
 		$nuevo['id_empleado'] = null;
-		if (!$this->computoMapper->updateEmpleado($idEquipo, null, $currentEmployee)) {
+		$nuevo['gid'] = null;
+		if ($currentEmployee !== null) {
+			if (!$this->computoMapper->updateEmpleado($idEquipo, null, $currentEmployee)) {
+				throw new \RuntimeException('La asignación del equipo cambió durante la operación.');
+			}
+			$this->registrarMovimiento(
+				$idEquipo,
+				InventarioMovimiento::TIPO_DESASIGNACION,
+				$equipo,
+				$nuevo,
+				'Equipo desasignado del empleado.',
+				['id_empleado' => ['anterior' => $currentEmployee, 'nuevo' => null]],
+			);
+			return;
+		}
+
+		if (!$this->computoMapper->updateGrupo($idEquipo, null, $currentGid)) {
 			throw new \RuntimeException('La asignación del equipo cambió durante la operación.');
 		}
-		$this->registrarMovimiento(
+		$grupo = $this->grupoSnapshot($currentGid);
+		$this->registrarMovimientoDesdeSnapshots(
 			$idEquipo,
 			InventarioMovimiento::TIPO_DESASIGNACION,
-			$equipo,
-			$nuevo,
-			'Equipo desasignado del empleado.',
-			['id_empleado' => ['anterior' => $currentEmployee, 'nuevo' => null]],
+			$grupo,
+			null,
+			'Equipo desasignado del grupo.',
+			(string)($equipo['estado'] ?? ''),
+			(string)($equipo['estado'] ?? ''),
+			['gid' => ['anterior' => $currentGid, 'nuevo' => null]],
+		);
+	}
+
+	private function asignarEquipoAGrupoDentroTransaccion(int $idEquipo, string $gid): void {
+		$gid = $this->normalizarGid($gid);
+		if ($idEquipo <= 0 || $gid === null) {
+			throw new \InvalidArgumentException('Identificador de equipo o grupo inválido.');
+		}
+		$grupo = $this->grupoSnapshot($gid);
+		if ($grupo === null) {
+			throw new \RuntimeException('Grupo no encontrado.');
+		}
+		$equipo = $this->computoMapper->findById($idEquipo);
+		if ($equipo === null) {
+			throw new \RuntimeException('Equipo no encontrado.');
+		}
+		if (in_array(strtolower(trim((string)($equipo['estado'] ?? ''))), ['baja', 'inactivo', 'inactive'], true)) {
+			throw new \InvalidArgumentException('No se puede asignar un equipo dado de baja o inactivo.');
+		}
+		$currentEmployee = empty($equipo['id_empleado']) ? null : (int)$equipo['id_empleado'];
+		$currentGid = $this->normalizarGid($equipo['gid'] ?? null);
+		if ($currentGid === $gid && $currentEmployee === null) {
+			return;
+		}
+		if ($currentEmployee !== null || $currentGid !== null) {
+			throw new \DomainException('Este equipo ya está asignado a otro empleado o grupo.');
+		}
+
+		$nuevo = $equipo;
+		$nuevo['id_empleado'] = null;
+		$nuevo['gid'] = $gid;
+		if (!$this->computoMapper->updateGrupo($idEquipo, $gid, null)) {
+			throw new \DomainException('Este equipo ya está asignado a otro empleado o grupo.');
+		}
+		$this->registrarMovimientoDesdeSnapshots(
+			$idEquipo,
+			InventarioMovimiento::TIPO_ASIGNACION,
+			null,
+			$grupo,
+			'Equipo asignado al grupo.',
+			(string)($equipo['estado'] ?? ''),
+			(string)($equipo['estado'] ?? ''),
+			['gid' => ['anterior' => null, 'nuevo' => $gid]],
 		);
 	}
 
@@ -457,7 +547,7 @@ class InventarioMovimientoService {
 			$descripcion,
 			(string)($anterior['estado'] ?? ''),
 			(string)($nuevo['estado'] ?? ''),
-			array_diff_key($cambios, ['id_empleado' => true, 'estado' => true]),
+			array_diff_key($cambios, ['id_empleado' => true, 'gid' => true, 'estado' => true]),
 		);
 	}
 
@@ -484,9 +574,11 @@ class InventarioMovimientoService {
 	private function resolverTipoMovimiento(array $anterior, array $nuevo): string {
 		$oldEmployee = $this->normalizarValor('id_empleado', $anterior['id_empleado'] ?? null);
 		$newEmployee = $this->normalizarValor('id_empleado', $nuevo['id_empleado'] ?? null);
-		if ($oldEmployee !== $newEmployee) {
-			if ($oldEmployee === null) return InventarioMovimiento::TIPO_ASIGNACION;
-			if ($newEmployee === null) return InventarioMovimiento::TIPO_DESASIGNACION;
+		$oldGroup = $this->normalizarGid($anterior['gid'] ?? null);
+		$newGroup = $this->normalizarGid($nuevo['gid'] ?? null);
+		if ($oldEmployee !== $newEmployee || $oldGroup !== $newGroup) {
+			if ($oldEmployee === null && $oldGroup === null) return InventarioMovimiento::TIPO_ASIGNACION;
+			if ($newEmployee === null && $newGroup === null) return InventarioMovimiento::TIPO_DESASIGNACION;
 			return InventarioMovimiento::TIPO_REASIGNACION;
 		}
 		if (strtolower((string)($nuevo['estado'] ?? '')) === 'baja') return InventarioMovimiento::TIPO_BAJA;
@@ -502,6 +594,18 @@ class InventarioMovimientoService {
 		return ['uid' => $uid, 'nombre' => $this->empleadosMapper->getDisplayNameById($idEmpleado) ?? $uid];
 	}
 
+	private function grupoSnapshot(?string $gid): ?array {
+		$gid = $this->normalizarGid($gid);
+		if ($gid === null) {
+			return null;
+		}
+		$group = $this->groupManager->get($gid);
+		if ($group === null) {
+			return null;
+		}
+		return ['uid' => 'grupo:' . $gid, 'nombre' => $group->getDisplayName() ?: $gid];
+	}
+
 	private function actorSnapshot(): array {
 		$user = $this->userSession->getUser();
 		return $user === null
@@ -512,6 +616,14 @@ class InventarioMovimientoService {
 	private function normalizarValor(string $field, mixed $value): mixed {
 		if ($value === '' || $value === null) return null;
 		return in_array($field, ['id_empleado', 'id_modelo'], true) ? (int)$value : (string)$value;
+	}
+
+	private function normalizarGid(mixed $gid): ?string {
+		if ($gid === null) {
+			return null;
+		}
+		$value = trim((string)$gid);
+		return $value === '' ? null : $value;
 	}
 
 	private function transactional(callable $callback): mixed {
