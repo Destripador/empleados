@@ -30,6 +30,7 @@ use OCP\Files\Events\Node\NodeDeletedEvent;
 use OCP\Files\Events\Node\NodeRenamedEvent;
 use OCP\Files\Events\Node\NodeWrittenEvent;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
+use OCA\Empleados\Cron\ActualizarAniversarios;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'empleados';
@@ -90,6 +91,10 @@ class Application extends App implements IBootstrap {
 
 			if (!$jobList->has(RecordatorioAprobadoresPendientes::class, null)) {
 				$jobList->add(RecordatorioAprobadoresPendientes::class);
+			}
+
+			if (!$jobList->has(ActualizarAniversarios::class, null)) {
+				$jobList->add(ActualizarAniversarios::class);
 			}
 		});
 	}

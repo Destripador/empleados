@@ -20,6 +20,7 @@ use OCA\Empleados\Db\equipos;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
 use OCP\IGroupManager;
+use OCA\Empleados\Service\BitacoraService;
 use OCP\IConfig;
 
 use OCP\IURLGenerator;
@@ -50,6 +51,7 @@ class equiposController extends BaseController {
     private IClientService $clientService;
     private ISubAdmin $subAdmin;
     protected PermisosService $permisosService;
+    private BitacoraService $bitacoraService;
 
     private IURLGenerator $urlGenerator;
 
@@ -67,6 +69,7 @@ class equiposController extends BaseController {
         IClientService $clientService,
         ISubAdmin $subAdmin,
         PermisosService $permisosService,
+        BitacoraService $bitacoraService,
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -82,6 +85,20 @@ class equiposController extends BaseController {
         $this->clientService = $clientService;
         $this->subAdmin = $subAdmin;
         $this->permisosService = $permisosService;
+        $this->bitacoraService = $bitacoraService;
+    }
+
+    /**
+     * Registra un movimiento del módulo "equipos" en la bitácora general.
+     */
+    private function registrarMovimiento(
+        ?string $uidActor,
+        ?int $idReferencia,
+        ?string $nombreAfectado,
+        string $tipo,
+        string $mensaje
+    ): void {
+        $this->bitacoraService->registrar('equipos', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
     }
 
     /**
@@ -174,10 +191,15 @@ class equiposController extends BaseController {
     public function ImportListEquipos(): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
         $file = $this->getUploadedFile('equipofileXLSX');
+
+        $creados = 0;
+        $actualizados = 0;
+
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
                 if (!empty($row[0])) {
                     $this->equiposMapper->updateEquipos((string) $row[0], (string) $row[1]);
+                    $actualizados++;
                 } else {
                     $timestamp = date('Y-m-d');
                     $equipo = new equipos();
@@ -185,8 +207,24 @@ class equiposController extends BaseController {
                     $equipo->setcreated_at($timestamp);
                     $equipo->setupdated_at($timestamp);
                     $this->equiposMapper->insert($equipo);
+                    $creados++;
                 }
             }
+
+            // --- Movimiento (bitácora) ---
+            if ($creados > 0 || $actualizados > 0) {
+                $actor = $this->userSession->getUser();
+                $uidActor = $actor ? $actor->getUID() : null;
+                $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+                $mensaje = sprintf(
+                    '%s ha importado equipos desde un archivo XLSX: %d creado(s), %d actualizado(s).',
+                    $nombreActor, $creados, $actualizados
+                );
+
+                $this->registrarMovimiento($uidActor, null, null, 'importacion', $mensaje);
+            }
+
         return new DataResponse(['status' => 'error'], Http::STATUS_BAD_REQUEST);
         }
         return new DataResponse(Http::STATUS_OK);
@@ -220,6 +258,19 @@ class equiposController extends BaseController {
                 }
             }
 
+            // --- Movimiento (bitácora) ---
+            $actor = $this->userSession->getUser();
+            $uidActor = $actor ? $actor->getUID() : null;
+            $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+            $mensaje = sprintf(
+                '%s ha eliminado el equipo "%s".',
+                $nombreActor,
+                $nombreGrupo ?? ('Equipo ' . $id_equipo)
+            );
+
+            $this->registrarMovimiento($uidActor, $id_equipo, $nombreGrupo, 'eliminacion', $mensaje);
+
             return new DataResponse([
                 'status' => 'ok',
                 'message' => 'Equipo eliminado correctamente.',
@@ -238,7 +289,11 @@ class equiposController extends BaseController {
      */
     #[UseSession]
     #[NoAdminRequired]
-    public function GuardarCambioEquipo(int $Id_Equipo, string $Id_jefe_equipo): DataResponse {
+    public function GuardarCambioEquipo(
+        int $Id_Equipo,
+        string $nombre,
+        string $Id_jefe_equipo
+    ): DataResponse {
         $this->checkAccess(['admin', 'recursos_humanos']);
 
         try {
@@ -264,7 +319,11 @@ class equiposController extends BaseController {
             $oldJefe = $old['Id_jefe_equipo'] ?? $old['id_jefe_equipo'] ?? null;
 
             // 2) Actualizar jefe en BD
-            $this->equiposMapper->updateEquipos((string)$Id_Equipo, $Id_jefe_equipo);
+            $this->equiposMapper->updateEquipos(
+                (string)$Id_Equipo,
+                $nombre,
+                $Id_jefe_equipo
+            );
 
             // 3) Asegurar grupo
             $group = $this->groupManager->get($groupName);
@@ -308,6 +367,65 @@ class equiposController extends BaseController {
                 if ($oldUser && $this->isSubAdminOfGroupSafe($oldUser, $group)) {
                     $this->subAdmin->deleteSubAdmin($oldUser, $group);
                 }
+            }
+
+            // --- Movimiento (bitácora) ---
+            $actor = $this->userSession->getUser();
+            $uidActor = $actor ? $actor->getUID() : null;
+            $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+            $nombreAnterior = $old['Nombre'] ?? $old['nombre'] ?? '';
+            $cambioNombre = $nombreAnterior !== $nombre;
+            $cambioJefe = $oldJefe !== $Id_jefe_equipo;
+
+            // Solo registrar si realmente hubo algún cambio
+            if ($cambioNombre || $cambioJefe) {
+
+                if ($cambioNombre && $cambioJefe) {
+                    $nombreJefeAnterior = $oldJefe
+                        ? ($this->userManager->get($oldJefe)?->getDisplayName() ?? $oldJefe)
+                        : 'ninguno';
+
+                    $mensaje = sprintf(
+                        '%s ha actualizado el equipo "%s": cambió el nombre de "%s" a **%s** y el jefe de %s a **%s**.',
+                        $nombreActor,
+                        $nombreAnterior,
+                        $nombreAnterior,
+                        $nombre,
+                        $nombreJefeAnterior,
+                        $newBoss->getDisplayName()
+                    );
+                } elseif ($cambioNombre) {
+                    // Solo cambió nombre
+                    $mensaje = sprintf(
+                        '%s ha cambiado el nombre del equipo de "%s" a "%s".',
+                        $nombreActor,
+                        $nombreAnterior,
+                        $nombre
+                    );
+
+                } else {
+                    // Solo cambió jefe — conserva tu mensaje actual
+                    $nombreJefeAnterior = $oldJefe
+                        ? ($this->userManager->get($oldJefe)?->getDisplayName() ?? $oldJefe)
+                        : 'ninguno';
+
+                    $mensaje = sprintf(
+                        '%s ha cambiado el jefe del equipo "%s": de %s a %s.',
+                        $nombreActor,
+                        $nombreAnterior,
+                        $nombreJefeAnterior,
+                        $newBoss->getDisplayName()
+                    );
+                }
+
+                $this->registrarMovimiento(
+                    $uidActor,
+                    $Id_Equipo,
+                    $nombre,
+                    'edicion',
+                    $mensaje
+                );
             }
 
             return new DataResponse([
@@ -360,6 +478,21 @@ class equiposController extends BaseController {
         }
 
         $this->subAdmin->createSubAdmin($user, $group);
+
+        // --- Movimiento (bitácora) ---
+        $actor = $this->userSession->getUser();
+        $uidActor = $actor ? $actor->getUID() : null;
+        $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+        $mensaje = sprintf(
+            '%s ha creado el equipo "%s" con %s como jefe.',
+            $nombreActor,
+            $nombre,
+            $user->getDisplayName()
+        );
+
+        $this->registrarMovimiento($uidActor, $equipo->getId(), $nombre, 'creacion', $mensaje);
+
         return new DataResponse(Http::STATUS_OK);
     }
 
@@ -379,9 +512,25 @@ class equiposController extends BaseController {
                 $group->addUser($user);
             }
 
+            $yaEraSubAdmin = $this->isSubAdminOfGroupSafe($user, $group);
+
             // Promover a subadmin
-            if (!$this->isSubAdminOfGroupSafe($user, $group)) {
+            if (!$yaEraSubAdmin) {
                 $this->subAdmin->createSubAdmin($user, $group);
+            }
+
+            // --- Movimiento (bitácora) ---
+            if (!$yaEraSubAdmin) {
+                $actor = $this->userSession->getUser();
+                $uidActor = $actor ? $actor->getUID() : null;
+                $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+                $mensaje = sprintf(
+                    '%s ha promovido a %s como jefe/subadmin del equipo "%s".',
+                    $nombreActor, $user->getDisplayName(), $gid
+                );
+
+                $this->registrarMovimiento($uidActor, null, $gid, 'promocion_jefe', $mensaje);
             }
 
             return new DataResponse('ok', Http::STATUS_OK);

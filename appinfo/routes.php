@@ -162,6 +162,10 @@ return [
 		['name' => 'ausencias#NotificarRecordatorioAprobacion', 'url' => '/NotificarRecordatorioAprobacion', 'verb' => 'POST'],
 
 		['name' => 'ausencias#DescargarReportePeriodosExcel', 'url' => '/reporte-periodos-excel', 'verb' => 'GET'],
+		
+		/***************************** MOVIMIENTOS ****************************************/
+		['name' => 'movimientos#get_movimientos', 'url' => '/GetMovimientos', 'verb' => 'GET'],
+		['name' => 'movimientos#get_opciones_filtro', 'url' => '/GetOpcionesFiltro', 'verb' => 'GET'],
 
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],
@@ -206,11 +210,11 @@ return [
 		['name' => 'honorariosParcialidades#findByHonorario', 'url' => '/findParcialidadesByHonorario', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#marcarPagada', 'url' => '/marcarParcialidadPagada', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#findById', 'url' => '/findParcialidadesById', 'verb' => 'POST'],
-		['name' => 'honorariosParcialidades#actualizarFechaPago', 'url' => '/actualizarFechaPagoParcialidad', 'verb' => 'POST'],
-		['name' => 'honorariosParcialidades#marcar_facturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#marcarFacturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#cancelarFactura', 'url' => '/cancelarFacturaParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#cancelarPago', 'url' => '/cancelarPagoParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#agregarParcialidadIguala', 'url' => '/agregarParcialidadIguala', 'verb' => 'POST'],
-		['name' => 'HonorariosParcialidades#findPagadasPorCliente', 'url' => '/findParcialidadesPagadasPorCliente', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#findPagadasPorCliente', 'url' => '/findParcialidadesPagadasPorCliente', 'verb' => 'POST'],
 		['name' => 'honorarios#finalizarHonorario', 'url' => '/finalizarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#reactivarHonorario', 'url' => '/reactivarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#actualizarMetadatos', 'url' => '/actualizarMetadatosHonorario', 'verb' => 'POST'],

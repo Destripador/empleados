@@ -68,17 +68,25 @@ class equiposMapper extends QBMapper {
 		$qb->executeStatement();
 	}
 
-	public function updateEquipos($Id_equipo, $Id_jefe_equipo): void {
+	public function updateEquipos(
+		string $Id_equipo,
+		string $nombre,
+		string $Id_jefe_equipo
+	): void {
 		$timestamp = date('Y-m-d');
 
-		if (empty($Id_equipo) && $Id_equipo != 0) { $Id_equipo = null; }
-		if (empty($Id_jefe_equipo) && $Id_jefe_equipo != 0) { $Id_jefe_equipo = null; }
-
 		$query = $this->db->getQueryBuilder();
+
 		$query->update($this->getTableName())
+			->set('Nombre', $query->createNamedParameter($nombre))
 			->set('Id_jefe_equipo', $query->createNamedParameter($Id_jefe_equipo))
 			->set('updated_at', $query->createNamedParameter($timestamp))
-			->where($query->expr()->eq('Id_equipo', $query->createNamedParameter($Id_equipo)));
+			->where(
+				$query->expr()->eq(
+					'Id_equipo',
+					$query->createNamedParameter($Id_equipo)
+				)
+			);
 
 		$query->executeStatement();
 	}

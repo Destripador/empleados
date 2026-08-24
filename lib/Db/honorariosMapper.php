@@ -231,7 +231,7 @@ class honorariosMapper extends QBMapper {
 				)
 			);
 
-		if ($this->parcialidadesMapper->tienePagosRegistrados($id_honorario)) {
+		if ($this->parcialidadesMapper->tieneFacturacionRegistrada($id_honorario)) {
 			throw new \Exception('No se puede modificar un honorario con pagos registrados.');
 		}
 

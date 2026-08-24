@@ -13,11 +13,10 @@ use OCP\BackgroundJob\TimedJob;
 use OCP\IGroupManager;
 use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
+use OCA\Empleados\Service\BitacoraService;
 
 /**
- * Recordatorio diario a los aprobadores (gerente / socio / supervisor / RH)
- * que AÚN NO han confirmado una solicitud de ausencia. Solo se notifica al
- * rol que falta por aprobar; si alguno ya aprobó, no vuelve a recibir correo.
+ * Recordatorio diario a los aprobadores.
  */
 class RecordatorioAprobadoresPendientes extends TimedJob {
 
@@ -28,6 +27,7 @@ class RecordatorioAprobadoresPendientes extends TimedJob {
     private IGroupManager $groupManager;
     private MailHelper $mailHelper;
     private LoggerInterface $logger;
+    private BitacoraService $bitacoraService;
 
     public function __construct(
         ITimeFactory $time,
@@ -37,7 +37,8 @@ class RecordatorioAprobadoresPendientes extends TimedJob {
         IUserManager $userManager,
         IGroupManager $groupManager,
         MailHelper $mailHelper,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        BitacoraService $bitacoraService
     ) {
         parent::__construct($time);
 
@@ -51,6 +52,7 @@ class RecordatorioAprobadoresPendientes extends TimedJob {
         $this->groupManager = $groupManager;
         $this->mailHelper = $mailHelper;
         $this->logger = $logger;
+        $this->bitacoraService = $bitacoraService;
     }
 
     protected function run($argument): void {
@@ -174,6 +176,19 @@ class RecordatorioAprobadoresPendientes extends TimedJob {
                 'Fecha de inicio: ' . $ausencia['fecha_de'] . '  - Fecha de finalización: ' . $ausencia['fecha_hasta'] . '',
                 '',
             ]
+        );
+
+         // --- Movimiento (bitácora) ---
+        $this->bitacoraService->registrarSistema(
+            'vacaciones',
+            (int) ($ausencia['id_empleado'] ?? 0) ?: null,
+            $nombreEmpleado,
+            'recordatorio_sistema',
+            sprintf(
+                'se ha enviado un recordatorio automático a %s (%s) porque la solicitud de "%s" de %s sigue pendiente de su aprobación.',
+                $user->getDisplayName(), $rol, $nombreTipo, $nombreEmpleado
+            ),
+            (int) ($ausencia['id_historial_ausencias'] ?? 0) ?: null
         );
     }
 }

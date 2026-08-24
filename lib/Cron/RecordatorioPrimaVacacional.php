@@ -12,6 +12,7 @@ use OCP\BackgroundJob\TimedJob;
 use OCP\ILogger;
 use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
+use OCA\Empleados\Service\BitacoraService;
 
 /**
  * Envía un recordatorio a los empleados que aún no han solicitado su
@@ -23,6 +24,7 @@ class RecordatorioPrimaVacacional extends TimedJob {
 	private historialausenciasMapper $historialausenciasMapper;
 	private IUserManager $userManager;
 	private MailHelper $mailHelper;
+    private BitacoraService $bitacoraService;
     private LoggerInterface $logger;
 
 	public function __construct(
@@ -31,6 +33,7 @@ class RecordatorioPrimaVacacional extends TimedJob {
 		historialausenciasMapper $historialausenciasMapper,
 		IUserManager $userManager,
 		MailHelper $mailHelper,
+        BitacoraService $bitacoraService,
         LoggerInterface $logger
 	) {
 		parent::__construct($time);
@@ -41,6 +44,7 @@ class RecordatorioPrimaVacacional extends TimedJob {
 		$this->historialausenciasMapper = $historialausenciasMapper;
 		$this->userManager = $userManager;
 		$this->mailHelper = $mailHelper;
+        $this->bitacoraService = $bitacoraService;
         $this->logger = $logger;
 	}
 
@@ -157,6 +161,18 @@ class RecordatorioPrimaVacacional extends TimedJob {
                     'Te recomendamos solicitarla lo antes posible.',
                     '',
                 ]
+            );
+
+            // --- Movimiento (bitácora) ---
+            $this->bitacoraService->registrarSistema(
+                'vacaciones',
+                (int) ($empleado['Id_empleados'] ?? 0) ?: null,
+                $user->getDisplayName(),
+                'recordatorio_prima_vacacional',
+                sprintf(
+                    'se ha enviado un recordatorio a %s porque aún no ha solicitado su prima vacacional del año %d.',
+                    $user->getDisplayName(), $anio
+                )
             );
 
             $this->logger->warning('Recordatorio enviado correctamente.', [

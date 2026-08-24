@@ -119,43 +119,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 		$qb->executeStatement();
 	}
 
-	/**
-	 * Cambiar estado de una parcialidad y verificar si el honorario quedó completo.
-	 * Devuelve el id_honorario si todas las parcialidades están en estado PAGADO o FACTURADO.
-	 */
-	private function cambiarEstado(
-		int $id_parcialidad,
-		int $estado,
-		?string $fecha_pago = null,
-		?int $id_cliente_pagador = null
-	): ?int {
-		$qb = $this->db->getQueryBuilder();
-
-		// 1. Actualizar estado
-		$qb->update($this->getTableName())
-			->set('pagado', $qb->createNamedParameter($estado, IQueryBuilder::PARAM_INT));
-
-		if ($fecha_pago !== null) {
-			$qb->set('fecha_pago', $qb->createNamedParameter($fecha_pago));
-		}
-
-		$qb->set(
-			'id_cliente_pagador',
-			$id_cliente_pagador !== null
-				? $qb->createNamedParameter($id_cliente_pagador, IQueryBuilder::PARAM_INT)
-				: $qb->createNamedParameter(null)
-		);
-
-		$qb->where(
-			$qb->expr()->eq(
-				'id_parcialidad',
-				$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
-			)
-		);
-
-		$qb->executeStatement();
-
-		// 2. Obtener el honorario al que pertenece
+	private function verificarHonorarioCompleto(int $id_parcialidad): ?int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('id_honorario')
 			->from($this->getTableName())
@@ -165,90 +129,81 @@ class honorariosParcialidadesMapper extends QBMapper {
 					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
 				)
 			);
-
 		$result = $qb->executeQuery();
 		$id_honorario = (int)$result->fetchOne();
 		$result->closeCursor();
 
-		// 3. Contar parcialidades pendientes
-		$qb = $this->db->getQueryBuilder();
-		$qb->selectAlias(
-			$qb->createFunction('COUNT(*)'),
-			'total'
-		)
-		->from($this->getTableName())
-		->where(
-			$qb->expr()->eq(
-				'id_honorario',
-				$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
-			)
-		)
-		->andWhere(
-			$qb->expr()->eq(
-				'pagado',
-				$qb->createNamedParameter(
-					honorariosParcialidades::NO_PAGADO,
-					IQueryBuilder::PARAM_INT
+		$qb2 = $this->db->getQueryBuilder();
+		$qb2->selectAlias($qb2->createFunction('COUNT(*)'), 'total')
+			->from($this->getTableName())
+			->where(
+				$qb2->expr()->eq(
+					'id_honorario',
+					$qb2->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
 				)
 			)
-		);
-
-		$result = $qb->executeQuery();
-		$row = $result->fetch();
+			->andWhere(
+				$qb2->expr()->eq(
+					'pagado',
+					$qb2->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$result = $qb2->executeQuery();
+		$pendientes = (int)($result->fetch()['total'] ?? 0);
 		$result->closeCursor();
 
-		$pendientes = (int)($row['total'] ?? 0);
-		// 4. Si ya no hay pendientes, regresamos el honorario
-		if ($pendientes === 0) {
-			return $id_honorario;
-		}
-
-		return null;
+		return $pendientes === 0 ? $id_honorario : null;
 	}
 
 	/**
-	 * Marcar parcialidad como pagada.
-	 * Devuelve el id_honorario si el honorario quedó completo.
+	 * Paso 1: pendiente -> facturada.
 	 */
-	public function marcarPagada(
+	public function marcarFacturada(
 		int $id_parcialidad,
-		string $fecha_pago,
+		string $fecha_factura,
 		?int $id_cliente_pagador = null
-	): ?int {
-		return $this->cambiarEstado(
-			$id_parcialidad,
-			honorariosParcialidades::PAGADO,
-			$fecha_pago,
-			$id_cliente_pagador
-		);
-	}
-
-	/**
-	 * Marcar parcialidad como facturada.
-	 * Devuelve el id_honorario si el honorario quedó completo.
-	 */
-	public function marcarFacturada(int $id_parcialidad): void {
+	): void {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->update($this->getTableName())
+			->set('pagado', $qb->createNamedParameter(honorariosParcialidades::FACTURADA, IQueryBuilder::PARAM_INT))
+			->set('fecha_factura', $qb->createNamedParameter($fecha_factura))
 			->set(
-				'pagado',
-				$qb->createNamedParameter(
-					honorariosParcialidades::FACTURADO,
-					IQueryBuilder::PARAM_INT
-				)
+				'id_cliente_pagador',
+				$id_cliente_pagador !== null
+					? $qb->createNamedParameter($id_cliente_pagador, IQueryBuilder::PARAM_INT)
+					: $qb->createNamedParameter(null)
 			)
 			->where(
 				$qb->expr()->eq(
 					'id_parcialidad',
-					$qb->createNamedParameter(
-						$id_parcialidad,
-						IQueryBuilder::PARAM_INT
-					)
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
 				)
 			);
 
 		$qb->executeStatement();
+	}
+
+	/**
+	 * Paso 2: facturada -> pagada.
+	 * Devuelve el id_honorario si con esto el honorario quedó completo.
+	 */
+	public function marcarPagada(int $id_parcialidad, string $fecha_pago): ?int {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('pagado', $qb->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT))
+			->set('fecha_pago', $qb->createNamedParameter($fecha_pago))
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+
+		return $this->verificarHonorarioCompleto($id_parcialidad);
 	}
 
 	public function generarParcialidades(
@@ -291,7 +246,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 			$parcialidad->setPfecha_inicio($pfechaInicio->format('Y-m-d'));
 			$parcialidad->setPfecha_fin($pfechaFin->format('Y-m-d'));
 			$parcialidad->setImporte_parcialidad($importe_parcialidad);
-			$parcialidad->setPagado(honorariosParcialidades::NO_PAGADO);
+			$parcialidad->setPagado(honorariosParcialidades::PENDIENTE);
 
 			$this->insert($parcialidad);
 
@@ -350,7 +305,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 			$parcialidad->setPfecha_inicio($pfechaInicio->format('Y-m-d'));
 			$parcialidad->setPfecha_fin($pfechaFin->format('Y-m-d'));
 			$parcialidad->setImporte_parcialidad($importeParcialidad);
-			$parcialidad->setPagado(honorariosParcialidades::NO_PAGADO);
+			$parcialidad->setPagado(honorariosParcialidades::PENDIENTE);
 
 			$this->insert($parcialidad);
 
@@ -358,7 +313,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 		}
 	}
 
-	public function tienePagosRegistrados(int $id_honorario): bool {
+	public function tieneFacturacionRegistrada(int $id_honorario): bool {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->select('id_parcialidad')
@@ -372,10 +327,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 			->andWhere(
 				$qb->expr()->neq(
 					'pagado',
-					$qb->createNamedParameter(
-						honorariosParcialidades::NO_PAGADO,
-						IQueryBuilder::PARAM_INT
-					)
+					$qb->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT)
 				)
 			)
 			->setMaxResults(1);
@@ -387,38 +339,67 @@ class honorariosParcialidadesMapper extends QBMapper {
 		return $existe !== false;
 	}
 
-	public function cancelarPago(int $idParcialidad): ?int {
+	/**
+	* Revertir facturación (facturada -> pendiente) 
+	*/
+	public function cancelarFactura(int $id_parcialidad): void {
 		$qb = $this->db->getQueryBuilder();
 
+		$qb->update($this->getTableName())
+			->set('pagado', $qb->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT))
+			->set('fecha_factura', $qb->createNamedParameter(null))
+			->set('id_cliente_pagador', $qb->createNamedParameter(null))
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Revierte pagada -> facturada
+	 */
+	public function cancelarPago(int $id_parcialidad): ?int {
+		$idHonorario = $this->getHonorarioId($id_parcialidad);
+
+		if ($idHonorario === null) {
+			return null;
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('pagado', $qb->createNamedParameter(honorariosParcialidades::FACTURADA, IQueryBuilder::PARAM_INT))
+			->set('fecha_pago', $qb->createNamedParameter(null))
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+
+		return $idHonorario;
+	}
+
+	private function getHonorarioId(int $id_parcialidad): ?int {
+		$qb = $this->db->getQueryBuilder();
 		$qb->select('id_honorario')
 			->from($this->getTableName())
-			->where($qb->expr()->eq(
-				'id_parcialidad',
-				$qb->createNamedParameter($idParcialidad, IQueryBuilder::PARAM_INT)
-			));
-
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
 		$result = $qb->executeQuery();
 		$row = $result->fetch();
 		$result->closeCursor();
 
-		if (!$row) {
-			return null;
-		}
-
-		$idHonorario = (int)$row['id_honorario'];
-
-		$qb2 = $this->db->getQueryBuilder();
-		$qb2->update($this->getTableName())
-			->set('pagado', $qb2->createNamedParameter(0, IQueryBuilder::PARAM_INT))
-			->set('fecha_pago', $qb2->createNamedParameter(null))
-			->where($qb2->expr()->eq(
-				'id_parcialidad',
-				$qb2->createNamedParameter($idParcialidad, IQueryBuilder::PARAM_INT)
-			));
-
-		$qb2->executeStatement();
-
-		return $idHonorario;
+		return $row ? (int)$row['id_honorario'] : null;
 	}
 
 	public function agregarParcialidadIguala(int $idHonorario): void {
@@ -472,7 +453,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 				'pfecha_inicio'       => $qb3->createNamedParameter($inicioMes->format('Y-m-d')),
 				'pfecha_fin'          => $qb3->createNamedParameter($finMes->format('Y-m-d')),
 				'importe_parcialidad' => $qb3->createNamedParameter($importeMensual),
-				'pagado'              => $qb3->createNamedParameter(0, IQueryBuilder::PARAM_INT),
+				'pagado' => $qb3->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT),
 			]);
 		$qb3->executeStatement();
 	}

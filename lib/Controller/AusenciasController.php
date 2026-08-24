@@ -13,6 +13,7 @@ use OCP\IL10N;
 use OCA\Empleados\UploadException;
 use OCP\AppFramework\Http\DataResponse;
 
+use OCA\Empleados\Service\BitacoraService;
 use OCP\IUserSession;
 use OCP\IUserManager;
 use OCP\IGroupManager;
@@ -35,6 +36,7 @@ use OCA\Empleados\Db\aniversarioMapper;
 use OCA\Empleados\Db\ausencias;
 use OCA\Empleados\Db\actividadesMapper;
 use OCA\Empleados\Db\primavacacionalpagoMapper;
+use OCA\Empleados\Db\movimientosMapper;
 use OCA\Empleados\Service\AniversarioSyncService;
 
 use OCP\AppFramework\Http;
@@ -76,6 +78,8 @@ class AusenciasController extends BaseController {
     private MailHelper $mailHelper;
     private actividadesMapper $actividadesMapper;
     private AniversarioSyncService $aniversarioSyncService;
+    private BitacoraService $bitacoraService;
+    private movimientosMapper $movimientosMapper;
 
     public function __construct(
         IRequest $request,
@@ -100,7 +104,9 @@ class AusenciasController extends BaseController {
         actividadesMapper $actividadesMapper,
         AniversarioSyncService $aniversarioSyncService,
         IConfig $config,
-        INotificationManager $notificationManager 
+        INotificationManager $notificationManager,
+        BitacoraService $bitacoraService,
+        movimientosMapper $movimientosMapper
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
         
@@ -126,7 +132,81 @@ class AusenciasController extends BaseController {
         $this->aniversarioSyncService = $aniversarioSyncService;
         $this->config = $config;
         $this->notificationManager = $notificationManager;
+        $this->movimientosMapper = $movimientosMapper;
+        $this->bitacoraService = $bitacoraService;
     }
+
+    /**
+     * Convierte un número de días a texto legible ("2 días", "medio día", "1.5 días").
+     */
+    private function formatearDiasTexto(float $dias): string {
+        if ($dias == 0.5) {
+            return 'medio día';
+        }
+        $n = $dias == floor($dias) ? (string) (int) $dias : rtrim(rtrim(number_format($dias, 2), '0'), '.');
+        return $n . ' ' . ($dias == 1 ? 'día' : 'días');
+    }
+
+    /**
+     * Si es medio día regresa "por la mañana" / "por la tarde" en vez de "de medio día"
+     */
+    private function formatearFraseDias(float $dias, ?string $turno = null): string {
+        if ($dias == 0.5) {
+            if ($turno === 'manana') {
+                return 'por la mañana';
+            }
+            if ($turno === 'tarde') {
+                return 'por la tarde';
+            }
+        }
+        return 'de ' . $this->formatearDiasTexto($dias);
+    }
+
+    /**
+     * Registra un movimiento en la bitácora general
+     */
+    private function registrarMovimiento(
+        string $modulo,
+        ?string $uidActor,
+        ?int $idEmpleadoAfectado,
+        ?string $nombreAfectado,
+        string $tipo,
+        string $mensaje,
+        ?int $idReferencia = null
+    ): void {
+        $this->bitacoraService->registrar($modulo, $uidActor, $idEmpleadoAfectado, $nombreAfectado, $tipo, $mensaje, $idReferencia);
+    }
+
+    /**
+     * Devuelve la bitácora de movimientos (todos para admin/RH, solo los
+     * propios/relacionados para el resto). Soporta filtros opcionales por
+     * módulo y tipo de movimiento vía query params.
+     */
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetMovimientos(): DataResponse {
+        $this->checkAccess(['admin', 'empleados']);
+
+        $modulo = $this->request->getParam('modulo') ?: null;
+        $tipo = $this->request->getParam('tipo') ?: null;
+
+        $user = $this->userSession->getUser();
+        $uid = $user->getUID();
+        $isPrivileged = $this->groupManager->isInGroup($uid, 'admin')
+                    || $this->groupManager->isInGroup($uid, 'recursos_humanos');
+
+        if ($isPrivileged) {
+            $movimientos = $this->movimientosMapper->GetMovimientos(300, $modulo, $tipo);
+        } else {
+            $id_empleado = $this->empleadosMapper->GetMyEmployeeInfo($uid);
+            $movimientos = empty($id_empleado)
+                ? []
+                : $this->movimientosMapper->GetMovimientosDeEmpleado((int) $id_empleado[0]['Id_empleados'], 300, $modulo);
+        }
+
+        return new DataResponse($movimientos, Http::STATUS_OK);
+    }
+
     /**
      * Obtiene la lista de ausencias.
      */
@@ -369,6 +449,8 @@ class AusenciasController extends BaseController {
             return null;
         }
 
+        $nombreEmpleado = $empleado[0]['Nombre'] ?? $empleado[0]['Id_user'] ?? ('Empleado ' . $id_empleado);
+
         $this->aniversarioSyncService->sincronizarPeriodos($id_empleado, $empleado[0]['Ingreso']);
 
         $fechaIngreso = new DateTime($empleado[0]['Ingreso']);
@@ -382,7 +464,7 @@ class AusenciasController extends BaseController {
 
         $existente = $this->historialvacacionesMapper->getByEmpleadoYAniversario($id_empleado, $numeroAniversario);
 
-        // --- dias_derecho: se respeta si RH lo asignó manualmente ---
+        // --- dias_derecho ---
         if ($existente && (int) ($existente['asignado_manualmente'] ?? 0) === 1) {
             $diasDerecho = (float) $existente['dias_derecho'];
         } else {
@@ -399,15 +481,50 @@ class AusenciasController extends BaseController {
 
         if (!$existente) {
             $this->historialvacacionesMapper->guardar($id_empleado, $numeroAniversario, $periodoInicioStr, $periodoFinStr, $diasDerecho);
+
+            $anteriorRow = $numeroAniversario > 0
+                ? $this->historialvacacionesMapper->getByEmpleadoYAniversario($id_empleado, $numeroAniversario - 1)
+                : null;
+            $aniversarioAnteriorTxt = $anteriorRow ? (string) ($numeroAniversario - 1) : 'N/A';
+
+            $this->bitacoraService->registrarSistema(
+                'vacaciones',
+                $id_empleado,
+                $nombreEmpleado,
+                'aniversario_actualizado',
+                sprintf(
+                    'se ha actualizado el aniversario de %s (empleado %d): antes aniversario %s, ahora aniversario %d, con %s de derecho.',
+                    $nombreEmpleado, $id_empleado, $aniversarioAnteriorTxt, $numeroAniversario, $this->bitacoraService->formatearDiasTexto($diasDerecho)
+                )
+            );
         }
 
         [$diasAcumuladosRestantes, $fechaExpiracionAcum] = $this->calcularAcumuladoPeriodo(
             $id_empleado, $id_ausencias, $numeroAniversario, $fechaIngreso, $periodoInicio, $periodoInicioStr
         );
 
+        $acumuladoAntes = (float) ($existente['dias_acumulados'] ?? 0);
+        $expiracionAntes = $existente['fecha_expiracion_acumulados'] ?? null;
+
         $this->historialvacacionesMapper->actualizarAcumulado(
             $id_empleado, $numeroAniversario, $diasAcumuladosRestantes, $fechaExpiracionAcum
         );
+
+        if (abs($acumuladoAntes - $diasAcumuladosRestantes) > 0.0001 || $expiracionAntes !== $fechaExpiracionAcum) {
+            $this->bitacoraService->registrarSistema(
+                'vacaciones',
+                $id_empleado,
+                $nombreEmpleado,
+                'acumulado_actualizado',
+                sprintf(
+                    'se han actualizado los días acumulados de %s (empleado %d): antes %s, ahora %s%s.',
+                    $nombreEmpleado, $id_empleado,
+                    $this->bitacoraService->formatearDiasTexto($acumuladoAntes),
+                    $diasAcumuladosRestantes > 0 ? $this->bitacoraService->formatearDiasTexto($diasAcumuladosRestantes) : '0 días',
+                    $fechaExpiracionAcum ? (' (vence ' . $fechaExpiracionAcum . ')') : ''
+                )
+            );
+        }
 
         $acumuladoVigente = $diasAcumuladosRestantes > 0 && $fechaExpiracionAcum !== null;
 
@@ -890,6 +1007,31 @@ class AusenciasController extends BaseController {
                 $user->getDisplayName()
             );
 
+            // --- Movimiento (bitácora) ---
+            $actorEsElMismo = $uid === $user->getUID();
+            $fraseDias = $this->formatearFraseDias((float) $dias_solicitados, $turno);
+
+            $mensajeCreacion = $actorEsElMismo
+                ? sprintf('%s ha creado una solicitud de Ausencia de tipo "%s" %s.', $user->getDisplayName(), $tipo_ausencia[0]['nombre'], $fraseDias)
+                : sprintf('%s ha creado una solicitud de Ausencia de tipo "%s" %s para %s.', $this->userManager->get($uid)->getDisplayName(), $tipo_ausencia[0]['nombre'], $fraseDias, $user->getDisplayName());
+
+            if ($esAnticipada) {
+                $mensajeCreacion .= ' (vacaciones anticipadas)';
+            }
+            if ($prima_vacacional === 1) {
+                $mensajeCreacion .= ' — con prima vacacional';
+            }
+
+            $this->registrarMovimiento(
+                'vacaciones',
+                $uid,
+                (int) $id_empleado[0]['Id_empleados'],
+                $user->getDisplayName(),
+                'creacion',
+                $mensajeCreacion,
+                $idHistorialAusencia
+            );
+
             return new DataResponse(['success' => true, 'message' => 'Ausencia registrada correctamente']);
         } catch (\Exception $e) {
             return new DataResponse(['success' => false, 'message' => $e->getMessage()]);
@@ -1184,6 +1326,26 @@ class AusenciasController extends BaseController {
             $this->revertirEfectosAusencia($ausencia);
             $this->notificarAusenciaCancelada($ausencia, $uid);
 
+            // --- Movimiento (bitácora) ---
+            $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+            $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+            $fraseDias = $this->formatearFraseDias((float) $ausencia['dias_solicitados'], $ausencia['turno'] ?? null);
+
+            $reg = $this->ausenciasMapper->GetAusenciasById((int) $ausencia['id_ausencias']);
+            $empleadoInfo = !empty($reg) ? $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado']) : [];
+            $nombreEmpleadoAfectado = $empleadoInfo[0]['Nombre'] ?? $empleadoInfo[0]['Id_user'] ?? 'Empleado';
+            $actorEsElMismo = ($empleadoInfo[0]['Id_user'] ?? null) === $uid;
+
+            $mensaje = $actorEsElMismo
+                ? sprintf('%s ha cancelado su solicitud de Ausencia "%s" %s.', $user->getDisplayName(), $nombreTipo, $fraseDias)
+                : sprintf('%s ha cancelado la solicitud de %s de Ausencia "%s" %s.', $user->getDisplayName(), $nombreEmpleadoAfectado, $nombreTipo, $fraseDias);
+
+            $this->registrarMovimiento(
+                'vacaciones', $uid,
+                !empty($reg) ? (int) $reg[0]['id_empleado'] : null, $nombreEmpleadoAfectado,
+                'cancelacion', $mensaje, $id
+            );
+
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(
@@ -1340,6 +1502,30 @@ class AusenciasController extends BaseController {
                     }
                 }
             }
+
+            // --- Movimiento (bitácora) ---
+            $tipoAnteriorNombre = $tipoOriginal[0]['nombre'] ?? '?';
+            $tipoNuevoNombre = $tipo_nuevo[0]['nombre'] ?? ($tipo_ausencia[0]['nombre'] ?? '?');
+            $nombreEmpleadoAfectado = !empty($reg)
+                ? ($this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $reg[0]['id_empleado'])[0]['Nombre'] ?? $user->getDisplayName())
+                : $user->getDisplayName();
+            $fraseDias = $this->formatearFraseDias($dias, $turno);
+
+            $mensajeEdicion = sprintf(
+                '%s ha editado la solicitud de Ausencia de %s: tipo "%s" → "%s", fechas %s a %s, %s.',
+                $user->getDisplayName(),
+                $nombreEmpleadoAfectado,
+                $tipoAnteriorNombre, $tipoNuevoNombre,
+                $fecha_de, $fecha_hasta,
+                $fraseDias
+            );
+
+            $this->registrarMovimiento(
+                'vacaciones', $uid,
+                !empty($reg) ? (int) $reg[0]['id_empleado'] : (int) $id_empleado[0]['Id_empleados'],
+                $nombreEmpleadoAfectado,
+                'edicion', $mensajeEdicion, $id
+            );
 
             return new DataResponse(['success' => true, 'message' => 'Ausencia actualizada correctamente']);
 
@@ -1627,11 +1813,12 @@ class AusenciasController extends BaseController {
             return new DataResponse(['success' => false, 'message' => 'Empleado sin registro de ausencias'], Http::STATUS_BAD_REQUEST);
         }
 
-        // Esto crea la fila del periodo actual si no existe
         $periodo = $this->getPeriodoActualEmpleado($id_empleado, (int) $empleado_ausencias[0]['id_ausencias']);
         if (!$periodo) {
             return new DataResponse(['success' => false, 'message' => 'No se pudo calcular el periodo actual'], Http::STATUS_BAD_REQUEST);
         }
+
+        $diasAcumuladosAntes = (float) $periodo['dias_acumulados_restantes'];
 
         $fechaExpiracion = $dias_acumulados > 0
             ? (new DateTime($periodo['periodo_inicio']))->modify('+6 months')->format('Y-m-d')
@@ -1642,6 +1829,32 @@ class AusenciasController extends BaseController {
             $periodo['numero_aniversario'],
             $dias_acumulados,
             $fechaExpiracion
+        );
+
+        // --- Movimiento (bitácora) ---
+        $user = $this->userSession->getUser();
+        $uid = $user->getUID();
+
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $id_empleado);
+        $nombreEmpleadoAfectado = $empleadoInfo[0]['Nombre'] ?? $empleadoInfo[0]['Id_user'] ?? 'Empleado';
+
+        $mensaje = sprintf(
+            '%s ha actualizado los días acumulados de %s: antes %s, ahora %s%s.',
+            $user->getDisplayName(),
+            $nombreEmpleadoAfectado,
+            $this->formatearDiasTexto($diasAcumuladosAntes),
+            $this->formatearDiasTexto($dias_acumulados),
+            $fechaExpiracion ? (' (vence ' . $fechaExpiracion . ')') : ''
+        );
+
+        $this->registrarMovimiento(
+            'vacaciones',
+            $uid,
+            $id_empleado,
+            $nombreEmpleadoAfectado,
+            'edicion_manual_acumulado',
+            $mensaje,
+            null
         );
 
         return new DataResponse(['success' => true], Http::STATUS_OK);
@@ -1665,6 +1878,9 @@ class AusenciasController extends BaseController {
             return new DataResponse(['success' => false, 'message' => 'No se pudo calcular el periodo actual'], Http::STATUS_BAD_REQUEST);
         }
 
+        // Días disponibles ANTES del cambio, para dejar registro del "de X a Y".
+        $diasAntes = (float) $periodo['dias_restantes'];
+
         $nuevoDerecho = $dias_disponibles + $periodo['dias_disfrutados'];
 
         $this->historialvacacionesMapper->actualizarDerecho(
@@ -1676,6 +1892,31 @@ class AusenciasController extends BaseController {
         $this->historialvacacionesMapper->invalidarAcumulado(
             $id_empleado,
             $periodo['numero_aniversario'] + 1
+        );
+
+        // --- Movimiento (bitácora) ---
+        $user = $this->userSession->getUser();
+        $uid = $user->getUID();
+
+        $empleadoInfo = $this->empleadosMapper->GetMyEmployeeInfoByIdEmpleado((string) $id_empleado);
+        $nombreEmpleadoAfectado = $empleadoInfo[0]['Nombre'] ?? $empleadoInfo[0]['Id_user'] ?? 'Empleado';
+
+        $mensaje = sprintf(
+            '%s ha actualizado los días de vacaciones disponibles de %s: antes tenía %s, ahora tiene %s.',
+            $user->getDisplayName(),
+            $nombreEmpleadoAfectado,
+            $this->formatearDiasTexto($diasAntes),
+            $this->formatearDiasTexto((float) $dias_disponibles)
+        );
+
+        $this->registrarMovimiento(
+            'vacaciones',
+            $uid,
+            $id_empleado,
+            $nombreEmpleadoAfectado,
+            'edicion_manual_dias',
+            $mensaje,
+            null
         );
 
         return new DataResponse(['success' => true], Http::STATUS_OK);
@@ -1806,6 +2047,13 @@ class AusenciasController extends BaseController {
         $tieneSupervisorAsignado = !empty($empleadoInfo[0]['Id_supervisor'] ?? null);
         $esSupervisor = !empty($empleadoInfo) && $tieneSupervisorAsignado && $empleadoInfo[0]['Id_supervisor'] === $uid;
 
+        // --- Datos para la bitácora ---
+        $tipoInfo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+        $nombreTipo = $tipoInfo[0]['nombre'] ?? 'Ausencia';
+        $fraseDias = $this->formatearFraseDias((float) $ausencia['dias_solicitados'], $ausencia['turno'] ?? null);
+        $nombreEmpleadoAfectado = $empleadoInfo[0]['Nombre'] ?? $empleadoInfo[0]['Id_user'] ?? 'Empleado';
+        $idEmpleadoAfectado = !empty($reg) ? (int) $reg[0]['id_empleado'] : null;
+
         // Caso especial: RH aprueba EN NOMBRE del socio 
         if ($rol === 'capital_humano_como_socio') {
             if (!$isPrivileged || $esSocio) {
@@ -1833,6 +2081,13 @@ class AusenciasController extends BaseController {
 
             $this->historialausenciasMapper->SetEstadoSocio($id, 1);
             $ausencia['a_socio'] = 1; // para el chequeo final de abajo
+
+            $this->registrarMovimiento(
+                'vacaciones', $uid, $idEmpleadoAfectado, $nombreEmpleadoAfectado,
+                'aprobacion_parcial',
+                sprintf('%s ha aprobado la solicitud de %s de Ausencia "%s" %s en nombre del socio.', $user->getDisplayName(), $nombreEmpleadoAfectado, $nombreTipo, $fraseDias),
+                $id
+            );
 
         } else {
             // Ya fue rechazada o cancelada
@@ -1864,20 +2119,39 @@ class AusenciasController extends BaseController {
                 }
             }
 
+            $rolesAprobados = [];
+
             if ($esGerente && (int)$ausencia['a_gerente'] !== 1) {
                 $this->historialausenciasMapper->SetEstadoGerente($id, 1);
+                $rolesAprobados[] = 'gerente';
             }
 
             if ($esSocio && (int)$ausencia['a_socio'] !== 1) {
                 $this->historialausenciasMapper->SetEstadoSocio($id, 1);
+                $rolesAprobados[] = 'socio';
             }
 
             if ($esSupervisor && (int)($ausencia['a_supervisor'] ?? 0) !== 1) {
                 $this->historialausenciasMapper->SetEstadoSupervisor($id, 1);
+                $rolesAprobados[] = 'supervisor';
             }
 
             if ($isPrivileged && (int)$ausencia['a_capital_humano'] !== 1) {
                 $this->historialausenciasMapper->SetEstadoCapitalHumano($id, 1);
+                $rolesAprobados[] = 'recursos humanos';
+            }
+
+            if (!empty($rolesAprobados)) {
+                $textoRoles = count($rolesAprobados) === 1
+                    ? $rolesAprobados[0]
+                    : implode(' y ', [implode(', ', array_slice($rolesAprobados, 0, -1)), end($rolesAprobados)]);
+
+                $this->registrarMovimiento(
+                    'vacaciones', $uid, $idEmpleadoAfectado, $nombreEmpleadoAfectado,
+                    'aprobacion_parcial',
+                    sprintf('%s ha aprobado la solicitud de %s de Ausencia "%s" %s como %s.', $user->getDisplayName(), $nombreEmpleadoAfectado, $nombreTipo, $fraseDias, $textoRoles),
+                    $id
+                );
             }
 
             $ausencia['a_gerente'] = $esGerente ? 1 : (int) $ausencia['a_gerente'];
@@ -1894,6 +2168,13 @@ class AusenciasController extends BaseController {
 
         if ($gerenteFinal === 1 && $socioFinal === 1 && $supervisorFinal === 1 && $capitalHumanoFinal === 1) {
             $this->notificarAusenciaAprobada($ausencia);
+
+            $this->registrarMovimiento(
+                'vacaciones', null, $idEmpleadoAfectado, $nombreEmpleadoAfectado,
+                'aprobacion_completa',
+                sprintf('Sistema - La solicitud de %s de Ausencia "%s" ha sido aprobada por completo.', $nombreEmpleadoAfectado, $nombreTipo),
+                $id
+            );
         } else {
             // Notificación de aprobación
             $this->notificarAprobacionParcial($ausencia, $rol);
@@ -1983,6 +2264,23 @@ class AusenciasController extends BaseController {
             $this->historialausenciasMapper->RechazarTodo($id, $motivo !== '' ? $motivo : null);
             $this->revertirEfectosAusencia($ausencia);
             $this->notificarAusenciaRechazada($ausencia, $motivo);
+
+            // --- Movimiento (bitácora) ---
+            $tipo = $this->tipoausenciaMapper->getTipoById($ausencia['id_tipo_ausencia']);
+            $nombreTipo = $tipo[0]['nombre'] ?? 'Ausencia';
+            $fraseDias = $this->formatearFraseDias((float) $ausencia['dias_solicitados'], $ausencia['turno'] ?? null);
+            $nombreEmpleadoAfectado = $empleadoInfo[0]['Nombre'] ?? $empleadoInfo[0]['Id_user'] ?? 'Empleado';
+
+            $mensajeRechazo = sprintf('%s ha rechazado la solicitud de %s de Ausencia "%s" %s como %s.', $user->getDisplayName(), $nombreEmpleadoAfectado, $nombreTipo, $fraseDias, $rol);
+            if ($motivo !== '') {
+                $mensajeRechazo .= ' Motivo: ' . $motivo;
+            }
+
+            $this->registrarMovimiento(
+                'vacaciones', $uid,
+                !empty($reg) ? (int) $reg[0]['id_empleado'] : null, $nombreEmpleadoAfectado,
+                'rechazo', $mensajeRechazo, $id
+            );
  
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
@@ -2618,6 +2916,15 @@ class AusenciasController extends BaseController {
         }
 
         $this->config->setAppValue(Application::APP_ID, $configKey, (string) time());
+
+        // --- Movimiento (bitácora) ---
+        $this->registrarMovimiento(
+            'vacaciones', $uid,
+            (int) $reg[0]['id_empleado'], $nombreEmpleado,
+            'recordatorio',
+            sprintf('%s ha enviado un recordatorio porque su solicitud de Ausencia "%s" sigue pendiente de aprobación.', $nombreEmpleado, $nombreTipo),
+            $id
+        );
 
         return new DataResponse(['success' => true, 'message' => 'Recordatorio enviado'], Http::STATUS_OK);
     }
