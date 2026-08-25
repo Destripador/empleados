@@ -498,12 +498,15 @@ class honorariosParcialidadesMapper extends QBMapper {
 	 */
 	public function getDashboardFeeRows(array $filters): array {
 		$qb = $this->db->getQueryBuilder();
+		$pagada = honorariosParcialidades::PAGADA;
+		$pendiente = honorariosParcialidades::PENDIENTE;
+		$facturada = honorariosParcialidades::FACTURADA;
 
 		$qb->selectAlias('c.id', 'id_cliente')
 			->selectAlias('h.tipo_moneda', 'tipo_moneda')
 			->selectAlias($qb->createFunction('SUM(p.importe_parcialidad)'), 'total')
-			->selectAlias($qb->createFunction('SUM(CASE WHEN p.pagado IN (1, 2) THEN p.importe_parcialidad ELSE 0 END)'), 'pagado')
-			->selectAlias($qb->createFunction('SUM(CASE WHEN p.pagado = 0 THEN p.importe_parcialidad ELSE 0 END)'), 'pendiente')
+			->selectAlias($qb->createFunction("SUM(CASE WHEN p.pagado = {$pagada} THEN p.importe_parcialidad ELSE 0 END)"), 'pagado')
+			->selectAlias($qb->createFunction("SUM(CASE WHEN p.pagado IN ({$pendiente}, {$facturada}) THEN p.importe_parcialidad ELSE 0 END)"), 'pendiente')
 			->from($this->getTableName(), 'p')
 			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
 			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'));
@@ -554,9 +557,9 @@ class honorariosParcialidadesMapper extends QBMapper {
 			->from($this->getTableName(), 'p')
 			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
 			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
-			->where($qb->expr()->in(
+			->where($qb->expr()->eq(
 				'p.pagado',
-				$qb->createNamedParameter([1, 2], IQueryBuilder::PARAM_INT_ARRAY)
+				$qb->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT)
 			))
 			->andWhere($qb->expr()->isNotNull('p.fecha_pago'));
 
@@ -577,6 +580,10 @@ class honorariosParcialidadesMapper extends QBMapper {
 	public function getDashboardHonorariosByCliente(int $idCliente, array $filters): array {
 		$qb = $this->db->getQueryBuilder();
 
+		$pagada = honorariosParcialidades::PAGADA;
+		$pendiente = honorariosParcialidades::PENDIENTE;
+		$facturada = honorariosParcialidades::FACTURADA;
+
 		$qb->select(
 			'h.id_honorario',
 			'h.id_cliente',
@@ -589,8 +596,8 @@ class honorariosParcialidadesMapper extends QBMapper {
 			'h.especial'
 		)
 			->selectAlias($qb->createFunction('COALESCE(SUM(p.importe_parcialidad), 0)'), 'total')
-			->selectAlias($qb->createFunction('COALESCE(SUM(CASE WHEN p.pagado IN (1, 2) THEN p.importe_parcialidad ELSE 0 END), 0)'), 'pagado')
-			->selectAlias($qb->createFunction('COALESCE(SUM(CASE WHEN p.pagado = 0 THEN p.importe_parcialidad ELSE 0 END), 0)'), 'pendiente')
+			->selectAlias($qb->createFunction("COALESCE(SUM(CASE WHEN p.pagado = {$pagada} THEN p.importe_parcialidad ELSE 0 END), 0)"), 'pagado')
+			->selectAlias($qb->createFunction("COALESCE(SUM(CASE WHEN p.pagado IN ({$pendiente}, {$facturada}) THEN p.importe_parcialidad ELSE 0 END), 0)"), 'pendiente')
 			->from('empleados_honorarios', 'h')
 			->leftJoin('h', $this->getTableName(), 'p', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
 			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
@@ -657,9 +664,15 @@ class honorariosParcialidadesMapper extends QBMapper {
 				'h.id_cliente',
 				$qb->createNamedParameter($idCliente, IQueryBuilder::PARAM_INT)
 			))
-			->andWhere($qb->expr()->eq(
+			->andWhere($qb->expr()->in(
 				'p.pagado',
-				$qb->createNamedParameter(honorariosParcialidades::NO_PAGADO, IQueryBuilder::PARAM_INT)
+				$qb->createNamedParameter(
+					[
+						honorariosParcialidades::PENDIENTE,
+						honorariosParcialidades::FACTURADA,
+					],
+					IQueryBuilder::PARAM_INT_ARRAY
+				)
 			));
 
 		$this->applyDashboardFeeFilters($qb, array_merge($filters, ['id_cliente' => $idCliente]));

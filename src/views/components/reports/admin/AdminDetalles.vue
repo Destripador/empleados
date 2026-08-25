@@ -370,11 +370,17 @@ export default {
 			const arr = Array.isArray(this.select) ? this.select : []
 
 			const actividadesMap = new Map(
-				(this.actividadesList || []).map(c => [Number(c.id), c.name || c.nombre || c.label]),
+				(this.actividadesList || []).map(c => [
+					Number(c.id ?? c.id_actividad),
+					c.name || c.nombre || c.label,
+				]),
 			)
 
 			const clientesMap = new Map(
-				(this.proyectosList || []).map(a => [Number(a.id), a.label || a.nombre || a.name]),
+				(this.proyectosList || []).map(a => [
+					Number(a.id ?? a.id_cliente),
+					a.label || a.nombre || a.name,
+				]),
 			)
 
 			return arr
@@ -398,13 +404,26 @@ export default {
 						? t('empleados', 'Internal work')
 						: esAusencia
 							? t('empleados', 'Módulo de Ausencia')
-							: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
+							: (
+								r.cliente_nombre
+								|| r.nombre_cliente
+								|| r.cliente
+								|| r.nombreCliente
+								|| clientesMap.get(Number(idCliente))
+								|| `Cliente ${idCliente ?? ''}`.trim()
+							)
 
 					const actividadNombre = esSoporte
 						? (r.actividad_nombre || t('empleados', 'Support TI'))
 						: esAusencia
 							? t('empleados', 'Ausencia')
-							: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())
+							: (
+								r.actividad_nombre
+								|| r.nombre_actividad
+								|| r.actividad
+								|| actividadesMap.get(Number(idActividad))
+								|| `Actividad ${idActividad ?? ''}`.trim()
+							)
 
 					return {
 						...r,

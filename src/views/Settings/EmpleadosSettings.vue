@@ -290,30 +290,63 @@
 				</div>
 
 				<div v-else class="permisos-groups">
+					<NcTextField class="permisos-search"
+						:value.sync="permisosSearch"
+						:label="t('empleados', 'Search groups or modules')" />
+
 					<NcNoteCard v-if="hasAdminPermissionSelected" type="warning" class="permisos-admin-note">
 						{{ t('empleados', 'Administrator permission already includes all purchase permissions Additional purchase groups are not required.') }}
 					</NcNoteCard>
 
-					<NcCheckboxRadioSwitch v-for="group in permisosGruposDecorados"
-						:key="group.id"
-						:checked="selectedPermisosGroups.includes(group.id)"
-						:disabled="group.disabled"
-						type="switch"
-						@update:checked="togglePermisoGroup(group.id, $event)">
-						<span class="permission-option" :class="{ 'permission-option--disabled': group.disabled }">
-							<strong>{{ group.label }}</strong>
-							<small>{{ group.id }}</small>
-							<span class="permission-description">
-								{{ group.description }}
+					<section v-for="section in permisosPorModulo"
+						:key="section.id"
+						class="permisos-module">
+						<header class="permisos-module__header">
+							<div>
+								<p class="permisos-module__eyebrow">
+									{{ t('empleados', 'Module') }}
+								</p>
+								<h3>{{ section.label }}</h3>
+								<p v-if="section.hint">
+									{{ section.hint }}
+								</p>
+							</div>
+							<span class="permisos-module__count">
+								{{ section.groups.length }}
 							</span>
-							<em v-if="group.restriction">
-								{{ group.restriction }}
-							</em>
-						</span>
-					</NcCheckboxRadioSwitch>
+						</header>
 
-					<NcEmptyContent v-if="permisosGrupos.length === 0"
-						:name="t('empleados', 'No permission groups found')">
+						<div class="permisos-module__list">
+							<NcCheckboxRadioSwitch v-for="group in section.groups"
+								:key="group.id"
+								:checked="selectedPermisosGroups.includes(group.id)"
+								:disabled="group.disabled"
+								type="switch"
+								@update:checked="togglePermisoGroup(group.id, $event)">
+								<span class="permission-option" :class="{ 'permission-option--disabled': group.disabled }">
+									<span class="permission-option__title">
+										<strong>{{ group.label }}</strong>
+										<span class="status-badge" :class="permissionLevelBadgeClass(group.permission)">
+											{{ permissionLevelLabel(group.permission) }}
+										</span>
+										<span v-if="group.restricted" class="status-badge status-badge--restricted">
+											{{ t('empleados', 'Restricted') }}
+										</span>
+									</span>
+									<small>{{ group.id }}</small>
+									<span class="permission-description">
+										{{ group.description }}
+									</span>
+									<em v-if="group.restriction">
+										{{ group.restriction }}
+									</em>
+								</span>
+							</NcCheckboxRadioSwitch>
+						</div>
+					</section>
+
+					<NcEmptyContent v-if="permisosPorModulo.length === 0"
+						:name="permisosSearch ? t('empleados', 'No permission groups match the search') : t('empleados', 'No permission groups found')">
 						<template #icon>
 							<AccountGroup :size="20" />
 						</template>
@@ -442,6 +475,7 @@ export default {
 			selectedPermisosUid: '',
 			selectedPermisosGroups: [],
 			loadingPermisos: false,
+			permisosSearch: '',
 			activeSearch: '',
 			inactiveSearch: '',
 			pendingSearch: '',
@@ -469,6 +503,43 @@ export default {
 					disabled: this.isPermissionDisabled(group.id),
 				}
 			})
+		},
+
+		permisosPorModulo() {
+			const query = String(this.permisosSearch || '').trim().toLowerCase()
+			const groups = this.permisosGruposDecorados.filter((group) => {
+				if (!query) {
+					return true
+				}
+				return [
+					group.label,
+					group.id,
+					group.module,
+					group.permission,
+					group.description,
+					this.moduleLabel(group.module),
+					this.permissionLevelLabel(group.permission),
+				].join(' ').toLowerCase().includes(query)
+			})
+
+			const sections = new Map()
+			groups.forEach((group) => {
+				const moduleId = group.module || 'other'
+				if (!sections.has(moduleId)) {
+					sections.set(moduleId, [])
+				}
+				sections.get(moduleId).push(group)
+			})
+
+			return this.moduleOrder(Array.from(sections.keys())).map((moduleId) => {
+				const meta = this.moduleMeta(moduleId)
+				return {
+					id: moduleId,
+					label: meta.label,
+					hint: meta.hint,
+					groups: sections.get(moduleId).slice().sort((a, b) => this.comparePermissions(a, b)),
+				}
+			}).filter(section => section.groups.length > 0)
 		},
 
 		hasAdminPermissionSelected() {
@@ -608,6 +679,7 @@ export default {
 			}
 			this.selectedPermisosUid = uid
 			this.selectedPermisosGroups = []
+			this.permisosSearch = ''
 			this.showPermisosDialog = true
 
 			await this.loadPermisosGrupos()
@@ -808,6 +880,14 @@ export default {
 				recursos_humanos: t('empleados', 'Can manage employee-related information in the employees module. This does not grant purchase approval permissions.'),
 				clientes_admin: t('empleados', 'Can create, edit, delete, import and export customers.'),
 				clientes_view: t('empleados', 'Can view customers without editing the customer catalog.'),
+				reportes_admin: t('empleados', 'Can open administrative time reports for all active employees and follow compliance.'),
+				reportes_view: t('empleados', 'Can open administrative time reports only for the current employee and their team.'),
+				empleados_admin: t('empleados', 'Can manage employees, areas, positions and teams without full Human Resources access.'),
+				ti_admin: t('empleados', 'Can administer inventory, equipment and support requests.'),
+				ti_tecnicos: t('empleados', 'Can attend and update assigned maintenance work.'),
+				ti_consulta: t('empleados', 'Can view inventory, calendar and maintenance progress.'),
+				ahorro_admin: t('empleados', 'Can manage savings requests and the savings panel.'),
+				ausencias_admin: t('empleados', 'Can manage absences, vacations and the work calendar.'),
 			}
 
 			if (descriptions[groupId]) {
@@ -841,6 +921,9 @@ export default {
 				recursos_humanos: t('empleados', 'Independent from purchase permissions.'),
 				clientes_admin: t('empleados', 'Administrative customer permission. Assign only to users who should maintain the customer catalog.'),
 				clientes_view: t('empleados', 'Read-only customer permission.'),
+				reportes_admin: t('empleados', 'Sees all active employees in administrative time reports. Assign only when necessary.'),
+				reportes_view: t('empleados', 'Does not show employees outside the current user team.'),
+				empleados_admin: t('empleados', 'Restricted permission. Assign only when necessary.'),
 			}
 
 			if (restrictions[groupId]) {
@@ -852,6 +935,114 @@ export default {
 			}
 
 			return ''
+		},
+
+		moduleOrder(moduleIds) {
+			const order = [
+				'empleados',
+				'reporte_tiempos',
+				'clientes',
+				'compras',
+				'inventario',
+				'soporte',
+				'ahorro',
+				'ausencias',
+			]
+			return [...moduleIds].sort((a, b) => {
+				const indexA = order.indexOf(a)
+				const indexB = order.indexOf(b)
+				const rankA = indexA === -1 ? order.length : indexA
+				const rankB = indexB === -1 ? order.length : indexB
+				if (rankA !== rankB) {
+					return rankA - rankB
+				}
+				return String(a).localeCompare(String(b))
+			})
+		},
+
+		moduleMeta(moduleId) {
+			const modules = {
+				empleados: {
+					label: t('empleados', 'Employees / HR'),
+					hint: t('empleados', 'Employee records, areas, positions and teams.'),
+				},
+				reporte_tiempos: {
+					label: t('empleados', 'Time reports'),
+					hint: t('empleados', 'Administrator sees all employees. View only sees the current employee and their team.'),
+				},
+				clientes: {
+					label: t('empleados', 'Customers'),
+					hint: t('empleados', 'Customer catalog. View only cannot edit customers.'),
+				},
+				compras: {
+					label: t('empleados', 'Purchases'),
+					hint: t('empleados', 'Administrator already includes requester, approver and accounting.'),
+				},
+				inventario: {
+					label: t('empleados', 'IT inventory'),
+					hint: t('empleados', 'Equipment, support and maintenance.'),
+				},
+				soporte: {
+					label: t('empleados', 'Support'),
+					hint: t('empleados', 'Support requests linked to inventory.'),
+				},
+				ahorro: {
+					label: t('empleados', 'Savings'),
+					hint: t('empleados', 'Savings requests and administration panel.'),
+				},
+				ausencias: {
+					label: t('empleados', 'Working time'),
+					hint: t('empleados', 'Absences, vacations and work calendar.'),
+				},
+			}
+			return modules[moduleId] || {
+				label: t('empleados', 'Other permissions'),
+				hint: '',
+			}
+		},
+
+		moduleLabel(moduleId) {
+			return this.moduleMeta(moduleId).label
+		},
+
+		permissionLevelLabel(permission) {
+			const labels = {
+				view: t('empleados', 'View only'),
+				request: t('empleados', 'Requester'),
+				technician: t('empleados', 'Technician'),
+				approve: t('empleados', 'Approver'),
+				accounting: t('empleados', 'Accounting'),
+				hr: t('empleados', 'Human resources'),
+				admin: t('empleados', 'Administrator'),
+			}
+			return labels[permission] || permission || t('empleados', 'Permission level')
+		},
+
+		permissionLevelBadgeClass(permission) {
+			if (permission === 'admin' || permission === 'hr') {
+				return 'status-badge--restricted'
+			}
+			if (permission === 'view') {
+				return 'status-badge--pending'
+			}
+			return 'status-badge--active'
+		},
+
+		comparePermissions(a, b) {
+			const order = ['view', 'request', 'technician', 'approve', 'accounting', 'hr', 'admin']
+			const rankA = order.indexOf(a.permission)
+			const rankB = order.indexOf(b.permission)
+			const valueA = rankA === -1 ? order.length : rankA
+			const valueB = rankB === -1 ? order.length : rankB
+			if (valueA !== valueB) {
+				return valueA - valueB
+			}
+			const sortA = Number(a.sort_order)
+			const sortB = Number(b.sort_order)
+			if (Number.isFinite(sortA) && Number.isFinite(sortB) && sortA !== sortB) {
+				return sortA - sortB
+			}
+			return String(a.label || a.id).localeCompare(String(b.label || b.id))
 		},
 	},
 }
@@ -1074,6 +1265,11 @@ export default {
 	color: var(--color-primary-element);
 }
 
+.status-badge--restricted {
+	background: var(--color-error, #e9322d);
+	color: var(--color-error-text, #fff);
+}
+
 .employee-id-column code {
 	padding: 3px 6px;
 	border-radius: var(--border-radius-small);
@@ -1130,12 +1326,73 @@ export default {
 }
 
 .permisos-groups {
-	padding: 0px 10px 0px 5px;
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+	padding: 0 10px 0 5px;
+}
+
+.permisos-search {
+	width: 100%;
+}
+
+.permisos-module {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.permisos-module__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 4px 2px 0;
+}
+
+.permisos-module__eyebrow {
+	margin: 0 0 2px;
+	color: var(--color-primary-element);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.permisos-module__header h3 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.permisos-module__header p {
+	margin: 4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.permisos-module__count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 28px;
+	min-height: 28px;
+	padding: 0 8px;
+	border-radius: 999px;
+	background: var(--color-background-hover);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.permisos-module__list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 10px;
 }
 
 .permisos-admin-note {
-	grid-column: 1 / -1;
-	margin: 0 0 4px;
+	margin: 0;
 }
 
 .permisos-groups .checkbox-radio-switch {
@@ -1157,6 +1414,13 @@ export default {
 	gap: 4px;
 	min-width: 0;
 	line-height: 1.35;
+}
+
+.permission-option__title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
 }
 
 .permission-option strong {

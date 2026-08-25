@@ -51,6 +51,35 @@ class empleadosMapper extends QBMapper {
 		return $users;
 	}
 
+	public function GetEmpleadosActivosBasico(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'e.Id_empleados',
+			'e.Id_user',
+			'u.displayname',
+			'e.Sueldo',
+			'e.Id_departamento',
+			'e.Ingreso',
+			'e.Estado'
+		)
+			->from('empleados', 'e')
+			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->where(
+				$qb->expr()->eq(
+					'e.estado',
+					$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->orderBy('u.displayname', 'ASC');
+
+		$result = $qb->executeQuery();
+		$users = $result->fetchAll();
+		$result->closeCursor();
+
+		return $users;
+	}
+
     public function GetMyEmployeeInfo($id): array {
 		$qb = $this->db->getQueryBuilder();
 

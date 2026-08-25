@@ -88,6 +88,7 @@ class PermisosController extends BaseController {
 				'permission' => (string)$row['permission'],
 				'restricted' => ((int)$row['restricted']) === 1,
 				'enabled' => ((int)$row['enabled']) === 1,
+				'sort_order' => (int)($row['sort_order'] ?? 0),
 				'exists' => $this->groupManager->get($groupId) !== null,
 			];
 		}

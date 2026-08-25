@@ -420,6 +420,7 @@ export default {
 						reporte.descripcion,
 						reporte.clienteNombre,
 						reporte.actividadNombre,
+						reporte.nombre_dispositivo,
 						reporte.fecha_registro,
 						reporte.tiempo_registrado,
 					].join(' ').toLowerCase()
@@ -737,7 +738,7 @@ export default {
 								? `${t('empleados', 'Absence -')} ${tipoAusenciaTexto || t('empleados', 'Vacation')}`
 								: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
 						const actividadNombre = esSoporte
-							? (r.actividad_nombre || t('empleados', 'Support TI'))
+							? (r.actividad_nombre || r.nombre_dispositivo || t('empleados', 'Support TI'))
 							: esAusencia
 								? t('empleados', 'No Cargable')
 								: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())

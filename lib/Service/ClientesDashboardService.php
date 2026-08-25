@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Service;
 
 use OCA\Empleados\Db\clientesMapper;
+use OCA\Empleados\Db\honorariosParcialidades;
 use OCA\Empleados\Db\honorariosParcialidadesMapper;
 
 /**
@@ -14,8 +15,13 @@ use OCA\Empleados\Db\honorariosParcialidadesMapper;
  * (pfecha_inicio / pfecha_fin), no fecha de vencimiento de cobro.
  */
 class ClientesDashboardService {
-	public const ESTADOS_COBRADOS = [1, 2];
-	public const ESTADO_PENDIENTE = 0;
+	/** Cobrado = PAGADA. Pendiente = PENDIENTE + FACTURADA. */
+	public const ESTADOS_COBRADOS = [honorariosParcialidades::PAGADA];
+	public const ESTADOS_PENDIENTES = [
+		honorariosParcialidades::PENDIENTE,
+		honorariosParcialidades::FACTURADA,
+	];
+	public const ESTADO_PENDIENTE = honorariosParcialidades::PENDIENTE;
 	public const TOP_LIMIT = 10;
 	public const CONCENTRACION = [5, 10];
 

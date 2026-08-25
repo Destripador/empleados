@@ -9,8 +9,53 @@
 
 			<div class="report-toolbar" :class="{ 'report-toolbar--expanded': moreFiltersOpen }">
 				<div class="report-toolbar__row report-toolbar__row--main">
-					<div class="report-field report-field--period" role="group" :aria-label="t('empleados', 'Period')">
-						<span class="report-field__label">{{ t('empleados', 'Period') }}</span>
+					<div class="report-field report-field--period">
+						<span id="clientes-period-label" class="report-field__label">
+							{{ t('empleados', 'Period') }}
+						</span>
+						<NcSelect
+							v-model="periodoSeleccionado"
+							:options="periodoOptions"
+							:clearable="false"
+							:searchable="false"
+							:aria-labelledby="'clientes-period-label'"
+							class="report-field__control" />
+					</div>
+
+					<div class="report-field report-field--check">
+						<NcCheckboxRadioSwitch v-model="soloPendientes" type="switch">
+							{{ t('empleados', 'Outstanding fees only') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<div class="report-toolbar__actions">
+						<NcButton v-if="hasActiveFilters"
+							type="tertiary"
+							:disabled="loading"
+							@click="clearFilters">
+							{{ t('empleados', 'Clear') }}
+						</NcButton>
+						<NcButton type="tertiary"
+							:aria-expanded="moreFiltersOpen ? 'true' : 'false'"
+							@click="moreFiltersOpen = !moreFiltersOpen">
+							{{ moreFiltersOpen ? t('empleados', 'Fewer filters') : t('empleados', 'More filters') }}
+							<template #icon>
+								<ChevronUp v-if="moreFiltersOpen" :size="16" />
+								<ChevronDown v-else :size="16" />
+							</template>
+						</NcButton>
+						<span v-if="!moreFiltersOpen && advancedFilterCount > 0" class="filter-badge">
+							{{ advancedFilterCount }}
+						</span>
+					</div>
+				</div>
+
+				<div v-if="isCustomPeriod"
+					class="report-toolbar__row report-toolbar__row--range">
+					<div class="report-field report-field--range"
+						role="group"
+						:aria-label="t('empleados', 'Period')">
+						<span class="report-field__label">{{ t('empleados', 'Custom period') }}</span>
 						<div class="report-period">
 							<NcDateTimePicker
 								v-model="fechaInicio"
@@ -25,81 +70,52 @@
 								class="report-period__picker" />
 						</div>
 					</div>
-
-					<div class="report-field">
-						<span class="report-field__label">{{ t('empleados', 'Customer') }}</span>
-						<NcSelect
-							v-model="clienteSeleccionado"
-							:options="clientesOptions"
-							:clearable="true"
-							:placeholder="t('empleados', 'Customer')"
-							class="report-field__control" />
-					</div>
-
-					<div class="report-field">
-						<span class="report-field__label">{{ t('empleados', 'Status') }}</span>
-						<NcSelect
-							v-model="estadoSeleccionado"
-							:options="estadoOptions"
-							:clearable="false"
-							class="report-field__control" />
-					</div>
-
-					<div class="report-toolbar__actions">
-						<NcButton type="tertiary" :aria-expanded="moreFiltersOpen ? 'true' : 'false'" @click="moreFiltersOpen = !moreFiltersOpen">
-							{{ moreFiltersOpen ? t('empleados', 'Fewer filters') : t('empleados', 'More filters') }}
-							<template #icon>
-								<ChevronUp v-if="moreFiltersOpen" :size="16" />
-								<ChevronDown v-else :size="16" />
-							</template>
-						</NcButton>
-						<NcButton type="primary" :disabled="loading" @click="applyFilters">
-							{{ t('empleados', 'Apply filters') }}
-						</NcButton>
-					</div>
 				</div>
 
 				<div v-if="moreFiltersOpen" class="report-toolbar__row report-toolbar__row--advanced">
 					<div class="report-field">
-						<span class="report-field__label">{{ t('empleados', 'Parent group') }}</span>
+						<span id="clientes-group-label" class="report-field__label">
+							{{ t('empleados', 'Parent group') }}
+						</span>
 						<NcSelect
 							v-model="grupoSeleccionado"
 							:options="grupoOptions"
 							:clearable="true"
+							:aria-labelledby="'clientes-group-label'"
 							:placeholder="t('empleados', 'Parent group')"
 							class="report-field__control" />
 					</div>
 
 					<div class="report-field">
-						<span class="report-field__label">{{ t('empleados', 'Project Manager') }}</span>
+						<span id="clientes-manager-label" class="report-field__label">
+							{{ t('empleados', 'Project Manager') }}
+						</span>
 						<NcSelect
 							v-model="liderSeleccionado"
 							:options="lideresOptions"
 							:clearable="true"
+							:aria-labelledby="'clientes-manager-label'"
 							:placeholder="t('empleados', 'Project Manager')"
 							class="report-field__control" />
 					</div>
 
 					<div class="report-field">
-						<span class="report-field__label">{{ t('empleados', 'Fee type') }}</span>
+						<span id="clientes-fee-type-label" class="report-field__label">
+							{{ t('empleados', 'Fee type') }}
+						</span>
 						<NcSelect
 							v-model="tipoSeleccionado"
 							:options="tipoOptions"
 							:clearable="true"
+							:aria-labelledby="'clientes-fee-type-label'"
 							:placeholder="t('empleados', 'Fee type')"
 							class="report-field__control" />
 					</div>
 
 					<div class="report-field report-field--check">
-						<NcCheckboxRadioSwitch v-model="soloPendientes">
-							{{ t('empleados', 'Outstanding fees only') }}
+						<NcCheckboxRadioSwitch v-model="incluirInactivos">
+							{{ t('empleados', 'Include inactive customers') }}
 						</NcCheckboxRadioSwitch>
-					</div>
-
-					<div class="report-toolbar__actions report-toolbar__actions--secondary">
-						<NcButton type="tertiary" :disabled="loading" @click="clearFilters">
-							{{ t('empleados', 'Clear') }}
-						</NcButton>
 					</div>
 				</div>
 			</div>
@@ -109,7 +125,7 @@
 			:resumen="resumen"
 			:loading="loading"
 			:error="error"
-			@select-client="$emit('select-client', $event)" />
+			@select-client="forwardSelectClient" />
 	</div>
 </template>
 
@@ -129,15 +145,18 @@ import clientesService from '../../../services/clientesService.js'
 import { loadPreference, savePreference, PREFERENCE_KEYS } from '../../../utils/userPreferences.js'
 import ClientesAnalyticsDashboard from './ClientesAnalyticsDashboard.vue'
 
+const PERIOD_ALL = 'all'
+const PERIOD_CUSTOM = 'custom'
+
 const FILTER_DEFAULTS = {
+	periodo: PERIOD_ALL,
 	fechaInicio: null,
 	fechaFin: null,
-	idCliente: null,
 	clientePadre: null,
 	liderProyecto: null,
-	estado: 1,
 	tipoHonorario: null,
 	soloPendientes: false,
+	incluirInactivos: false,
 	moreFiltersOpen: false,
 }
 
@@ -168,25 +187,31 @@ export default {
 			resumen: {},
 			rawClients: [],
 			lideres: [],
+			periodoSeleccionado: null,
 			fechaInicio: null,
 			fechaFin: null,
-			clienteSeleccionado: null,
 			grupoSeleccionado: null,
 			liderSeleccionado: null,
-			estadoSeleccionado: { value: 1, label: '' },
 			tipoSeleccionado: null,
 			soloPendientes: false,
+			incluirInactivos: false,
 			moreFiltersOpen: false,
 		}
 	},
 
 	computed: {
-		clientesOptions() {
-			return this.rawClients.map((item) => ({
-				id: Number(item.id),
-				value: Number(item.id),
-				label: item.nombre,
-			}))
+		periodoOptions() {
+			return [
+				{ value: PERIOD_ALL, label: t('empleados', 'All periods') },
+				{ value: 'month', label: t('empleados', 'This month') },
+				{ value: 'year', label: t('empleados', 'This year') },
+				{ value: 'last12', label: t('empleados', 'Last 12 months') },
+				{ value: PERIOD_CUSTOM, label: t('empleados', 'Custom period') },
+			]
+		},
+
+		isCustomPeriod() {
+			return this.periodoSeleccionado?.value === PERIOD_CUSTOM
 		},
 
 		grupoOptions() {
@@ -206,14 +231,6 @@ export default {
 			}))
 		},
 
-		estadoOptions() {
-			return [
-				{ value: 1, label: t('empleados', 'Active') },
-				{ value: 0, label: t('empleados', 'Inactive') },
-				{ value: null, label: t('empleados', 'All') },
-			]
-		},
-
 		tipoOptions() {
 			return [
 				{ value: 'parcial', label: t('empleados', 'Installments') },
@@ -222,9 +239,59 @@ export default {
 			]
 		},
 
+		/** Rango efectivo según el preset o las fechas manuales. */
+		periodRange() {
+			const preset = this.periodoSeleccionado?.value || PERIOD_ALL
+
+			if (preset === PERIOD_CUSTOM) {
+				return { inicio: this.fechaInicio, fin: this.fechaFin }
+			}
+
+			if (preset === PERIOD_ALL) {
+				return { inicio: null, fin: null }
+			}
+
+			const now = new Date()
+
+			if (preset === 'month') {
+				return {
+					inicio: new Date(now.getFullYear(), now.getMonth(), 1),
+					fin: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+				}
+			}
+
+			if (preset === 'year') {
+				return {
+					inicio: new Date(now.getFullYear(), 0, 1),
+					fin: new Date(now.getFullYear(), 11, 31),
+				}
+			}
+
+			return {
+				inicio: new Date(now.getFullYear(), now.getMonth() - 11, 1),
+				fin: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+			}
+		},
+
+		advancedFilterCount() {
+			return [
+				this.grupoSeleccionado,
+				this.liderSeleccionado,
+				this.tipoSeleccionado,
+				this.incluirInactivos || null,
+			].filter(Boolean).length
+		},
+
+		hasActiveFilters() {
+			return this.advancedFilterCount > 0
+				|| this.soloPendientes
+				|| (this.periodoSeleccionado?.value || PERIOD_ALL) !== PERIOD_ALL
+		},
+
 		periodLabel() {
-			if (this.fechaInicio && this.fechaFin) {
-				return `${this.formatDate(this.fechaInicio)} — ${this.formatDate(this.fechaFin)}`
+			const { inicio, fin } = this.periodRange
+			if (inicio && fin) {
+				return `${this.formatDate(inicio)} — ${this.formatDate(fin)}`
 			}
 			return t('empleados', 'All periods')
 		},
@@ -236,21 +303,22 @@ export default {
 	},
 
 	watch: {
-		fechaInicio() { this.scheduleSave() },
-		fechaFin() { this.scheduleSave() },
-		clienteSeleccionado() { this.scheduleSave() },
-		grupoSeleccionado() { this.scheduleSave() },
-		liderSeleccionado() { this.scheduleSave() },
-		estadoSeleccionado() { this.scheduleSave() },
-		tipoSeleccionado() { this.scheduleSave() },
-		soloPendientes() { this.scheduleSave() },
+		periodoSeleccionado() { this.onFilterChange() },
+		fechaInicio() { this.onFilterChange() },
+		fechaFin() { this.onFilterChange() },
+		grupoSeleccionado() { this.onFilterChange() },
+		liderSeleccionado() { this.onFilterChange() },
+		tipoSeleccionado() { this.onFilterChange() },
+		soloPendientes() { this.onFilterChange() },
+		incluirInactivos() { this.onFilterChange() },
 		moreFiltersOpen() { this.scheduleSave() },
 	},
 
 	created() {
 		this._prefsReady = false
 		this._debouncedSave = debounce(() => this.persistPreferences(), 300)
-		this.estadoSeleccionado = this.estadoOptions[0]
+		this._debouncedReload = debounce(() => this.loadSummary(), 400)
+		this.periodoSeleccionado = this.periodoOptions[0]
 	},
 
 	async mounted() {
@@ -275,21 +343,31 @@ export default {
 	beforeDestroy() {
 		this._debouncedSave?.flush?.()
 		this._debouncedSave?.clear?.()
+		this._debouncedReload?.clear?.()
 	},
 
 	methods: {
 		t,
 
+		forwardSelectClient(id) {
+			const clientId = Number(id)
+			if (!Number.isFinite(clientId) || clientId <= 0) {
+				return
+			}
+			this.$emit('select-client', clientId)
+		},
+
 		payloadFilters() {
+			const { inicio, fin } = this.periodRange
+
 			return {
-				id_cliente: this.clienteSeleccionado?.value ?? null,
 				cliente_padre: this.grupoSeleccionado?.value ?? null,
 				lider_proyecto: this.liderSeleccionado?.value ?? null,
-				estado: this.estadoSeleccionado?.value,
+				estado: this.incluirInactivos ? null : 1,
 				tipo_honorario: this.tipoSeleccionado?.value ?? null,
 				solo_pendientes: this.soloPendientes ? 1 : 0,
-				fecha_inicio: this.formatDate(this.fechaInicio),
-				fecha_fin: this.formatDate(this.fechaFin),
+				fecha_inicio: this.formatDate(inicio),
+				fecha_fin: this.formatDate(fin),
 			}
 		},
 
@@ -307,21 +385,24 @@ export default {
 			}
 		},
 
-		applyFilters() {
-			return this.loadSummary()
+		/** Los filtros se aplican solos: no hay botón "Aplicar". */
+		onFilterChange() {
+			this.scheduleSave()
+			if (!this._prefsReady) {
+				return
+			}
+			this._debouncedReload?.()
 		},
 
 		clearFilters() {
+			this.periodoSeleccionado = this.periodoOptions[0]
 			this.fechaInicio = null
 			this.fechaFin = null
-			this.clienteSeleccionado = null
 			this.grupoSeleccionado = null
 			this.liderSeleccionado = null
-			this.estadoSeleccionado = this.estadoOptions[0]
 			this.tipoSeleccionado = null
 			this.soloPendientes = false
-			this.moreFiltersOpen = false
-			return this.applyFilters()
+			this.incluirInactivos = false
 		},
 
 		formatDate(value) {
@@ -329,7 +410,9 @@ export default {
 				return null
 			}
 			if (value instanceof Date && !Number.isNaN(value.getTime())) {
-				return value.toISOString().slice(0, 10)
+				const month = String(value.getMonth() + 1).padStart(2, '0')
+				const day = String(value.getDate()).padStart(2, '0')
+				return `${value.getFullYear()}-${month}-${day}`
 			}
 			const text = String(value)
 			return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : null
@@ -342,19 +425,24 @@ export default {
 		restorePreferences() {
 			const prefs = loadPreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, this.preferenceDefaults())
 			const filters = prefs.filters || {}
+
+			this.periodoSeleccionado = this.periodoOptions.find((item) => item.value === filters.periodo)
+				|| (filters.fechaInicio || filters.fechaFin
+					? this.periodoOptions.find((item) => item.value === PERIOD_CUSTOM)
+					: this.periodoOptions[0])
 			this.fechaInicio = filters.fechaInicio || null
 			this.fechaFin = filters.fechaFin || null
 			this.soloPendientes = Boolean(filters.soloPendientes)
+			// Preferencias previas guardaban estado (1 activo / null todos).
+			this.incluirInactivos = filters.incluirInactivos ?? (filters.estado === null)
 			this.moreFiltersOpen = Boolean(filters.moreFiltersOpen)
 			this._storedFilters = filters
 		},
 
 		restoreCatalogFilters() {
 			const filters = this._storedFilters || {}
-			this.clienteSeleccionado = this.clientesOptions.find((item) => item.value === Number(filters.idCliente)) || null
 			this.grupoSeleccionado = this.grupoOptions.find((item) => item.value === Number(filters.clientePadre)) || null
 			this.liderSeleccionado = this.lideresOptions.find((item) => item.value === Number(filters.liderProyecto)) || null
-			this.estadoSeleccionado = this.estadoOptions.find((item) => item.value === filters.estado) || this.estadoOptions[0]
 			this.tipoSeleccionado = this.tipoOptions.find((item) => item.value === filters.tipoHonorario) || null
 		},
 
@@ -365,14 +453,14 @@ export default {
 			const prefs = loadPreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, this.preferenceDefaults())
 			savePreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, {
 				filters: {
+					periodo: this.periodoSeleccionado?.value || PERIOD_ALL,
 					fechaInicio: this.formatDate(this.fechaInicio),
 					fechaFin: this.formatDate(this.fechaFin),
-					idCliente: this.clienteSeleccionado?.value ?? null,
 					clientePadre: this.grupoSeleccionado?.value ?? null,
 					liderProyecto: this.liderSeleccionado?.value ?? null,
-					estado: this.estadoSeleccionado?.value,
 					tipoHonorario: this.tipoSeleccionado?.value ?? null,
 					soloPendientes: this.soloPendientes,
+					incluirInactivos: this.incluirInactivos,
 					moreFiltersOpen: this.moreFiltersOpen,
 				},
 				view: { ...(prefs.view || {}) },
@@ -429,12 +517,42 @@ export default {
 	align-items: flex-end;
 }
 
+.report-toolbar__row--main {
+	display: grid;
+	grid-template-columns: minmax(11rem, 13rem) minmax(12rem, 1fr) auto;
+	align-items: end;
+}
+
 .report-field {
 	display: flex;
 	flex-direction: column;
 	gap: 0.3rem;
 	min-width: 11rem;
 	flex: 1 1 11rem;
+}
+
+.report-field--period {
+	min-width: 0;
+	max-width: 13rem;
+	flex: 0 0 13rem;
+}
+
+.report-field--range {
+	width: min(100%, 28rem);
+	min-width: 0;
+	flex: 0 1 28rem;
+}
+
+.report-field--check {
+	flex: 0 1 auto;
+	justify-content: center;
+	min-width: 0;
+	min-height: 44px;
+}
+
+.report-field__control {
+	width: 100%;
+	min-width: 0;
 }
 
 .report-field__label {
@@ -446,16 +564,39 @@ export default {
 }
 
 .report-period {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 	align-items: center;
 	gap: 0.4rem;
+	width: 100%;
+}
+
+.report-period__picker {
+	width: 100%;
+	min-width: 0;
 }
 
 .report-toolbar__actions {
 	display: flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+	align-items: center;
 	gap: 0.5rem;
 	margin-left: auto;
+	justify-self: end;
+}
+
+.filter-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.15rem;
+	height: 1.15rem;
+	padding: 0 0.3rem;
+	border-radius: 999px;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-size: 0.7rem;
+	font-weight: 700;
 }
 
 @media (max-width: 720px) {
@@ -467,9 +608,37 @@ export default {
 		padding: 0 0 1rem;
 	}
 
+	.report-toolbar__row--main {
+		display: flex;
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.report-field--period,
+	.report-field--range {
+		width: 100%;
+		max-width: none;
+	}
+
+	.report-field--check {
+		align-items: flex-start;
+		min-height: 0;
+	}
+
+	.report-period {
+		grid-template-columns: 1fr;
+	}
+
+	.report-period__sep {
+		display: none;
+	}
+
 	.report-toolbar__actions {
+		flex-wrap: wrap;
 		margin-left: 0;
 		width: 100%;
+		justify-content: flex-start;
+		justify-self: start;
 	}
 }
 </style>

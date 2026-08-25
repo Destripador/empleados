@@ -595,15 +595,15 @@ export default {
 
 							// Lista para tu <List>
 							this.temp_listas = data.map(o => ({
-								id: o.id_cliente,
-								name: o.nombre,
+								id: o.id ?? o.id_cliente,
+								name: o.nombre || o.name || o.label,
 								count: o.child_count,
 							}))
 
 							// Opciones para <NcSelect>
 							this.empresasOptions = data.map(o => ({
-								id: o.id_cliente,
-								label: o.nombre,
+								id: o.id ?? o.id_cliente,
+								label: o.nombre || o.name || o.label,
 							}))
 
 						},

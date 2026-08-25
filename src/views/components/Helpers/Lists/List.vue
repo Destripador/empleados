@@ -209,6 +209,18 @@ export default {
 </script>
 
 <style scoped lang="scss">
+	.Details {
+		position: relative;
+		min-width: 0;
+	}
+
+	.position-hero__actions {
+		position: absolute;
+		top: 16px;
+		right: 16px;
+		z-index: 20;
+	}
+
 	.container {
 		padding-left: 5px;
 	}
@@ -226,8 +238,6 @@ export default {
 	}
 
 	.button-container {
-		margin-right: 20px;
-		position: absolute;
-		margin-top: 20px;
+		margin: 0;
 	}
 </style>

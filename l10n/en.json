@@ -1,5 +1,11 @@
 {
   "translations": {
+    "This year": "This year",
+    "Last 12 months": "Last 12 months",
+    "Custom period": "Custom period",
+    "Include inactive customers": "Include inactive customers",
+    "All customers": "All customers",
+    "Only subsidiaries": "Only subsidiaries",
     "Anniversaries table": "Anniversaries table",
     "Create new anniversary": "Create new anniversary",
     "Import list": "Import list",
@@ -2936,7 +2942,28 @@
     "No customers match the current filters.": "No customers match the current filters.",
     "Client not found": "Client not found",
     "Fee": "Fee",
-    "Installment": "Installment"
+    "Installment": "Installment",
+    "Technical support report": "Technical support report",
+    "Other permissions": "Other permissions",
+    "Employee records, areas, positions and teams.": "Employee records, areas, positions and teams.",
+    "Administrator sees all employees. View only sees the current employee and their team.": "Administrator sees all employees. View only sees the current employee and their team.",
+    "Customer catalog. View only cannot edit customers.": "Customer catalog. View only cannot edit customers.",
+    "Administrator already includes requester, approver and accounting.": "Administrator already includes requester, approver and accounting.",
+    "Equipment, support and maintenance.": "Equipment, support and maintenance.",
+    "Support requests linked to inventory.": "Support requests linked to inventory.",
+    "Savings requests and administration panel.": "Savings requests and administration panel.",
+    "Absences, vacations and work calendar.": "Absences, vacations and work calendar.",
+    "Can open administrative time reports for all active employees and follow compliance.": "Can open administrative time reports for all active employees and follow compliance.",
+    "Can open administrative time reports only for the current employee and their team.": "Can open administrative time reports only for the current employee and their team.",
+    "Can manage employees, areas, positions and teams without full Human Resources access.": "Can manage employees, areas, positions and teams without full Human Resources access.",
+    "Can administer inventory, equipment and support requests.": "Can administer inventory, equipment and support requests.",
+    "Can attend and update assigned maintenance work.": "Can attend and update assigned maintenance work.",
+    "Can view inventory, calendar and maintenance progress.": "Can view inventory, calendar and maintenance progress.",
+    "Can manage savings requests and the savings panel.": "Can manage savings requests and the savings panel.",
+    "Can manage absences, vacations and the work calendar.": "Can manage absences, vacations and the work calendar.",
+    "Sees all active employees in administrative time reports. Assign only when necessary.": "Sees all active employees in administrative time reports. Assign only when necessary.",
+    "Does not show employees outside the current user team.": "Does not show employees outside the current user team.",
+    "Technical support report": "Technical support report"
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }

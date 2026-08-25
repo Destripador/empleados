@@ -88,10 +88,25 @@ class ClientesController extends BaseController {
         $this->subAdmin = $subAdmin;
         $this->permisosService = $permisosService;
         $this->bitacoraService = $bitacoraService;
+        $this->dashboardService = $dashboardService;
+        $this->clienteLogoService = $clienteLogoService;
     }
 
     private function requireClientesAccess(): void {
         $this->permisosService->requireCanSee('clientes');
+    }
+
+    private function requireClientesCatalogAccess(): void {
+        $uid = $this->permisosService->getCurrentUserId();
+
+        if (
+            $this->permisosService->canSee('clientes', $uid)
+            || $this->permisosService->canReadTimeReportsCatalog($uid)
+        ) {
+            return;
+        }
+
+        $this->requireClientesAccess();
     }
 
     private function requireClientesAdminAccess(): void {
@@ -125,7 +140,7 @@ class ClientesController extends BaseController {
     #[UseSession]
     #[NoAdminRequired]
     public function GetCompaniesGroups(): DataResponse {
-        $this->requireClientesAccess();
+        $this->requireClientesCatalogAccess();
 
         $clientes = $this->clientesMapper->findAll();
 

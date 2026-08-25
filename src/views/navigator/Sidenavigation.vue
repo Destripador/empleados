@@ -318,6 +318,7 @@ export default {
 
 		canSeeAdminReports() {
 			return this.canSee('reporte_tiempos.admin')
+				|| this.canSee('reporte_tiempos.view')
 				|| this.isTruthy(this.configuraciones?.CanAdminReports)
 		},
 

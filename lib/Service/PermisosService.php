@@ -304,6 +304,31 @@ class PermisosService {
 		return $this->canWorkMaintenance($uid) || $this->canSee('inventario.view', $uid);
 	}
 
+	public function canReadTimeReportsCatalog(?string $uid = null): bool {
+		$uid = $uid ?? $this->getCurrentUserId();
+
+		if ($uid === null || $uid === '') {
+			return false;
+		}
+
+		if (!$this->isModuleEnabled('reporte_tiempos')) {
+			return false;
+		}
+
+		if ($this->canSeeAny([
+			'reporte_tiempos.admin',
+			'reporte_tiempos.view',
+		], $uid)) {
+			return true;
+		}
+
+		return $this->userHasAnyGroup($uid, [
+			'admin',
+			'recursos_humanos',
+			'empleados',
+		]);
+	}
+
 	public function canManagePermissionsCatalog(?string $uid = null): bool {
 		return $this->isAdmin($uid);
 	}

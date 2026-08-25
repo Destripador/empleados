@@ -55,78 +55,92 @@
 		</NcEmptyContent>
 
 		<div v-else class="group-settings__list">
-			<div v-for="item in filteredGroups"
-				:key="item.id"
-				class="permission-card"
-				:class="{
-					'permission-card--disabled': !item.enabled,
-					'permission-card--restricted': item.restricted,
-				}">
-				<div class="permission-card__main">
-					<div class="permission-card__icon">
-						<AccountGroup :size="22" />
+			<section v-for="section in groupedFilteredGroups"
+				:key="section.id"
+				class="group-settings__module">
+				<header class="group-settings__module-header">
+					<div>
+						<p class="section-label">
+							{{ t('empleados', 'Module') }}
+						</p>
+						<h3>{{ section.label }}</h3>
 					</div>
+					<span class="group-settings__module-count">{{ section.groups.length }}</span>
+				</header>
 
-					<div class="permission-card__content">
-						<div class="permission-card__title-row">
-							<h3>{{ item.label }}</h3>
-
-							<span v-if="item.enabled" class="status-badge status-badge--enabled">
-								{{ t('empleados', 'Enabled') }}
-							</span>
-							<span v-else class="status-badge status-badge--disabled">
-								{{ t('empleados', 'Disabled') }}
-							</span>
-
-							<span v-if="item.restricted" class="status-badge status-badge--restricted">
-								{{ t('empleados', 'Restricted') }}
-							</span>
-
-							<span v-if="!item.exists" class="status-badge status-badge--missing">
-								{{ t('empleados', 'Group does not exist') }}
-							</span>
+				<div v-for="item in section.groups"
+					:key="item.id"
+					class="permission-card"
+					:class="{
+						'permission-card--disabled': !item.enabled,
+						'permission-card--restricted': item.restricted,
+					}">
+					<div class="permission-card__main">
+						<div class="permission-card__icon">
+							<AccountGroup :size="22" />
 						</div>
 
-						<div class="permission-card__meta">
-							<code>{{ item.group_id }}</code>
-							<span>·</span>
-							<span>{{ item.module }}</span>
-							<span>·</span>
-							<span>{{ item.permission }}</span>
-						</div>
+						<div class="permission-card__content">
+							<div class="permission-card__title-row">
+								<h3>{{ item.label }}</h3>
 
-						<p v-if="item.description" class="permission-card__description">
-							{{ item.description }}
-						</p>
-						<p v-else class="permission-card__description permission-card__description--empty">
-							{{ t('empleados', 'No description provided.') }}
-						</p>
+								<span v-if="item.enabled" class="status-badge status-badge--enabled">
+									{{ t('empleados', 'Enabled') }}
+								</span>
+								<span v-else class="status-badge status-badge--disabled">
+									{{ t('empleados', 'Disabled') }}
+								</span>
+
+								<span v-if="item.restricted" class="status-badge status-badge--restricted">
+									{{ t('empleados', 'Restricted') }}
+								</span>
+
+								<span v-if="!item.exists" class="status-badge status-badge--missing">
+									{{ t('empleados', 'Group does not exist') }}
+								</span>
+							</div>
+
+							<div class="permission-card__meta">
+								<code>{{ item.group_id }}</code>
+								<span>·</span>
+								<span>{{ moduleLabel(item.module) }}</span>
+								<span>·</span>
+								<span>{{ permissionLevelLabel(item.permission) }}</span>
+							</div>
+
+							<p v-if="item.description" class="permission-card__description">
+								{{ item.description }}
+							</p>
+							<p v-else class="permission-card__description permission-card__description--empty">
+								{{ t('empleados', 'No description provided.') }}
+							</p>
+						</div>
 					</div>
+
+					<NcActions>
+						<NcActionButton close-after-click @click="openEditDialog(item)">
+							<template #icon>
+								<Pencil :size="20" />
+							</template>
+							{{ t('empleados', 'Edit') }}
+						</NcActionButton>
+
+						<NcActionButton v-if="item.enabled" close-after-click @click="disableGroup(item)">
+							<template #icon>
+								<EyeOff :size="20" />
+							</template>
+							{{ t('empleados', 'Disable') }}
+						</NcActionButton>
+
+						<NcActionButton v-else close-after-click @click="enableGroup(item)">
+							<template #icon>
+								<Eye :size="20" />
+							</template>
+							{{ t('empleados', 'Enable') }}
+						</NcActionButton>
+					</NcActions>
 				</div>
-
-				<NcActions>
-					<NcActionButton close-after-click @click="openEditDialog(item)">
-						<template #icon>
-							<Pencil :size="20" />
-						</template>
-						{{ t('empleados', 'Edit') }}
-					</NcActionButton>
-
-					<NcActionButton v-if="item.enabled" close-after-click @click="disableGroup(item)">
-						<template #icon>
-							<EyeOff :size="20" />
-						</template>
-						{{ t('empleados', 'Disable') }}
-					</NcActionButton>
-
-					<NcActionButton v-else close-after-click @click="enableGroup(item)">
-						<template #icon>
-							<Eye :size="20" />
-						</template>
-						{{ t('empleados', 'Enable') }}
-					</NcActionButton>
-				</NcActions>
-			</div>
+			</section>
 		</div>
 
 		<NcModal v-if="showDialog"
@@ -484,6 +498,7 @@ export default {
 				{ id: 'approve', label: t('empleados', 'Approver') },
 				{ id: 'accounting', label: t('empleados', 'Accounting') },
 				{ id: 'hr', label: t('empleados', 'Human resources') },
+				{ id: 'technician', label: t('empleados', 'Technician') },
 			],
 			nextcloudGroups: [],
 			selectedModule: null,
@@ -512,6 +527,55 @@ export default {
 			})
 		},
 
+		groupedFilteredGroups() {
+			const sections = new Map()
+			this.filteredGroups.forEach((item) => {
+				const moduleId = item.module || 'other'
+				if (!sections.has(moduleId)) {
+					sections.set(moduleId, [])
+				}
+				sections.get(moduleId).push(item)
+			})
+
+			const order = [
+				'empleados',
+				'reporte_tiempos',
+				'clientes',
+				'compras',
+				'inventario',
+				'soporte',
+				'ahorro',
+				'ausencias',
+			]
+
+			return Array.from(sections.keys())
+				.sort((a, b) => {
+					const indexA = order.indexOf(a)
+					const indexB = order.indexOf(b)
+					const rankA = indexA === -1 ? order.length : indexA
+					const rankB = indexB === -1 ? order.length : indexB
+					if (rankA !== rankB) {
+						return rankA - rankB
+					}
+					return String(a).localeCompare(String(b))
+				})
+				.map((moduleId) => ({
+					id: moduleId,
+					label: this.moduleLabel(moduleId),
+					groups: sections.get(moduleId).slice().sort((a, b) => {
+						const permissionOrder = ['view', 'request', 'technician', 'approve', 'accounting', 'hr', 'admin']
+						const rankA = permissionOrder.indexOf(a.permission)
+						const rankB = permissionOrder.indexOf(b.permission)
+						const valueA = rankA === -1 ? permissionOrder.length : rankA
+						const valueB = rankB === -1 ? permissionOrder.length : rankB
+						if (valueA !== valueB) {
+							return valueA - valueB
+						}
+						return Number(a.sort_order || 0) - Number(b.sort_order || 0)
+					}),
+				}))
+		},
+
 		dialogTitle() {
 			return this.formMode === 'edit'
 				? t('empleados', 'Edit permission group')
@@ -533,6 +597,33 @@ export default {
 
 	methods: {
 		t,
+
+		moduleLabel(moduleId) {
+			const modules = {
+				empleados: t('empleados', 'Employees / HR'),
+				reporte_tiempos: t('empleados', 'Time reports'),
+				clientes: t('empleados', 'Customers'),
+				compras: t('empleados', 'Purchases'),
+				inventario: t('empleados', 'IT inventory'),
+				soporte: t('empleados', 'Support'),
+				ahorro: t('empleados', 'Savings'),
+				ausencias: t('empleados', 'Working time'),
+			}
+			return modules[moduleId] || t('empleados', 'Other permissions')
+		},
+
+		permissionLevelLabel(permission) {
+			const labels = {
+				view: t('empleados', 'View only'),
+				request: t('empleados', 'Requester'),
+				technician: t('empleados', 'Technician'),
+				approve: t('empleados', 'Approver'),
+				accounting: t('empleados', 'Accounting'),
+				hr: t('empleados', 'Human resources'),
+				admin: t('empleados', 'Administrator'),
+			}
+			return labels[permission] || permission || t('empleados', 'Permission level')
+		},
 
 		async loadGroups() {
 			this.loading = true
@@ -938,7 +1029,38 @@ export default {
 
 .group-settings__list {
     display: grid;
+    gap: 22px;
+}
+
+.group-settings__module {
+    display: grid;
     gap: 12px;
+}
+
+.group-settings__module-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.group-settings__module-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.group-settings__module-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--color-background-hover);
+    color: var(--color-text-maxcontrast);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .permission-card {

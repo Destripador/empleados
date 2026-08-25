@@ -405,7 +405,10 @@ class AreasController extends BaseController {
         $user = $this->userSession->getUser();
         $uid = $user?->getUID();
 
-        if ($uid !== null && $uid !== '' && $this->permisosService->canSee('reporte_tiempos.admin', $uid)) {
+        if ($uid !== null && $uid !== '' && $this->permisosService->canSeeAny([
+            'reporte_tiempos.admin',
+            'reporte_tiempos.view',
+        ], $uid)) {
             return;
         }
 

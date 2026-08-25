@@ -124,9 +124,10 @@ class reportetiempoController extends BaseController {
 	}
 
 	private function requireAdminReportsAccess(): void {
-		$this->permisosService->requireCanSee(
-			'reporte_tiempos.admin'
-		);
+		$this->permisosService->requireCanSeeAny([
+			'reporte_tiempos.admin',
+			'reporte_tiempos.view',
+		]);
 	}
 
 	/**
@@ -198,7 +199,10 @@ class reportetiempoController extends BaseController {
 		// para empleados que no cuentan con el permiso administrativo.
 		$esConsultaPersonal = $idEmpleadoActual > 0
 			&& $idEmpleadoConsultado === $idEmpleadoActual
-			&& !$this->permisosService->canSee('reporte_tiempos.admin');
+			&& !$this->permisosService->canSeeAny([
+				'reporte_tiempos.admin',
+				'reporte_tiempos.view',
+			]);
 
 		if ($esConsultaPersonal) {
 			$this->checkAccess(['admin', 'recursos_humanos', 'empleados']);
@@ -1730,7 +1734,7 @@ class reportetiempoController extends BaseController {
 	/**
 	 * Reporte de cumplimiento diario de reportes de tiempo.
 	 *
-	 * Muestra el estado del jefe actual y sus subordinados.
+	 * Muestra el estado de los empleados visibles para el usuario.
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
@@ -1825,7 +1829,8 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
-	 * Obtiene el jefe actual y sus subordinados sin calcular tiempos.
+	 * Quien tiene reporte_tiempos.admin ve a todos los empleados activos.
+	 * Consulta y el resto solo ven al usuario actual y a sus subordinados.
 	 */
 	private function getEmpleadosVisiblesBasico(): array {
 		$user = $this->userSession->getUser();
@@ -1835,6 +1840,10 @@ class reportetiempoController extends BaseController {
 		}
 
 		$userId = $user->getUID();
+
+		if ($this->permisosService->canSee('reporte_tiempos.admin', $userId)) {
+			return $this->empleadosMapper->GetEmpleadosActivosBasico();
+		}
 
 		$boss = $this->empleadosMapper->GetMyEmployeeInfo($userId);
 		$equipoEmpleado = $this->empleadosMapper->GetSubordinates($userId);

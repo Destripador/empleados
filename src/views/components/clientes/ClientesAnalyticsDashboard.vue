@@ -139,7 +139,7 @@
 							v-for="(item, index) in pendingRanking"
 							:key="item.id"
 							class="ranking-item ranking-item--clickable"
-							@click="$emit('select-client', item.id)">
+							@click="selectClient(item.id)">
 							<span class="ranking-position">{{ index + 1 }}</span>
 							<ClienteLogo :id="item.id"
 								:logo="item.logo"
@@ -260,7 +260,11 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="row in sortedTable" :key="row.id" class="employee-row">
+							<tr
+								v-for="row in sortedTable"
+								:key="row.id"
+								class="employee-row employee-row--clickable"
+								@click="selectClient(row.id)">
 								<td :data-label="t('empleados', 'Customer')" class="employee-cell">
 									<strong>{{ row.nombre }}</strong>
 								</td>
@@ -274,7 +278,7 @@
 									{{ formatMoney(row.pendiente) }}
 								</td>
 								<td class="employee-table__action">
-									<NcButton type="tertiary" @click="$emit('select-client', row.id)">
+									<NcButton type="tertiary" @click.stop="selectClient(row.id)">
 										{{ t('empleados', 'Details') }}
 									</NcButton>
 								</td>
@@ -460,6 +464,14 @@ export default {
 
 	methods: {
 		t,
+
+		selectClient(id) {
+			const clientId = Number(id)
+			if (!Number.isFinite(clientId) || clientId <= 0) {
+				return
+			}
+			this.$emit('select-client', clientId)
+		},
 
 		formatMoney(value, currency = '') {
 			const amount = Number(value || 0).toLocaleString('es-MX', {
@@ -681,6 +693,14 @@ export default {
 }
 
 .ranking-item--clickable:hover {
+	background: var(--color-background-hover);
+}
+
+.employee-row--clickable {
+	cursor: pointer;
+}
+
+.employee-row--clickable:hover {
 	background: var(--color-background-hover);
 }
 

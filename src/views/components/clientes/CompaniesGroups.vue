@@ -12,14 +12,6 @@
 				<template #custom>
 					<div class="companies-main">
 						<header class="companies-toolbar">
-							<div class="view-switch" role="tablist" :aria-label="t('empleados', 'Companies / Groups')">
-								<NcButton :type="contentView === 'resumen' ? 'secondary' : 'tertiary'" @click="showResumen">
-									{{ t('empleados', 'Overview') }}
-								</NcButton>
-								<NcButton :type="contentView === 'empresas' ? 'secondary' : 'tertiary'" @click="showEmpresas">
-									{{ t('empleados', 'Companies') }}
-								</NcButton>
-							</div>
 							<NcActions
 								v-if="canAdminCustomers"
 								:open.sync="settingsMenuOpen"
@@ -56,63 +48,8 @@
 						</header>
 
 						<ClientesDashboard
-							v-if="mainView === 'resumen'"
 							embedded
 							@select-client="openCompanyFromDashboard" />
-
-						<div v-else class="empty">
-							<div class="areas-empty-state">
-								<div class="areas-empty-card">
-									<img class="areas-empty-image"
-										src="../../../../img/crowesito-think.png"
-										:alt="t('empleados', 'Companies and groups')">
-
-									<h2>{{ t('empleados', 'Select a client for more details') }}</h2>
-
-									<p class="areas-empty-description">
-										{{ t('empleados', 'Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.') }}
-									</p>
-
-									<div class="stats-grid">
-										<div class="stat-card">
-											<div class="stat-icon">
-												<OfficeBuilding :size="22" />
-											</div>
-											<div>
-												<span>{{ t('empleados', 'Total records') }}</span>
-												<span class="value-text">{{ activeClients.length }}</span>
-											</div>
-										</div>
-
-										<div class="stat-card">
-											<div class="stat-icon">
-												<HexagonMultipleOutline :size="22" />
-											</div>
-											<div>
-												<span>{{ t('empleados', 'Main groups') }}</span>
-												<span class="value-text">{{ mainGroups.length }}</span>
-											</div>
-										</div>
-
-										<div class="stat-card">
-											<div class="stat-icon">
-												<AccountGroup :size="22" />
-											</div>
-											<div>
-												<span>{{ t('empleados', 'Sub-companies') }}</span>
-												<span class="value-text">{{ subCompanies.length }}</span>
-											</div>
-										</div>
-									</div>
-
-									<div class="areas-empty-actions">
-										<NcButton @click="GetCompaniesGroups()">
-											{{ t('empleados', 'Refresh') }}
-										</NcButton>
-									</div>
-								</div>
-							</div>
-						</div>
 					</div>
 				</template>
 				<template #custombuttons>
@@ -136,41 +73,40 @@
 							{{ t('empleados', 'Sort') }}
 						</NcActionInput>
 
-						<NcActionCheckbox v-model="onlyParents">
-							{{ t('empleados', 'Only Main Groups') }}
-						</NcActionCheckbox>
-						<NcActionCheckbox v-model="hideMainGroups">
-							{{ t('empleados', 'Hide Main Groups') }}
-						</NcActionCheckbox>
+						<NcActionInput v-model="tipoFiltro"
+							type="multiselect"
+							:label-outside="false"
+							:manual-open="true"
+							:options="tipoFiltroOptions">
+							{{ t('empleados', 'Show') }}
+						</NcActionInput>
+
+						<NcActionInput v-model="estadoFiltro"
+							type="multiselect"
+							:label-outside="false"
+							:manual-open="true"
+							:options="estadoFiltroOptions">
+							{{ t('empleados', 'Status') }}
+						</NcActionInput>
+
 						<NcActionCheckbox v-model="onlySpecial">
 							{{ t('empleados', 'Only Special Clients') }}
 						</NcActionCheckbox>
-						<NcActionCheckbox v-model="showDisabled">
-							{{ t('empleados', 'Show disabled') }}
-						</NcActionCheckbox>
-						<NcActionCheckbox v-model="onlyDisabled">
-							{{ t('empleados', 'Only Disabled') }}
-						</NcActionCheckbox>
 					</NcActions>
 
-					<span
-						v-if="(onlyParents ? 1 : 0) + (hideMainGroups ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) + (onlyDisabled ? 1 : 0) > 0"
-						class="filter-badge">
-						{{ (onlyParents ? 1 : 0) + (hideMainGroups ? 1 : 0) + (onlySpecial ? 1 : 0) + (showDisabled ? 1 : 0) +
-							(onlyDisabled ? 1 : 0) }}
+					<span v-if="listFilterCount > 0" class="filter-badge">
+						{{ listFilterCount }}
 					</span>
 				</template>
 				<template #details>
 					<div class="client-details">
 						<header class="companies-toolbar companies-toolbar--details">
-							<div class="view-switch" role="tablist" :aria-label="t('empleados', 'Companies / Groups')">
-								<NcButton :type="contentView === 'resumen' ? 'secondary' : 'tertiary'" @click="showResumen">
-									{{ t('empleados', 'Overview') }}
-								</NcButton>
-								<NcButton :type="contentView === 'empresas' ? 'secondary' : 'tertiary'" @click="showEmpresas">
-									{{ t('empleados', 'Companies') }}
-								</NcButton>
-							</div>
+							<NcButton type="tertiary" @click="closeCompanyDetails">
+								<template #icon>
+									<ArrowLeft :size="20" />
+								</template>
+								{{ t('empleados', 'Back to customers dashboard') }}
+							</NcButton>
 						</header>
 						<div>
 							<div class="details-header"
@@ -201,7 +137,7 @@
 								</div>
 							</div>
 
-							<VueTabs v-model="activeCompanyTab"
+							<VueTabs :key="selectedClient.id"
 								class="companies-tabs"
 								active-tab-color="var(--color-primary-element)"
 								active-text-color="var(--color-primary-element-text)"
@@ -717,7 +653,7 @@
 												<p class="section-label">
 													{{ t('empleados', 'Billing') }}
 												</p>
-												<h3>{{ t('empleados', 'Payments made for other companies') }}</h3>
+												<h3>{{ t('empleados', 'Invoices generated for other companies') }}</h3>
 											</div>
 										</div>
 
@@ -1332,12 +1268,9 @@ import ModalClientes from './ModalClientes.vue'
 import permissionsMixin from '../../../mixins/permissions.js'
 import ClienteLogo from '../../../components/clientes/ClienteLogo.vue'
 import clientesService, { clienteLogoUrl } from '../../../services/clientesService.js'
-import { loadPreference, savePreference, PREFERENCE_KEYS } from '../../../utils/userPreferences.js'
 
-import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOutline.vue'
 import OfficeBuilding from 'vue-material-design-icons/OfficeBuilding.vue'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
-import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import CheckboxMarkedOutline from 'vue-material-design-icons/CheckboxMarkedOutline.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import AccountMultiplePlusOutline from 'vue-material-design-icons/AccountMultiplePlusOutline.vue'
@@ -1352,6 +1285,7 @@ import CalendarPlus from 'vue-material-design-icons/CalendarPlus.vue'
 import Restore from 'vue-material-design-icons/Restore.vue'
 import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import 'vue-nav-tabs/themes/vue-tabs.css'
 // import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
@@ -1397,7 +1331,6 @@ export default {
 		NcDialog,
 		List,
 		NcCheckboxRadioSwitch,
-		HexagonMultipleOutline,
 		OfficeBuilding,
 		ClienteLogo,
 		ClientesDashboard,
@@ -1407,13 +1340,13 @@ export default {
 		Upload,
 		FileDocumentOutline,
 		ChevronDown,
+		ArrowLeft,
 		VueTabs,
 		VTab,
 		// IconTrashCanOutline,
 		// IconOpenInNew,
 		// IconPencilOutline,
 		// DatabaseCog,
-		AccountGroup,
 		NcModal,
 		NcTextField,
 		NcButton,
@@ -1432,12 +1365,10 @@ export default {
 
 	data() {
 		return {
-			activeCompanyTab: t('empleados', 'Fees'),
 			projectManagers: [],
 			editing: false,
 			saving: false,
 			loading: true,
-			mainView: 'resumen',
 			settingsMenuOpen: false,
 			listas: [],
 			rawClients: [],
@@ -1460,12 +1391,10 @@ export default {
 			cliente_padre: null,
 			logoBust: Date.now(),
 			sortOrder: [],
-			onlyParents: false,
-			hideMainGroups: false,
+			tipoFiltro: { label: t('empleados', 'All customers'), value: 'todos' },
+			estadoFiltro: { label: t('empleados', 'Active'), value: 'activos' },
 			onlySpecial: false,
-			showDisabled: false,
 			showFilters: false,
-			onlyDisabled: false,
 			/* honorarios */
 			honorarios: [],
 			loadingHonorarios: false,
@@ -1601,10 +1530,6 @@ export default {
 			return this.canAdminCustomers && this.editing && Boolean(this.selectedClient?.id)
 		},
 
-		contentView() {
-			return this.hasSelectedClient ? 'empresas' : this.mainView
-		},
-
 		/* ----------- Select Cliente ----------- */
 		selectedClient() {
 			return this.select?.[0] || {}
@@ -1645,18 +1570,6 @@ export default {
 			})
 		},
 
-		mainGroups() {
-			return this.rawClients.filter((client) => Number(client.cliente_padre || 0) === 0 && Number(client.estado ?? 1) === 1)
-		},
-
-		subCompanies() {
-			return this.rawClients.filter((client) => Number(client.cliente_padre || 0) !== 0 && Number(client.estado ?? 1) === 1)
-		},
-
-		activeClients() {
-			return this.rawClients.filter((client) => Number(client.estado ?? 1) === 1)
-		},
-
 		parentOptions() {
 			const currentId = this.selectedClient?.id
 
@@ -1681,24 +1594,46 @@ export default {
 				: t('empleados', 'Create')
 		},
 
+		tipoFiltroOptions() {
+			return [
+				{ label: t('empleados', 'All customers'), value: 'todos' },
+				{ label: t('empleados', 'Only Main Groups'), value: 'grupos' },
+				{ label: t('empleados', 'Only subsidiaries'), value: 'subsidiarias' },
+			]
+		},
+
+		estadoFiltroOptions() {
+			return [
+				{ label: t('empleados', 'Active'), value: 'activos' },
+				{ label: t('empleados', 'Only Disabled'), value: 'inactivos' },
+				{ label: t('empleados', 'All'), value: 'todos' },
+			]
+		},
+
+		listFilterCount() {
+			return [
+				(this.tipoFiltro?.value || 'todos') !== 'todos',
+				(this.estadoFiltro?.value || 'activos') !== 'activos',
+				this.onlySpecial,
+			].filter(Boolean).length
+		},
+
 		filteredListas() {
 			let data = [...this.listas]
 
-			if (!this.showDisabled) {
+			const estado = this.estadoFiltro?.value || 'activos'
+			if (estado === 'activos') {
 				data = data.filter(item => Number(item.estado ?? 1) === 1)
-			}
-
-			if (this.onlyDisabled) {
+			} else if (estado === 'inactivos') {
 				data = data.filter(item => Number(item.estado ?? 1) === 0)
 			}
 
-			if (this.onlyParents) {
+			const tipo = this.tipoFiltro?.value || 'todos'
+			if (tipo === 'grupos') {
 				data = data.filter(item =>
 					Number(item.cliente_padre || 0) === 0,
 				)
-			}
-
-			if (this.hideMainGroups) {
+			} else if (tipo === 'subsidiarias') {
 				data = data.filter(item =>
 					Number(item.cliente_padre || 0) !== 0,
 				)
@@ -1930,21 +1865,6 @@ export default {
 			}
 		},
 
-		onlyParents(value) {
-			if (value && this.hideMainGroups) {
-				this.hideMainGroups = false
-			}
-		},
-
-		hideMainGroups(value) {
-			if (value && this.onlyParents) {
-				this.onlyParents = false
-			}
-		},
-	},
-
-	created() {
-		this.restoreMainView()
 	},
 
 	mounted() {
@@ -2006,53 +1926,12 @@ export default {
 	methods: {
 		t, // Exponer i18n a la plantilla
 
-		restoreMainView() {
-			const routeId = Number(this.$route?.query?.id || 0)
-			const routeView = String(this.$route?.query?.view || '')
-			if (routeId > 0) {
-				this.mainView = 'empresas'
-				return
-			}
-			if (routeView === 'resumen' || routeView === 'dashboard') {
-				this.mainView = 'resumen'
-				return
-			}
-			if (routeView === 'empresas') {
-				this.mainView = 'empresas'
-				return
-			}
-			const prefs = loadPreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, { filters: {}, view: {} })
-			this.mainView = prefs.view?.mainView === 'empresas' ? 'empresas' : 'resumen'
-		},
-
-		persistMainView() {
-			const prefs = loadPreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, { filters: {}, view: {} })
-			savePreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, {
-				...prefs,
-				view: {
-					...(prefs.view || {}),
-					mainView: this.mainView,
-				},
-			})
-		},
-
-		showResumen() {
-			this.mainView = 'resumen'
+		closeCompanyDetails() {
 			this.select = []
 			this.settingsMenuOpen = false
-			this.persistMainView()
-		},
-
-		showEmpresas() {
-			this.mainView = 'empresas'
-			this.settingsMenuOpen = false
-			this.persistMainView()
 		},
 
 		openCompanyFromDashboard(id) {
-			if (!id) {
-				return
-			}
 			this.GetCompanieGroup(id)
 		},
 
@@ -2285,15 +2164,60 @@ export default {
 		},
 
 		async GetCompanieGroup(id) {
+			const clientId = Number(id)
+			if (!Number.isFinite(clientId) || clientId <= 0) {
+				return
+			}
+
+			const local = this.listas.find((item) => Number(item.id) === clientId)
+				|| this.rawClients.find((item) => Number(item.id) === clientId)
+
+			if (local && Number(local.estado ?? 1) === 0) {
+				this.revealInactiveClients()
+			}
+
+			if (local) {
+				this.select = [this.normalizeSelectedClient(local, clientId)]
+				return
+			}
+
 			try {
 				const response = await axios.post(generateUrl('/apps/empleados/GetCompanieGroup'), {
-					id,
+					id: clientId,
 				})
 
 				const data = this.getOcsData(response)
-				this.select = Array.isArray(data) ? data : [data]
+				const client = Array.isArray(data) ? data[0] : data
+				if (!client || !Number(client.id)) {
+					showError(t('empleados', 'Error loading company: {error}', { error: t('empleados', 'Client not found') }))
+					return
+				}
+
+				if (Number(client.estado ?? 1) === 0) {
+					this.revealInactiveClients()
+				}
+
+				this.select = [this.normalizeSelectedClient(client, Number(client.id))]
 			} catch (err) {
 				showError(t('empleados', 'Error loading company: {error}', { error: String(err) }))
+			}
+		},
+
+		/** Un cliente inactivo abierto desde el tablero debe seguir visible en la lista. */
+		revealInactiveClients() {
+			if ((this.estadoFiltro?.value || 'activos') === 'activos') {
+				this.estadoFiltro = this.estadoFiltroOptions.find((item) => item.value === 'todos')
+			}
+		},
+
+		normalizeSelectedClient(client, clientId) {
+			const id = Number(clientId || client.id)
+			return {
+				...client,
+				id,
+				name: client.name || client.nombre,
+				count: client.count || client.child_count || 0,
+				logoUrl: client.logoUrl || (client.logo ? clienteLogoUrl(id, this.logoBust) : null),
 			}
 		},
 
@@ -3362,13 +3286,6 @@ export default {
 
 .companies-toolbar--details {
 	padding-right: 56px;
-}
-
-.view-switch {
-	display: inline-flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 4px;
 }
 
 .companies-toolbar__settings {

@@ -84,6 +84,19 @@ class actividadesController extends BaseController {
 		$this->permisosService->requireCanSee('clientes');
 	}
 
+	private function requireClientesCatalogAccess(): void {
+		$uid = $this->permisosService->getCurrentUserId();
+
+		if (
+			$this->permisosService->canSee('clientes', $uid)
+			|| $this->permisosService->canReadTimeReportsCatalog($uid)
+		) {
+			return;
+		}
+
+		$this->requireClientesAccess();
+	}
+
 	private function requireClientesAdminAccess(): void {
 		$this->permisosService->requireCanSee('clientes.admin');
 	}
@@ -107,7 +120,7 @@ class actividadesController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetActividades(mixed $manual = false): DataResponse {
-		$this->requireClientesAccess();
+		$this->requireClientesCatalogAccess();
 		$manual = $manual === true || $manual === 1 || $manual === '1' || $manual === 'true';
 		if (!$manual) return new DataResponse($this->actividadesMapper->findAll(), Http::STATUS_OK);
 		$user = $this->userSession->getUser();
