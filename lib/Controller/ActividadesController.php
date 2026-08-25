@@ -23,6 +23,7 @@ use OCP\Http\Client\IClientService;
 use OCP\Group\ISubAdmin;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
+use OCA\Empleados\Service\BitacoraService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -44,6 +45,7 @@ class actividadesController extends BaseController {
 	protected $clientService;
 	protected $subAdmin;
 	protected PermisosService $permisosService;
+	protected BitacoraService $bitacoraService;
 
 	public function __construct(
 		IRequest $request,
@@ -59,6 +61,7 @@ class actividadesController extends BaseController {
 		IClientService $clientService,
 		ISubAdmin $subAdmin,
 		PermisosService $permisosService,
+		BitacoraService $bitacoraService,
 	) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -74,6 +77,7 @@ class actividadesController extends BaseController {
 		$this->clientService = $clientService;
 		$this->subAdmin = $subAdmin;
 		$this->permisosService = $permisosService;
+		$this->bitacoraService = $bitacoraService;
 	}
 
 	private function requireClientesAccess(): void {
@@ -82,6 +86,19 @@ class actividadesController extends BaseController {
 
 	private function requireClientesAdminAccess(): void {
 		$this->permisosService->requireCanSee('clientes.admin');
+	}
+
+	/**
+	 * Registra un movimiento del módulo "actividades" en la bitácora general.
+	 */
+	private function registrarMovimiento(
+		?string $uidActor,
+		?int $idReferencia,
+		?string $nombreAfectado,
+		string $tipo,
+		string $mensaje
+	): void {
+		$this->bitacoraService->registrar('actividades', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
 	}
 
 	/**
@@ -120,11 +137,24 @@ class actividadesController extends BaseController {
 	#[NoAdminRequired]
 	public function deleteById($id): DataResponse {
 		$this->requireClientesAdminAccess();
+
+		// --- Capturamos el nombre ANTES de eliminar, para la bitácora ---
+		$existente = $this->actividadesMapper->findById((int) $id);
+		$nombreActividad = $existente[0]['nombre'] ?? ('Actividad ' . $id);
+
 		try {
 			$this->actividadesMapper->deleteById((int)$id);
 		} catch (\RuntimeException $e) {
 			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_CONFLICT);
 		}
+
+		// --- Movimiento (bitácora) ---
+		$user = $this->userSession->getUser();
+		$uid = $user->getUID();
+
+		$mensaje = sprintf('%s ha eliminado la actividad "%s".', $user->getDisplayName(), $nombreActividad);
+		$this->registrarMovimiento($uid, (int) $id, $nombreActividad, 'eliminacion', $mensaje);
+
 		return new DataResponse('ok', Http::STATUS_OK);
 	}
 
@@ -151,6 +181,10 @@ class actividadesController extends BaseController {
 			$tiempoestimado *= 60;
 		}
 
+		// --- Capturamos el estado ANTES de editar, para el diff en bitácora ---
+		$antesRows = $this->actividadesMapper->findById($id_actividad);
+		$antes = $antesRows[0] ?? null;
+
 		try {
 			$this->actividadesMapper->updateActividad(
 				$id_actividad, $nombre, $detalles, $tiempoestimado, $cargable,
@@ -159,6 +193,38 @@ class actividadesController extends BaseController {
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
+
+		// --- Movimiento (bitácora) ---
+		$user = $this->userSession->getUser();
+		$uid = $user->getUID();
+
+		$cambios = [];
+		if ($antes) {
+			if (($antes['nombre'] ?? '') !== $nombre) {
+				$cambios[] = sprintf('nombre "%s" → "%s"', $antes['nombre'] ?? '', $nombre);
+			}
+			if ((float) ($antes['tiempo_estimado'] ?? 0) !== $tiempoestimado) {
+				$cambios[] = sprintf('tiempo estimado %s → %s min', $antes['tiempo_estimado'] ?? 0, $tiempoestimado);
+			}
+			if ((bool) ($antes['cargable'] ?? false) !== $cargable) {
+				$cambios[] = $cargable ? 'ahora es cargable' : 'ya no es cargable';
+			}
+			if (($antes['tipo_actividad'] ?? actividades::TIPO_CLIENTE) !== $tipo_actividad) {
+				$cambios[] = sprintf('tipo "%s" → "%s"', $antes['tipo_actividad'] ?? '', $tipo_actividad);
+			}
+			if (($antes['alcance'] ?? actividades::ALCANCE_GLOBAL) !== $alcance) {
+				$cambios[] = sprintf('alcance "%s" → "%s"', $antes['alcance'] ?? '', $alcance);
+			}
+		}
+
+		$mensaje = sprintf(
+			'%s ha editado la actividad "%s"%s.',
+			$user->getDisplayName(),
+			$nombre,
+			!empty($cambios) ? (': ' . implode(', ', $cambios)) : ''
+		);
+
+		$this->registrarMovimiento($uid, $id_actividad, $nombre, 'edicion', $mensaje);
 
 		return new DataResponse('ok', Http::STATUS_OK);
 	}
@@ -193,6 +259,21 @@ class actividadesController extends BaseController {
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
+
+		// --- Movimiento (bitácora) ---
+		$user = $this->userSession->getUser();
+		$uid = $user->getUID();
+
+		$mensaje = sprintf(
+			'%s ha creado la actividad "%s" (%s, %s min%s).',
+			$user->getDisplayName(),
+			trim($nombre),
+			$tipo_actividad,
+			(string) $tiempoestimado,
+			$cargable ? ', cargable' : ''
+		);
+
+		$this->registrarMovimiento($uid, $id, trim($nombre), 'creacion', $mensaje);
 
 		return new DataResponse(['status' => 'ok', 'id_actividad' => $id], Http::STATUS_OK);
 	}
@@ -480,6 +561,22 @@ class actividadesController extends BaseController {
 						"Fila {$excelRow}: {$e->getMessage()}"
 				], Http::STATUS_BAD_REQUEST);
 			}
+		}
+
+		// --- Movimiento (bitácora) ---
+		if ($created > 0 || $updated > 0) {
+			$user = $this->userSession->getUser();
+			$uid = $user->getUID();
+
+			$mensaje = sprintf(
+				'%s ha importado actividades desde un archivo XLSX: %d creada(s), %d actualizada(s)%s.',
+				$user->getDisplayName(),
+				$created,
+				$updated,
+				$skipped > 0 ? sprintf(', %d omitida(s)', $skipped) : ''
+			);
+
+			$this->registrarMovimiento($uid, null, null, 'importacion', $mensaje);
 		}
 
 		return new DataResponse([

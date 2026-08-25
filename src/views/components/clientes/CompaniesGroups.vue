@@ -579,7 +579,7 @@
 																	}}</span>
 
 																	<span
-																		v-if="Number(p.pagado) === 1 || Number(p.pagado) === 2"
+																		v-if="Number(p.pagado) >= 1"
 																		class="parcialidad-toggle"
 																		:class="{ open: detalleAbierto[p.id_parcialidad] }"
 																		@click="toggleDetalleParcialidad(p.id_parcialidad)">
@@ -596,53 +596,76 @@
 																	<NcButton v-if="canAdminCustomers && Number(p.pagado) === 0"
 																		class="btn-pagar"
 																		type="primary"
-																		@click="abrirDialogPago(p, honorario.id_honorario)">
+																		@click="abrirFacturaModal(p, honorario.id_honorario)">
 																		{{ t('empleados', 'Mark as invoiced') }}
 																	</NcButton>
 
-																	<template v-else-if="canAdminCustomers && Number(p.pagado) === 1">
-																		<NcButton class="btn-factura"
-																			type="secondary"
-																			@click="confirmarFactura(p.id_parcialidad, honorario.id_honorario)">
-																			{{ t('empleados', 'Mark as completed') }}
-																		</NcButton>
-																	</template>
+																	<NcButton v-else-if="canAdminCustomers && Number(p.pagado) === 1"
+																		class="btn-factura"
+																		type="secondary"
+																		@click="abrirPagoModal(p, honorario.id_honorario)">
+																		{{ t('empleados', 'Mark as paid') }}
+																	</NcButton>
 
-																	<template v-else-if="Number(p.pagado) === 2">
-																		<span class="parcialidad-completada">
-																			{{ t('empleados', 'Completed') }} ✓
-																		</span>
-																	</template>
+																	<span v-else-if="Number(p.pagado) === 2" class="parcialidad-completada">
+																		{{ t('empleados', 'Completed') }} ✓
+																	</span>
 																</div>
 															</div>
 															<div v-if="detalleAbierto[p.id_parcialidad]" class="parcialidad-detalle">
-																<span v-if="p.fecha_pago" class="parcialidad-detail-text">
-																	💳 {{ t('empleados', 'Paid') }}: {{ p.fecha_pago }}
-																	<template v-if="p.id_cliente_pagador">
-																		—
-																		<button type="button" class="pagador-link" @click="irAClientePagador(p.id_cliente_pagador)">
-																			{{ p.pagador_nombre || t('empleados', 'Another company') }}
-																		</button>
-																	</template>
-																</span>
+																<div v-if="p.fecha_factura" class="parcialidad-detalle-row">
+																	<span class="parcialidad-detail-text">
+																		🧾 {{ t('empleados', 'Invoice date') }}: {{ p.fecha_factura }}
+																		<template v-if="p.id_cliente_pagador">
+																			—
+																			<button type="button" class="pagador-link" @click="irAClientePagador(p.id_cliente_pagador)">
+																				{{ p.pagador_nombre || t('empleados', 'Another company') }}
+																			</button>
+																		</template>
+																	</span>
 
-																<NcActions v-if="canAdminCustomers && Number(p.pagado) === 1" class="parcialidad-detalle-actions">
-																	<template #icon>
-																		<DotsHorizontal :size="18" />
-																	</template>
-																	<NcActionButton @click="editarFechaPago(p, honorario.id_honorario)">
+																	<NcActions v-if="canAdminCustomers && Number(p.pagado) === 1" class="parcialidad-detalle-actions">
 																		<template #icon>
-																			<PencilOutline :size="20" />
+																			<DotsHorizontal :size="18" />
 																		</template>
-																		{{ t('empleados', 'Edit payment date') }}
-																	</NcActionButton>
-																	<NcActionButton @click="askCancelarPago(p, honorario.id_honorario)">
+																		<NcActionButton @click="editarFechaFactura(p, honorario.id_honorario)">
+																			<template #icon>
+																				<PencilOutline :size="20" />
+																			</template>
+																			{{ t('empleados', 'Edit invoice date') }}
+																		</NcActionButton>
+																		<NcActionButton @click="askCancelarFactura(p, honorario.id_honorario)">
+																			<template #icon>
+																				<CloseCircleOutline :size="20" />
+																			</template>
+																			{{ t('empleados', 'Cancel invoice') }}
+																		</NcActionButton>
+																	</NcActions>
+																</div>
+
+																<div v-if="p.fecha_pago" class="parcialidad-detalle-row">
+																	<span class="parcialidad-detail-text">
+																		💳 {{ t('empleados', 'Payment date') }}: {{ p.fecha_pago }}
+																	</span>
+
+																	<NcActions v-if="canAdminCustomers && Number(p.pagado) === 2" class="parcialidad-detalle-actions">
 																		<template #icon>
-																			<CloseCircleOutline :size="20" />
+																			<DotsHorizontal :size="18" />
 																		</template>
-																		{{ t('empleados', 'Cancel payment') }}
-																	</NcActionButton>
-																</NcActions>
+																		<NcActionButton @click="editarFechaPago(p, honorario.id_honorario)">
+																			<template #icon>
+																				<PencilOutline :size="20" />
+																			</template>
+																			{{ t('empleados', 'Edit payment date') }}
+																		</NcActionButton>
+																		<NcActionButton @click="askCancelarPago(p, honorario.id_honorario)">
+																			<template #icon>
+																				<CloseCircleOutline :size="20" />
+																			</template>
+																			{{ t('empleados', 'Cancel payment') }}
+																		</NcActionButton>
+																	</NcActions>
+																</div>
 															</div>
 														</div>
 													</template>
@@ -681,16 +704,16 @@
 							</VueTabs>
 						</div>
 
-						<!-- Modal - Fecha Pago -->
+						<!-- Modal - Registrar Factura (paso 1: pendiente -> facturada) -->
 						<NcModal
-							v-if="showPagoDialog"
+							v-if="showFacturaModal"
 							size="small"
 							:name="t('empleados', 'Register Invoice')"
-							@close="showPagoDialog = false">
+							@close="showFacturaModal = false">
 							<div class="payment-modal">
 								<div class="payment-icon-wrapper">
 									<div class="payment-icon">
-										💳
+										🧾
 									</div>
 								</div>
 								<h2>{{ t('empleados', 'Register Invoice') }}</h2>
@@ -699,7 +722,7 @@
 								</p>
 								<div class="payment-field">
 									<NcTextField
-										v-model="fechaPago"
+										v-model="fechaFactura"
 										type="date"
 										:label="t('empleados', 'Invoice date')" />
 								</div>
@@ -707,51 +730,73 @@
 								<div class="payment-advanced">
 									<button type="button"
 										class="payment-advanced__toggle"
-										@click="showAdvancedPago = !showAdvancedPago">
+										@click="showAdvancedFactura = !showAdvancedFactura">
 										<DotsHorizontal :size="16" />
 										{{ t('empleados', 'Advanced options') }}
-										<ChevronDown :size="14" class="payment-advanced__chevron" :class="{ open: showAdvancedPago }" />
+										<ChevronDown :size="14" class="payment-advanced__chevron" :class="{ open: showAdvancedFactura }" />
 									</button>
 
-									<div v-if="showAdvancedPago" class="payment-advanced__body">
-										<NcSelect v-model="pagoClientePagador"
+									<div v-if="showAdvancedFactura" class="payment-advanced__body">
+										<NcSelect v-model="facturaClientePagador"
 											:options="clientesPagadorOptions"
 											:clearable="true"
-											:placeholder="t('empleados', 'Paid by another company')"
+											:placeholder="t('empleados', 'Invoiced by another company')"
 											label="label"
 											track-by="value" />
 										<p class="payment-advanced__hint">
-											{{ t('empleados', 'Only fill this in if a related company (parent or sister) paid this installment instead.') }}
+											{{ t('empleados', 'Only fill this in if a related company (parent or sister) invoiced this installment instead.') }}
 										</p>
 									</div>
 								</div>
 
 								<div class="payment-actions">
-									<NcButton @click="showPagoDialog = false">
+									<NcButton @click="showFacturaModal = false">
 										{{ t('empleados', 'Cancel') }}
 									</NcButton>
 									<NcButton
 										type="primary"
-										@click="confirmarPago">
+										@click="confirmarFacturaModal">
 										{{ t('empleados', 'Save') }}
 									</NcButton>
 								</div>
 							</div>
 						</NcModal>
-						<NcDialog v-if="showFacturaDialog"
-							:name="t('empleados', 'Invoice date')"
-							@close="showFacturaDialog = false">
-							<input v-model="fechaFactura" type="date">
 
-							<template #actions>
-								<NcButton @click="showFacturaDialog = false">
-									{{ t('empleados', 'Cancel') }}
-								</NcButton>
-								<NcButton type="primary" @click="confirmarFactura">
-									{{ t('empleados', 'Save') }}
-								</NcButton>
-							</template>
-						</NcDialog>
+						<!-- Modal - Registrar Pago (paso 2: facturada -> pagada) -->
+						<NcModal
+							v-if="showPagoModal"
+							size="small"
+							:name="t('empleados', 'Register Payment')"
+							@close="showPagoModal = false">
+							<div class="payment-modal">
+								<div class="payment-icon-wrapper payment-icon-wrapper--pago">
+									<div class="payment-icon">
+										💳
+									</div>
+								</div>
+								<h2>{{ t('empleados', 'Register Payment') }}</h2>
+								<p class="payment-subtitle">
+									{{ t('empleados', 'Select the payment date for this installment.') }}
+								</p>
+								<div class="payment-field">
+									<NcTextField
+										v-model="fechaPago"
+										type="date"
+										:label="t('empleados', 'Payment date')" />
+								</div>
+
+								<div class="payment-actions">
+									<NcButton @click="showPagoModal = false">
+										{{ t('empleados', 'Cancel') }}
+									</NcButton>
+									<NcButton
+										type="primary"
+										@click="confirmarPagoModal">
+										{{ t('empleados', 'Save') }}
+									</NcButton>
+								</div>
+							</div>
+						</NcModal>
 
 						<NcDialog :open.sync="showDeleteHonorarioDialog"
 							:name="t('empleados', 'Confirm')"
@@ -763,7 +808,21 @@
 							:buttons="deleteHonorarioButtons" />
 						<NcDialog :open.sync="showCancelarPagoDialog"
 							:name="t('empleados', 'Confirm')"
-							:message="t('empleados', 'This will mark the installment as pending again. Continue?')"
+							:message="t('empleados', 'This will revert the installment to invoiced status. Continue?')"
+							:buttons="[
+								{ label: t('empleados', 'Cancel'), callback: () => { showCancelarPagoDialog = false } },
+								{ label: t('empleados', 'Cancel payment'), type: 'primary', callback: () => { confirmarCancelarPago() } },
+							]" />
+						<NcDialog :open.sync="showCancelarFacturaDialog"
+							:name="t('empleados', 'Confirm')"
+							:message="t('empleados', 'This will mark the installment as pending again and clear the invoice date. Continue?')"
+							:buttons="[
+								{ label: t('empleados', 'Cancel'), callback: () => { showCancelarFacturaDialog = false } },
+								{ label: t('empleados', 'Cancel invoice'), type: 'primary', callback: () => { confirmarCancelarFactura() } },
+							]" />
+						<NcDialog :open.sync="showCancelarPagoDialog"
+							:name="t('empleados', 'Confirm')"
+							:message="t('empleados', 'This will revert the installment to invoiced status and clear the payment date. Continue?')"
 							:buttons="[
 								{ label: t('empleados', 'Cancel'), callback: () => { showCancelarPagoDialog = false } },
 								{ label: t('empleados', 'Cancel payment'), type: 'primary', callback: () => { confirmarCancelarPago() } },
@@ -1385,13 +1444,17 @@ export default {
 			h_anio_fin: { label: String(new Date().getFullYear()), value: new Date().getFullYear() },
 			showDeleteHonorarioDialog: false,
 			honorarioToDelete: null,
-			showPagoDialog: false,
+			showFacturaModal: false,
+			showPagoModal: false,
+			fechaFactura: '',
 			fechaPago: '',
 			parcialidadSeleccionada: null,
 			honorarioSeleccionado: null,
-			showFacturaDialog: false,
-			fechaFactura: '',
 			detalleAbierto: {},
+			showAdvancedFactura: false,
+			facturaClientePagador: null,
+			showCancelarFacturaDialog: false,
+			parcialidadACancelarFactura: null,
 			honorarioBorradorId: null,
 			button: false,
 			h_titulo_mes: null,
@@ -2521,27 +2584,89 @@ export default {
 			}
 		},
 
-		abrirDialogPago(p, idHonorario) {
+		abrirFacturaModal(p, idHonorario) {
+			this.parcialidadSeleccionada = p.id_parcialidad
+			this.honorarioSeleccionado = idHonorario
+			this.fechaFactura = new Date().toISOString().split('T')[0]
+			this.showAdvancedFactura = false
+			this.facturaClientePagador = null
+			this.showFacturaModal = true
+		},
+
+		async confirmarFacturaModal() {
+			try {
+				await axios.post(
+					generateUrl('/apps/empleados/marcarParcialidadFacturada'),
+					{
+						id_parcialidad: this.parcialidadSeleccionada,
+						fecha_factura: this.fechaFactura,
+						id_cliente_pagador: this.facturaClientePagador?.value ?? null,
+					},
+				)
+
+				this.showFacturaModal = false
+				await this.GetParcialidades(this.honorarioSeleccionado)
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+				showSuccess(t('empleados', 'Installment marked as invoiced'))
+			} catch (err) {
+				showError(String(err))
+			}
+		},
+
+		editarFechaFactura(p, idHonorario) {
+			this.parcialidadSeleccionada = p.id_parcialidad
+			this.honorarioSeleccionado = idHonorario
+			this.fechaFactura = p.fecha_factura || new Date().toISOString().split('T')[0]
+			this.showAdvancedFactura = Boolean(p.id_cliente_pagador)
+			this.facturaClientePagador = p.id_cliente_pagador
+				? this.options.find(o => Number(o.value) === Number(p.id_cliente_pagador)) || null
+				: null
+			this.showFacturaModal = true
+		},
+
+		askCancelarFactura(p, idHonorario) {
+			this.parcialidadACancelarFactura = p.id_parcialidad
+			this.honorarioSeleccionado = idHonorario
+			this.showCancelarFacturaDialog = true
+		},
+
+		async confirmarCancelarFactura() {
+			try {
+				await axios.post(
+					generateUrl('/apps/empleados/cancelarFacturaParcialidad'),
+					{ id_parcialidad: this.parcialidadACancelarFactura },
+				)
+
+				await this.GetParcialidades(this.honorarioSeleccionado)
+				await this.GetHonorariosByCliente(this.selectedClient.id)
+
+				showSuccess(t('empleados', 'Invoice cancelled'))
+			} catch (err) {
+				showError(t('empleados', 'Error cancelling invoice: {error}', { error: String(err) }))
+			} finally {
+				this.showCancelarFacturaDialog = false
+				this.parcialidadACancelarFactura = null
+			}
+		},
+
+		abrirPagoModal(p, idHonorario) {
 			this.parcialidadSeleccionada = p.id_parcialidad
 			this.honorarioSeleccionado = idHonorario
 			this.fechaPago = new Date().toISOString().split('T')[0]
-			this.showAdvancedPago = false
-			this.pagoClientePagador = null
-			this.showPagoDialog = true
+			this.showPagoModal = true
 		},
 
-		async confirmarPago() {
+		async confirmarPagoModal() {
 			try {
 				await axios.post(
 					generateUrl('/apps/empleados/marcarParcialidadPagada'),
 					{
 						id_parcialidad: this.parcialidadSeleccionada,
 						fecha_pago: this.fechaPago,
-						id_cliente_pagador: this.pagoClientePagador?.value ?? null,
 					},
 				)
 
-				this.showPagoDialog = false
+				this.showPagoModal = false
 				await this.GetParcialidades(this.honorarioSeleccionado)
 				await this.GetHonorariosByCliente(this.selectedClient.id)
 				showSuccess(t('empleados', 'Installment marked as paid'))
@@ -2554,11 +2679,7 @@ export default {
 			this.parcialidadSeleccionada = p.id_parcialidad
 			this.honorarioSeleccionado = idHonorario
 			this.fechaPago = p.fecha_pago || new Date().toISOString().split('T')[0]
-			this.showAdvancedPago = Boolean(p.id_cliente_pagador)
-			this.pagoClientePagador = p.id_cliente_pagador
-				? this.options.find(o => Number(o.value) === Number(p.id_cliente_pagador)) || null
-				: null
-			this.showPagoDialog = true
+			this.showPagoModal = true
 		},
 
 		askCancelarPago(p, idHonorario) {
@@ -2592,32 +2713,6 @@ export default {
 				idParcialidad,
 				!this.detalleAbierto[idParcialidad],
 			)
-		},
-
-		abrirDialogFactura(idParcialidad, idHonorario) {
-			this.parcialidadSeleccionada = idParcialidad
-			this.honorarioSeleccionado = idHonorario
-			this.fechaFactura = new Date().toISOString().split('T')[0]
-			this.showFacturaDialog = true
-		},
-
-		async confirmarFactura(idParcialidad, idHonorario) {
-			try {
-				await axios.post(
-					generateUrl('/apps/empleados/marcarParcialidadFacturada'),
-					{
-						id_parcialidad: idParcialidad,
-					},
-				)
-
-				await this.GetParcialidades(idHonorario)
-				await this.GetHonorariosByCliente(this.selectedClient.id)
-
-				showSuccess(t('empleados', 'Installment marked as invoiced'))
-
-			} catch (err) {
-				showError(String(err))
-			}
 		},
 
 		async toggleEstado() {
@@ -4001,6 +4096,14 @@ export default {
 
 .parcialidad-detalle {
 	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 100%;
+	margin-top: 8px;
+}
+
+.parcialidad-detalle-row {
+	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
@@ -4008,7 +4111,6 @@ export default {
 	padding: 8px 14px;
 	border: 1px solid var(--color-border);
 	border-radius: 8px;
-	margin-top: 8px;
 	background: var(--color-main-background);
 }
 

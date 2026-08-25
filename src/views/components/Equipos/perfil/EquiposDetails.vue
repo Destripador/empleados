@@ -344,7 +344,7 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/GuardarCambioEquipo'), {
 					Id_Equipo: this.data.Id_equipo,
 					Id_jefe_equipo: idJefe,
-					Nombre: this.equipo_nombre,
+					nombre: this.equipo_nombre,
 				})
 
 				showSuccess(t('empleados', 'Equipo actualizado exitosamente'))

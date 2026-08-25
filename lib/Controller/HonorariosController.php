@@ -13,6 +13,7 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Service\XlsxTemplateFiller;
 use OCA\Empleados\Service\LogoService;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\BitacoraService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -37,6 +38,7 @@ class HonorariosController extends BaseController {
 	private PermisosService $permisosService;
 	private IConfig $config;
 	private IMailer $mailer;
+	private BitacoraService $bitacoraService;
 
 	public function __construct(
 		IRequest $request,
@@ -50,7 +52,8 @@ class HonorariosController extends BaseController {
 		LogoService $logoService,
 		PermisosService $permisosService,
 		IConfig $config,
-		IMailer $mailer
+		IMailer $mailer,
+		BitacoraService $bitacoraService
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -68,6 +71,7 @@ class HonorariosController extends BaseController {
 		$this->permisosService = $permisosService;
 		$this->config = $config;
 		$this->mailer = $mailer;
+		$this->bitacoraService = $bitacoraService;
 	}
 
 	private function requireClientesAccess(): void {
@@ -76,6 +80,51 @@ class HonorariosController extends BaseController {
 
 	private function requireClientesAdminAccess(): void {
 		$this->permisosService->requireCanSee('clientes.admin');
+	}
+
+	/**
+	 * Registra un movimiento del módulo "honorarios" en la bitácora general.
+	 */
+	private function registrarMovimiento(
+		?string $uidActor,
+		?int $idReferencia,
+		?string $nombreAfectado,
+		string $tipo,
+		string $mensaje
+	): void {
+		$this->bitacoraService->registrar('honorarios', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
+	}
+
+	/**
+	 * Devuelve [uidActor, nombreActor] del usuario en sesión, con fallback a "Sistema".
+	 */
+	private function getActorInfo(): array {
+		$actor = $this->userSession->getUser();
+		$uidActor = $actor ? $actor->getUID() : null;
+		$nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+		return [$uidActor, $nombreActor];
+	}
+
+	/**
+	 * Nombre del cliente dueño de un honorario, usado para dar contexto
+	 * en los mensajes de bitácora (ej. "el honorario de ACME").
+	 */
+	private function getNombreClienteDeHonorario(int $id_cliente): string {
+		$cliente = $this->clientesMapper->findById($id_cliente);
+
+		return $cliente['nombre'] ?? ('Cliente ' . $id_cliente);
+	}
+
+	/**
+	 * Etiqueta legible del tipo de honorario para los mensajes.
+	 */
+	private function etiquetaTipoHonorario(string $tipo): string {
+		return match ($tipo) {
+			'iguala' => 'iguala',
+			'eventual' => 'eventual',
+			default => 'parcialidades',
+		};
 	}
 
 	#[UseSession]
@@ -116,7 +165,24 @@ class HonorariosController extends BaseController {
 	public function deleteById(int $id_honorario): DataResponse {
 		$this->requireClientesAdminAccess();
 
+		$honorario = $this->honorariosMapper->findById($id_honorario);
+
 		$this->honorariosMapper->deleteById($id_honorario);
+
+		// --- Movimiento (bitácora) ---
+		if ($honorario) {
+			$nombreCliente = $this->getNombreClienteDeHonorario((int)$honorario['id_cliente']);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s ha eliminado el honorario (%s) del cliente "%s".',
+				$nombreActor,
+				$this->etiquetaTipoHonorario($honorario['tipo_honorario'] ?? 'parcial'),
+				$nombreCliente
+			);
+
+			$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'eliminacion', $mensaje);
+		}
 
 		return new DataResponse(
 			['status' => 'ok'],
@@ -153,6 +219,20 @@ class HonorariosController extends BaseController {
 
 		$this->honorariosMapper->crearHonorario($honorario, $periodicidad_parcialidad);
 
+		// --- Movimiento (bitácora) ---
+		$nombreCliente = $this->getNombreClienteDeHonorario($id_cliente);
+		[$uidActor, $nombreActor] = $this->getActorInfo();
+
+		$mensaje = sprintf(
+			'%s ha creado un honorario de **%s** (%s) para el cliente "%s".',
+			$nombreActor,
+			number_format($importe_total, 2) . ' ' . strtoupper($tipo_moneda),
+			$this->etiquetaTipoHonorario($tipo_honorario),
+			$nombreCliente
+		);
+
+		$this->registrarMovimiento($uidActor, (int)$honorario->getId(), $nombreCliente, 'creacion', $mensaje);
+
 		return new DataResponse(
 			['status' => 'ok'],
 			Http::STATUS_OK
@@ -174,6 +254,8 @@ class HonorariosController extends BaseController {
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
+		$old = $this->honorariosMapper->findById($id_honorario);
+
 		$this->honorariosMapper->updateHonorario(
 			$id_honorario,
 			$id_cliente,
@@ -185,6 +267,20 @@ class HonorariosController extends BaseController {
 			$especial,
 			$tipo_honorario
 		);
+
+		// --- Movimiento (bitácora) ---
+		if ($old) {
+			$this->registrarEdicionHonorario(
+				$old,
+				$id_cliente,
+				$importe_total,
+				$tipo_moneda,
+				$fecha_inicio,
+				$fecha_fin,
+				$tipo_honorario,
+				$id_honorario
+			);
+		}
 
 		return new DataResponse(
 			['status' => 'ok'],
@@ -208,6 +304,8 @@ class HonorariosController extends BaseController {
 		$tipoHonorario = (string)$this->request->getParam('tipo_honorario', 'parcial');
 		$periodicidadParcialidad = (int)$this->request->getParam('periodicidad_parcialidad', 1);
 
+		$old = $this->honorariosMapper->findById($idHonorario);
+
 		try {
 			$this->honorariosMapper->updateHonorario(
 				$idHonorario,
@@ -228,7 +326,90 @@ class HonorariosController extends BaseController {
 			);
 		}
 
+		// --- Movimiento (bitácora) ---
+		if ($old) {
+			$this->registrarEdicionHonorario(
+				$old,
+				$idCliente,
+				$importeTotal,
+				$tipoMoneda,
+				$fechaInicio,
+				$fechaFin,
+				$tipoHonorario,
+				$idHonorario
+			);
+		}
+
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	/**
+	 * Compara los datos anteriores de un honorario contra los nuevos y,
+	 * si hubo cambios relevantes, registra el movimiento en la bitácora.
+	 * Usado por modificarHonorario() y completarHonorario(), que en
+	 * esencia hacen lo mismo con parámetros distintos.
+	 */
+	private function registrarEdicionHonorario(
+		array $old,
+		int $id_cliente,
+		float $importe_total,
+		string $tipo_moneda,
+		string $fecha_inicio,
+		string $fecha_fin,
+		string $tipo_honorario,
+		int $id_honorario
+	): void {
+		$cambios = [];
+
+		if ((float)$old['importe_total'] !== $importe_total) {
+			$cambios[] = sprintf(
+				'importe de %s a **%s**',
+				number_format((float)$old['importe_total'], 2),
+				number_format($importe_total, 2)
+			);
+		}
+
+		if (strtoupper((string)($old['tipo_moneda'] ?? '')) !== strtoupper($tipo_moneda)) {
+			$cambios[] = sprintf(
+				'moneda de %s a **%s**',
+				strtoupper((string)($old['tipo_moneda'] ?? '')),
+				strtoupper($tipo_moneda)
+			);
+		}
+
+		if (($old['tipo_honorario'] ?? 'parcial') !== $tipo_honorario) {
+			$cambios[] = sprintf(
+				'tipo de %s a **%s**',
+				$this->etiquetaTipoHonorario($old['tipo_honorario'] ?? 'parcial'),
+				$this->etiquetaTipoHonorario($tipo_honorario)
+			);
+		}
+
+		if (($old['fecha_inicio'] ?? '') !== $fecha_inicio || ($old['fecha_fin'] ?? '') !== $fecha_fin) {
+			$cambios[] = sprintf(
+				'período de %s - %s a **%s - %s**',
+				$old['fecha_inicio'] ?? '',
+				$old['fecha_fin'] ?? '',
+				$fecha_inicio,
+				$fecha_fin
+			);
+		}
+
+		if (empty($cambios)) {
+			return;
+		}
+
+		$nombreCliente = $this->getNombreClienteDeHonorario($id_cliente);
+		[$uidActor, $nombreActor] = $this->getActorInfo();
+
+		$mensaje = sprintf(
+			'%s ha actualizado el honorario del cliente "%s": cambió %s.',
+			$nombreActor,
+			$nombreCliente,
+			implode(', ', $cambios)
+		);
+
+		$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'edicion', $mensaje);
 	}
 
 	#[UseSession]
@@ -236,7 +417,23 @@ class HonorariosController extends BaseController {
 	public function finalizarHonorario(int $id_honorario): DataResponse {
 		$this->requireClientesAdminAccess();
 
+		$honorario = $this->honorariosMapper->findById($id_honorario);
+
 		$this->honorariosMapper->desactivarHonorario($id_honorario);
+
+		// --- Movimiento (bitácora) ---
+		if ($honorario) {
+			$nombreCliente = $this->getNombreClienteDeHonorario((int)$honorario['id_cliente']);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s ha finalizado el honorario del cliente "%s".',
+				$nombreActor,
+				$nombreCliente
+			);
+
+			$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'finalizacion', $mensaje);
+		}
 
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
@@ -246,7 +443,23 @@ class HonorariosController extends BaseController {
 	public function reactivarHonorario(int $id_honorario): DataResponse {
 		$this->requireClientesAdminAccess();
 
+		$honorario = $this->honorariosMapper->findById($id_honorario);
+
 		$this->honorariosMapper->reactivarHonorario($id_honorario);
+
+		// --- Movimiento (bitácora) ---
+		if ($honorario) {
+			$nombreCliente = $this->getNombreClienteDeHonorario((int)$honorario['id_cliente']);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s ha reactivado el honorario del cliente "%s".',
+				$nombreActor,
+				$nombreCliente
+			);
+
+			$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'reactivacion', $mensaje);
+		}
 
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
@@ -261,12 +474,45 @@ class HonorariosController extends BaseController {
 		$tipoMoneda = (string)$this->request->getParam('tipo_moneda', 'MXN');
 		$especial = (bool)$this->request->getParam('especial', false);
 
+		$old = $this->honorariosMapper->findById($idHonorario);
+
 		$this->honorariosMapper->actualizarMetadatos(
 			$idHonorario,
 			$tipoServicio !== null ? (string)$tipoServicio : null,
 			$tipoMoneda,
 			$especial
 		);
+
+		// --- Movimiento (bitácora) ---
+		if ($old) {
+			$cambios = [];
+
+			if (($old['tipo_servicio'] ?? '') !== (string)($tipoServicio ?? '')) {
+				$cambios[] = 'el servicio';
+			}
+
+			if (strtoupper((string)($old['tipo_moneda'] ?? '')) !== strtoupper($tipoMoneda)) {
+				$cambios[] = 'la moneda';
+			}
+
+			if ((bool)($old['especial'] ?? false) !== $especial) {
+				$cambios[] = 'la marca de especial';
+			}
+
+			if (!empty($cambios)) {
+				$nombreCliente = $this->getNombreClienteDeHonorario((int)$old['id_cliente']);
+				[$uidActor, $nombreActor] = $this->getActorInfo();
+
+				$mensaje = sprintf(
+					'%s ha actualizado %s del honorario del cliente "%s".',
+					$nombreActor,
+					implode(' y ', $cambios),
+					$nombreCliente
+				);
+
+				$this->registrarMovimiento($uidActor, $idHonorario, $nombreCliente, 'edicion', $mensaje);
+			}
+		}
 
 		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
@@ -604,6 +850,21 @@ class HonorariosController extends BaseController {
 				}
 			}
 
+			// --- Movimiento (bitácora) ---
+			if ($enviados > 0) {
+				$nombreCliente = $solicitud['cliente']['nombre'] ?? '';
+				[$uidActor, $nombreActor] = $this->getActorInfo();
+
+				$mensaje = sprintf(
+					'%s ha enviado por correo la solicitud de recibo del honorario del cliente "%s" (%d destinatario(s)).',
+					$nombreActor,
+					$nombreCliente,
+					$enviados
+				);
+
+				$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'envio_solicitud', $mensaje);
+			}
+
 			return new DataResponse([
 				'status' => 'ok',
 				'sent' => $enviados,
@@ -726,6 +987,17 @@ class HonorariosController extends BaseController {
 
 			$nombreZip = 'Solicitudes_Recibo_' . date('Y-m-d_His') . '.zip';
 
+			// --- Movimiento (bitácora) ---
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s ha descargado %d solicitud(es) de recibo en un archivo zip.',
+				$nombreActor,
+				$agregados
+			);
+
+			$this->registrarMovimiento($uidActor, null, null, 'descarga_masiva', $mensaje);
+
 			return new DataDownloadResponse(
 				$contenido,
 				$nombreZip,
@@ -828,6 +1100,19 @@ class HonorariosController extends BaseController {
 						['app' => 'empleados']
 					);
 				}
+			}
+
+			// --- Movimiento (bitácora) ---
+			if ($enviados > 0) {
+				[$uidActor, $nombreActor] = $this->getActorInfo();
+
+				$mensaje = sprintf(
+					'%s ha enviado una notificación de %d honorario(s) pendiente(s) por revisar.',
+					$nombreActor,
+					count($items)
+				);
+
+				$this->registrarMovimiento($uidActor, null, null, 'notificacion_pendientes', $mensaje);
 			}
 
 			return new DataResponse([

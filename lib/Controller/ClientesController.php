@@ -20,6 +20,7 @@ use OCA\Empleados\Db\clientes;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\BitacoraService;
 use OCP\IGroupManager;
 use OCP\IConfig;
 use OCP\IURLGenerator;
@@ -46,6 +47,7 @@ class ClientesController extends BaseController {
     private IClientService $clientService;
     private ISubAdmin $subAdmin;
     private IURLGenerator $urlGenerator;
+    private BitacoraService $bitacoraService;
 
     public function __construct(
         IRequest $request,
@@ -62,6 +64,7 @@ class ClientesController extends BaseController {
         IClientService $clientService,
         ISubAdmin $subAdmin,
         PermisosService $permisosService,
+        BitacoraService $bitacoraService,
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -78,6 +81,7 @@ class ClientesController extends BaseController {
         $this->clientService = $clientService;
         $this->subAdmin = $subAdmin;
         $this->permisosService = $permisosService;
+        $this->bitacoraService = $bitacoraService;
     }
 
     private function requireClientesAccess(): void {
@@ -86,6 +90,30 @@ class ClientesController extends BaseController {
 
     private function requireClientesAdminAccess(): void {
         $this->permisosService->requireCanSee('clientes.admin');
+    }
+
+    /**
+     * Registra un movimiento del módulo "clientes" en la bitácora general.
+     */
+    private function registrarMovimiento(
+        ?string $uidActor,
+        ?int $idReferencia,
+        ?string $nombreAfectado,
+        string $tipo,
+        string $mensaje
+    ): void {
+        $this->bitacoraService->registrar('clientes', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
+    }
+
+    /**
+     * Devuelve [uidActor, nombreActor] del usuario en sesión, con fallback a "Sistema".
+     */
+    private function getActorInfo(): array {
+        $actor = $this->userSession->getUser();
+        $uidActor = $actor ? $actor->getUID() : null;
+        $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+        return [$uidActor, $nombreActor];
     }
 
     #[UseSession]
@@ -124,8 +152,22 @@ class ClientesController extends BaseController {
     public function deleteById($id): DataResponse {
         $this->requireClientesAdminAccess();
 
+        $cliente = $this->clientesMapper->findById((int)$id);
+        $nombreCliente = $cliente['nombre'] ?? ('Cliente ' . $id);
+
         $this->honorariosMapper->deleteByCliente((int)$id);
         $this->clientesMapper->deleteById((int)$id);
+
+        // --- Movimiento (bitácora) ---
+        [$uidActor, $nombreActor] = $this->getActorInfo();
+
+        $mensaje = sprintf(
+            '%s ha eliminado el cliente "%s".',
+            $nombreActor,
+            $nombreCliente
+        );
+
+        $this->registrarMovimiento($uidActor, (int)$id, $nombreCliente, 'eliminacion', $mensaje);
 
         return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
     }
@@ -152,6 +194,8 @@ class ClientesController extends BaseController {
 
         $colaboradoresArr = json_decode($colaboradores ?? '[]', true) ?: [];
 
+        $old = $this->clientesMapper->findById($id);
+
         $this->clientesMapper->updateClientes(
             $id,
             $nombre,
@@ -168,6 +212,47 @@ class ClientesController extends BaseController {
             $cliente_padre,
             (bool)($estado ?? 1)
         );
+
+        // --- Movimiento (bitácora) ---
+        if ($old) {
+            $cambios = [];
+
+            $comparaciones = [
+                'nombre' => ['label' => 'nombre', 'anterior' => $old['nombre'] ?? '', 'nuevo' => $nombre],
+                'detalles' => ['label' => 'detalles', 'anterior' => $old['detalles'] ?? '', 'nuevo' => $detalles ?: ''],
+                'razon_social' => ['label' => 'razón social', 'anterior' => $old['razon_social'] ?? '', 'nuevo' => $razon_social ?: ''],
+                'nombre_contacto' => ['label' => 'contacto', 'anterior' => $old['nombre_contacto'] ?? '', 'nuevo' => $nombre_contacto ?: ''],
+                'telefono' => ['label' => 'teléfono', 'anterior' => $old['telefono'] ?? '', 'nuevo' => $telefono ?: ''],
+                'correo' => ['label' => 'correo', 'anterior' => $old['correo'] ?? '', 'nuevo' => $correo ?: ''],
+                'rfc' => ['label' => 'RFC', 'anterior' => $old['rfc'] ?? '', 'nuevo' => $rfc ?: ''],
+                'ubicacion' => ['label' => 'ubicación', 'anterior' => $old['ubicacion'] ?? '', 'nuevo' => $ubicacion ?: ''],
+                'estado' => ['label' => 'estado', 'anterior' => ($old['estado'] ?? true) ? 'activo' : 'inactivo', 'nuevo' => ((bool)($estado ?? 1)) ? 'activo' : 'inactivo'],
+            ];
+
+            foreach ($comparaciones as $campo) {
+                if ((string)$campo['anterior'] !== (string)$campo['nuevo']) {
+                    $cambios[] = sprintf(
+                        '%s de "%s" a **%s**',
+                        $campo['label'],
+                        $campo['anterior'] !== '' ? $campo['anterior'] : 'vacío',
+                        $campo['nuevo'] !== '' ? $campo['nuevo'] : 'vacío'
+                    );
+                }
+            }
+
+            if (!empty($cambios)) {
+                [$uidActor, $nombreActor] = $this->getActorInfo();
+
+                $mensaje = sprintf(
+                    '%s ha actualizado el cliente "%s": cambió %s.',
+                    $nombreActor,
+                    $old['nombre'] ?? $nombre,
+                    implode(', ', $cambios)
+                );
+
+                $this->registrarMovimiento($uidActor, $id, $nombre, 'edicion', $mensaje);
+            }
+        }
 
         return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
     }
@@ -211,6 +296,17 @@ class ClientesController extends BaseController {
             $cliente->setEstado((bool)($estado ?? 1));
 
             $cliente = $this->clientesMapper->insert($cliente);
+
+            // --- Movimiento (bitácora) ---
+            [$uidActor, $nombreActor] = $this->getActorInfo();
+
+            $mensaje = sprintf(
+                '%s ha creado el cliente "%s".',
+                $nombreActor,
+                $nombre
+            );
+
+            $this->registrarMovimiento($uidActor, (int)$cliente->getId(), $nombre, 'creacion', $mensaje);
 
             return new DataResponse([
                 'status' => 'ok',
@@ -488,6 +584,20 @@ class ClientesController extends BaseController {
             }
 
             $creados++;
+        }
+
+        // --- Movimiento (bitácora) ---
+        if ($creados > 0) {
+            [$uidActor, $nombreActor] = $this->getActorInfo();
+
+            $mensaje = sprintf(
+                '%s ha importado clientes desde un archivo XLSX: %d creado(s)%s.',
+                $nombreActor,
+                $creados,
+                !empty($errores) ? sprintf(', %d con error(es)', count($errores)) : ''
+            );
+
+            $this->registrarMovimiento($uidActor, null, null, 'importacion', $mensaje);
         }
 
         return new DataResponse(
