@@ -198,6 +198,11 @@ return [
 		['name' => 'clientes#deleteById',          'url' => '/deleteCliente',       'verb' => 'POST'],
 		['name' => 'clientes#importarClientes',    'url' => '/importarClientes',    'verb' => 'POST'],
 		['name' => 'clientes#Exportarclientes',    'url' => '/Exportarclientes',    'verb' => 'GET'],
+		['name' => 'clientes#GetDashboardSummary', 'url' => '/GetClientesDashboard', 'verb' => 'POST'],
+		['name' => 'clientes#GetDashboardCliente', 'url' => '/GetClientesDashboardCliente', 'verb' => 'POST'],
+		['name' => 'cliente_logo#show', 'url' => '/clientes/{id}/logo', 'verb' => 'GET'],
+		['name' => 'cliente_logo#upload', 'url' => '/clientes/{id}/logo', 'verb' => 'POST'],
+		['name' => 'cliente_logo#delete', 'url' => '/clientes/{id}/logo', 'verb' => 'DELETE'],
 
 		/******************************* HONORARIOS ***************************************/
 		['name' => 'honorarios#getHonorarios',     'url' => '/getHonorarios',       'verb' => 'GET'],

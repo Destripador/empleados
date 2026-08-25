@@ -490,4 +490,257 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		return $sums;
 	}
+
+	/**
+	 * Totales de parcialidades agrupados por cliente y moneda.
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDashboardFeeRows(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('c.id', 'id_cliente')
+			->selectAlias('h.tipo_moneda', 'tipo_moneda')
+			->selectAlias($qb->createFunction('SUM(p.importe_parcialidad)'), 'total')
+			->selectAlias($qb->createFunction('SUM(CASE WHEN p.pagado IN (1, 2) THEN p.importe_parcialidad ELSE 0 END)'), 'pagado')
+			->selectAlias($qb->createFunction('SUM(CASE WHEN p.pagado = 0 THEN p.importe_parcialidad ELSE 0 END)'), 'pendiente')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'));
+
+		$this->applyDashboardFeeFilters($qb, $filters);
+
+		$qb->groupBy('c.id', 'h.tipo_moneda');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * @return list<array<string,mixed>>
+	 */
+	public function getMonthlyGenerated(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias($qb->createFunction('SUBSTRING(p.pfecha_inicio, 1, 7)'), 'mes')
+			->selectAlias($qb->createFunction('SUM(p.importe_parcialidad)'), 'importe')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
+			->where($qb->expr()->isNotNull('p.pfecha_inicio'));
+
+		$this->applyDashboardFeeFilters($qb, $filters);
+		$qb->groupBy('mes')
+			->orderBy('mes', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * @return list<array<string,mixed>>
+	 */
+	public function getMonthlyCollected(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias($qb->createFunction('SUBSTRING(p.fecha_pago, 1, 7)'), 'mes')
+			->selectAlias($qb->createFunction('SUM(p.importe_parcialidad)'), 'importe')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
+			->where($qb->expr()->in(
+				'p.pagado',
+				$qb->createNamedParameter([1, 2], IQueryBuilder::PARAM_INT_ARRAY)
+			))
+			->andWhere($qb->expr()->isNotNull('p.fecha_pago'));
+
+		$this->applyDashboardFeeFilters($qb, $filters);
+		$qb->groupBy('mes')
+			->orderBy('mes', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDashboardHonorariosByCliente(int $idCliente, array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'h.id_honorario',
+			'h.id_cliente',
+			'h.tipo_servicio',
+			'h.tipo_honorario',
+			'h.tipo_moneda',
+			'h.fecha_inicio',
+			'h.fecha_fin',
+			'h.activo',
+			'h.especial'
+		)
+			->selectAlias($qb->createFunction('COALESCE(SUM(p.importe_parcialidad), 0)'), 'total')
+			->selectAlias($qb->createFunction('COALESCE(SUM(CASE WHEN p.pagado IN (1, 2) THEN p.importe_parcialidad ELSE 0 END), 0)'), 'pagado')
+			->selectAlias($qb->createFunction('COALESCE(SUM(CASE WHEN p.pagado = 0 THEN p.importe_parcialidad ELSE 0 END), 0)'), 'pendiente')
+			->from('empleados_honorarios', 'h')
+			->leftJoin('h', $this->getTableName(), 'p', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
+			->where($qb->expr()->eq(
+				'h.id_cliente',
+				$qb->createNamedParameter($idCliente, IQueryBuilder::PARAM_INT)
+			));
+
+		$this->applyDashboardFeeFilters($qb, array_merge($filters, ['id_cliente' => $idCliente]));
+
+		$qb->groupBy(
+			'h.id_honorario',
+			'h.id_cliente',
+			'h.tipo_servicio',
+			'h.tipo_honorario',
+			'h.tipo_moneda',
+			'h.fecha_inicio',
+			'h.fecha_fin',
+			'h.activo',
+			'h.especial'
+		)
+			->orderBy('h.fecha_inicio', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($rows as &$row) {
+			$row['id_honorario'] = (int)$row['id_honorario'];
+			$row['id_cliente'] = (int)$row['id_cliente'];
+			$row['activo'] = (int)($row['activo'] ?? 1);
+			$row['especial'] = (int)($row['especial'] ?? 0);
+			$row['total'] = round((float)$row['total'], 2);
+			$row['pagado'] = round((float)$row['pagado'], 2);
+			$row['pendiente'] = round((float)$row['pendiente'], 2);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDashboardParcialidadesPendientes(int $idCliente, array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'p.id_parcialidad',
+			'p.id_honorario',
+			'p.numero_parcialidad',
+			'p.pfecha_inicio',
+			'p.pfecha_fin',
+			'p.importe_parcialidad',
+			'p.pagado',
+			'h.tipo_servicio',
+			'h.tipo_honorario',
+			'h.tipo_moneda'
+		)
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
+			->where($qb->expr()->eq(
+				'h.id_cliente',
+				$qb->createNamedParameter($idCliente, IQueryBuilder::PARAM_INT)
+			))
+			->andWhere($qb->expr()->eq(
+				'p.pagado',
+				$qb->createNamedParameter(honorariosParcialidades::NO_PAGADO, IQueryBuilder::PARAM_INT)
+			));
+
+		$this->applyDashboardFeeFilters($qb, array_merge($filters, ['id_cliente' => $idCliente]));
+
+		$qb->orderBy('p.pfecha_inicio', 'ASC')
+			->addOrderBy('p.numero_parcialidad', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($rows as &$row) {
+			$row['id_parcialidad'] = (int)$row['id_parcialidad'];
+			$row['id_honorario'] = (int)$row['id_honorario'];
+			$row['numero_parcialidad'] = (int)$row['numero_parcialidad'];
+			$row['importe_parcialidad'] = round((float)$row['importe_parcialidad'], 2);
+			$row['pagado'] = (int)$row['pagado'];
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	private function applyDashboardFeeFilters($qb, array $filters): void {
+		if (!empty($filters['id_cliente'])) {
+			$qb->andWhere($qb->expr()->eq(
+				'c.id',
+				$qb->createNamedParameter((int)$filters['id_cliente'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (!empty($filters['cliente_padre'])) {
+			$qb->andWhere($qb->expr()->eq(
+				'c.cliente_padre',
+				$qb->createNamedParameter((int)$filters['cliente_padre'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (!empty($filters['lider_proyecto'])) {
+			$qb->andWhere($qb->expr()->eq(
+				'c.lider_proyecto',
+				$qb->createNamedParameter((int)$filters['lider_proyecto'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (isset($filters['estado']) && $filters['estado'] !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				'c.estado',
+				$qb->createNamedParameter((int)$filters['estado'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (isset($filters['especial']) && $filters['especial'] !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				'c.especial',
+				$qb->createNamedParameter((int)$filters['especial'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (!empty($filters['tipo_honorario'])) {
+			$qb->andWhere($qb->expr()->eq(
+				'h.tipo_honorario',
+				$qb->createNamedParameter((string)$filters['tipo_honorario'])
+			));
+		}
+
+		$fechaInicio = $filters['fecha_inicio'] ?? null;
+		$fechaFin = $filters['fecha_fin'] ?? null;
+
+		if (is_string($fechaInicio) && $fechaInicio !== '') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->gte('p.pfecha_fin', $qb->createNamedParameter($fechaInicio)),
+				$qb->expr()->isNull('p.pfecha_fin')
+			));
+		}
+
+		if (is_string($fechaFin) && $fechaFin !== '') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->lte('p.pfecha_inicio', $qb->createNamedParameter($fechaFin)),
+				$qb->expr()->isNull('p.pfecha_inicio')
+			));
+		}
+	}
 }

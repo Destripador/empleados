@@ -6,7 +6,18 @@
 			:name="source.name"
 			:counter-number="source.count"
 			@click.prevent="showDetails(source)">
-			<template v-if="source.image" #icon>
+			<template v-if="source.logoUrl || source.logo" #icon>
+				<div class="app-content-list-item-icon">
+					<img
+						v-if="source.logoUrl && !logoFailed"
+						:src="source.logoUrl"
+						:alt="source.name"
+						class="client-list-logo"
+						@error="logoFailed = true">
+					<span v-else class="client-list-logo client-list-logo--placeholder" />
+				</div>
+			</template>
+			<template v-else-if="source.image" #icon>
 				<div class="app-content-list-item-icon">
 					<BaseAvatar
 						:display-name="source.image"
@@ -51,6 +62,21 @@ export default {
 		},
 	},
 
+	data() {
+		return {
+			logoFailed: false,
+		}
+	},
+
+	watch: {
+		'source.id'() {
+			this.logoFailed = false
+		},
+		'source.logoUrl'() {
+			this.logoFailed = false
+		},
+	},
+
 	methods: {
 		t, // exponer i18n a la plantilla
 		showDetails(data) {
@@ -81,6 +107,19 @@ export default {
 
 .list-item-style {
 	list-style: none;
+}
+
+.client-list-logo {
+	width: 40px;
+	height: 40px;
+	object-fit: contain;
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+}
+
+.client-list-logo--placeholder {
+	display: block;
+	background: var(--color-primary-element-light);
 }
 </style>
 

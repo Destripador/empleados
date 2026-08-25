@@ -24,6 +24,7 @@ class clientes extends Entity {
 	protected bool $especial = false;
 	protected ?int $cliente_padre = null;
 	protected bool $estado = true;
+	protected ?string $logo = null;
 
 	public function __construct() {
 		$this->addType('id', 'integer');
@@ -44,6 +45,7 @@ class clientes extends Entity {
 		$this->addType('especial', 'boolean');
 		$this->addType('cliente_padre', 'integer');
 		$this->addType('estado', 'boolean');
+		$this->addType('logo', 'string');
 	}
 
 	public function read(): array {
@@ -66,6 +68,7 @@ class clientes extends Entity {
 			'especial' => $this->especial,
 			'cliente_padre' => $this->cliente_padre,
 			'estado' => $this->estado,
+			'logo' => $this->logo,
 		];
 	}
 }

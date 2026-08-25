@@ -10,56 +10,106 @@
 				:defaultbuttons="false"
 				:custom="true">
 				<template #custom>
-					<div class="empty">
-						<div class="areas-empty-state">
-							<div class="areas-empty-card">
-								<img class="areas-empty-image"
-									src="../../../../img/crowesito-think.png"
-									:alt="t('empleados', 'Companies and groups')">
+					<div class="companies-main">
+						<header class="companies-toolbar">
+							<div class="view-switch" role="tablist" :aria-label="t('empleados', 'Companies / Groups')">
+								<NcButton :type="contentView === 'resumen' ? 'secondary' : 'tertiary'" @click="showResumen">
+									{{ t('empleados', 'Overview') }}
+								</NcButton>
+								<NcButton :type="contentView === 'empresas' ? 'secondary' : 'tertiary'" @click="showEmpresas">
+									{{ t('empleados', 'Companies') }}
+								</NcButton>
+							</div>
+							<NcActions
+								v-if="canAdminCustomers"
+								:open.sync="settingsMenuOpen"
+								:aria-label="t('empleados', 'Settings')"
+								class="companies-toolbar__settings">
+								<template #icon>
+									<Cog :size="20" />
+								</template>
+								<NcActionButton @click="AbrirImportarModal()">
+									<template #icon>
+										<Upload :size="20" />
+									</template>
+									{{ t('empleados', 'Import from Customer System') }}
+								</NcActionButton>
+								<NcActionButton @click="AgregarNuevo()">
+									<template #icon>
+										<AccountMultiplePlusOutline :size="20" />
+									</template>
+									{{ t('empleados', 'Add new') }}
+								</NcActionButton>
+								<NcActionButton @click="Exportar()">
+									<template #icon>
+										<DatabaseExport :size="20" />
+									</template>
+									{{ t('empleados', 'Export list') }}
+								</NcActionButton>
+								<NcActionButton @click="triggerImport()">
+									<template #icon>
+										<Upload :size="20" />
+									</template>
+									{{ t('empleados', 'Import data from template') }}
+								</NcActionButton>
+							</NcActions>
+						</header>
 
-								<h2>{{ t('empleados', 'Companies and groups') }}</h2>
-								<h1>{{ t('empleados', 'Select a client for more details') }}</h1>
+						<ClientesDashboard
+							v-if="mainView === 'resumen'"
+							embedded
+							@select-client="openCompanyFromDashboard" />
 
-								<p class="areas-empty-description">
-									{{ t('empleados', 'Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.') }}
-								</p>
+						<div v-else class="empty">
+							<div class="areas-empty-state">
+								<div class="areas-empty-card">
+									<img class="areas-empty-image"
+										src="../../../../img/crowesito-think.png"
+										:alt="t('empleados', 'Companies and groups')">
 
-								<div class="stats-grid">
-									<div class="stat-card">
-										<div class="stat-icon">
-											<OfficeBuilding :size="22" />
+									<h2>{{ t('empleados', 'Select a client for more details') }}</h2>
+
+									<p class="areas-empty-description">
+										{{ t('empleados', 'Choose a client, company or group from the list to view its information, assigned collaborators, service fees or edit its details.') }}
+									</p>
+
+									<div class="stats-grid">
+										<div class="stat-card">
+											<div class="stat-icon">
+												<OfficeBuilding :size="22" />
+											</div>
+											<div>
+												<span>{{ t('empleados', 'Total records') }}</span>
+												<span class="value-text">{{ activeClients.length }}</span>
+											</div>
 										</div>
-										<div>
-											<span>{{ t('empleados', 'Total records') }}</span>
-											<span class="value-text">{{ activeClients.length }}</span>
+
+										<div class="stat-card">
+											<div class="stat-icon">
+												<HexagonMultipleOutline :size="22" />
+											</div>
+											<div>
+												<span>{{ t('empleados', 'Main groups') }}</span>
+												<span class="value-text">{{ mainGroups.length }}</span>
+											</div>
+										</div>
+
+										<div class="stat-card">
+											<div class="stat-icon">
+												<AccountGroup :size="22" />
+											</div>
+											<div>
+												<span>{{ t('empleados', 'Sub-companies') }}</span>
+												<span class="value-text">{{ subCompanies.length }}</span>
+											</div>
 										</div>
 									</div>
 
-									<div class="stat-card">
-										<div class="stat-icon">
-											<HexagonMultipleOutline :size="22" />
-										</div>
-										<div>
-											<span>{{ t('empleados', 'Main groups') }}</span>
-											<span class="value-text">{{ mainGroups.length }}</span>
-										</div>
+									<div class="areas-empty-actions">
+										<NcButton @click="GetCompaniesGroups()">
+											{{ t('empleados', 'Refresh') }}
+										</NcButton>
 									</div>
-
-									<div class="stat-card">
-										<div class="stat-icon">
-											<AccountGroup :size="22" />
-										</div>
-										<div>
-											<span>{{ t('empleados', 'Sub-companies') }}</span>
-											<span class="value-text">{{ subCompanies.length }}</span>
-										</div>
-									</div>
-								</div>
-
-								<div class="areas-empty-actions">
-									<NcButton type="primary" @click="GetCompaniesGroups()">
-										{{ t('empleados', 'Refresh') }}
-									</NcButton>
 								</div>
 							</div>
 						</div>
@@ -101,41 +151,6 @@
 						<NcActionCheckbox v-model="onlyDisabled">
 							{{ t('empleados', 'Only Disabled') }}
 						</NcActionCheckbox>
-
-						<template v-if="canAdminCustomers">
-							<NcActionSeparator />
-
-							<NcActionButton :is-menu="true">
-								{{ t('empleados', 'Settings') }}
-							</NcActionButton>
-
-							<NcActionButton @click="AbrirImportarModal()">
-								<template #icon>
-									<Upload :size="20" />
-								</template>
-								{{ t('empleados', 'Import from Customer System') }}
-							</NcActionButton>
-							<NcActionButton @click="AgregarNuevo()">
-								<template #icon>
-									<AccountMultiplePlusOutline :size="20" />
-								</template>
-								{{ t('empleados', 'Add new') }}
-							</NcActionButton>
-
-							<NcActionButton @click="Exportar()">
-								<template #icon>
-									<DatabaseExport :size="20" />
-								</template>
-								{{ t('empleados', 'Export list') }}
-							</NcActionButton>
-
-							<NcActionButton @click="triggerImport()">
-								<template #icon>
-									<Upload :size="20" />
-								</template>
-								{{ t('empleados', 'Import data from template') }}
-							</NcActionButton>
-						</template>
 					</NcActions>
 
 					<span
@@ -147,11 +162,26 @@
 				</template>
 				<template #details>
 					<div class="client-details">
+						<header class="companies-toolbar companies-toolbar--details">
+							<div class="view-switch" role="tablist" :aria-label="t('empleados', 'Companies / Groups')">
+								<NcButton :type="contentView === 'resumen' ? 'secondary' : 'tertiary'" @click="showResumen">
+									{{ t('empleados', 'Overview') }}
+								</NcButton>
+								<NcButton :type="contentView === 'empresas' ? 'secondary' : 'tertiary'" @click="showEmpresas">
+									{{ t('empleados', 'Companies') }}
+								</NcButton>
+							</div>
+						</header>
 						<div>
 							<div class="details-header"
 								:class="{ 'details-header--especial': selectedClient.especial }">
-								<div class="details-icon">
-									<HexagonMultipleOutline :size="30" />
+								<div class="details-icon details-icon--logo">
+									<ClienteLogo
+										:id="selectedClient.id"
+										:logo="selectedClient.logo"
+										:bust="logoBust"
+										size="lg"
+										:alt="selectedClient.nombre || t('empleados', 'Customer')" />
 								</div>
 
 								<div class="details-title">
@@ -160,6 +190,14 @@
 									</p>
 									<h2>{{ selectedClient.nombre || t('empleados', 'Without name') }}</h2>
 									<p>{{ selectedClient.detalles || t('empleados', 'No description available.') }}</p>
+									<div v-if="canEditClientLogo" class="logo-actions">
+										<NcButton type="tertiary" @click="triggerLogoUpload">
+											{{ selectedClient.logo ? t('empleados', 'Replace logo') : t('empleados', 'Add logo') }}
+										</NcButton>
+										<NcButton v-if="selectedClient.logo" type="tertiary" @click="removeClientLogo">
+											{{ t('empleados', 'Remove logo') }}
+										</NcButton>
+									</div>
 								</div>
 							</div>
 
@@ -855,6 +893,23 @@
 					</p>
 				</div>
 
+				<div v-if="canEditClientLogo" class="logo-editor">
+					<ClienteLogo
+						:id="selectedClient.id"
+						:logo="selectedClient.logo"
+						:bust="logoBust"
+						size="lg"
+						:alt="selectedClient.nombre || t('empleados', 'Customer')" />
+					<div class="logo-actions">
+						<NcButton type="tertiary" @click="triggerLogoUpload">
+							{{ selectedClient.logo ? t('empleados', 'Replace logo') : t('empleados', 'Add logo') }}
+						</NcButton>
+						<NcButton v-if="selectedClient.logo" type="tertiary" @click="removeClientLogo">
+							{{ t('empleados', 'Remove logo') }}
+						</NcButton>
+					</div>
+				</div>
+
 				<div class="form-grid">
 					<!-- nombre -->
 					<NcTextField required
@@ -1257,6 +1312,12 @@
 			class="file-input"
 			accept=".xlsx"
 			@change="importar">
+		<input v-if="canAdminCustomers"
+			ref="logoFile"
+			type="file"
+			class="file-input"
+			accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+			@change="onLogoSelected">
 	</NcAppContent>
 </template>
 
@@ -1269,13 +1330,16 @@ import { translate as t } from '@nextcloud/l10n'
 import List from '../Helpers/Lists/List.vue'
 import ModalClientes from './ModalClientes.vue'
 import permissionsMixin from '../../../mixins/permissions.js'
+import ClienteLogo from '../../../components/clientes/ClienteLogo.vue'
+import clientesService, { clienteLogoUrl } from '../../../services/clientesService.js'
+import { loadPreference, savePreference, PREFERENCE_KEYS } from '../../../utils/userPreferences.js'
 
 import HexagonMultipleOutline from 'vue-material-design-icons/HexagonMultipleOutline.vue'
 import OfficeBuilding from 'vue-material-design-icons/OfficeBuilding.vue'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import CheckboxMarkedOutline from 'vue-material-design-icons/CheckboxMarkedOutline.vue'
-// import Cog from 'vue-material-design-icons/Cog.vue'
+import Cog from 'vue-material-design-icons/Cog.vue'
 import AccountMultiplePlusOutline from 'vue-material-design-icons/AccountMultiplePlusOutline.vue'
 import DatabaseExport from 'vue-material-design-icons/DatabaseExport.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
@@ -1312,6 +1376,11 @@ import {
 	NcActionCheckbox,
 } from '@nextcloud/vue'
 
+const ClientesDashboard = () => import(
+	/* webpackChunkName: "clientes-dashboard" */
+	'./ClientesDashboard.vue'
+)
+
 export default {
 	name: 'CompaniesGroups',
 
@@ -1330,7 +1399,9 @@ export default {
 		NcCheckboxRadioSwitch,
 		HexagonMultipleOutline,
 		OfficeBuilding,
-		// Cog,
+		ClienteLogo,
+		ClientesDashboard,
+		Cog,
 		AccountMultiplePlusOutline,
 		DatabaseExport,
 		Upload,
@@ -1366,6 +1437,8 @@ export default {
 			editing: false,
 			saving: false,
 			loading: true,
+			mainView: 'resumen',
+			settingsMenuOpen: false,
 			listas: [],
 			rawClients: [],
 			select: [],
@@ -1385,6 +1458,7 @@ export default {
 			especial: false,
 			estado: true,
 			cliente_padre: null,
+			logoBust: Date.now(),
 			sortOrder: [],
 			onlyParents: false,
 			hideMainGroups: false,
@@ -1521,6 +1595,14 @@ export default {
 	computed: {
 		canAdminCustomers() {
 			return this.canSee('clientes.admin')
+		},
+
+		canEditClientLogo() {
+			return this.canAdminCustomers && this.editing && Boolean(this.selectedClient?.id)
+		},
+
+		contentView() {
+			return this.hasSelectedClient ? 'empresas' : this.mainView
 		},
 
 		/* ----------- Select Cliente ----------- */
@@ -1835,6 +1917,7 @@ export default {
 
 	watch: {
 		'selectedClient.id'(newId) {
+			this.editing = false
 			this.honorarios = []
 			this.parcialidadesAbiertas = {}
 			this.parcialidades = {}
@@ -1858,6 +1941,10 @@ export default {
 				this.onlyParents = false
 			}
 		},
+	},
+
+	created() {
+		this.restoreMainView()
 	},
 
 	mounted() {
@@ -1919,6 +2006,61 @@ export default {
 	methods: {
 		t, // Exponer i18n a la plantilla
 
+		restoreMainView() {
+			const routeId = Number(this.$route?.query?.id || 0)
+			const routeView = String(this.$route?.query?.view || '')
+			if (routeId > 0) {
+				this.mainView = 'empresas'
+				return
+			}
+			if (routeView === 'resumen' || routeView === 'dashboard') {
+				this.mainView = 'resumen'
+				return
+			}
+			if (routeView === 'empresas') {
+				this.mainView = 'empresas'
+				return
+			}
+			const prefs = loadPreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, { filters: {}, view: {} })
+			this.mainView = prefs.view?.mainView === 'empresas' ? 'empresas' : 'resumen'
+		},
+
+		persistMainView() {
+			const prefs = loadPreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, { filters: {}, view: {} })
+			savePreference(PREFERENCE_KEYS.CLIENTS_DASHBOARD, {
+				...prefs,
+				view: {
+					...(prefs.view || {}),
+					mainView: this.mainView,
+				},
+			})
+		},
+
+		showResumen() {
+			this.mainView = 'resumen'
+			this.select = []
+			this.settingsMenuOpen = false
+			this.persistMainView()
+		},
+
+		showEmpresas() {
+			this.mainView = 'empresas'
+			this.settingsMenuOpen = false
+			this.persistMainView()
+		},
+
+		openCompanyFromDashboard(id) {
+			if (!id) {
+				return
+			}
+			this.GetCompanieGroup(id)
+		},
+
+		closeMenus() {
+			this.button = false
+			this.settingsMenuOpen = false
+		},
+
 		matchSearch(name) {
 			if (this.query.trim() !== '') {
 				return name.toString().toLowerCase().includes(this.query.trim().toLowerCase())
@@ -1932,6 +2074,10 @@ export default {
 					this.GetCompaniesGroups(false),
 					this.GetClientesEmpleadosLookup(false),
 				])
+				const routeId = Number(this.$route?.query?.id || 0)
+				if (routeId > 0) {
+					await this.GetCompanieGroup(routeId)
+				}
 			} catch (err) {
 				showError(
 					t('empleados', 'Error loading customer data: {error}', {
@@ -1957,7 +2103,7 @@ export default {
 		},
 
 		AgregarNuevo() {
-			this.toggle()
+			this.closeMenus()
 			this.$root.$emit('new', true)
 		},
 
@@ -1975,6 +2121,58 @@ export default {
 				minimumFractionDigits: 2,
 				maximumFractionDigits: 2,
 			})
+		},
+
+		triggerLogoUpload() {
+			this.$refs.logoFile?.click()
+		},
+
+		async onLogoSelected(event) {
+			const file = event.target?.files?.[0]
+			event.target.value = ''
+			if (!file || !this.selectedClient?.id) {
+				return
+			}
+
+			try {
+				const result = await clientesService.uploadLogo(this.selectedClient.id, file)
+				const logo = result?.data?.logo || true
+				this.logoBust = Date.now()
+				this.patchClientLogo(this.selectedClient.id, logo)
+				showSuccess(t('empleados', 'Logo saved successfully.'))
+			} catch (err) {
+				const message = err?.response?.data?.ocs?.data?.message
+					|| err?.response?.data?.message
+					|| String(err)
+				showError(t('empleados', 'The logo could not be saved.') + ' ' + message)
+			}
+		},
+
+		async removeClientLogo() {
+			if (!this.selectedClient?.id) {
+				return
+			}
+
+			try {
+				await clientesService.deleteLogo(this.selectedClient.id)
+				this.logoBust = Date.now()
+				this.patchClientLogo(this.selectedClient.id, null)
+				showSuccess(t('empleados', 'Logo deleted successfully.'))
+			} catch (err) {
+				showError(t('empleados', 'The logo could not be deleted.'))
+			}
+		},
+
+		patchClientLogo(id, logo) {
+			const apply = (item) => Number(item.id) === Number(id)
+				? { ...item, logo, logoUrl: logo ? clienteLogoUrl(id, this.logoBust) : null }
+				: item
+
+			this.rawClients = this.rawClients.map(apply)
+			this.listas = this.listas.map(apply)
+			if (this.select?.[0] && Number(this.select[0].id) === Number(id)) {
+				this.select = [{ ...this.select[0], logo, logoUrl: logo ? clienteLogoUrl(id, this.logoBust) : null }]
+			}
 		},
 		formatTipoHonorario(tipo) {
 			const labels = {
@@ -2041,11 +2239,12 @@ export default {
 		},
 
 		AbrirImportarModal() {
-			this.button = false
+			this.closeMenus()
 			this.showImportarModal = true
 		},
 
 		triggerImport() {
+			this.closeMenus()
 			this.$refs.file?.click()
 		},
 
@@ -2114,6 +2313,7 @@ export default {
 					id: item.id,
 					name: item.nombre,
 					count: item.child_count || 0,
+					logoUrl: item.logo ? clienteLogoUrl(item.id, item.logo) : null,
 					...item,
 				}))
 
@@ -2283,7 +2483,7 @@ export default {
 		},
 
 		async importar() {
-			this.toggle()
+			this.closeMenus()
 			const file = this.$refs.file?.files?.[0]
 
 			if (!file) {
@@ -2314,7 +2514,7 @@ export default {
 		},
 
 		async Exportar() {
-			this.toggle()
+			this.closeMenus()
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/Exportarclientes'), {
 					responseType: 'blob',
@@ -3144,6 +3344,37 @@ export default {
 	gap: 24px;
 }
 
+.companies-main {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px;
+	box-sizing: border-box;
+}
+
+.companies-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.companies-toolbar--details {
+	padding-right: 56px;
+}
+
+.view-switch {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.companies-toolbar__settings {
+	margin-left: auto;
+}
+
 /* ── Header ── */
 .companies-header {
 	display: flex;
@@ -3351,6 +3582,41 @@ export default {
 	background: var(--color-primary-element-light);
 	color: var(--color-primary-element);
 	flex-shrink: 0;
+}
+
+.details-icon--logo {
+	width: auto;
+	height: auto;
+	background: transparent;
+	padding: 0;
+}
+
+.logo-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	margin-top: 0.5rem;
+}
+
+.logo-editor {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem 1rem;
+	margin: 0 0 1.25rem;
+	padding: 0.75rem 0;
+	border-bottom: 1px solid var(--color-border);
+}
+
+@media (max-width: 720px) {
+	.companies-toolbar,
+	.companies-toolbar--details {
+		padding-right: 0;
+	}
+
+	.companies-toolbar__settings {
+		margin-left: 0;
+	}
 }
 
 .details-title {

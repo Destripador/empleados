@@ -91,6 +91,11 @@ export default new Router({
 			),
 		},
 		{
+			path: '/ClientesDashboard',
+			name: 'ClientesDashboard',
+			redirect: { name: 'CompaniesGroups', query: { view: 'resumen' } },
+		},
+		{
 			path: '/Costs',
 			name: 'Costs',
 			component: () => import(

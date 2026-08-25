@@ -57,6 +57,7 @@ class clientesMapper extends QBMapper {
 				'p.especial',
 				'p.cliente_padre',
 				'p.estado',
+				'p.logo',
 				$qb->createFunction('COUNT(c.id) AS child_count')
 			)
 			->from($this->getTableName(), 'p')
@@ -80,7 +81,8 @@ class clientesMapper extends QBMapper {
 				'p.ubicacion',
 				'p.especial',
 				'p.cliente_padre',
-				'p.estado'
+				'p.estado',
+				'p.logo'
 			)
 			->orderBy('p.id', 'ASC')
 			->setMaxResults($limit)
@@ -153,5 +155,88 @@ class clientesMapper extends QBMapper {
 			);
 
 		$query->executeStatement();
+	}
+
+	public function updateLogo(int $id, ?string $logo): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('logo', $qb->createNamedParameter($logo))
+			->where(
+				$qb->expr()->eq(
+					'id',
+					$qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Catálogo ligero para el dashboard (sin child_count ni JSON de colaboradores).
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function findDashboardCatalog(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'id',
+			'nombre',
+			'logo',
+			'estado',
+			'especial',
+			'cliente_padre',
+			'lider_proyecto'
+		)
+			->from($this->getTableName())
+			->orderBy('nombre', 'ASC');
+
+		$this->applyDashboardClientFilters($qb, $filters, '');
+
+		$result = $qb->executeQuery();
+		$data = $result->fetchAll();
+		$result->closeCursor();
+
+		return $data;
+	}
+
+	public function applyDashboardClientFilters($qb, array $filters, string $alias): void {
+		$prefix = $alias !== '' ? $alias . '.' : '';
+
+		if (!empty($filters['id_cliente'])) {
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'id',
+				$qb->createNamedParameter((int)$filters['id_cliente'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (!empty($filters['cliente_padre'])) {
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'cliente_padre',
+				$qb->createNamedParameter((int)$filters['cliente_padre'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (!empty($filters['lider_proyecto'])) {
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'lider_proyecto',
+				$qb->createNamedParameter((int)$filters['lider_proyecto'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (isset($filters['estado']) && $filters['estado'] !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'estado',
+				$qb->createNamedParameter((int)$filters['estado'], IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		if (isset($filters['especial']) && $filters['especial'] !== null) {
+			$qb->andWhere($qb->expr()->eq(
+				$prefix . 'especial',
+				$qb->createNamedParameter((int)$filters['especial'], IQueryBuilder::PARAM_INT)
+			));
+		}
 	}
 }

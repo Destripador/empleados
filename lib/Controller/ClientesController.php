@@ -19,6 +19,8 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\clientes;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
+use OCA\Empleados\Service\ClienteLogoService;
+use OCA\Empleados\Service\ClientesDashboardService;
 use OCA\Empleados\Service\PermisosService;
 use OCA\Empleados\Service\BitacoraService;
 use OCP\IGroupManager;
@@ -43,6 +45,8 @@ class ClientesController extends BaseController {
     protected $l10n;
     protected $groupManager;
     protected PermisosService $permisosService;
+    protected ClientesDashboardService $dashboardService;
+    protected ClienteLogoService $clienteLogoService;
     private IConfig $config;
     private IClientService $clientService;
     private ISubAdmin $subAdmin;
@@ -65,6 +69,8 @@ class ClientesController extends BaseController {
         ISubAdmin $subAdmin,
         PermisosService $permisosService,
         BitacoraService $bitacoraService,
+        ClientesDashboardService $dashboardService,
+        ClienteLogoService $clienteLogoService,
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -156,6 +162,7 @@ class ClientesController extends BaseController {
         $nombreCliente = $cliente['nombre'] ?? ('Cliente ' . $id);
 
         $this->honorariosMapper->deleteByCliente((int)$id);
+        $this->clienteLogoService->deleteLogo((int)$id);
         $this->clientesMapper->deleteById((int)$id);
 
         // --- Movimiento (bitácora) ---
@@ -616,5 +623,62 @@ class ClientesController extends BaseController {
         }
 
         return $file;
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetDashboardSummary(
+        $id_cliente = null,
+        $cliente_padre = null,
+        $lider_proyecto = null,
+        $estado = null,
+        $especial = null,
+        $tipo_honorario = null,
+        $solo_pendientes = null,
+        $fecha_inicio = null,
+        $fecha_fin = null
+    ): DataResponse {
+        $this->requireClientesAccess();
+
+        return new DataResponse(
+            $this->dashboardService->getSummary([
+                'id_cliente' => $id_cliente,
+                'cliente_padre' => $cliente_padre,
+                'lider_proyecto' => $lider_proyecto,
+                'estado' => $estado,
+                'especial' => $especial,
+                'tipo_honorario' => $tipo_honorario,
+                'solo_pendientes' => $solo_pendientes,
+                'fecha_inicio' => $fecha_inicio,
+                'fecha_fin' => $fecha_fin,
+            ]),
+            Http::STATUS_OK
+        );
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetDashboardCliente(
+        int $id,
+        $tipo_honorario = null,
+        $fecha_inicio = null,
+        $fecha_fin = null
+    ): DataResponse {
+        $this->requireClientesAccess();
+
+        $detail = $this->dashboardService->getClienteDetail($id, [
+            'tipo_honorario' => $tipo_honorario,
+            'fecha_inicio' => $fecha_inicio,
+            'fecha_fin' => $fecha_fin,
+        ]);
+
+        if ($detail === null) {
+            return new DataResponse(
+                ['status' => 'error', 'message' => $this->l10n->t('Client not found')],
+                Http::STATUS_NOT_FOUND
+            );
+        }
+
+        return new DataResponse($detail, Http::STATUS_OK);
     }
 }
