@@ -20,10 +20,12 @@ class honorarios extends Entity {
 	protected int $numero_parcialidades = 0;
 	/*-------------- Servicio ----------------*/
 	protected ?string $tipo_servicio = null;
+	protected ?string $descripcion = null;
 	protected string $tipo_honorario = 'parcial';
 	/*--------------- Estado ------------------*/
 	protected bool $activo = true;
 	protected bool $especial = false;
+	protected bool $solicitud_generada = false;
 
 	public function __construct() {
 
@@ -38,10 +40,12 @@ class honorarios extends Entity {
 		$this->addType('numero_parcialidades', 'integer');
 
 		$this->addType('tipo_servicio', 'string');
+		$this->addType('descripcion', 'string');
 		$this->addType('tipo_honorario', 'string');
 
 		$this->addType('activo', 'boolean');
 		$this->addType('especial', 'boolean');
+		$this->addType('solicitud_generada', 'boolean');
 	}
 
 	public function read(): array {
@@ -57,10 +61,12 @@ class honorarios extends Entity {
 			'numero_parcialidades' => $this->numero_parcialidades,
 
 			'tipo_servicio' => $this->tipo_servicio,
+			'descripcion' => $this->descripcion,
 			'tipo_honorario' => $this->tipo_honorario,
 
 			'activo' => $this->activo,
 			'especial' => $this->especial,
+			'solicitud_generada' => $this->solicitud_generada,
 		];
 	}
 }

@@ -53,50 +53,16 @@
 					</div>
 				</template>
 				<template #custombuttons>
-					<NcActions :open.sync="button">
-						<template #icon>
-							<FilterVariant :size="20" />
-						</template>
-
-						<NcActionButton :is-menu="true">
-							{{ t('empleados', 'Filters') }}
-						</NcActionButton>
-
-						<NcActionInput v-model="sortOrder"
-							type="multiselect"
-							:label-outside="false"
-							:manual-open="true"
-							:options="[
-								{ label: t('empleados', 'A to Z'), value: 'az' },
-								{ label: t('empleados', 'Z to A'), value: 'za' },
-							]">
-							{{ t('empleados', 'Sort') }}
-						</NcActionInput>
-
-						<NcActionInput v-model="tipoFiltro"
-							type="multiselect"
-							:label-outside="false"
-							:manual-open="true"
-							:options="tipoFiltroOptions">
-							{{ t('empleados', 'Show') }}
-						</NcActionInput>
-
-						<NcActionInput v-model="estadoFiltro"
-							type="multiselect"
-							:label-outside="false"
-							:manual-open="true"
-							:options="estadoFiltroOptions">
-							{{ t('empleados', 'Status') }}
-						</NcActionInput>
-
-						<NcActionCheckbox v-model="onlySpecial">
-							{{ t('empleados', 'Only Special Clients') }}
-						</NcActionCheckbox>
-					</NcActions>
-
-					<span v-if="listFilterCount > 0" class="filter-badge">
-						{{ listFilterCount }}
-					</span>
+					<div class="filter-trigger">
+						<NcButton type="tertiary" class="filter-icon-button" @click="showListFilterModal = true">
+							<template #icon>
+								<FilterVariant :size="20" />
+							</template>
+						</NcButton>
+						<span v-if="listFilterCount > 0" class="filter-badge">
+							{{ listFilterCount }}
+						</span>
+					</div>
 				</template>
 				<template #details>
 					<div class="client-details">
@@ -432,10 +398,12 @@
 														@change="toggleSeleccionHonorario(honorario.id_honorario)">
 
 													<div class="honorario-info">
-														<span class="value-text">{{ honorario.tipo_servicio || t('empleados',
-															'Service') }}</span>
+														<span class="value-text">{{ honorario.tipo_servicio || t('empleados', 'Service') }}</span>
 														<span class="honorario-date">
 															{{ honorario.fecha_inicio }} — {{ honorario.fecha_fin }}
+														</span>
+														<span v-if="honorario.descripcion" class="honorario-descripcion">
+															{{ honorario.descripcion }}
 														</span>
 													</div>
 													<div class="honorario-meta">
@@ -458,6 +426,13 @@
 																type="secondary"
 																@click="completarHonorarioBorrador(honorario)">
 																{{ t('empleados', 'Complete fee') }}
+															</NcButton>
+
+															<NcButton v-if="canAdminCustomers && !Number(honorario.solicitud_generada)"
+																type="secondary"
+																class="btn-solicitar"
+																@click="abrirReporteHonorario(honorario)">
+																{{ t('empleados', 'Request') }}
 															</NcButton>
 
 															<NcButton v-if="Number(honorario.numero_parcialidades) > 0"
@@ -939,6 +914,67 @@
 			</div>
 		</NcModal>
 
+		<!-- Modal: Filtros de clientes -->
+		<NcModal v-if="showListFilterModal"
+			size="small"
+			:name="t('empleados', 'Filter companies')"
+			@close="showListFilterModal = false">
+			<div class="modal-content">
+				<div class="modal-header">
+					<p class="section-label">
+						{{ t('empleados', 'Companies and groups') }}
+					</p>
+					<h2>{{ t('empleados', 'Filter companies') }}</h2>
+				</div>
+
+				<div class="form-grid">
+					<NcSelect v-model="sortOrder"
+						class="span-2"
+						:input-label="t('empleados', 'Sort')"
+						:options="sortOrderOptions"
+						label="label"
+						track-by="value"
+						:searchable="false"
+						:clearable="false" />
+
+					<NcSelect v-model="tipoFiltro"
+						class="span-2"
+						:input-label="t('empleados', 'Show')"
+						:options="tipoFiltroOptions"
+						label="label"
+						track-by="value"
+						:searchable="false"
+						:clearable="false" />
+
+					<NcSelect v-model="estadoFiltro"
+						class="span-2"
+						:input-label="t('empleados', 'Status')"
+						:options="estadoFiltroOptions"
+						label="label"
+						track-by="value"
+						:searchable="false"
+						:clearable="false" />
+
+					<div class="special-client-card span-2">
+						<NcCheckboxRadioSwitch v-model="onlySpecial" type="switch" />
+						<div class="special-client-info">
+							<h3>{{ t('empleados', 'Only Special Clients') }}</h3>
+							<p>{{ t('empleados', 'Show only clients marked as special.') }}</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal-actions">
+					<NcButton @click="resetListFilters">
+						{{ t('empleados', 'Clear filters') }}
+					</NcButton>
+					<NcButton type="primary" @click="showListFilterModal = false">
+						{{ t('empleados', 'Apply') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
 		<!-- Modal: Filtros Honorarios -->
 		<NcModal v-if="honorarioFilterModal"
 			size="small"
@@ -1125,12 +1161,6 @@
 				<div class="form-grid">
 					<NcTextField :value.sync="h_tipo_servicio" :label="t('empleados', 'Service type')" />
 
-					<NcSelect v-model="h_titulo_mes"
-						:options="meses"
-						:placeholder="t('empleados', 'Month')"
-						label="label"
-						track-by="value"
-						:searchable="false" />
 					<NcSelect v-model="h_titulo_anio"
 						:options="anios"
 						:placeholder="t('empleados', 'Year')"
@@ -1145,7 +1175,6 @@
 						:searchable="false" />
 
 					<NcTextField type="number"
-						class="span-2"
 						:value.sync="h_importe_total"
 						:disabled="isEditingHonorario"
 						:label="t('empleados', 'Total amount')" />
@@ -1157,6 +1186,11 @@
 							<p>{{ t('empleados', 'Marks this service fee as special.') }}</p>
 						</div>
 					</div>
+
+					<NcTextArea class="span-2"
+						:value.sync="h_descripcion"
+						:label="t('empleados', 'Description')"
+						:rows="3" />
 
 					<!-- Fecha inicio (todos los tipos) -->
 					<div class="span-2">
@@ -1306,8 +1340,6 @@ import {
 	NcActions,
 	NcActionButton,
 	NcActionSeparator,
-	NcActionInput,
-	NcActionCheckbox,
 } from '@nextcloud/vue'
 
 const ClientesDashboard = () => import(
@@ -1355,8 +1387,6 @@ export default {
 		NcActions,
 		NcActionButton,
 		NcActionSeparator,
-		NcActionInput,
-		NcActionCheckbox,
 		FilterVariant,
 		NcEmptyContent,
 		NcNoteCard,
@@ -1390,12 +1420,13 @@ export default {
 			estado: true,
 			cliente_padre: null,
 			logoBust: Date.now(),
-			sortOrder: [],
+			sortOrder: { label: t('empleados', 'A to Z'), value: 'az' },
 			tipoFiltro: { label: t('empleados', 'All customers'), value: 'todos' },
 			estadoFiltro: { label: t('empleados', 'Active'), value: 'activos' },
 			onlySpecial: false,
 			showFilters: false,
 			/* honorarios */
+			showListFilterModal: false,
 			honorarios: [],
 			loadingHonorarios: false,
 			honorarioModal: false,
@@ -1460,7 +1491,7 @@ export default {
 			parcialidadACancelarFactura: null,
 			honorarioBorradorId: null,
 			button: false,
-			h_titulo_mes: null,
+			h_descripcion: '',
 			h_titulo_anio: { label: String(new Date().getFullYear()), value: new Date().getFullYear() },
 			h_especial: false,
 			honorarioFilterModal: false,
@@ -1518,6 +1549,10 @@ export default {
 			pagoClientePagador: null,
 			pagosRealizados: [],
 			loadingPagosRealizados: false,
+			seccionesColapsadas: {
+				grupos: false,
+				individuales: false,
+			},
 		}
 	},
 
@@ -1594,6 +1629,13 @@ export default {
 				: t('empleados', 'Create')
 		},
 
+		sortOrderOptions() {
+			return [
+				{ label: t('empleados', 'A to Z'), value: 'az' },
+				{ label: t('empleados', 'Z to A'), value: 'za' },
+			]
+		},
+
 		tipoFiltroOptions() {
 			return [
 				{ label: t('empleados', 'All customers'), value: 'todos' },
@@ -1645,16 +1687,18 @@ export default {
 				)
 			}
 
-			data.sort((a, b) => {
+			const direction = this.sortOrder?.value === 'za' ? -1 : 1
+			const compareNames = (a, b) => {
 				const nameA = (a.nombre || a.name || '').toLowerCase()
 				const nameB = (b.nombre || b.name || '').toLowerCase()
+				return nameA.localeCompare(nameB) * direction
+			}
 
-				return this.sortOrder.value === 'za'
-					? nameB.localeCompare(nameA)
-					: nameA.localeCompare(nameB)
-			})
+			if (tipo !== 'todos') {
+				return [...data].sort(compareNames)
+			}
 
-			return data
+			return this.buildHierarchy(data, compareNames)
 		},
 		/* --------------- Honorarios --------------- */
 		deleteHonorarioButtons() {
@@ -2165,6 +2209,12 @@ export default {
 
 		async GetCompanieGroup(id) {
 			const clientId = Number(id)
+
+			if (clientId < 0) {
+				this.toggleSeccion(clientId === -1 ? 'grupos' : 'individuales')
+				return
+			}
+
 			if (!Number.isFinite(clientId) || clientId <= 0) {
 				return
 			}
@@ -2218,6 +2268,91 @@ export default {
 				name: client.name || client.nombre,
 				count: client.count || client.child_count || 0,
 				logoUrl: client.logoUrl || (client.logo ? clienteLogoUrl(id, this.logoBust) : null),
+			}
+		},
+
+		buildHierarchy(data, compareNames) {
+			const idsInSet = new Set(data.map(item => Number(item.id)))
+			const byParent = new Map()
+
+			data.forEach(item => {
+				const rawParent = Number(item.cliente_padre || 0)
+				const parentId = idsInSet.has(rawParent) ? rawParent : 0
+
+				if (!byParent.has(parentId)) {
+					byParent.set(parentId, [])
+				}
+				byParent.get(parentId).push(item)
+			})
+
+			const roots = byParent.get(0) || []
+			const gruposRoots = roots.filter(r => (byParent.get(Number(r.id)) || []).length > 0)
+			const individualesRoots = roots.filter(r => (byParent.get(Number(r.id)) || []).length === 0)
+
+			gruposRoots.sort(compareNames)
+			individualesRoots.sort(compareNames)
+
+			const result = []
+
+			const appendChildren = (parentId, level) => {
+				const children = (byParent.get(parentId) || []).slice().sort(compareNames)
+
+				children.forEach(child => {
+					result.push({
+						...child,
+						name: this.indentedName(child.nombre || child.name, level),
+					})
+					appendChildren(Number(child.id), level + 1)
+				})
+			}
+
+			// --- Sección: Groups ---
+			result.push(this.buildSectionHeader('grupos', t('empleados', 'Groups'), gruposRoots.length))
+			if (!this.seccionesColapsadas.grupos) {
+				gruposRoots.forEach(root => {
+					result.push({ ...root, name: root.nombre || root.name })
+					appendChildren(Number(root.id), 1)
+				})
+			}
+
+			// --- Sección: Individual companies ---
+			result.push(this.buildSectionHeader('individuales', t('empleados', 'Individual companies'), individualesRoots.length))
+			if (!this.seccionesColapsadas.individuales) {
+				individualesRoots.forEach(root => {
+					result.push({ ...root, name: root.nombre || root.name })
+				})
+			}
+
+			return result
+		},
+
+		buildSectionHeader(key, label, count) {
+			const colapsada = this.seccionesColapsadas[key]
+			const icono = colapsada ? '▸' : '▾'
+
+			return {
+				id: this.sectionHeaderId(key),
+				estado: 1,
+				especial: 0,
+				child_count: 0,
+				esSeccion: true,
+				name: `${icono}  —— ${label} (${count}) ——`,
+			}
+		},
+
+		sectionHeaderId(key) {
+			return key === 'grupos' ? -1 : -2
+		},
+
+		indentedName(nombre, level) {
+			const indent = '\u00A0\u00A0'.repeat(level)
+			return `${indent}${nombre}`
+		},
+
+		toggleSeccion(key) {
+			this.seccionesColapsadas = {
+				...this.seccionesColapsadas,
+				[key]: !this.seccionesColapsadas[key],
 			}
 		},
 
@@ -2488,8 +2623,8 @@ export default {
 			this.h_anio_inicio = { label: String(currentYear), value: currentYear }
 			this.h_mes_fin = null
 			this.h_anio_fin = { label: String(currentYear), value: currentYear }
-			this.h_titulo_mes = null
 			this.h_titulo_anio = { label: String(currentYear), value: currentYear }
+			this.h_descripcion = ''
 			this.h_especial = false
 			this.h_periodicidad = this.periodicidadOptions[0]
 		},
@@ -2501,6 +2636,13 @@ export default {
 			this.hf_soloEspecial = false
 			this.hf_desde = ''
 			this.hf_hasta = ''
+		},
+
+		resetListFilters() {
+			this.sortOrder = this.sortOrderOptions[0]
+			this.tipoFiltro = this.tipoFiltroOptions[0]
+			this.estadoFiltro = this.estadoFiltroOptions.find(o => o.value === 'activos') || this.estadoFiltroOptions[0]
+			this.onlySpecial = false
 		},
 
 		async GetHonorariosByCliente(idCliente) {
@@ -2541,19 +2683,16 @@ export default {
 			this.savingHonorario = true
 
 			try {
-				// fecha_fin según tipo
 				let fechaFin = ''
 				if (this.h_tipo_honorario === 'parcial') {
 					fechaFin = this.h_mes_fin && this.h_anio_fin
 						? `${this.h_anio_fin.value}-${String(this.h_mes_fin.value).padStart(2, '0')}-01`
 						: ''
 				} else if (this.h_tipo_honorario === 'eventual') {
-					// misma fecha que inicio
 					fechaFin = this.h_mes_inicio && this.h_anio_inicio
 						? `${this.h_anio_inicio.value}-${String(this.h_mes_inicio.value).padStart(2, '0')}-01`
 						: ''
 				}
-				// iguala: fecha_fin vacía (indefinida)
 
 				const payload = {
 					id_cliente: this.selectedClient.id,
@@ -2566,11 +2705,11 @@ export default {
 						: '',
 					fecha_fin: fechaFin,
 					periodicidad_parcialidad: this.h_periodicidad?.value || 1,
+					descripcion: String(this.h_descripcion || '').trim(),
 					tipo_servicio: (() => {
 						const base = String(this.h_tipo_servicio || '').trim()
-						const mes = this.h_titulo_mes?.label || ''
 						const anio = this.h_titulo_anio?.value || ''
-						const sufijo = (mes && anio) ? ` - ${mes} ${anio}` : ''
+						const sufijo = anio ? ` - ${anio}` : ''
 						return base ? `${base}${sufijo}` : (sufijo.trim() || null)
 					})(),
 				}
@@ -3035,22 +3174,20 @@ export default {
 			this.h_tipo_honorario = honorario.tipo_honorario || 'parcial'
 			this.h_especial = Boolean(Number(honorario.especial))
 			this.h_importe_total = String(honorario.importe_total)
+			this.h_descripcion = honorario.descripcion || ''
 
 			this.h_tipo_moneda = this.currencyOptions.find(c => c.value === honorario.tipo_moneda)
 				|| this.currencyOptions[0]
 
-			// Separar el tipo_servicio base del sufijo "- Mes Año" que se concatena al crear
 			const raw = String(honorario.tipo_servicio || '')
-			const match = raw.match(/^(.*?)(?:\s-\s([A-Za-z]+)\s(\d{4}))?$/)
+			const match = raw.match(/^(.*?)(?:\s-\s(\d{4}))?$/)
 
 			this.h_tipo_servicio = match && match[1] ? match[1].trim() : raw
 
-			if (match && match[2] && match[3]) {
-				this.h_titulo_mes = this.meses.find(m => m.label === match[2]) || null
-				this.h_titulo_anio = { label: match[3], value: Number(match[3]) }
+			if (match && match[2]) {
+				this.h_titulo_anio = { label: match[2], value: Number(match[2]) }
 			}
 
-			// Fechas se muestran solo de referencia (bloqueadas)
 			if (honorario.fecha_inicio) {
 				const [anio, mes] = honorario.fecha_inicio.split('-')
 				this.h_anio_inicio = { label: anio, value: Number(anio) }
@@ -3078,15 +3215,15 @@ export default {
 			try {
 				const tipoServicioFinal = (() => {
 					const base = String(this.h_tipo_servicio || '').trim()
-					const mes = this.h_titulo_mes?.label || ''
 					const anio = this.h_titulo_anio?.value || ''
-					const sufijo = (mes && anio) ? ` - ${mes} ${anio}` : ''
+					const sufijo = anio ? ` - ${anio}` : ''
 					return base ? `${base}${sufijo}` : (sufijo.trim() || null)
 				})()
 
 				await axios.post(generateUrl('/apps/empleados/actualizarMetadatosHonorario'), {
 					id_honorario: this.editingHonorarioId,
 					tipo_servicio: tipoServicioFinal,
+					descripcion: String(this.h_descripcion || '').trim(),
 					tipo_moneda: this.h_tipo_moneda?.value || 'MXN',
 					especial: this.h_especial ? 1 : 0,
 				})
@@ -3184,6 +3321,7 @@ export default {
 				URL.revokeObjectURL(url)
 
 				this.reporteModal = false
+				await this.GetHonorariosByCliente(this.selectedClient.id)
 			} catch (err) {
 				showError(t('empleados', 'Error generating report: {error}', { error: String(err) }))
 			} finally {
@@ -3227,6 +3365,7 @@ export default {
 				)
 
 				this.reporteModal = false
+				await this.GetHonorariosByCliente(this.selectedClient.id)
 			} catch (err) {
 				showError(t('empleados', 'Error sending request: {error}', { error: String(err) }))
 			} finally {
@@ -3800,7 +3939,7 @@ export default {
 
 .honorario-info {
 	display: flex;
-	flex: 1 1 240px;
+	flex: 1 1 100%;
 	flex-direction: column;
 	gap: 2px;
 	min-width: 0;
@@ -3825,9 +3964,9 @@ export default {
 
 .honorario-meta {
 	display: flex;
-	flex: 1 1 420px;
+	flex: 1 1 100%;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	gap: 8px;
 	flex-wrap: wrap;
 }
@@ -4196,6 +4335,13 @@ export default {
 	padding-left: 4px !important;
 	padding-right: 4px !important;
 }
+
+.filter-trigger {
+	display: inline-flex;
+	align-items: center;
+	position: relative;
+}
+
 .companies-tabs {
 	width: 100%;
 	margin: 16px 0 24px;
@@ -4485,5 +4631,23 @@ export default {
 	background: var(--color-background-soft);
 	font-size: 0.875rem;
 	color: var(--color-main-text);
+}
+
+.honorario-descripcion {
+	font-size: 0.75rem;
+	color: var(--color-text-maxcontrast);
+	white-space: normal;
+	overflow-wrap: break-word;
+	word-break: break-word;
+}
+
+.btn-solicitar :deep(button) {
+	background-color: var(--color-primary-element-light) !important;
+	color: var(--color-primary-element) !important;
+	border: 1px solid color-mix(in srgb, var(--color-primary-element) 40%, transparent) !important;
+}
+
+.btn-solicitar :deep(button:hover) {
+	background-color: color-mix(in srgb, var(--color-primary-element-light) 70%, var(--color-primary-element)) !important;
 }
 </style>

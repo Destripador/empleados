@@ -199,6 +199,7 @@ class HonorariosController extends BaseController {
 		string $fecha_inicio,
 		string $fecha_fin,
 		?string $tipo_servicio,
+		?string $descripcion,
 		bool $especial,
 		string $tipo_honorario = 'parcial',
     	int $periodicidad_parcialidad = 1
@@ -213,6 +214,7 @@ class HonorariosController extends BaseController {
 		$honorario->setFecha_inicio($fecha_inicio);
 		$honorario->setFecha_fin($fecha_fin);
 		$honorario->setTipo_servicio($tipo_servicio);
+		$honorario->setDescripcion($descripcion);
 		$honorario->setTipo_honorario($tipo_honorario);
 		$honorario->setEspecial($especial);
 		$honorario->setActivo(true);
@@ -249,6 +251,7 @@ class HonorariosController extends BaseController {
 		string $fecha_inicio,
 		string $fecha_fin,
 		?string $tipo_servicio,
+		?string $descripcion,
 		bool $especial,
 		string $tipo_honorario = 'parcial'
 	): DataResponse {
@@ -264,6 +267,7 @@ class HonorariosController extends BaseController {
 			$fecha_inicio,
 			$fecha_fin,
 			$tipo_servicio,
+			$descripcion,
 			$especial,
 			$tipo_honorario
 		);
@@ -300,6 +304,7 @@ class HonorariosController extends BaseController {
 		$fechaInicio = (string)$this->request->getParam('fecha_inicio');
 		$fechaFin = (string)$this->request->getParam('fecha_fin');
 		$tipoServicio = $this->request->getParam('tipo_servicio');
+		$descripcion = $this->request->getParam('descripcion');
 		$especial = (bool)$this->request->getParam('especial', false);
 		$tipoHonorario = (string)$this->request->getParam('tipo_honorario', 'parcial');
 		$periodicidadParcialidad = (int)$this->request->getParam('periodicidad_parcialidad', 1);
@@ -315,6 +320,7 @@ class HonorariosController extends BaseController {
 				$fechaInicio,
 				$fechaFin,
 				$tipoServicio !== null ? (string)$tipoServicio : null,
+				$descripcion !== null ? (string)$descripcion : null,
 				$especial,
 				$tipoHonorario,
 				$periodicidadParcialidad
@@ -471,6 +477,7 @@ class HonorariosController extends BaseController {
 
 		$idHonorario = (int)$this->request->getParam('id_honorario');
 		$tipoServicio = $this->request->getParam('tipo_servicio');
+		$descripcion = $this->request->getParam('descripcion');
 		$tipoMoneda = (string)$this->request->getParam('tipo_moneda', 'MXN');
 		$especial = (bool)$this->request->getParam('especial', false);
 
@@ -479,6 +486,7 @@ class HonorariosController extends BaseController {
 		$this->honorariosMapper->actualizarMetadatos(
 			$idHonorario,
 			$tipoServicio !== null ? (string)$tipoServicio : null,
+			$descripcion !== null ? (string)$descripcion : null,
 			$tipoMoneda,
 			$especial
 		);
@@ -489,6 +497,10 @@ class HonorariosController extends BaseController {
 
 			if (($old['tipo_servicio'] ?? '') !== (string)($tipoServicio ?? '')) {
 				$cambios[] = 'el servicio';
+			}
+
+			if (($old['descripcion'] ?? '') !== (string)($descripcion ?? '')) {
+				$cambios[] = 'la descripción';
 			}
 
 			if (strtoupper((string)($old['tipo_moneda'] ?? '')) !== strtoupper($tipoMoneda)) {
@@ -556,6 +568,8 @@ class HonorariosController extends BaseController {
 				$nombreSocio
 			);
 
+			$this->honorariosMapper->marcarSolicitudGenerada($id_honorario);
+
 			return new DataDownloadResponse(
 				$solicitud['contenido'],
 				$solicitud['nombreArchivo'],
@@ -617,8 +631,6 @@ class HonorariosController extends BaseController {
 			throw new \Exception('No se encontró el cliente.');
 		}
 
-		$templatePath = __DIR__ . '/../../templates/PlantillaReporte.xlsx';
-
 		$grupoNombre = '';
 
 		if (!empty($cliente['cliente_padre'])) {
@@ -644,32 +656,82 @@ class HonorariosController extends BaseController {
 			? 'TRABAJOS ESPECIALES'
 			: 'FACTURACIÓN DE IGUALAS Y PAGOS EN PARCIALIDADES';
 
-		$numParcialidades = (int)($honorario['numero_parcialidades'] ?? 0);
+		// --- Desglose de parcialidades ---
+		$totalMeses = 1;
+		$grupos = [1];
 
-		$montoParcialidad = $numParcialidades > 0
-			? $importeTotal / $numParcialidades
-			: $importeTotal;
+		if (!$esIguala && !$esEventual) {
+			$totalMeses = $this->calcularTotalMeses(
+				$honorario['fecha_inicio'] ?? null,
+				$honorario['fecha_fin'] ?? null
+			);
 
-		$mesesEs = [
-			'ENERO',
-			'FEBRERO',
-			'MARZO',
-			'ABRIL',
-			'MAYO',
-			'JUNIO',
-			'JULIO',
-			'AGOSTO',
-			'SEPTIEMBRE',
-			'OCTUBRE',
-			'NOVIEMBRE',
-			'DICIEMBRE',
+			$grupos = $this->inferirGruposParcialidades(
+				$totalMeses,
+				(int)($honorario['numero_parcialidades'] ?? 1)
+			);
+		}
+
+		$importePorMes = $totalMeses > 0 ? $importeTotal / $totalMeses : $importeTotal;
+		$grupoNormal = $grupos[0] ?? 1;
+		$ultimoGrupo = end($grupos) ?: $grupoNormal;
+
+		$periodicidadLabels = [
+			1 => 'Mensuales',
+			2 => 'Bimestrales',
+			3 => 'Trimestrales',
+			12 => 'Anuales',
 		];
 
+		$periodicidadLabel = $periodicidadLabels[$grupoNormal] ?? null;
+
+		$hayPagoFinalDistinto = !$esIguala && !$esEventual
+			&& count($grupos) > 1
+			&& $ultimoGrupo !== $grupoNormal;
+
+		$numParcialidades = $hayPagoFinalDistinto ? count($grupos) - 1 : count($grupos);
+		$montoParcialidad = $esIguala
+			? $importeTotal
+			: round($importePorMes * $grupoNormal, 2);
+		$montoParcialidadFinal = $hayPagoFinalDistinto
+			? round($importePorMes * $ultimoGrupo, 2)
+			: $montoParcialidad;
+
+		// --- Selección de plantilla ---
+		$nombrePlantilla = $hayPagoFinalDistinto
+			? 'PlantillaReporteParcialidades.xlsx'
+			: 'PlantillaReporte.xlsx';
+
+		$templatePath = __DIR__ . '/../../templates/' . $nombrePlantilla;
+
+		$mesesEs = [
+			'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+			'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
+		];
+
+		// --- Periodo de facturación ---
 		$periodoTxt = '';
 
-		if (!empty($honorario['fecha_inicio'])) {
-			$fecha = new \DateTime($honorario['fecha_inicio']);
-			$periodoTxt = $mesesEs[(int)$fecha->format('n') - 1] . ' ' . $fecha->format('Y');
+		if ($esIguala || $esEventual) {
+			if (!empty($honorario['fecha_inicio'])) {
+				$fecha = new \DateTime($honorario['fecha_inicio']);
+				$periodoTxt = $mesesEs[(int)$fecha->format('n') - 1] . ' ' . $fecha->format('Y');
+			}
+		} else {
+			$inicioTxt = '';
+			$finTxt = '';
+
+			if (!empty($honorario['fecha_inicio'])) {
+				$fecha = new \DateTime($honorario['fecha_inicio']);
+				$inicioTxt = $mesesEs[(int)$fecha->format('n') - 1] . ' ' . $fecha->format('Y');
+			}
+
+			if (!empty($honorario['fecha_fin'])) {
+				$fecha = new \DateTime($honorario['fecha_fin']);
+				$finTxt = $mesesEs[(int)$fecha->format('n') - 1] . ' ' . $fecha->format('Y');
+			}
+
+			$periodoTxt = trim($inicioTxt . ' - ' . $finTxt, ' -');
 		}
 
 		$monedasTxt = [
@@ -680,6 +742,15 @@ class HonorariosController extends BaseController {
 
 		$tipoMoneda = strtoupper((string)($honorario['tipo_moneda'] ?? 'MXN'));
 		$monedaTxt = $monedasTxt[$tipoMoneda] ?? $tipoMoneda;
+
+		$monedaNombreMayus = [
+			'USD' => 'DÓLAR (USD)',
+			'EUR' => 'EURO (EUR)',
+		];
+
+		$textoMoneda = isset($monedaNombreMayus[$tipoMoneda])
+			? 'El tipo de moneda para el pago es ' . $monedaNombreMayus[$tipoMoneda] . '.'
+			: '';
 
 		$liderNombre = '';
 
@@ -701,6 +772,12 @@ class HonorariosController extends BaseController {
 
 		$colaboradoresTxt = implode(', ', $colaboradoresNombres);
 
+		$asuntoTxt = $asunto ?? ($honorario['tipo_servicio'] ?? '');
+
+		if (!$esIguala && !$esEventual && $periodicidadLabel) {
+			$asuntoTxt .= ' (Pagos: ' . $periodicidadLabel . ')';
+		}
+
 		$replacements = [
 			'{fecha}' => date('d/m/Y'),
 			'{departamento}' => $departamento ?? '',
@@ -716,13 +793,13 @@ class HonorariosController extends BaseController {
 			'{honorario.moneda}' => $monedaTxt,
 			'{tipo_moneda}' => $tipoMoneda,
 			'{texto_tipo}' => $textoTipo,
+			'{texto_moneda}' => $textoMoneda,
 			'{honorario.iguala_mark}' => $esIguala ? 'X' : '',
 			'{honorario.parcialidad_mark}' => (!$esIguala && !$esEventual) ? 'X' : '',
-			'{honorario.num_parcialidades}' => $esIguala ? '1' : (($numParcialidades > 0) ? (string)$numParcialidades : ''),
-			'{honorario.monto_parcialidad}' => $esIguala
-				? number_format($importeTotal, 2, '.', ',')
-				: number_format(round($montoParcialidad, 2), 2, '.', ','),
-			'{honorario.asunto}' => $asunto ?? ($honorario['tipo_servicio'] ?? ''),
+			'{honorario.num_parcialidades}' => $esIguala ? '1' : (string)$numParcialidades,
+			'{honorario.monto_parcialidad}' => number_format($montoParcialidad, 2, '.', ','),
+			'{honorario.monto_parcialidad2}' => number_format($montoParcialidadFinal, 2, '.', ','),
+			'{honorario.asunto}' => $asuntoTxt,
 			'{honorario.periodo}' => $periodoTxt,
 
 			'{lider}' => $liderNombre,
@@ -760,6 +837,46 @@ class HonorariosController extends BaseController {
 			'cliente' => $cliente,
 			'honorario' => $honorario,
 		];
+	}
+
+	/**
+	 * Total de meses cubiertos por el honorario
+	 */
+	private function calcularTotalMeses(?string $fechaInicio, ?string $fechaFin): int {
+		if (empty($fechaInicio) || empty($fechaFin)) {
+			return 1;
+		}
+
+		$inicio = new \DateTime($fechaInicio);
+		$fin = new \DateTime($fechaFin);
+		$diferencia = $inicio->diff($fin);
+
+		return max(($diferencia->y * 12) + $diferencia->m + 1, 1);
+	}
+
+	/**
+	 * Reconstruye el desglose de meses por parcialidad
+	 */
+	private function inferirGruposParcialidades(int $totalMeses, int $numGrupos): array {
+		if ($numGrupos <= 1) {
+			return [$totalMeses > 0 ? $totalMeses : 1];
+		}
+
+		foreach ([1, 2, 3, 12] as $periodicidad) {
+			$grupos = [];
+			$restante = $totalMeses;
+
+			while ($restante > 0) {
+				$grupos[] = min($periodicidad, $restante);
+				$restante -= $periodicidad;
+			}
+
+			if (count($grupos) === $numGrupos) {
+				return $grupos;
+			}
+		}
+
+		return array_fill(0, $numGrupos, (int)round($totalMeses / $numGrupos));
 	}
 
 	#[UseSession]
@@ -863,6 +980,7 @@ class HonorariosController extends BaseController {
 				);
 
 				$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'envio_solicitud', $mensaje);
+				$this->honorariosMapper->marcarSolicitudGenerada($id_honorario);
 			}
 
 			return new DataResponse([
@@ -890,7 +1008,7 @@ class HonorariosController extends BaseController {
 		}
 	}
 
-		#[UseSession]
+	#[UseSession]
 	#[NoAdminRequired]
 	public function descargarSolicitudesMultiples() {
 		$this->requireClientesAdminAccess();

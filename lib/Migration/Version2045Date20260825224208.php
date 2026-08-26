@@ -22,7 +22,6 @@ class Version2045Date20260825224208 extends SimpleMigrationStep {
 	}
 
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
-		// No hay cambios de esquema, solo datos.
 		return null;
 	}
 

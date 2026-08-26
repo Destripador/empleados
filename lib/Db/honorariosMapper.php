@@ -200,6 +200,7 @@ class honorariosMapper extends QBMapper {
 		?string $fecha_inicio,
 		?string $fecha_fin,
 		?string $tipo_servicio,
+		?string $descripcion,
 		bool $especial,
 		string $tipo_honorario = 'parcial',
 		int $periodicidad = 1
@@ -222,6 +223,7 @@ class honorariosMapper extends QBMapper {
 			->set('fecha_fin', $qb->createNamedParameter($fecha_fin))
 			->set('numero_parcialidades', $qb->createNamedParameter($parcialidades))
 			->set('tipo_servicio', $qb->createNamedParameter($tipo_servicio))
+			->set('descripcion', $qb->createNamedParameter($descripcion))
 			->set('tipo_honorario', $qb->createNamedParameter($tipo_honorario))
 			->set('especial', $qb->createNamedParameter($especial, IQueryBuilder::PARAM_INT))
 			->where(
@@ -384,6 +386,7 @@ class honorariosMapper extends QBMapper {
 	public function actualizarMetadatos(
 		int $id_honorario,
 		?string $tipo_servicio,
+		?string $descripcion,
 		string $tipo_moneda,
 		bool $especial
 	): void {
@@ -391,8 +394,27 @@ class honorariosMapper extends QBMapper {
 
 		$qb->update($this->getTableName())
 			->set('tipo_servicio', $qb->createNamedParameter($tipo_servicio))
+			->set('descripcion', $qb->createNamedParameter($descripcion))
 			->set('tipo_moneda', $qb->createNamedParameter($tipo_moneda))
 			->set('especial', $qb->createNamedParameter($especial, IQueryBuilder::PARAM_INT))
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Marca un honorario como que ya se generó/envió al menos una solicitud
+	 */
+	public function marcarSolicitudGenerada(int $id_honorario): void {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('solicitud_generada', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
 			->where(
 				$qb->expr()->eq(
 					'id_honorario',
