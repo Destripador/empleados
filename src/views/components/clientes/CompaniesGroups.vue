@@ -2345,8 +2345,11 @@ export default {
 		},
 
 		indentedName(nombre, level) {
-			const indent = '\u00A0\u00A0'.repeat(level)
-			return `${indent}${nombre}`
+			if (level <= 0) {
+				return nombre
+			}
+			const indent = '\u00A0\u00A0\u00A0'.repeat(level - 1)
+			return `${indent}› ${nombre}`
 		},
 
 		toggleSeccion(key) {

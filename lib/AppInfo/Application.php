@@ -96,6 +96,10 @@ class Application extends App implements IBootstrap {
 			if (!$jobList->has(ActualizarAniversarios::class, null)) {
 				$jobList->add(ActualizarAniversarios::class);
 			}
+
+			if (!$jobList->has(\OCA\Empleados\BackgroundJob\SincronizarTipoCambioJob::class, null)) {
+				$jobList->add(\OCA\Empleados\BackgroundJob\SincronizarTipoCambioJob::class);
+			}
 		});
 	}
 }

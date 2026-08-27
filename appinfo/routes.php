@@ -125,6 +125,15 @@ return [
 		['name' => 'capitalhumano#GetCapitalHumano', 'url' => '/GetCapitalHumano', 'verb' => 'GET'],
 		['name' => 'capitalhumano#UpdateCapitalHumano', 'url' => '/UpdateCapitalHumano', 'verb' => 'POST'],
 
+		/********************************* MONEDAS ******************************************/
+		['name' => 'moneda#GetMonedas', 'url' => '/GetMonedas', 'verb' => 'GET'],
+		['name' => 'moneda#AgregarMoneda', 'url' => '/AgregarMoneda', 'verb' => 'POST'],
+		['name' => 'moneda#ModificarMoneda', 'url' => '/ModificarMoneda', 'verb' => 'POST'],
+		['name' => 'moneda#EliminarMoneda', 'url' => '/EliminarMoneda', 'verb' => 'POST'],
+
+		/***************************** TIPO DE CAMBIO ***************************************/
+		['name' => 'tipocambio#GetTipoCambio', 'url' => '/GetTipoCambio', 'verb' => 'GET'],
+		['name' => 'tipocambio#SincronizarTipoCambio', 'url' => '/SincronizarTipoCambio', 'verb' => 'POST'],
 
 		/****************************** ANIVERSARIOS ****************************************/
 		['name' => 'aniversarios#Getaniversarios', 'url' => '/Getaniversarios', 'verb' => 'GET'],
