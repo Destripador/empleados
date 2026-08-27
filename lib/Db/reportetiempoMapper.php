@@ -2104,6 +2104,69 @@ class reportetiempoMapper extends QBMapper {
 	}
 
 	/**
+	 * Ausencias agrupadas por el nombre real guardado al generar el reporte.
+	 * Los sufijos de medio dia se consolidan en el mismo tipo de ausencia.
+	 *
+	 * @param int[] $idEmpleados
+	 * @param array<string,mixed> $filters
+	 * @return array<int,array<string,int|float|string>>
+	 */
+	public function getAdminHoursByAbsenceType(
+		string $fechaInicio,
+		string $fechaFin,
+		array $idEmpleados,
+		array $filters = [],
+	): array {
+		$filters['tipo_trabajo'] = reportetiempo::TIPO_AUSENCIA;
+		unset($filters['id_cliente']);
+		$context = $this->normalizeAdminQueryContext($fechaInicio, $fechaFin, $idEmpleados, $filters);
+		if ($context['employee_ids'] === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('r.descripcion')
+			->selectAlias($qb->createFunction('COALESCE(SUM(r.tiempo_registrado), 0)'), 'total_minutos')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'total_reportes')
+			->selectAlias($qb->createFunction('COUNT(DISTINCT r.id_empleado)'), 'empleados')
+			->from($this->getTableName(), 'r')
+			->groupBy('r.descripcion')
+			->orderBy('total_minutos', 'DESC');
+
+		$this->applyAdminQueryContext($qb, 'r', $context);
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$grouped = [];
+		foreach ($rows as $row) {
+			$label = trim((string)($row['descripcion'] ?? ''));
+			$label = preg_replace('/\s+\((Manana|Mañana|Tarde)\)$/iu', '', $label) ?? $label;
+			$label = $label !== '' ? $label : 'Ausencia';
+			if (!isset($grouped[$label])) {
+				$grouped[$label] = [
+					'nombre' => $label,
+					'total_minutos' => 0.0,
+					'horas' => 0.0,
+					'total_reportes' => 0,
+					'empleados' => 0,
+				];
+			}
+			$grouped[$label]['total_minutos'] += (float)($row['total_minutos'] ?? 0);
+			$grouped[$label]['horas'] = $grouped[$label]['total_minutos'] / 60;
+			$grouped[$label]['total_reportes'] += (int)($row['total_reportes'] ?? 0);
+			$grouped[$label]['empleados'] += (int)($row['empleados'] ?? 0);
+		}
+
+		$items = array_values($grouped);
+		usort($items, static fn (array $left, array $right): int =>
+			((float)$right['total_minutos']) <=> ((float)$left['total_minutos'])
+		);
+
+		return $items;
+	}
+
+	/**
 	 * Horas administrativas agrupadas por fecha.
 	 *
 	 * @param int[] $idEmpleados
@@ -2453,6 +2516,55 @@ class reportetiempoMapper extends QBMapper {
 			'registros' => (int)($row['registros'] ?? 0),
 			'minutos_reportados' => (float)($row['minutos_reportados'] ?? 0),
 		];
+	}
+
+	/**
+	 * Resumen diario agrupado para evitar una consulta por empleado.
+	 *
+	 * @param int[] $idEmpleados
+	 * @return array<int,array{id_empleado:int,registros:int,minutos_reportados:float}>
+	 */
+	public function getResumenDiaByEmpleados(array $idEmpleados, string $fecha): array {
+		$idEmpleados = array_values(array_unique(array_filter(
+			array_map('intval', $idEmpleados),
+			static fn (int $id): bool => $id > 0,
+		)));
+		if ($idEmpleados === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id_empleado')
+			->selectAlias($qb->createFunction('COUNT(*)'), 'registros')
+			->selectAlias($qb->createFunction('COALESCE(SUM(tiempo_registrado), 0)'), 'minutos_reportados')
+			->from($this->getTableName())
+			->where($qb->expr()->in(
+				'id_empleado',
+				$qb->createNamedParameter($idEmpleados, IQueryBuilder::PARAM_INT_ARRAY)
+			))
+			->andWhere($qb->expr()->eq(
+				'fecha_registro',
+				$qb->createNamedParameter($fecha)
+			))
+			->groupBy('id_empleado');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$indexed = [];
+		foreach ($rows as $row) {
+			$id = (int)($row['id_empleado'] ?? 0);
+			if ($id > 0) {
+				$indexed[$id] = [
+					'id_empleado' => $id,
+					'registros' => (int)($row['registros'] ?? 0),
+					'minutos_reportados' => (float)($row['minutos_reportados'] ?? 0),
+				];
+			}
+		}
+
+		return $indexed;
 	}
 
 	private function aplicarFiltroEmpleados(IQueryBuilder $qb, array $idEmpleados): void {

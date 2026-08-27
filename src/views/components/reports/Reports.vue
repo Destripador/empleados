@@ -525,11 +525,11 @@ export default {
 			}
 		},
 
-		horasMinimasDiarias() {
+		horasEsperadasDiarias() {
 			const configured = Number(
-				this.configuraciones?.Reportes?.horas_minimas
-				?? this.configuraciones?.reportes_horas_minimas
-				?? 0,
+				this.configuraciones?.Reportes?.horas_esperadas_jornada
+					?? this.configuraciones?.reportes_horas_esperadas_jornada
+					?? 8,
 			)
 
 			return Number.isFinite(configured) && configured > 0
@@ -539,7 +539,7 @@ export default {
 
 		cumplimientoMetaMinutos() {
 			return Math.round(
-				this.horasMinimasDiarias
+				this.horasEsperadasDiarias
 				* this.diasHabilesFiltrados
 				* 60,
 			)

@@ -80,6 +80,42 @@ class empleadosMapper extends QBMapper {
 		return $users;
 	}
 
+	/**
+	 * Directorio minimo para alcance jerarquico y reportes de equipo.
+	 * El LEFT JOIN conserva referencias a empleados cuyo usuario fue eliminado.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function getReportingDirectory(bool $activeOnly = true): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(
+			'e.Id_empleados',
+			'e.Id_user',
+			'e.Id_equipo',
+			'e.Id_departamento',
+			'e.Ingreso',
+			'e.Estado',
+			'e.Sueldo'
+		)
+			->selectAlias('u.displayname', 'displayname')
+			->from($this->getTableName(), 'e')
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->orderBy('u.displayname', 'ASC');
+
+		if ($activeOnly) {
+			$qb->where($qb->expr()->eq(
+				'e.Estado',
+				$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
     public function GetMyEmployeeInfo($id): array {
 		$qb = $this->db->getQueryBuilder();
 

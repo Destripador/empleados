@@ -5,364 +5,380 @@
 			<span>{{ t('empleados', 'Loading administrative report...') }}</span>
 		</div>
 
-		<div v-else-if="!hasAdministrativeData" class="dashboard-state dashboard-state--empty">
-			<strong>{{ t('empleados', 'No reports for this period.') }}</strong>
-			<span>{{ t('empleados', 'Try another period or change the report filters.') }}</span>
-		</div>
-
 		<div v-else class="dashboard-content">
-			<!-- 1. Cumplimiento general -->
-			<section class="dashboard-section" aria-labelledby="admin-compliance-heading">
-				<header class="section-heading">
-					<div>
-						<p class="section-eyebrow">
-							{{ t('empleados', 'Compliance') }}
-						</p>
-						<h2 id="admin-compliance-heading">
-							{{ t('empleados', 'Reported hours against expected hours') }}
-						</h2>
-					</div>
-				</header>
+			<div v-if="!hasAdministrativeData" class="dashboard-state dashboard-state--empty">
+				<strong>{{ t('empleados', 'No reports for this period.') }}</strong>
+				<span>{{ t('empleados', 'Try another period or change the report filters.') }}</span>
+			</div>
 
-				<div class="compliance-grid">
-					<article
-						v-for="item in complianceCards"
-						:key="item.key"
-						class="compliance-card"
-						:class="complianceStatusClass(item)">
-						<div class="compliance-card__heading">
-							<div class="compliance-card__title">
-								<h3>{{ item.label }}</h3>
-								<p>{{ item.range }}</p>
-							</div>
-							<strong class="compliance-card__percent">
-								{{ formatPercent(item.percentage) }}
-							</strong>
+			<template v-else>
+				<!-- 1. Cumplimiento general -->
+				<section class="dashboard-section" aria-labelledby="admin-compliance-heading">
+					<header class="section-heading">
+						<div>
+							<p class="section-eyebrow">
+								{{ t('empleados', 'Compliance') }}
+							</p>
+							<h2 id="admin-compliance-heading">
+								{{ t('empleados', 'Accounted hours against expected hours') }}
+							</h2>
 						</div>
+					</header>
 
-						<p class="compliance-card__hours">
-							<strong>{{ formatHours(item.reported) }}</strong>
-							<span>/ {{ formatHours(item.expected) }}</span>
-						</p>
-
-						<div
-							class="progress-track"
-							role="progressbar"
-							:aria-label="item.label"
-							:aria-valuenow="clampPercentage(item.percentage)"
-							aria-valuemin="0"
-							aria-valuemax="100">
-							<div
-								class="progress-value"
-								:style="{ width: `${clampPercentage(item.percentage)}%` }" />
-						</div>
-
-						<div class="compliance-card__footer">
-							<span>{{ t('empleados', 'Reported') }}: {{ formatHours(item.reported) }}</span>
-							<span>{{ t('empleados', 'Pending') }}: {{ formatHours(item.pending) }}</span>
-						</div>
-					</article>
-				</div>
-			</section>
-
-			<!-- 2. Cumplimiento por empleado -->
-			<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employee-compliance-heading">
-				<header class="section-heading section-heading--compact section-heading--with-control">
-					<div>
-						<p class="section-eyebrow">
-							{{ t('empleados', 'Employees') }}
-						</p>
-						<h2 id="admin-employee-compliance-heading">
-							{{ t('empleados', 'Compliance by employee') }}
-						</h2>
-					</div>
-					<label class="compliance-mode">
-						<span class="visually-hidden">{{ t('empleados', 'Compliance view') }}</span>
-						<select v-model="complianceViewMode" class="compliance-mode__select">
-							<option value="attention">
-								{{ t('empleados', 'Needs attention') }}
-							</option>
-							<option value="all">
-								{{ t('empleados', 'All employees') }}
-							</option>
-						</select>
-					</label>
-				</header>
-
-				<div v-if="employeeComplianceVisible.length > 0" class="compliance-list-wrap">
-					<ul class="compliance-list" role="list">
-						<li
-							v-for="employee in employeeComplianceVisible"
-							:key="employee.key"
-							class="compliance-list__item"
-							:class="complianceStatusClass(employee)">
-							<div class="compliance-list__meta">
-								<strong class="compliance-list__name">{{ employee.name }}</strong>
-								<span class="compliance-list__percent">{{ formatPercent(employee.percentage) }}</span>
-							</div>
-							<div
-								class="compliance-list__track"
-								role="progressbar"
-								:aria-valuenow="clampPercentage(employee.percentage)"
-								aria-valuemin="0"
-								aria-valuemax="100"
-								:aria-label="employee.name">
-								<div
-									class="compliance-list__value"
-									:style="{ width: `${clampPercentage(employee.percentage)}%` }" />
-							</div>
-						</li>
-					</ul>
-					<p
-						v-if="complianceViewMode === 'attention' && employeeCompliance.length > employeeComplianceVisible.length"
-						class="chart-note">
-						{{ t('empleados', 'Showing the {shown} employees with the lowest compliance out of {total}.', {
-							shown: employeeComplianceVisible.length,
-							total: employeeCompliance.length,
-						}) }}
-					</p>
-				</div>
-				<div v-else class="inline-state inline-state--compact">
-					{{ t('empleados', 'No employee compliance data for this selection.') }}
-				</div>
-			</section>
-
-			<!-- 3. Distribución del tiempo -->
-			<section class="dashboard-section" aria-labelledby="admin-distribution-heading">
-				<header class="section-heading">
-					<div>
-						<p class="section-eyebrow">
-							{{ t('empleados', 'Distribution') }}
-						</p>
-						<h2 id="admin-distribution-heading">
-							{{ t('empleados', 'Time distribution') }}
-						</h2>
-					</div>
-				</header>
-
-				<div class="distribution-card">
-					<ul v-if="distributionItems.length > 0" class="distribution-list">
-						<li
-							v-for="item in distributionItems"
+					<div class="compliance-grid">
+						<article
+							v-for="item in complianceCards"
 							:key="item.key"
-							class="distribution-item">
-							<div class="distribution-item__heading">
-								<div class="distribution-item__label">
-									<span class="distribution-dot" :class="`distribution-dot--${item.key}`" />
-									<strong>{{ item.label }}</strong>
+							class="compliance-card"
+							:class="complianceStatusClass(item)">
+							<div class="compliance-card__heading">
+								<div class="compliance-card__title">
+									<h3>{{ item.label }}</h3>
+									<p>{{ item.range }}</p>
 								</div>
-								<span>{{ formatHours(item.hours) }} · {{ formatPercent(item.percentage) }}</span>
+								<strong class="compliance-card__percent">
+									{{ formatPercent(item.percentage) }}
+								</strong>
 							</div>
-							<div class="distribution-track">
+
+							<p class="compliance-card__hours">
+								<strong>{{ formatHours(item.accounted) }}</strong>
+								<span>/ {{ formatHours(item.expected) }}</span>
+							</p>
+
+							<div
+								class="progress-track"
+								role="progressbar"
+								:aria-label="item.label"
+								:aria-valuenow="clampPercentage(item.percentage)"
+								aria-valuemin="0"
+								aria-valuemax="100">
 								<div
-									class="distribution-value"
-									:class="`distribution-value--${item.key}`"
+									class="progress-value"
 									:style="{ width: `${clampPercentage(item.percentage)}%` }" />
 							</div>
-						</li>
-					</ul>
 
-					<div v-else-if="distributionEmptyMessages.length === 0" class="inline-state">
-						{{ t('empleados', 'No reported time is available for this selection.') }}
+							<div class="compliance-card__footer">
+								<span>{{ t('empleados', 'Reported') }}: {{ formatHours(item.reported) }}</span>
+								<span>{{ t('empleados', 'Accounted') }}: {{ formatHours(item.accounted) }}</span>
+								<span>{{ t('empleados', 'Pending') }}: {{ formatHours(item.pending) }}</span>
+							</div>
+						</article>
 					</div>
+				</section>
+			</template>
 
-					<div v-if="distributionEmptyMessages.length > 0" class="distribution-empty-messages">
-						<p v-for="message in distributionEmptyMessages" :key="message">
-							{{ message }}
-						</p>
-					</div>
-				</div>
-			</section>
+			<!-- 2. Equipos: el padre inyecta el resumen sin acoplarlo al dashboard. -->
+			<slot name="teams" />
 
-			<!-- 4. Rankings de trabajo -->
-			<section class="rankings-grid" :aria-label="t('empleados', 'Administrative time rankings')">
-				<article v-if="mostrarClientes" class="ranking-card">
-					<header class="section-heading section-heading--compact">
+			<template v-if="hasAdministrativeData">
+				<!-- 3. Distribución del tiempo -->
+				<section class="dashboard-section" aria-labelledby="admin-distribution-heading">
+					<header class="section-heading">
 						<div>
 							<p class="section-eyebrow">
-								{{ t('empleados', 'Client work') }}
+								{{ t('empleados', 'Distribution') }}
 							</p>
-							<h2>{{ t('empleados', 'Time by client') }}</h2>
+							<h2 id="admin-distribution-heading">
+								{{ t('empleados', 'Time distribution') }}
+							</h2>
 						</div>
 					</header>
 
-					<ol v-if="clientRanking.length > 0" class="ranking-list">
-						<li v-for="(item, index) in clientRanking" :key="item.key" class="ranking-item">
-							<span class="ranking-position">{{ index + 1 }}</span>
-							<div class="ranking-item__content">
-								<div class="ranking-item__heading">
-									<strong>{{ item.label }}</strong>
-									<span>{{ formatHours(item.hours) }}</span>
+					<div class="distribution-card">
+						<ul v-if="distributionItems.length > 0" class="distribution-list">
+							<li
+								v-for="item in distributionItems"
+								:key="item.key"
+								class="distribution-item">
+								<div class="distribution-item__heading">
+									<div class="distribution-item__label">
+										<span class="distribution-dot" :class="`distribution-dot--${item.key}`" />
+										<strong>{{ item.label }}</strong>
+									</div>
+									<span>{{ formatHours(item.hours) }} · {{ formatPercent(item.percentage) }}</span>
 								</div>
-								<div class="ranking-track">
-									<div class="ranking-value ranking-value--client" :style="{ width: `${item.relativeWidth}%` }" />
+								<div class="distribution-track">
+									<div
+										class="distribution-value"
+										:class="`distribution-value--${item.key}`"
+										:style="{ width: `${clampPercentage(item.percentage)}%` }" />
 								</div>
-								<small>{{ formatReports(item.reports) }}</small>
-							</div>
-						</li>
-					</ol>
-					<div v-else class="inline-state">
-						{{ t('empleados', 'No client work for this selection.') }}
-					</div>
-				</article>
+							</li>
+						</ul>
 
-				<article class="ranking-card" :class="{ 'ranking-card--wide': !mostrarClientes }">
+						<div v-else-if="distributionEmptyMessages.length === 0" class="inline-state">
+							{{ t('empleados', 'No reported time is available for this selection.') }}
+						</div>
+
+						<div v-if="distributionEmptyMessages.length > 0" class="distribution-empty-messages">
+							<p v-for="message in distributionEmptyMessages" :key="message">
+								{{ message }}
+							</p>
+						</div>
+					</div>
+				</section>
+
+				<!-- 4. Rankings de trabajo -->
+				<section class="rankings-grid" :aria-label="t('empleados', 'Administrative time rankings')">
+					<article v-if="mostrarClientes" class="ranking-card">
+						<header class="section-heading section-heading--compact">
+							<div>
+								<p class="section-eyebrow">
+									{{ t('empleados', 'Client work') }}
+								</p>
+								<h2>{{ t('empleados', 'Time by client') }}</h2>
+							</div>
+						</header>
+
+						<ol v-if="clientRanking.length > 0" class="ranking-list">
+							<li v-for="(item, index) in clientRanking" :key="item.key" class="ranking-item">
+								<span class="ranking-position">{{ index + 1 }}</span>
+								<div class="ranking-item__content">
+									<div class="ranking-item__heading">
+										<strong>{{ item.label }}</strong>
+										<span>{{ formatHours(item.hours) }}</span>
+									</div>
+									<div class="ranking-track">
+										<div class="ranking-value ranking-value--client" :style="{ width: `${item.relativeWidth}%` }" />
+									</div>
+									<small>{{ formatReports(item.reports) }}</small>
+								</div>
+							</li>
+						</ol>
+						<div v-else class="inline-state">
+							{{ t('empleados', 'No client work for this selection.') }}
+						</div>
+					</article>
+
+					<article class="ranking-card" :class="{ 'ranking-card--wide': !mostrarClientes }">
+						<header class="section-heading section-heading--compact">
+							<div>
+								<p class="section-eyebrow">
+									{{ t('empleados', 'Internal work') }}
+								</p>
+								<h2>{{ t('empleados', 'Time by internal activity') }}</h2>
+							</div>
+						</header>
+
+						<ol v-if="internalActivityRanking.length > 0" class="ranking-list">
+							<li v-for="(item, index) in internalActivityRanking" :key="item.key" class="ranking-item">
+								<span class="ranking-position">{{ index + 1 }}</span>
+								<div class="ranking-item__content">
+									<div class="ranking-item__heading">
+										<strong>{{ item.label }}</strong>
+										<span>{{ formatHours(item.hours) }}</span>
+									</div>
+									<div class="ranking-track">
+										<div class="ranking-value ranking-value--internal" :style="{ width: `${item.relativeWidth}%` }" />
+									</div>
+									<small>{{ formatReports(item.reports) }}</small>
+								</div>
+							</li>
+						</ol>
+						<div v-else class="inline-state">
+							{{ t('empleados', 'No internal work for this selection.') }}
+						</div>
+					</article>
+				</section>
+
+				<!-- 5. Cumplimiento por empleado (análisis secundario) -->
+				<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employee-compliance-heading">
+					<header class="section-heading section-heading--compact section-heading--with-control">
+						<div>
+							<p class="section-eyebrow">
+								{{ t('empleados', 'Employees') }}
+							</p>
+							<h2 id="admin-employee-compliance-heading">
+								{{ t('empleados', 'Compliance by employee') }}
+							</h2>
+						</div>
+						<label class="compliance-mode">
+							<span class="visually-hidden">{{ t('empleados', 'Compliance view') }}</span>
+							<select v-model="complianceViewMode" class="compliance-mode__select">
+								<option value="attention">
+									{{ t('empleados', 'Needs attention') }}
+								</option>
+								<option value="all">
+									{{ t('empleados', 'All employees') }}
+								</option>
+							</select>
+						</label>
+					</header>
+
+					<div v-if="employeeComplianceVisible.length > 0" class="compliance-list-wrap">
+						<ul class="compliance-list" role="list">
+							<li
+								v-for="employee in employeeComplianceVisible"
+								:key="employee.key"
+								class="compliance-list__item"
+								:class="complianceStatusClass(employee)">
+								<div class="compliance-list__meta">
+									<strong class="compliance-list__name">{{ employee.name }}</strong>
+									<span class="compliance-list__percent">{{ formatPercent(employee.percentage) }}</span>
+								</div>
+								<div
+									class="compliance-list__track"
+									role="progressbar"
+									:aria-valuenow="clampPercentage(employee.percentage)"
+									aria-valuemin="0"
+									aria-valuemax="100"
+									:aria-label="employee.name">
+									<div
+										class="compliance-list__value"
+										:style="{ width: `${clampPercentage(employee.percentage)}%` }" />
+								</div>
+							</li>
+						</ul>
+						<p
+							v-if="complianceViewMode === 'attention' && employeeCompliance.length > employeeComplianceVisible.length"
+							class="chart-note">
+							{{ t('empleados', 'Showing the {shown} employees with the lowest compliance out of {total}.', {
+								shown: employeeComplianceVisible.length,
+								total: employeeCompliance.length,
+							}) }}
+						</p>
+					</div>
+					<div v-else class="inline-state inline-state--compact">
+						{{ t('empleados', 'No employee compliance data for this selection.') }}
+					</div>
+				</section>
+
+				<!-- 6. Tabla detallada de empleados -->
+				<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employees-heading">
 					<header class="section-heading section-heading--compact">
 						<div>
 							<p class="section-eyebrow">
-								{{ t('empleados', 'Internal work') }}
+								{{ t('empleados', 'Summary') }}
 							</p>
-							<h2>{{ t('empleados', 'Time by internal activity') }}</h2>
+							<h2 id="admin-employees-heading">
+								{{ t('empleados', 'Employee summary') }}
+							</h2>
 						</div>
 					</header>
 
-					<ol v-if="internalActivityRanking.length > 0" class="ranking-list">
-						<li v-for="(item, index) in internalActivityRanking" :key="item.key" class="ranking-item">
-							<span class="ranking-position">{{ index + 1 }}</span>
-							<div class="ranking-item__content">
-								<div class="ranking-item__heading">
-									<strong>{{ item.label }}</strong>
-									<span>{{ formatHours(item.hours) }}</span>
-								</div>
-								<div class="ranking-track">
-									<div class="ranking-value ranking-value--internal" :style="{ width: `${item.relativeWidth}%` }" />
-								</div>
-								<small>{{ formatReports(item.reports) }}</small>
-							</div>
-						</li>
-					</ol>
-					<div v-else class="inline-state">
-						{{ t('empleados', 'No internal work for this selection.') }}
-					</div>
-				</article>
-			</section>
-
-			<!-- 5. Tabla detallada de empleados -->
-			<section class="dashboard-section dashboard-section--compact" aria-labelledby="admin-employees-heading">
-				<header class="section-heading section-heading--compact">
-					<div>
-						<p class="section-eyebrow">
-							{{ t('empleados', 'Summary') }}
-						</p>
-						<h2 id="admin-employees-heading">
-							{{ t('empleados', 'Employee summary') }}
-						</h2>
-					</div>
-				</header>
-
-				<div v-if="employeeRows.length > 0" class="employee-table-wrap">
-					<table class="employee-table">
-						<thead>
-							<tr>
-								<th>{{ t('empleados', 'Employee') }}</th>
-								<th>{{ t('empleados', 'Expected') }}</th>
-								<th>{{ t('empleados', 'Reported') }}</th>
-								<th>{{ t('empleados', 'Pending') }}</th>
-								<th>{{ t('empleados', 'Compliance') }}</th>
-								<th class="employee-table__action-heading">
-									<span class="visually-hidden">{{ t('empleados', 'Details') }}</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							<template v-for="employee in employeeRows">
-								<tr :key="employee.key"
-									class="employee-row"
-									:class="{ 'employee-row--expanded': isEmployeeExpanded(employee.key) }">
-									<td :data-label="t('empleados', 'Employee')" class="employee-cell">
-										<strong>{{ employee.name }}</strong>
-										<small>{{ employee.area }}</small>
-									</td>
-									<td :data-label="t('empleados', 'Expected')" class="employee-metric">
-										{{ formatHours(employee.expected) }}
-									</td>
-									<td :data-label="t('empleados', 'Reported')" class="employee-metric">
-										{{ formatHours(employee.reported) }}
-									</td>
-									<td :data-label="t('empleados', 'Pending')" class="employee-metric">
-										{{ formatHours(employee.pending) }}
-									</td>
-									<td :data-label="t('empleados', 'Compliance')" class="employee-compliance-cell">
-										<div class="mini-compliance" :class="complianceStatusClass(employee)">
-											<span class="mini-compliance__percent">
-												{{ formatPercent(employee.percentage) }}
-											</span>
-											<span class="mini-compliance__track" aria-hidden="true">
-												<span
-													class="mini-compliance__value"
-													:style="{ width: `${clampPercentage(employee.percentage)}%` }" />
-											</span>
-										</div>
-									</td>
-									<td class="employee-table__action">
-										<button
-											type="button"
-											class="employee-expand-button"
-											:aria-expanded="isEmployeeExpanded(employee.key) ? 'true' : 'false'"
-											:aria-label="t('empleados', 'Toggle details for {employee}', { employee: employee.name })"
-											@click="toggleEmployeeExpand(employee.key)">
-											<ChevronUp v-if="isEmployeeExpanded(employee.key)" :size="18" />
-											<ChevronDown v-else :size="18" />
-										</button>
-									</td>
+					<div v-if="employeeRows.length > 0" class="employee-table-wrap">
+						<table class="employee-table">
+							<thead>
+								<tr>
+									<th>{{ t('empleados', 'Employee') }}</th>
+									<th>{{ t('empleados', 'Expected') }}</th>
+									<th>{{ t('empleados', 'Reported') }}</th>
+									<th>{{ t('empleados', 'Accounted') }}</th>
+									<th>{{ t('empleados', 'Pending') }}</th>
+									<th>{{ t('empleados', 'Compliance') }}</th>
+									<th class="employee-table__action-heading">
+										<span class="visually-hidden">{{ t('empleados', 'Details') }}</span>
+									</th>
 								</tr>
-								<tr
-									v-if="isEmployeeExpanded(employee.key)"
-									:key="`${employee.key}-detail`"
-									class="employee-detail-row">
-									<td colspan="6">
-										<div class="employee-detail">
-											<div class="employee-detail__contexts">
-												<div class="employee-detail__item">
-													<span>{{ t('empleados', 'Selected period') }}</span>
-													<strong>{{ formatCompactPercent(employee.contexts.periodo) }}</strong>
+							</thead>
+							<tbody>
+								<template v-for="employee in employeeRows">
+									<tr :key="employee.key"
+										class="employee-row"
+										:class="{ 'employee-row--expanded': isEmployeeExpanded(employee.key) }">
+										<td :data-label="t('empleados', 'Employee')" class="employee-cell">
+											<strong>{{ employee.name }}</strong>
+											<small>{{ employee.area }}</small>
+										</td>
+										<td :data-label="t('empleados', 'Expected')" class="employee-metric">
+											{{ formatHours(employee.expected) }}
+										</td>
+										<td :data-label="t('empleados', 'Reported')" class="employee-metric">
+											{{ formatHours(employee.reported) }}
+										</td>
+										<td :data-label="t('empleados', 'Accounted')" class="employee-metric">
+											{{ formatHours(employee.accounted) }}
+										</td>
+										<td :data-label="t('empleados', 'Pending')" class="employee-metric">
+											{{ formatHours(employee.pending) }}
+										</td>
+										<td :data-label="t('empleados', 'Compliance')" class="employee-compliance-cell">
+											<div class="mini-compliance" :class="complianceStatusClass(employee)">
+												<span class="mini-compliance__percent">
+													{{ formatPercent(employee.percentage) }}
+												</span>
+												<span class="mini-compliance__track" aria-hidden="true">
+													<span
+														class="mini-compliance__value"
+														:style="{ width: `${clampPercentage(employee.percentage)}%` }" />
+												</span>
+											</div>
+										</td>
+										<td class="employee-table__action">
+											<button
+												type="button"
+												class="employee-expand-button"
+												:aria-expanded="isEmployeeExpanded(employee.key) ? 'true' : 'false'"
+												:aria-label="t('empleados', 'Toggle details for {employee}', { employee: employee.name })"
+												@click="toggleEmployeeExpand(employee.key)">
+												<ChevronUp v-if="isEmployeeExpanded(employee.key)" :size="18" />
+												<ChevronDown v-else :size="18" />
+											</button>
+										</td>
+									</tr>
+									<tr
+										v-if="isEmployeeExpanded(employee.key)"
+										:key="`${employee.key}-detail`"
+										class="employee-detail-row">
+										<td colspan="7">
+											<div class="employee-detail">
+												<div class="employee-detail__contexts">
+													<div class="employee-detail__item">
+														<span>{{ t('empleados', 'Selected period') }}</span>
+														<strong>{{ formatCompactPercent(employee.contexts.periodo) }}</strong>
+													</div>
+													<div class="employee-detail__item">
+														<span>{{ t('empleados', 'Fortnight') }}</span>
+														<strong>{{ formatCompactPercent(employee.contexts.quincena) }}</strong>
+													</div>
+													<div class="employee-detail__item">
+														<span>{{ t('empleados', 'Month') }}</span>
+														<strong>{{ formatCompactPercent(employee.contexts.mes) }}</strong>
+													</div>
 												</div>
-												<div class="employee-detail__item">
-													<span>{{ t('empleados', 'Fortnight') }}</span>
-													<strong>{{ formatCompactPercent(employee.contexts.quincena) }}</strong>
+												<div class="employee-detail__extras">
+													<div v-if="mostrarClientes" class="employee-detail__item">
+														<span>{{ t('empleados', 'Client work') }}</span>
+														<strong>{{ formatHours(employee.clientHours) }}</strong>
+													</div>
+													<div class="employee-detail__item">
+														<span>{{ t('empleados', 'Internal work') }}</span>
+														<strong>{{ formatHours(employee.internalHours) }}</strong>
+													</div>
+													<div v-if="mostrarAusencias" class="employee-detail__item">
+														<span>{{ t('empleados', 'Absences') }}</span>
+														<strong>{{ formatHours(employee.absenceHours) }}</strong>
+													</div>
+													<div v-if="mostrarClientes" class="employee-detail__item">
+														<span>{{ t('empleados', 'Main client') }}</span>
+														<strong>{{ employee.mainClient }}</strong>
+													</div>
+													<div class="employee-detail__item">
+														<span>{{ t('empleados', 'Main activity') }}</span>
+														<strong>{{ employee.mainActivity }}</strong>
+													</div>
 												</div>
-												<div class="employee-detail__item">
-													<span>{{ t('empleados', 'Month') }}</span>
-													<strong>{{ formatCompactPercent(employee.contexts.mes) }}</strong>
+												<div class="employee-detail__actions">
+													<NcButton
+														type="tertiary"
+														:disabled="employee.id === null"
+														@click="$emit('select-employee', employee.id)">
+														{{ t('empleados', 'View details') }}
+													</NcButton>
 												</div>
 											</div>
-											<div class="employee-detail__extras">
-												<div v-if="mostrarClientes" class="employee-detail__item">
-													<span>{{ t('empleados', 'Client work') }}</span>
-													<strong>{{ formatHours(employee.clientHours) }}</strong>
-												</div>
-												<div class="employee-detail__item">
-													<span>{{ t('empleados', 'Internal work') }}</span>
-													<strong>{{ formatHours(employee.internalHours) }}</strong>
-												</div>
-												<div v-if="mostrarClientes" class="employee-detail__item">
-													<span>{{ t('empleados', 'Main client') }}</span>
-													<strong>{{ employee.mainClient }}</strong>
-												</div>
-												<div class="employee-detail__item">
-													<span>{{ t('empleados', 'Main activity') }}</span>
-													<strong>{{ employee.mainActivity }}</strong>
-												</div>
-											</div>
-											<div class="employee-detail__actions">
-												<NcButton
-													type="tertiary"
-													:disabled="employee.id === null"
-													@click="$emit('select-employee', employee.id)">
-													{{ t('empleados', 'View details') }}
-												</NcButton>
-											</div>
-										</div>
-									</td>
-								</tr>
-							</template>
-						</tbody>
-					</table>
-				</div>
-				<div v-else class="inline-state inline-state--compact">
-					{{ t('empleados', 'No employee data for this selection.') }}
-				</div>
-			</section>
+										</td>
+									</tr>
+								</template>
+							</tbody>
+						</table>
+					</div>
+					<div v-else class="inline-state inline-state--compact">
+						{{ t('empleados', 'No employee data for this selection.') }}
+					</div>
+				</section>
+			</template>
 		</div>
 	</div>
 </template>
@@ -533,6 +549,7 @@ export default {
 					area: this.safeText(row.area, t('empleados', 'No area')),
 					percentage: this.toNumber(row.porcentaje_cumplimiento),
 					reported: this.toNumber(row.horas_reportadas),
+					accounted: this.toNumber(row.horas_contabilizadas),
 					expected: this.toNumber(row.horas_esperadas),
 				}))
 				.sort((a, b) => a.percentage - b.percentage || a.name.localeCompare(b.name))
@@ -563,10 +580,12 @@ export default {
 						area: this.safeText(row.area, t('empleados', 'No area')),
 						expected: this.toNumber(row.horas_esperadas),
 						reported: this.toNumber(row.horas_reportadas),
+						accounted: this.toNumber(row.horas_contabilizadas),
 						pending: this.toNumber(row.horas_pendientes),
 						percentage,
 						clientHours: this.toNumber(row.horas_cliente),
 						internalHours: this.toNumber(row.horas_internas),
+						absenceHours: this.toNumber(row.horas_ausencia),
 						mainClient: this.safeText(row.cliente_principal),
 						mainActivity: this.safeText(row.actividad_principal),
 						contexts: {
@@ -606,6 +625,7 @@ export default {
 				range: this.formatDateRange(raw.fecha_inicio, raw.fecha_fin),
 				expected: this.toNumber(raw.horas_esperadas),
 				reported: this.toNumber(raw.horas_reportadas),
+				accounted: this.toNumber(raw.horas_contabilizadas),
 				pending: this.toNumber(raw.horas_pendientes),
 				percentage: this.toNumber(raw.porcentaje_cumplimiento),
 			}

@@ -35,6 +35,10 @@
 				<span>{{ t('empleados', 'Reported hours') }}</span>
 				<strong>{{ formatHours(periodo.horas_reportadas) }}</strong>
 			</div>
+			<div class="metric">
+				<span>{{ t('empleados', 'Accounted hours') }}</span>
+				<strong>{{ formatHours(periodo.horas_contabilizadas) }}</strong>
+			</div>
 			<div class="metric metric--pending">
 				<span>{{ t('empleados', 'Pending hours') }}</span>
 				<strong>{{ formatHours(periodo.horas_pendientes) }}</strong>
