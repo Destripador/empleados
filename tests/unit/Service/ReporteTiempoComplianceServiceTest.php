@@ -100,4 +100,104 @@ final class ReporteTiempoComplianceServiceTest extends TestCase {
 		$this->assertSame(0.0, $summary['horas_pendientes']);
 		$this->assertSame(100.0, $summary['porcentaje_cumplimiento']);
 	}
+
+	public function testEmployeeExpectedHoursStartAtHireDateAndExcludeHolidays(): void {
+		$summary = $this->service->summarizeEmployee(
+			['fecha_inicio' => '2026-08-03', 'fecha_fin' => '2026-08-14'],
+			['Ingreso' => '2026-08-10', 'Estado' => 1],
+			[],
+			8.0,
+			[['tipo' => 'fijo', 'fecha' => '08-11']],
+		);
+
+		$this->assertSame(4, $summary['dias_habiles']);
+		$this->assertSame(32.0, $summary['horas_esperadas']);
+	}
+
+	public function testAccountedHoursIncludeAbsencesWithoutChangingReportedWork(): void {
+		$summary = $this->service->summarizeEmployee(
+			['fecha_inicio' => '2026-08-03', 'fecha_fin' => '2026-08-07'],
+			['Estado' => 1],
+			[
+				'minutos_cliente' => 8 * 60,
+				'minutos_internos' => 8 * 60,
+				'minutos_ausencia' => 8 * 60,
+			],
+			8.0,
+		);
+
+		$this->assertSame(16.0, $summary['horas_reportadas']);
+		$this->assertSame(8.0, $summary['horas_ausencia']);
+		$this->assertSame(24.0, $summary['horas_contabilizadas']);
+		$this->assertSame(16.0, $summary['horas_pendientes']);
+		$this->assertSame(60.0, $summary['porcentaje_cumplimiento']);
+	}
+
+	public function testOvertimeDoesNotRaiseComplianceAboveOneHundredPercent(): void {
+		$summary = $this->service->summarizeEmployee(
+			['fecha_inicio' => '2026-08-03', 'fecha_fin' => '2026-08-03'],
+			['Estado' => 1],
+			['minutos_cliente' => 10 * 60, 'minutos_ausencia' => 4 * 60],
+			8.0,
+		);
+
+		$this->assertSame(14.0, $summary['horas_contabilizadas']);
+		$this->assertSame(0.0, $summary['horas_pendientes']);
+		$this->assertSame(100.0, $summary['porcentaje_cumplimiento']);
+	}
+
+	public function testInactiveEmployeeRequiresTerminationDateForHistoricalExpectation(): void {
+		$period = ['fecha_inicio' => '2026-08-03', 'fecha_fin' => '2026-08-07'];
+
+		$withoutTermination = $this->service->summarizeEmployee(
+			$period,
+			['Estado' => 0],
+			[],
+			8.0,
+		);
+		$withTermination = $this->service->summarizeEmployee(
+			$period,
+			['Estado' => 0, 'fecha_baja' => '2026-08-05'],
+			[],
+			8.0,
+		);
+
+		$this->assertSame(0.0, $withoutTermination['horas_esperadas']);
+		$this->assertSame(24.0, $withTermination['horas_esperadas']);
+	}
+
+	/** @dataProvider dailyComplianceProvider */
+	public function testDailyComplianceUsesTheMinimumThreshold(
+		float $minutes,
+		string $expectedStatus,
+		bool $expectedCompliance,
+	): void {
+		$result = $this->service->evaluateDailyCompliance($minutes, 8.0);
+
+		$this->assertSame($expectedStatus, $result['estado']);
+		$this->assertSame($expectedCompliance, $result['cumple']);
+	}
+
+	/** @return array<string,array{float,string,bool}> */
+	public static function dailyComplianceProvider(): array {
+		return [
+			'exactly eight hours' => [480.0, 'cumplido', true],
+			'ten hours' => [600.0, 'cumplido', true],
+			'7.99 hours' => [7.99 * 60, 'incompleto', false],
+			'no report' => [0.0, 'sin_reportar', false],
+		];
+	}
+
+	public function testChangingDailyMinimumDoesNotChangeHistoricalExpectedHours(): void {
+		$period = ['fecha_inicio' => '2026-08-03', 'fecha_fin' => '2026-08-07'];
+		$employee = ['Estado' => 1];
+		$before = $this->service->summarizeEmployee($period, $employee, [], 8.0);
+
+		$this->service->evaluateDailyCompliance(3 * 60, 2.0);
+		$this->service->evaluateDailyCompliance(3 * 60, 8.0);
+
+		$after = $this->service->summarizeEmployee($period, $employee, [], 8.0);
+		$this->assertSame(40.0, $before['horas_esperadas']);
+		$this->assertSame($before['horas_esperadas'], $after['horas_esperadas']);
+	}
 }

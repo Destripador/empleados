@@ -444,11 +444,11 @@ export default {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 40px;
-	height: 40px;
+	width: var(--default-clickable-area);
+	height: var(--default-clickable-area);
 	padding: 0;
 	border: 0;
-	border-radius: 10px;
+	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
 	color: var(--color-main-text);
 	cursor: pointer;
@@ -462,8 +462,8 @@ export default {
 .side-toggle-button--floating {
 	position: absolute;
 	z-index: 50;
-	top: 6px;
-	right: -50px;
+	top: var(--app-navigation-padding, var(--default-grid-baseline));
+	inset-inline-end: calc(-1 * var(--default-clickable-area));
 }
 
 .side-toggle-icon {

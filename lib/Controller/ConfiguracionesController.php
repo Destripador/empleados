@@ -184,6 +184,7 @@ class ConfiguracionesController extends Controller {
                 'recordatorios_zona_horaria' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_zona_horaria', 'America/Mexico_City'),
                 'recordatorios_email' => $this->config->getAppValue(Application::APP_ID, 'reportes_recordatorios_email', 'true'),
                 'horas_minimas' => $this->config->getAppValue(Application::APP_ID, 'reportes_horas_minimas', '0'),
+                'horas_esperadas_jornada' => $this->config->getAppValue(Application::APP_ID, 'reportes_horas_esperadas_jornada', '8'),
                 'admin_reports_group' => $this->config->getAppValue(
                     Application::APP_ID,
                     'reportes_admin_reports_group',
@@ -286,6 +287,13 @@ class ConfiguracionesController extends Controller {
         if ($horasMinimas < 0) {
             $horasMinimas = 0;
         }
+        $horasEsperadasJornada = (float)$this->request->getParam('horas_esperadas_jornada', 8);
+        if (!is_finite($horasEsperadasJornada) || $horasEsperadasJornada <= 0 || $horasEsperadasJornada > 24) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => 'Las horas esperadas por jornada deben ser mayores que 0 y menores o iguales a 24.',
+            ], Http::STATUS_BAD_REQUEST);
+        }
 
         $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_enabled', $recordatoriosEnabled ? 'true' : 'false');
         $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_grupo', $grupo);
@@ -293,6 +301,7 @@ class ConfiguracionesController extends Controller {
         $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_zona_horaria', $zonaHoraria);
         $this->config->setAppValue(Application::APP_ID, 'reportes_recordatorios_email', $recordatoriosEmail ? 'true' : 'false');
         $this->config->setAppValue(Application::APP_ID, 'reportes_horas_minimas', (string)$horasMinimas);
+        $this->config->setAppValue(Application::APP_ID, 'reportes_horas_esperadas_jornada', (string)$horasEsperadasJornada);
         $this->config->setAppValue(
             Application::APP_ID,
             'reportes_admin_reports_group',
@@ -313,6 +322,7 @@ class ConfiguracionesController extends Controller {
                 'recordatorios_zona_horaria' => $zonaHoraria,
                 'recordatorios_email' => $recordatoriosEmail,
                 'horas_minimas' => $horasMinimas,
+                'horas_esperadas_jornada' => $horasEsperadasJornada,
                 'admin_reports_group' => $adminReportsGroup,
                 'honorarios_group' => $honorariosGroups,
             ],

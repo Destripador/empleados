@@ -277,6 +277,7 @@ return [
 		['name' => 'reportetiempo#GetEmpleadosReports', 'url' => '/GetEmpleadosReports', 'verb' => 'POST'],
 		['name' => 'reportetiempo#ExportarReportes', 'url' => '/ExportarReportes', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetAdminReportsSummary', 'url' => '/GetAdminReportsSummary', 'verb' => 'POST',],
+		['name' => 'reportetiempo#GetAdminTeamReport', 'url' => '/reportes/administrativos/equipos/{id_equipo}', 'verb' => 'POST',],
 		['name' => 'reportetiempo#GetCostosLideres', 'url' => '/GetCostosLideres', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetCostosActividades', 'url' => '/GetCostosActividades', 'verb' => 'GET'],
 		['name' => 'reportetiempo#GetCostosCandidatos', 'url' => '/GetCostosCandidatos', 'verb' => 'POST'],

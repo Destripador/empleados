@@ -37,6 +37,27 @@ class empleadosorganigramaMapper extends QBMapper {
         return $rows;
     }
 
+	/**
+	 * Devuelve las relaciones jerarquicas sin joins para que los servicios de
+	 * dominio puedan detectar ciclos y omitir referencias invalidas por lote.
+	 *
+	 * @return array<int,array{id_empleado:int,id_dependiente:int}>
+	 */
+	public function getRelationIds(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id_empleado', 'id_dependiente')
+			->from($this->getTableName());
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static fn (array $row): array => [
+			'id_empleado' => (int)($row['id_empleado'] ?? 0),
+			'id_dependiente' => (int)($row['id_dependiente'] ?? 0),
+		], $rows);
+	}
+
     public function ExisteRelacion(int $idEmpleado, int $idDependiente): bool {
         $qb = $this->db->getQueryBuilder();
 

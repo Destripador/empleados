@@ -10,10 +10,12 @@ use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\departamentosMapper;
 use OCA\Empleados\Db\empleadosMapper;
+use OCA\Empleados\Db\festivosMapper;
 use OCA\Empleados\Db\reportetiempo;
 use OCA\Empleados\Db\reportetiempoMapper;
 use OCA\Empleados\Db\historialausenciasMapper;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\AdministrativeReportScopeService;
 use OCA\Empleados\Service\ReporteTiempoComplianceService;
 use OCA\Empleados\Service\ReporteTiempoRules;
 use OCA\Empleados\Service\VacacionesCalculoService;
@@ -68,6 +70,9 @@ class reportetiempoController extends BaseController {
 	private VacacionesCalculoService $vacacionesCalculoService;
 	private departamentosMapper $departamentosMapper;
 	private ReporteTiempoComplianceService $reporteTiempoComplianceService;
+	private AdministrativeReportScopeService $administrativeReportScopeService;
+	private festivosMapper $festivosMapper;
+	private ?array $adminReportScope = null;
 
 	public function __construct(
 		IRequest $request,
@@ -91,6 +96,8 @@ class reportetiempoController extends BaseController {
 		PermisosService $permisosService,
 		departamentosMapper $departamentosMapper,
 		ReporteTiempoComplianceService $reporteTiempoComplianceService,
+		AdministrativeReportScopeService $administrativeReportScopeService,
+		festivosMapper $festivosMapper,
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -121,6 +128,8 @@ class reportetiempoController extends BaseController {
 		$this->permisosService = $permisosService;
 		$this->departamentosMapper = $departamentosMapper;
 		$this->reporteTiempoComplianceService = $reporteTiempoComplianceService;
+		$this->administrativeReportScopeService = $administrativeReportScopeService;
+		$this->festivosMapper = $festivosMapper;
 	}
 
 	private function requireAdminReportsAccess(): void {
@@ -567,11 +576,92 @@ class reportetiempoController extends BaseController {
 			$areaContext = $this->resolveAreaReporteContext($id_departamento);
 			$this->assertAdminAreaFilters($areaContext, $filters);
 			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
-
-			return new DataResponse(
-				$this->buildAdminReportsData($filters, $employees, $areaContext),
-				Http::STATUS_OK,
+			$data = $this->buildAdminReportsData($filters, $employees, $areaContext);
+			$data['equipos'] = $this->buildAdminTeamSummaries(
+				$data['empleados'],
+				$this->getCurrentAdminReportScope(),
 			);
+			$data['alcance'] = [
+				'global' => (bool)$this->getCurrentAdminReportScope()['global'],
+				'equipos' => count($data['equipos']),
+				'empleados' => count($employees),
+			];
+
+			return new DataResponse($data, Http::STATUS_OK);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+	}
+
+	/**
+	 * Reporte agregado de un equipo validado contra el alcance jerarquico actual.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetAdminTeamReport(
+		int $id_equipo,
+		$periodo_inicio = null,
+		$periodo_fin = null,
+		$anio = null,
+		$id_departamento = null,
+		$fecha_inicio = null,
+		$fecha_fin = null,
+		$tipo_trabajo = null,
+		$id_empleado = null,
+		$id_cliente = null,
+		$id_actividad = null
+	): DataResponse {
+		$this->requireAdminReportsAccess();
+		$scope = $this->getCurrentAdminReportScope();
+		$team = $this->administrativeReportScopeService->findTeam($scope['teams'], $id_equipo);
+		if ($team === null) {
+			return new DataResponse([
+				'error' => 'El equipo solicitado no esta dentro de tu alcance visible.',
+			], Http::STATUS_FORBIDDEN);
+		}
+
+		try {
+			$filters = $this->normalizeAdminReportFilters(
+				$fecha_inicio,
+				$fecha_fin,
+				$periodo_inicio,
+				$periodo_fin,
+				$anio,
+				$tipo_trabajo,
+				$id_empleado,
+				$id_cliente,
+				$id_actividad,
+			);
+			$areaContext = $this->resolveAreaReporteContext($id_departamento);
+			$this->assertAdminAreaFilters($areaContext, $filters);
+			$members = $this->filterAdminEmployeeDirectory(
+				$scope['members_by_team'][$id_equipo] ?? [],
+				$id_departamento,
+				$filters['id_empleado'],
+			);
+			$data = $this->buildAdminReportsData($filters, $members, $areaContext);
+			$teamMembers = $scope['members_by_team'][$id_equipo] ?? [];
+			$team['cantidad_empleados'] = count($teamMembers);
+			$team['integrantes_preview'] = $this->buildAdminMemberPreview($teamMembers);
+			$data['equipo'] = $team;
+			$data['integrantes'] = $data['empleados'];
+			$data['equipos_ancestros'] = $this->administrativeReportScopeService->getTeamAncestors($scope, $id_equipo);
+			$data['equipos_dependientes'] = array_map(
+				fn (array $dependent): array => [
+					'id_equipo' => (int)$dependent['id_equipo'],
+					'nombre' => (string)$dependent['nombre'],
+					'id_jefe_equipo' => $dependent['id_jefe_equipo'],
+					'id_empleado_lider' => $dependent['id_empleado_lider'],
+					'nombre_lider' => $dependent['nombre_lider'],
+					'cantidad_empleados' => (int)($dependent['cantidad_empleados'] ?? 0),
+					'integrantes_preview' => $this->buildAdminMemberPreview(
+						$scope['members_by_team'][(int)$dependent['id_equipo']] ?? [],
+					),
+				],
+				$this->administrativeReportScopeService->getDependentTeams($scope, $id_equipo),
+			);
+
+			return new DataResponse($data, Http::STATUS_OK);
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -1270,6 +1360,22 @@ class reportetiempoController extends BaseController {
 	 * @return array<int,array<string,mixed>>
 	 */
 	private function getAdminEmployeeDirectory($idDepartamento = null, $idEmpleado = null): array {
+		return $this->filterAdminEmployeeDirectory(
+			$this->getCurrentAdminReportScope()['employees'],
+			$idDepartamento,
+			$idEmpleado,
+		);
+	}
+
+	/**
+	 * @param array<int,array<string,mixed>> $source
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function filterAdminEmployeeDirectory(
+		array $source,
+		$idDepartamento = null,
+		$idEmpleado = null,
+	): array {
 		$departmentId = $this->normalizeIdDepartamento($idDepartamento);
 		$employeeId = $this->normalizePositiveId($idEmpleado);
 		$areaNames = [];
@@ -1281,7 +1387,7 @@ class reportetiempoController extends BaseController {
 		}
 
 		$directory = [];
-		foreach ($this->getEmpleadosVisiblesBasico() as $employee) {
+		foreach ($source as $employee) {
 			$id = (int)($employee['Id_empleados'] ?? $employee['id_empleados'] ?? 0);
 			$areaId = (int)($employee['Id_departamento'] ?? $employee['id_departamento'] ?? 0);
 			if ($id <= 0 || ($departmentId !== null && $areaId !== $departmentId)) {
@@ -1310,6 +1416,33 @@ class reportetiempoController extends BaseController {
 		}
 
 		return array_values($directory);
+	}
+
+	/** @return array<string,mixed> */
+	private function getCurrentAdminReportScope(): array {
+		if ($this->adminReportScope !== null) {
+			return $this->adminReportScope;
+		}
+
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			return $this->adminReportScope = [
+				'global' => false,
+				'current_employee_id' => null,
+				'hierarchy_employee_ids' => [],
+				'employee_ids' => [],
+				'employees' => [],
+				'team_ids' => [],
+				'teams' => [],
+				'members_by_team' => [],
+			];
+		}
+
+		$uid = $user->getUID();
+		return $this->adminReportScope = $this->administrativeReportScopeService->getScope(
+			$uid,
+			$this->permisosService->canSee('reporte_tiempos.admin', $uid),
+		);
 	}
 
 	/** @param array<int,array<string,mixed>> $employees */
@@ -1365,9 +1498,10 @@ class reportetiempoController extends BaseController {
 		$employeeIds = $this->employeeIds($employees);
 		$dailyHours = $this->reporteTiempoComplianceService->normalizeDailyHours((float)$this->config->getAppValue(
 			Application::APP_ID,
-			'reportes_horas_minimas',
-			'0',
+			'reportes_horas_esperadas_jornada',
+			(string)ReporteTiempoComplianceService::DEFAULT_DAILY_HOURS,
 		));
+		$holidays = $this->festivosMapper->findAll();
 
 		$hoursByRange = [];
 		$loadEmployeeHours = function (array $period) use (&$hoursByRange, $employeeIds, $filters): array {
@@ -1394,6 +1528,7 @@ class reportetiempoController extends BaseController {
 		);
 		$workType = $filters['tipo_trabajo'];
 		$showClients = $areaContext === null || ($areaContext['mostrar_clientes'] ?? true);
+		$showAbsences = $areaContext === null || ($areaContext['mostrar_ausencias'] ?? true);
 		$clientRows = $showClients
 			&& ($workType === null || $workType === reportetiempo::TIPO_CLIENTE)
 			? $this->reportetiempoMapper->getAdminHoursByClient(
@@ -1406,6 +1541,16 @@ class reportetiempoController extends BaseController {
 		$internalRows = ($workType === null || $workType === reportetiempo::TIPO_INTERNO)
 			&& $filters['id_cliente'] === null
 			? $this->reportetiempoMapper->getAdminHoursByInternalActivity(
+				$periods['periodo']['fecha_inicio'],
+				$periods['periodo']['fecha_fin'],
+				$employeeIds,
+				$filters,
+				)
+				: [];
+		$absenceRows = $showAbsences
+			&& ($workType === null || $workType === reportetiempo::TIPO_AUSENCIA)
+			&& $filters['id_cliente'] === null
+			? $this->reportetiempoMapper->getAdminHoursByAbsenceType(
 				$periods['periodo']['fecha_inicio'],
 				$periods['periodo']['fecha_fin'],
 				$employeeIds,
@@ -1430,6 +1575,7 @@ class reportetiempoController extends BaseController {
 		$monthByEmployee = $this->indexAdminHoursByEmployee($monthRows);
 		$clientTotals = [];
 		$internalActivityTotals = [];
+		$absenceTotals = [];
 		foreach ($breakdown as $item) {
 			$id = (int)($item['id_empleado'] ?? 0);
 			$type = (string)($item['tipo_trabajo'] ?? '');
@@ -1448,42 +1594,59 @@ class reportetiempoController extends BaseController {
 				}
 				$internalActivityTotals[$id][$label] = ($internalActivityTotals[$id][$label] ?? 0.0) + $minutes;
 			}
+			if ($type === reportetiempo::TIPO_AUSENCIA && $showAbsences) {
+				$label = trim((string)($item['actividad_nombre'] ?? ''));
+				if ($label === '') {
+					$label = trim((string)($item['cliente_nombre'] ?? ''));
+				}
+				if ($label === '') {
+					$label = 'Ausencia';
+				}
+				$absenceTotals[$id][$label] = ($absenceTotals[$id][$label] ?? 0.0) + $minutes;
+			}
 		}
 
 		$employeeSummaries = [];
 		foreach ($employees as $employee) {
 			$id = (int)$employee['id_empleado'];
 			$periodHours = $periodByEmployee[$id] ?? [];
-			$periodCompliance = $this->reporteTiempoComplianceService->summarize(
+			$periodCompliance = $this->reporteTiempoComplianceService->summarizeEmployee(
 				$periods['periodo'],
-				1,
-				(float)($periodHours['total_minutos'] ?? 0),
+				$employee,
+				$periodHours,
 				$dailyHours,
+				$holidays,
 			);
-			$fortnightCompliance = $this->reporteTiempoComplianceService->summarize(
+			$fortnightCompliance = $this->reporteTiempoComplianceService->summarizeEmployee(
 				$periods['quincena'],
-				1,
-				(float)($fortnightByEmployee[$id]['total_minutos'] ?? 0),
+				$employee,
+				$fortnightByEmployee[$id] ?? [],
 				$dailyHours,
+				$holidays,
 			);
-			$monthCompliance = $this->reporteTiempoComplianceService->summarize(
+			$monthCompliance = $this->reporteTiempoComplianceService->summarizeEmployee(
 				$periods['mes'],
-				1,
-				(float)($monthByEmployee[$id]['total_minutos'] ?? 0),
+				$employee,
+				$monthByEmployee[$id] ?? [],
 				$dailyHours,
+				$holidays,
 			);
 			$employeeSummaries[] = array_merge($employee, [
 				'total_tiempo_registrado' => (float)($periodHours['total_minutos'] ?? 0),
 				'total_reportes' => (int)($periodHours['total_reportes'] ?? 0),
 				'horas_esperadas' => $periodCompliance['horas_esperadas'],
 				'horas_reportadas' => $periodCompliance['horas_reportadas'],
+				'horas_contabilizadas' => $periodCompliance['horas_contabilizadas'],
 				'horas_pendientes' => $periodCompliance['horas_pendientes'],
 				'porcentaje_cumplimiento' => $periodCompliance['porcentaje_cumplimiento'],
-				'horas_cliente' => round(((float)($periodHours['minutos_cliente'] ?? 0)) / 60, 2),
-				'horas_internas' => round(((float)($periodHours['minutos_internos'] ?? 0)) / 60, 2),
-				'horas_ausencia' => round(((float)($periodHours['minutos_ausencia'] ?? 0)) / 60, 2),
+				'horas_cliente' => $periodCompliance['horas_cliente'],
+				'horas_internas' => $periodCompliance['horas_internas'],
+				'horas_ausencia' => $periodCompliance['horas_ausencia'],
 				'cliente_principal' => $this->topAdminLabel($clientTotals[$id] ?? []),
 				'actividad_principal' => $this->topAdminLabel($internalActivityTotals[$id] ?? []),
+				'clientes_principales' => $this->topAdminItems($clientTotals[$id] ?? []),
+				'actividades_internas_principales' => $this->topAdminItems($internalActivityTotals[$id] ?? []),
+				'ausencias_principales' => $this->topAdminItems($absenceTotals[$id] ?? []),
 				'cumplimiento' => [
 					'periodo' => $periodCompliance,
 					'quincena' => $fortnightCompliance,
@@ -1492,25 +1655,27 @@ class reportetiempoController extends BaseController {
 			]);
 		}
 
-		$employeeCount = count($employees);
 		$compliance = [
-			'periodo' => $this->reporteTiempoComplianceService->summarize(
+			'periodo' => $this->reporteTiempoComplianceService->summarizeEmployees(
 				$periods['periodo'],
-				$employeeCount,
-				(float)($summary['total_minutos'] ?? 0),
+				$employees,
+				$periodByEmployee,
 				$dailyHours,
+				$holidays,
 			),
-			'quincena' => $this->reporteTiempoComplianceService->summarize(
+			'quincena' => $this->reporteTiempoComplianceService->summarizeEmployees(
 				$periods['quincena'],
-				$employeeCount,
-				$this->sumAdminMinutes($fortnightRows),
+				$employees,
+				$fortnightByEmployee,
 				$dailyHours,
+				$holidays,
 			),
-			'mes' => $this->reporteTiempoComplianceService->summarize(
+			'mes' => $this->reporteTiempoComplianceService->summarizeEmployees(
 				$periods['mes'],
-				$employeeCount,
-				$this->sumAdminMinutes($monthRows),
+				$employees,
+				$monthByEmployee,
 				$dailyHours,
+				$holidays,
 			),
 		];
 
@@ -1530,6 +1695,8 @@ class reportetiempoController extends BaseController {
 			'area' => (string)($employee['area'] ?? ''),
 			'porcentaje_cumplimiento' => (float)$employee['porcentaje_cumplimiento'],
 			'horas_reportadas' => (float)$employee['horas_reportadas'],
+			'horas_contabilizadas' => (float)$employee['horas_contabilizadas'],
+			'horas_ausencia' => (float)$employee['horas_ausencia'],
 			'horas_esperadas' => (float)$employee['horas_esperadas'],
 			'horas_pendientes' => (float)$employee['horas_pendientes'],
 		], $employeeSummaries);
@@ -1548,6 +1715,7 @@ class reportetiempoController extends BaseController {
 			'graficas' => [
 				'horas_por_cliente' => $clients,
 				'actividades_internas' => $internalActivities,
+				'ausencias_por_tipo' => $absenceRows,
 				'cumplimiento_empleados' => $employeeCompliance,
 				'horas_por_dia' => $dayRows,
 				// Alias compatibles para consumidores previos del endpoint.
@@ -1585,12 +1753,27 @@ class reportetiempoController extends BaseController {
 
 	/** @param array<string,float> $totals */
 	private function topAdminLabel(array $totals): ?string {
+		$items = $this->topAdminItems($totals, 1);
+		return $items === [] ? null : (string)$items[0]['nombre'];
+	}
+
+	/**
+	 * @param array<string,float> $totals Minutos agrupados por etiqueta.
+	 * @return array<int,array{nombre:string,horas:float}>
+	 */
+	private function topAdminItems(array $totals, int $limit = 5): array {
 		if ($totals === []) {
-			return null;
+			return [];
 		}
 		arsort($totals, SORT_NUMERIC);
-		$label = array_key_first($totals);
-		return $label === null ? null : (string)$label;
+		$items = [];
+		foreach (array_slice($totals, 0, max(0, $limit), true) as $label => $minutes) {
+			$items[] = [
+				'nombre' => (string)$label,
+				'horas' => round(((float)$minutes) / 60, 2),
+			];
+		}
+		return $items;
 	}
 
 	/**
@@ -1602,23 +1785,27 @@ class reportetiempoController extends BaseController {
 		$totalMinutes = (float)($summary['total_minutos'] ?? 0);
 		$clientMinutes = (float)($summary['minutos_cliente'] ?? 0);
 		$internalMinutes = (float)($summary['minutos_internos'] ?? 0);
+		$absenceMinutes = (float)($summary['minutos_ausencia'] ?? 0);
 		$workedMinutes = $clientMinutes + $internalMinutes;
+		$accountedMinutes = $workedMinutes + $absenceMinutes;
 		$costTotal = 0.0;
 		$costClient = 0.0;
 		$costInternal = 0.0;
 		$costAbsence = 0.0;
 		foreach ($employees as $employee) {
 			$wage = (float)($employee['Sueldo'] ?? 0);
-			$costTotal += (float)($employee['horas_reportadas'] ?? 0) * $wage;
+			$costTotal += (float)($employee['horas_contabilizadas'] ?? 0) * $wage;
 			$costClient += (float)($employee['horas_cliente'] ?? 0) * $wage;
 			$costInternal += (float)($employee['horas_internas'] ?? 0) * $wage;
 			$costAbsence += (float)($employee['horas_ausencia'] ?? 0) * $wage;
 		}
 		$reportCount = (int)($summary['total_reportes'] ?? 0);
-		$summary['horas_reportadas'] = round($totalMinutes / 60, 2);
+		$summary['horas_reportadas'] = round($workedMinutes / 60, 2);
+		$summary['horas_reportadas_trabajo'] = $summary['horas_reportadas'];
+		$summary['horas_contabilizadas'] = round($accountedMinutes / 60, 2);
 		$summary['horas_cliente'] = round($clientMinutes / 60, 2);
 		$summary['horas_internas'] = round($internalMinutes / 60, 2);
-		$summary['horas_ausencia'] = round(((float)($summary['minutos_ausencia'] ?? 0)) / 60, 2);
+		$summary['horas_ausencia'] = round($absenceMinutes / 60, 2);
 		$summary['promedio_horas_reporte'] = $reportCount > 0 ? round(($totalMinutes / 60) / $reportCount, 2) : 0.0;
 		$summary['porcentaje_interno'] = $workedMinutes > 0 ? round(($internalMinutes / $workedMinutes) * 100, 2) : 0.0;
 		$summary['proyectos_activos'] = (int)($summary['clientes_con_reportes'] ?? 0);
@@ -1650,6 +1837,122 @@ class reportetiempoController extends BaseController {
 				'horas' => round($absenceMinutes / 60, 2),
 				'porcentaje' => $totalMinutes > 0 ? round(($absenceMinutes / $totalMinutes) * 100, 2) : 0.0,
 			],
+		];
+	}
+
+	/**
+	 * @param array<int,array<string,mixed>> $employeeSummaries
+	 * @param array<string,mixed> $scope
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function buildAdminTeamSummaries(array $employeeSummaries, array $scope): array {
+		$summaryByEmployee = [];
+		foreach ($employeeSummaries as $employee) {
+			$summaryByEmployee[(int)($employee['id_empleado'] ?? 0)] = $employee;
+		}
+
+		$teams = [];
+		foreach ($scope['teams'] ?? [] as $team) {
+			$teamId = (int)($team['id_equipo'] ?? 0);
+			$members = $scope['members_by_team'][$teamId] ?? [];
+			$selected = [];
+			foreach ($members as $member) {
+				$id = (int)($member['id_empleado'] ?? 0);
+				if (isset($summaryByEmployee[$id])) {
+					$selected[] = $summaryByEmployee[$id];
+				}
+			}
+			$period = $this->combineEmployeeCompliance($selected, 'periodo');
+			$teams[] = array_merge($team, [
+				'cantidad_empleados' => count($members),
+				'integrantes_considerados' => count($selected),
+				'integrantes_preview' => $this->buildAdminMemberPreview($members),
+				'horas_esperadas' => $period['horas_esperadas'],
+				'horas_reportadas' => $period['horas_reportadas'],
+				'horas_contabilizadas' => $period['horas_contabilizadas'],
+				'horas_pendientes' => $period['horas_pendientes'],
+				'porcentaje_cumplimiento' => $period['porcentaje_cumplimiento'],
+				'horas_cliente' => $period['horas_cliente'],
+				'horas_internas' => $period['horas_internas'],
+				'horas_ausencia' => $period['horas_ausencia'],
+			]);
+		}
+
+		usort($teams, static fn (array $left, array $right): int =>
+			strnatcasecmp((string)$left['nombre'], (string)$right['nombre'])
+		);
+		return $teams;
+	}
+
+	/**
+	 * Proyecta solo la identidad necesaria para previews visuales, sin consultas
+	 * adicionales ni datos de cumplimiento individual.
+	 *
+	 * @param array<int,array<string,mixed>> $members
+	 * @return array<int,array{id_empleado:int,id_user:string,nombre:string}>
+	 */
+	private function buildAdminMemberPreview(array $members, int $limit = 5): array {
+		$preview = array_map(static function (array $member): array {
+			$uid = trim((string)($member['id_user'] ?? $member['Id_user'] ?? ''));
+			$name = trim((string)($member['nombre'] ?? $member['displayname'] ?? $uid));
+			return [
+				'id_empleado' => (int)($member['id_empleado'] ?? $member['Id_empleados'] ?? 0),
+				'id_user' => $uid,
+				'nombre' => $name !== '' ? $name : $uid,
+			];
+		}, $members);
+
+		usort($preview, static fn (array $left, array $right): int =>
+			strnatcasecmp($left['nombre'], $right['nombre'])
+		);
+		return array_slice($preview, 0, max(0, $limit));
+	}
+
+	/**
+	 * @param array<int,array<string,mixed>> $employees
+	 * @return array<string,int|float|string>
+	 */
+	private function combineEmployeeCompliance(array $employees, string $periodKey): array {
+		$totals = [
+			'dias_habiles' => 0,
+			'horas_esperadas' => 0.0,
+			'horas_reportadas' => 0.0,
+			'horas_cliente' => 0.0,
+			'horas_internas' => 0.0,
+			'horas_ausencia' => 0.0,
+			'horas_contabilizadas' => 0.0,
+		];
+		$start = '';
+		$end = '';
+		foreach ($employees as $employee) {
+			$context = $employee['cumplimiento'][$periodKey] ?? [];
+			if ($start === '') {
+				$start = (string)($context['fecha_inicio'] ?? '');
+				$end = (string)($context['fecha_fin'] ?? '');
+			}
+			foreach (array_keys($totals) as $key) {
+				$totals[$key] += (float)($context[$key] ?? 0);
+			}
+		}
+
+		$pending = max(0.0, $totals['horas_esperadas'] - $totals['horas_contabilizadas']);
+		$percentage = $totals['horas_esperadas'] > 0
+			? min(100.0, ($totals['horas_contabilizadas'] / $totals['horas_esperadas']) * 100)
+			: ($totals['horas_contabilizadas'] > 0 ? 100.0 : 0.0);
+
+		return [
+			'fecha_inicio' => $start,
+			'fecha_fin' => $end,
+			'dias_habiles' => (int)$totals['dias_habiles'],
+			'empleados' => count($employees),
+			'horas_esperadas' => round($totals['horas_esperadas'], 2),
+			'horas_reportadas' => round($totals['horas_reportadas'], 2),
+			'horas_cliente' => round($totals['horas_cliente'], 2),
+			'horas_internas' => round($totals['horas_internas'], 2),
+			'horas_ausencia' => round($totals['horas_ausencia'], 2),
+			'horas_contabilizadas' => round($totals['horas_contabilizadas'], 2),
+			'horas_pendientes' => round($pending, 2),
+			'porcentaje_cumplimiento' => round($percentage, 2),
 		];
 	}
 
@@ -1704,8 +2007,6 @@ class reportetiempoController extends BaseController {
 		$minutos = (float)($resumen['minutos_reportados'] ?? 0);
 		$horas = $minutos / 60;
 
-		$estado = $registros > 0 ? 'reportado' : 'pendiente';
-
 		$horasObjetivo = (float)$this->config->getAppValue(
 			Application::APP_ID,
 			'reportes_horas_minimas',
@@ -1715,10 +2016,10 @@ class reportetiempoController extends BaseController {
 			$horasObjetivo = 0.0;
 		}
 
-		$progreso = null;
-		if ($horasObjetivo > 0) {
-			$progreso = (int)min(100, round(($horas / $horasObjetivo) * 100));
-		}
+		$dailyCompliance = $this->reporteTiempoComplianceService->evaluateDailyCompliance(
+			$minutos,
+			$horasObjetivo,
+		);
 
 		return new DataResponse([
 			'fecha' => $fecha,
@@ -1726,8 +2027,9 @@ class reportetiempoController extends BaseController {
 			'minutos_reportados' => $minutos,
 			'horas_reportadas' => round($horas, 2),
 			'horas_objetivo' => $horasObjetivo > 0 ? round($horasObjetivo, 2) : null,
-			'progreso' => $progreso,
-			'estado' => $estado,
+			'progreso' => (int)round($dailyCompliance['porcentaje']),
+			'estado' => $dailyCompliance['estado'],
+			'cumple' => $dailyCompliance['cumple'],
 		], Http::STATUS_OK);
 	}
 	
@@ -1765,35 +2067,63 @@ class reportetiempoController extends BaseController {
 		$totalEmpleados = 0;
 		$totalReportados = 0;
 		$totalPendientes = 0;
+		$totalIncompletos = 0;
+		$totalSinReportar = 0;
 		$totalMinutos = 0.0;
 		$totalRegistros = 0;
+		$minimumDailyHours = max(0.0, (float)$this->config->getAppValue(
+			Application::APP_ID,
+			'reportes_horas_minimas',
+			'0',
+		));
+		$dailySummaries = $this->reportetiempoMapper->getResumenDiaByEmpleados(
+			array_values(array_filter(array_map(
+				static fn (array $employee): int => (int)(
+					$employee['id_empleados']
+					?? $employee['Id_empleados']
+					?? $employee['id_empleado']
+					?? 0
+				),
+				$empleados,
+			))),
+			$fecha,
+		);
 
 		foreach ($empleados as $empleado) {
-			$idEmpleado = $empleado['id_empleados'] ?? $empleado['Id_empleados'] ?? null;
+			$idEmpleado = $empleado['id_empleados']
+				?? $empleado['Id_empleados']
+				?? $empleado['id_empleado']
+				?? null;
 
 			if (empty($idEmpleado)) {
 				continue;
 			}
 
-			$resumen = $this->reportetiempoMapper->getResumenDiaByEmpleado(
-				(int)$idEmpleado,
-				$fecha
-			);
+			$resumen = $dailySummaries[(int)$idEmpleado] ?? [];
 
 			$registros = (int)($resumen['registros'] ?? 0);
 			$minutos = (float)($resumen['minutos_reportados'] ?? 0);
 			$horas = $minutos / 60;
 
-			$estado = $registros > 0 ? 'reportado' : 'pendiente';
+			$dailyCompliance = $this->reporteTiempoComplianceService->evaluateDailyCompliance(
+				$minutos,
+				$minimumDailyHours,
+			);
+			$estado = $dailyCompliance['estado'];
 
 			$totalEmpleados++;
 			$totalRegistros += $registros;
 			$totalMinutos += $minutos;
 
-			if ($estado === 'reportado') {
+			if ($dailyCompliance['cumple']) {
 				$totalReportados++;
 			} else {
 				$totalPendientes++;
+				if ($estado === 'incompleto') {
+					$totalIncompletos++;
+				} else {
+					$totalSinReportar++;
+				}
 			}
 
 			$data[] = [
@@ -1808,6 +2138,8 @@ class reportetiempoController extends BaseController {
 				'minutos_reportados' => $minutos,
 				'horas_reportadas' => round($horas, 2),
 				'estado' => $estado,
+				'cumple' => $dailyCompliance['cumple'],
+				'porcentaje_cumplimiento' => $dailyCompliance['porcentaje'],
 			];
 		}
 
@@ -1815,8 +2147,11 @@ class reportetiempoController extends BaseController {
 			'fecha' => $fecha,
 			'kpis' => [
 				'total_empleados' => $totalEmpleados,
-				'reportados' => $totalReportados,
-				'pendientes' => $totalPendientes,
+					'reportados' => $totalReportados,
+					'pendientes' => $totalPendientes,
+					'incompletos' => $totalIncompletos,
+					'sin_reportar' => $totalSinReportar,
+					'horas_minimas_cumplimiento' => round($minimumDailyHours, 2),
 				'total_registros' => $totalRegistros,
 				'total_minutos' => $totalMinutos,
 				'total_horas' => round($totalMinutos / 60, 2),
@@ -1829,54 +2164,11 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
-	 * Quien tiene reporte_tiempos.admin ve a todos los empleados activos.
-	 * Consulta y el resto solo ven al usuario actual y a sus subordinados.
+	 * El permiso admin conserva alcance global. El permiso de consulta usa la
+	 * jerarquia explicita y los integrantes de los equipos visibles.
 	 */
 	private function getEmpleadosVisiblesBasico(): array {
-		$user = $this->userSession->getUser();
-
-		if ($user === null) {
-			return [];
-		}
-
-		$userId = $user->getUID();
-
-		if ($this->permisosService->canSee('reporte_tiempos.admin', $userId)) {
-			return $this->empleadosMapper->GetEmpleadosActivosBasico();
-		}
-
-		$boss = $this->empleadosMapper->GetMyEmployeeInfo($userId);
-		$equipoEmpleado = $this->empleadosMapper->GetSubordinates($userId);
-
-		if (!is_array($equipoEmpleado)) {
-			$equipoEmpleado = [];
-		}
-
-		if (!empty($boss)) {
-			$bossRow = isset($boss[0]) && is_array($boss[0])
-				? $boss[0]
-				: $boss;
-
-			$bossFiltrado = [
-				'Id_empleados' => $bossRow['Id_empleados'] ?? $bossRow['id_empleados'] ?? null,
-				'Id_user' => $bossRow['Id_user'] ?? $bossRow['id_user'] ?? null,
-				'displayname' => $bossRow['displayname']
-					?? $bossRow['DisplayName']
-					?? $bossRow['Id_user']
-					?? $bossRow['id_user']
-					?? '',
-				'Sueldo' => $bossRow['Sueldo'] ?? $bossRow['sueldo'] ?? 0,
-				'Id_departamento' => $bossRow['Id_departamento'] ?? $bossRow['id_departamento'] ?? null,
-				'Ingreso' => $bossRow['Ingreso'] ?? $bossRow['ingreso'] ?? null,
-				'Estado' => $bossRow['Estado'] ?? $bossRow['estado'] ?? null,
-			];
-
-			if (!empty($bossFiltrado['Id_empleados'])) {
-				array_unshift($equipoEmpleado, $bossFiltrado);
-			}
-		}
-
-		return $equipoEmpleado;
+		return $this->getCurrentAdminReportScope()['employees'];
 	}
 
 	/**
@@ -1945,20 +2237,16 @@ class reportetiempoController extends BaseController {
 	}
 
 	/**
-	 * Usa la misma jornada de referencia configurada para los reportes.
+	 * Usa la jornada esperada, independiente del umbral de cumplimiento diario.
 	 */
 	private function getCostosHorasDiarias(): float {
 		$horas = (float)$this->config->getAppValue(
 			Application::APP_ID,
-			'reportes_horas_minimas',
-			'0'
+			'reportes_horas_esperadas_jornada',
+			(string)ReporteTiempoComplianceService::DEFAULT_DAILY_HOURS
 		);
 
-		if (!is_finite($horas) || $horas <= 0) {
-			return 0.0;
-		}
-
-		return $horas;
+		return $this->reporteTiempoComplianceService->normalizeDailyHours($horas);
 	}
 
 	/**
