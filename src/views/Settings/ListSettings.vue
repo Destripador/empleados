@@ -275,6 +275,13 @@
 							min="0"
 							:label="t('empleados', 'Minimum hours to consider reported')" />
 
+						<NcTextField
+							:value.sync="reportes_horas_esperadas_jornada"
+							type="number"
+							min="0.01"
+							max="24"
+							:label="t('empleados', 'Expected hours per workday')" />
+
 						<NcSelect
 							v-model="selected_admin_reports_group"
 							:input-label="t('empleados', 'Group with access to admin reports and compliance tracking')"
@@ -413,6 +420,7 @@ export default {
 			reportes_recordatorios_zona_horaria: 'America/Mexico_City',
 			reportes_recordatorios_email: true,
 			reportes_horas_minimas: 0,
+			reportes_horas_esperadas_jornada: 8,
 			optionsGroups: [],
 			selected_admin_reports_group: null,
 			reportes_admin_reports_group: '',
@@ -465,6 +473,7 @@ export default {
 				this.reportes_recordatorios_zona_horaria = reportes.recordatorios_zona_horaria || 'America/Mexico_City'
 				this.reportes_recordatorios_email = String(reportes.recordatorios_email ?? 'true') === 'true'
 				this.reportes_horas_minimas = Number(reportes.horas_minimas ?? 0)
+				this.reportes_horas_esperadas_jornada = Number(reportes.horas_esperadas_jornada ?? 8)
 				this.optionsGroups = (response.data.Groups || []).map(group => ({
 					id: group.id,
 					label: group.label || group.id,
@@ -696,6 +705,7 @@ export default {
 					recordatorios_zona_horaria: this.reportes_recordatorios_zona_horaria,
 					recordatorios_email: this.reportes_recordatorios_email.toString(),
 					horas_minimas: Number(this.reportes_horas_minimas),
+					horas_esperadas_jornada: Number(this.reportes_horas_esperadas_jornada),
 					admin_reports_group: this.selected_admin_reports_group?.id || this.reportes_admin_reports_group,
 					honorarios_group: (this.selected_honorarios_group || []).map(group => group.id),
 				})

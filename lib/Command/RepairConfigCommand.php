@@ -40,6 +40,7 @@ final class RepairConfigCommand extends Command {
 		'reportes_recordatorios_zona_horaria' => 'America/Mexico_City',
 		'reportes_recordatorios_email' => 'true',
 		'reportes_horas_minimas' => '0',
+		'reportes_horas_esperadas_jornada' => '8',
 		'reportes_admin_reports_group' => 'recursos_humanos',
 		'parking_mode' => 'operational',
 	];

@@ -120,6 +120,30 @@ export default new Router({
 			),
 		},
 		{
+			path: '/Adminreports/equipo/:teamId',
+			name: 'AdminReportTeam',
+			component: () => import(
+				/* webpackChunkName: "reportes-admin" */
+				'../views/components/reports/admin/Adminreports.vue'
+			),
+		},
+		{
+			path: '/Adminreports/equipo/:teamId/empleado/:employeeId',
+			name: 'AdminReportTeamEmployee',
+			component: () => import(
+				/* webpackChunkName: "reportes-admin" */
+				'../views/components/reports/admin/Adminreports.vue'
+			),
+		},
+		{
+			path: '/Adminreports/empleado/:employeeId',
+			name: 'AdminReportEmployee',
+			component: () => import(
+				/* webpackChunkName: "reportes-admin" */
+				'../views/components/reports/admin/Adminreports.vue'
+			),
+		},
+		{
 			path: '/ejemplo',
 			name: 'ejemplo',
 			component: () => import(
