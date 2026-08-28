@@ -241,6 +241,17 @@ class honorariosMapper extends QBMapper {
 
 		$this->parcialidadesMapper->deleteByHonorario($id_honorario);
 
+		$qb3 = $this->db->getQueryBuilder();
+		$qb3->update($this->getTableName())
+			->set('cambio_moneda', $qb3->createNamedParameter(null))
+			->where(
+				$qb3->expr()->eq(
+					'id_honorario',
+					$qb3->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qb3->executeStatement();
+
 		$this->parcialidadesMapper->generarParcialidadesPorGrupos(
 			$id_honorario,
 			$grupos,
@@ -351,6 +362,7 @@ class honorariosMapper extends QBMapper {
 
 		$qb->update($this->getTableName())
 			->set('activo', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
+			->set('cambio_moneda', $qb->createNamedParameter(null))
 			->where($qb->expr()->eq(
 				'id_honorario',
 				$qb->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
@@ -415,6 +427,39 @@ class honorariosMapper extends QBMapper {
 
 		$qb->update($this->getTableName())
 			->set('solicitud_generada', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Al completarse el honorario (todas sus parcialidades pagadas), calcula
+	 * el total ya convertido a MXN
+	 */
+	public function registrarCambioMonedaTotal(int $id_honorario): void {
+		$honorario = $this->findById($id_honorario);
+
+		if (empty($honorario)) {
+			return;
+		}
+
+		$tipoMoneda = strtoupper((string)($honorario['tipo_moneda'] ?? 'MXN'));
+
+		if ($tipoMoneda === 'MXN') {
+			return;
+		}
+
+		$totalMXN = $this->parcialidadesMapper->sumConvertidoMXN($id_honorario);
+
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('cambio_moneda', $qb->createNamedParameter($totalMXN))
 			->where(
 				$qb->expr()->eq(
 					'id_honorario',

@@ -56,6 +56,10 @@
 					</NcEmptyContent>
 				</VTab>
 
+				<VTab :title="t('empleados', 'Monedas')">
+					<MonedaSettings />
+				</VTab>
+
 				<VTab :title="t('empleados', 'Estacionamiento')">
 					<EstacionamientoSettings />
 				</VTab>
@@ -73,6 +77,7 @@ import EmpleadosSettings from './EmpleadosSettings.vue'
 import ListSettings from './ListSettings.vue'
 import GroupSettings from './GroupSettings.vue'
 import MovimientosSettings from './MovimientosSettings.vue'
+import MonedaSettings from './MonedaSettings.vue'
 
 import { showError /*, showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
@@ -100,6 +105,7 @@ export default {
 		NcLoadingIcon,
 		EstacionamientoSettings,
 		MovimientosSettings,
+		MonedaSettings,
 	},
 
 	data() {

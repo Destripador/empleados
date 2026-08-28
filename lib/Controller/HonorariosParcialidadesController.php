@@ -152,16 +152,17 @@ class HonorariosParcialidadesController extends BaseController {
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function marcarPagada(int $id_parcialidad, string $fecha_pago): DataResponse {
+	public function marcarPagada(int $id_parcialidad, string $fecha_pago, ?int $id_moneda = null): DataResponse {
 		$this->requireClientesAdminAccess();
 
 		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
 
 		$idHonorarioFinalizado = $this->honorariosParcialidadesMapper
-			->marcarPagada($id_parcialidad, $fecha_pago);
+			->marcarPagada($id_parcialidad, $fecha_pago, $id_moneda);
 
 		if ($idHonorarioFinalizado !== null) {
 			$this->honorariosMapper->desactivarHonorario($idHonorarioFinalizado);
+			$this->honorariosMapper->registrarCambioMonedaTotal($idHonorarioFinalizado);
 		}
 
 		// --- Movimiento (bitácora) ---
@@ -259,6 +260,7 @@ class HonorariosParcialidadesController extends BaseController {
 		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
 		$fechaPagoAnterior = $parcialidad['fecha_pago'] ?? null;
 
+		// En HonorariosParcialidadesController::cancelarPago()
 		$idHonorario = $this->honorariosParcialidadesMapper->cancelarPago($id_parcialidad);
 
 		if ($idHonorario !== null) {

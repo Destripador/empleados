@@ -24,7 +24,11 @@ class MonedaController extends Controller {
 
 	#[NoAdminRequired]
 	public function GetMonedas(): DataResponse {
-		return new DataResponse($this->monedaMapper->findAll());
+		$monedas = array_map(
+			fn (Moneda $m) => $this->toArray($m),
+			$this->monedaMapper->findAll()
+		);
+		return new DataResponse($monedas);
 	}
 
 	#[NoAdminRequired]
@@ -45,7 +49,7 @@ class MonedaController extends Controller {
 		$moneda->setSerie($serie);
 		$moneda = $this->monedaMapper->insert($moneda);
 
-		return new DataResponse($moneda, Http::STATUS_CREATED);
+		return new DataResponse($this->toArray($moneda), Http::STATUS_CREATED);
 	}
 
 	#[NoAdminRequired]
@@ -71,7 +75,7 @@ class MonedaController extends Controller {
 		$moneda->setSerie($serie);
 		$moneda = $this->monedaMapper->update($moneda);
 
-		return new DataResponse($moneda);
+		return new DataResponse($this->toArray($moneda));
 	}
 
 	#[NoAdminRequired]
@@ -85,5 +89,16 @@ class MonedaController extends Controller {
 		$this->monedaMapper->delete($moneda);
 
 		return new DataResponse([]);
+	}
+
+	/**
+	 * Serialización explícita: nunca depender de jsonSerialize() automático de Entity.
+	 */
+	private function toArray(Moneda $moneda): array {
+		return [
+			'id' => $moneda->getId(),
+			'tipoMoneda' => $moneda->getTipoMoneda(),
+			'serie' => $moneda->getSerie(),
+		];
 	}
 }

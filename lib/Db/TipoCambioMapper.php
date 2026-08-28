@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Db;
 
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\DB\Exception as DBException;
 
@@ -19,7 +20,7 @@ class TipoCambioMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')
 			->from($this->getTableName())
-			->where($qb->expr()->eq('id_moneda', $qb->createNamedParameter($idMoneda, \PDO::PARAM_INT)))
+			->where($qb->expr()->eq('id_moneda', $qb->createNamedParameter($idMoneda, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->gte('fecha', $qb->createNamedParameter($fechaInicio)))
 			->andWhere($qb->expr()->lte('fecha', $qb->createNamedParameter($fechaFin)))
 			->orderBy('fecha', 'ASC');
@@ -30,7 +31,7 @@ class TipoCambioMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('id')
 			->from($this->getTableName())
-			->where($qb->expr()->eq('id_moneda', $qb->createNamedParameter($idMoneda, \PDO::PARAM_INT)))
+			->where($qb->expr()->eq('id_moneda', $qb->createNamedParameter($idMoneda, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('fecha', $qb->createNamedParameter($fecha)));
 		return $qb->executeQuery()->fetchOne() !== false;
 	}
@@ -42,7 +43,7 @@ class TipoCambioMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->insert($this->getTableName())
 			->values([
-				'id_moneda' => $qb->createNamedParameter($idMoneda, \PDO::PARAM_INT),
+				'id_moneda' => $qb->createNamedParameter($idMoneda, IQueryBuilder::PARAM_INT),
 				'fecha' => $qb->createNamedParameter($fecha),
 				'valor' => $qb->createNamedParameter($valor),
 			]);
@@ -53,9 +54,33 @@ class TipoCambioMapper extends QBMapper {
 			$update = $this->db->getQueryBuilder();
 			$update->update($this->getTableName())
 				->set('valor', $update->createNamedParameter($valor))
-				->where($update->expr()->eq('id_moneda', $update->createNamedParameter($idMoneda, \PDO::PARAM_INT)))
+				->where($update->expr()->eq('id_moneda', $update->createNamedParameter($idMoneda, IQueryBuilder::PARAM_INT)))
 				->andWhere($update->expr()->eq('fecha', $update->createNamedParameter($fecha)))
 				->executeStatement();
+		}
+	}
+
+	/**
+	 * Busca el tipo de cambio del día hábil ANTERIOR a $fecha
+	 */
+	public function findAnterior(int $idMoneda, string $fecha): ?TipoCambio {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq('id_moneda', $qb->createNamedParameter($idMoneda, IQueryBuilder::PARAM_INT))
+			)
+			->andWhere(
+				$qb->expr()->lt('fecha', $qb->createNamedParameter($fecha))
+			)
+			->orderBy('fecha', 'DESC')
+			->setMaxResults(1);
+
+		try {
+			return $this->findEntity($qb);
+		} catch (\OCP\AppFramework\Db\DoesNotExistException $e) {
+			return null;
 		}
 	}
 }

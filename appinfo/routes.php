@@ -132,8 +132,8 @@ return [
 		['name' => 'moneda#EliminarMoneda', 'url' => '/EliminarMoneda', 'verb' => 'POST'],
 
 		/***************************** TIPO DE CAMBIO ***************************************/
-		['name' => 'tipocambio#GetTipoCambio', 'url' => '/GetTipoCambio', 'verb' => 'GET'],
-		['name' => 'tipocambio#SincronizarTipoCambio', 'url' => '/SincronizarTipoCambio', 'verb' => 'POST'],
+		['name' => 'tipo_cambio#GetTipoCambio', 'url' => '/GetTipoCambio', 'verb' => 'GET'],
+		['name' => 'tipo_cambio#SincronizarTipoCambio', 'url' => '/SincronizarTipoCambio', 'verb' => 'POST'],
 
 		/****************************** ANIVERSARIOS ****************************************/
 		['name' => 'aniversarios#Getaniversarios', 'url' => '/Getaniversarios', 'verb' => 'GET'],

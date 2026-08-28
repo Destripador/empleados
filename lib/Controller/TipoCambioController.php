@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Controller;
 
 use OCA\Empleados\Db\MonedaMapper;
+use OCA\Empleados\Db\TipoCambio;
 use OCA\Empleados\Db\TipoCambioMapper;
 use OCA\Empleados\Service\BanxicoService;
 use OCP\AppFramework\Controller;
@@ -27,8 +28,11 @@ class TipoCambioController extends Controller {
 
 	#[NoAdminRequired]
 	public function GetTipoCambio(int $idMoneda, string $fechaInicio, string $fechaFin): DataResponse {
-		$datos = $this->tipoCambioMapper->findByRango($idMoneda, $fechaInicio, $fechaFin);
-		return new DataResponse($datos);
+		$registros = array_map(
+			fn (TipoCambio $tc) => $this->toArray($tc),
+			$this->tipoCambioMapper->findByRango($idMoneda, $fechaInicio, $fechaFin)
+		);
+		return new DataResponse($registros);
 	}
 
 	#[NoAdminRequired]
@@ -46,5 +50,14 @@ class TipoCambioController extends Controller {
 		}
 
 		return new DataResponse(['insertados' => $total]);
+	}
+
+	private function toArray(TipoCambio $tc): array {
+		return [
+			'id' => $tc->getId(),
+			'idMoneda' => $tc->getIdMoneda(),
+			'fecha' => $tc->getFecha(),
+			'valor' => $tc->getValor(),
+		];
 	}
 }

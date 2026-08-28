@@ -409,6 +409,9 @@
 													<div class="honorario-meta">
 														<span class="honorario-amount">
 															{{ formatImporte(montoAcumulado(honorario)) }} {{ honorario.tipo_moneda }}
+															<span v-if="montoTotalMXN(honorario) !== null" class="honorario-amount-mxn">
+																— {{ formatImporte(montoTotalMXN(honorario)) }} MXN
+															</span>
 														</span>
 														<span class="honorario-badge"
 															:class="Number(honorario.activo) ? 'badge-active' : 'badge-done'">
@@ -537,10 +540,14 @@
 																</div>
 																<span class="parcialidad-fechas">{{ p.pfecha_inicio }} — {{
 																	p.pfecha_fin }}</span>
-																<span class="parcialidad-importe">{{
-																	formatImporte(p.importe_parcialidad) }} {{
-																	honorario.tipo_moneda }}</span>
-
+																<span class="parcialidad-importe parcialidad-importe--stacked">
+																	<span class="parcialidad-importe-principal">
+																		{{ formatImporte(p.importe_parcialidad) }} {{ honorario.tipo_moneda }}
+																	</span>
+																	<span v-if="Number(p.pagado) === 2 && montoMXN(p) !== null" class="parcialidad-importe-mxn">
+																		{{ formatImporte(montoMXN(p)) }} MXN
+																	</span>
+																</span>
 																<div class="parcialidad-actions">
 																	<NcButton v-if="canAdminCustomers && Number(p.pagado) === 0"
 																		class="btn-pagar"
@@ -1553,6 +1560,7 @@ export default {
 				grupos: false,
 				individuales: false,
 			},
+			monedas: [],
 		}
 	},
 
@@ -1927,6 +1935,8 @@ export default {
 		this._onEdit = () => this.edit()
 		this._onExport = () => this.Exportar()
 		this._onImport = () => this.triggerImport()
+		this.loadRequiredCustomerData()
+		this.GetMonedas()
 
 		window.addEventListener('keydown', this.onKeyDown)
 
@@ -1973,6 +1983,21 @@ export default {
 		closeCompanyDetails() {
 			this.select = []
 			this.settingsMenuOpen = false
+		},
+
+		async GetMonedas() {
+			try {
+				const response = await axios.get(generateUrl('/apps/empleados/GetMonedas'))
+				this.monedas = this.getOcsData(response) || []
+			} catch (err) {
+				this.monedas = []
+			}
+		},
+
+		idMonedaPorTipo(tipoMoneda) {
+			if (!tipoMoneda || tipoMoneda === 'MXN') return null
+			const moneda = this.monedas.find(m => m.tipoMoneda === tipoMoneda)
+			return moneda ? moneda.id : null
 		},
 
 		openCompanyFromDashboard(id) {
@@ -2924,11 +2949,15 @@ export default {
 
 		async confirmarPagoModal() {
 			try {
+				const honorario = this.honorarios.find(h => h.id_honorario === this.honorarioSeleccionado)
+				const idMoneda = this.idMonedaPorTipo(honorario?.tipo_moneda)
+
 				await axios.post(
 					generateUrl('/apps/empleados/marcarParcialidadPagada'),
 					{
 						id_parcialidad: this.parcialidadSeleccionada,
 						fecha_pago: this.fechaPago,
+						id_moneda: idMoneda,
 					},
 				)
 
@@ -2939,6 +2968,17 @@ export default {
 			} catch (err) {
 				showError(String(err))
 			}
+		},
+
+		montoMXN(p) {
+			if (p.cambio_moneda === null || p.cambio_moneda === undefined) return null
+			return Number(p.importe_parcialidad) * Number(p.cambio_moneda)
+		},
+
+		montoTotalMXN(honorario) {
+			if (Number(honorario.activo) !== 0) return null
+			if (honorario.cambio_moneda === null || honorario.cambio_moneda === undefined) return null
+			return Number(honorario.cambio_moneda)
 		},
 
 		editarFechaPago(p, idHonorario) {
@@ -4652,5 +4692,30 @@ export default {
 
 .btn-solicitar :deep(button:hover) {
 	background-color: color-mix(in srgb, var(--color-primary-element-light) 70%, var(--color-primary-element)) !important;
+}
+
+.parcialidad-importe--stacked {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	line-height: 1.2;
+}
+
+.parcialidad-importe-principal {
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: #272727;
+}
+
+.parcialidad-importe-mxn {
+	font-size: 0.85rem;
+	font-weight: 500;
+	color: #272727;
+}
+
+.honorario-amount-mxn {
+	font-size: 0.85rem;
+	font-weight: 500;
+	color: #272727;
 }
 </style>

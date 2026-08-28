@@ -7,10 +7,14 @@ namespace OCA\Empleados\Db;
 use OCP\IDBConnection;
 use OCP\AppFramework\Db\QBMapper;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCA\Empleados\Db\TipoCambioMapper;
 
 class honorariosParcialidadesMapper extends QBMapper {
 
-	public function __construct(IDBConnection $db) {
+	public function __construct(
+		IDBConnection $db,
+		private TipoCambioMapper $tipoCambioMapper
+	) {
 		parent::__construct(
 			$db,
 			'empleados_honorarios_p',
@@ -143,16 +147,16 @@ class honorariosParcialidadesMapper extends QBMapper {
 				)
 			)
 			->andWhere(
-				$qb2->expr()->eq(
+				$qb2->expr()->neq(
 					'pagado',
-					$qb2->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT)
+					$qb2->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT)
 				)
 			);
 		$result = $qb2->executeQuery();
-		$pendientes = (int)($result->fetch()['total'] ?? 0);
+		$sinPagar = (int)($result->fetch()['total'] ?? 0);
 		$result->closeCursor();
 
-		return $pendientes === 0 ? $id_honorario : null;
+		return $sinPagar === 0 ? $id_honorario : null;
 	}
 
 	/**
@@ -188,7 +192,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 	 * Paso 2: facturada -> pagada.
 	 * Devuelve el id_honorario si con esto el honorario quedó completo.
 	 */
-	public function marcarPagada(int $id_parcialidad, string $fecha_pago): ?int {
+	public function marcarPagada(int $id_parcialidad, string $fecha_pago, ?int $id_moneda = null): ?int {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->update($this->getTableName())
@@ -203,7 +207,33 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		$qb->executeStatement();
 
+		if ($id_moneda !== null) {
+			$this->registrarCambioMoneda($id_parcialidad, $id_moneda, $fecha_pago);
+		}
+
 		return $this->verificarHonorarioCompleto($id_parcialidad);
+	}
+
+	/**
+	 * Busca el tipo de cambio más cercano
+	 */
+	private function registrarCambioMoneda(int $id_parcialidad, int $id_moneda, string $fecha_pago): void {
+		$tipoCambio = $this->tipoCambioMapper->findAnterior($id_moneda, $fecha_pago);
+
+		if ($tipoCambio === null) {
+			return;
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('cambio_moneda', $qb->createNamedParameter($tipoCambio->getValor()))
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qb->executeStatement();
 	}
 
 	public function generarParcialidades(
@@ -373,6 +403,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 		$qb->update($this->getTableName())
 			->set('pagado', $qb->createNamedParameter(honorariosParcialidades::FACTURADA, IQueryBuilder::PARAM_INT))
 			->set('fecha_pago', $qb->createNamedParameter(null))
+			->set('cambio_moneda', $qb->createNamedParameter(null))
 			->where(
 				$qb->expr()->eq(
 					'id_parcialidad',
@@ -755,5 +786,37 @@ class honorariosParcialidadesMapper extends QBMapper {
 				$qb->expr()->isNull('p.pfecha_inicio')
 			));
 		}
+	}
+
+	/**
+	 * Suma el total ya convertido de las parcialidades PAGADAS de un honorario
+	 */
+	public function sumConvertidoMXN(int $id_honorario): float {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias(
+				$qb->createFunction('SUM(importe_parcialidad * cambio_moneda)'),
+				'total'
+			)
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->andWhere(
+				$qb->expr()->eq(
+					'pagado',
+					$qb->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->andWhere($qb->expr()->isNotNull('cambio_moneda'));
+
+		$result = $qb->executeQuery();
+		$total = $result->fetchOne();
+		$result->closeCursor();
+
+		return $total !== false ? (float)$total : 0.0;
 	}
 }
