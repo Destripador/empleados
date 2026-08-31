@@ -176,18 +176,41 @@ export default {
 
 .container-search {
 	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: 6px;
 	overflow: visible;
 }
+
 .input-container {
-	flex: 1;
+	flex: 1 1 auto;
+	min-width: 0;
 	margin-right: 5px;
 	margin-left: 42px;
 }
+
 .input-container input {
 	width: 100%;
 }
+
+.button-container {
+	flex: 0 0 auto;
+}
+
 .button-container button {
 	width: 100%;
+}
+
+// ============ RESPONSIVE ============
+@media (max-width: 500px) {
+	.input-container {
+		flex-basis: 100%;
+		margin-right: 0;
+	}
+
+	.button-container {
+		margin-left: auto;
+	}
 }
 
 .modal__content {
