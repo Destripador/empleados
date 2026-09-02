@@ -1487,6 +1487,13 @@ export default {
 		margin-bottom: 6px;
 	}
 
+	/* Que la lista de equipo asignado cubra todo el ancho disponible
+	   en vez de dejar el hueco que dejaba la columna de la etiqueta. */
+	.assigned-equipment-list,
+	.assigned-equipment-empty {
+		width: 100%;
+	}
+
 }
 .equipo-asignado-field {
 	display: grid;
@@ -1815,6 +1822,71 @@ export default {
 @media (max-width: 768px) {
 	.assigned-equipment-list {
 		grid-column: 1;
+	}
+}
+
+@media (max-width: 768px) {
+	.assigned-equipment-list,
+	.assigned-equipment-empty {
+		grid-column: 1;
+		width: 100%;
+	}
+}
+
+@media (max-width: 768px) {
+	.equipo-asignado-field {
+		display: block;
+		padding: 0;
+		margin: 0;
+	}
+
+	.equipo-asignado-field .labeltype {
+		margin-bottom: 8px;
+	}
+
+	.assigned-equipment-list {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		margin: 12px 0 0;
+		padding: 0;
+		gap: 10px;
+	}
+
+	.assigned-equipment-card,
+	.assigned-equipment-empty {
+		box-sizing: border-box;
+		width: 100%;
+		margin: 0;
+	}
+}
+
+@media (max-width: 768px) {
+	.assigned-equipment-list {
+		max-width: 100%;
+	}
+
+	.assigned-equipment-card {
+		box-sizing: border-box;
+		max-width: 100%;
+		overflow: hidden;
+	}
+
+	.assigned-equipment-content {
+		min-width: 0;
+		flex: 1 1 0;
+	}
+
+	.assigned-equipment-heading {
+		flex-wrap: wrap;
+		row-gap: 4px;
+	}
+
+	.assigned-equipment-heading strong,
+	.assigned-equipment-content span {
+		overflow-wrap: anywhere;
+		word-break: break-word;
+		max-width: 100%;
 	}
 }
 </style>

@@ -13,9 +13,147 @@
 					<div class="grow2">
 						<div ref="calendarViewport" class="text-center sectionPicker">
 							<FullCalendar
+								v-if="!isMobile"
 								ref="fullCalendar"
 								:options="calendarOptions"
 								class="my-calendar" />
+
+							<!-- Calendario móvil estilo Google Calendar -->
+							<div v-else class="mobile-calendar">
+								<div class="mobile-calendar__header">
+									<button
+										type="button"
+										class="mobile-calendar__title"
+										@click="goToToday">
+										<span class="mobile-calendar__month">{{ mobileMonthLabel }}</span>
+									</button>
+
+									<div class="mobile-calendar__nav">
+										<button
+											type="button"
+											class="mobile-calendar__arrow"
+											:aria-label="t('empleados', 'Previous')"
+											@click="mobilePrevPeriod">
+											<ChevronLeft :size="18" />
+										</button>
+										<button
+											type="button"
+											class="mobile-calendar__arrow"
+											:aria-label="t('empleados', 'Next')"
+											@click="mobileNextPeriod">
+											<ChevronRight :size="18" />
+										</button>
+
+										<span class="mobile-calendar__divider" />
+
+										<button
+											type="button"
+											class="mobile-calendar__arrow"
+											:class="{ 'mobile-calendar__arrow--active': mobileExpanded }"
+											:aria-label="t('empleados', 'Collapse to week')"
+											@click="setMobileExpanded(false)">
+											<ChevronUp :size="18" />
+										</button>
+										<button
+											type="button"
+											class="mobile-calendar__arrow"
+											:class="{ 'mobile-calendar__arrow--active': !mobileExpanded }"
+											:aria-label="t('empleados', 'Expand to month')"
+											@click="setMobileExpanded(true)">
+											<ChevronDown :size="18" />
+										</button>
+									</div>
+								</div>
+
+								<div class="mobile-calendar__weekdays">
+									<span v-for="wd in mobileWeekDayLabels" :key="wd">{{ wd }}</span>
+								</div>
+
+								<div
+									class="mobile-calendar__grid"
+									:class="{ 'mobile-calendar__grid--week': !mobileExpanded }"
+									@touchstart.passive="onMobileTouchStart"
+									@touchend.passive="onMobileTouchEnd">
+									<div
+										v-for="(week, wIndex) in mobileVisibleWeeks"
+										:key="wIndex"
+										class="mobile-calendar__week">
+										<button
+											v-for="day in week"
+											:key="day.key"
+											type="button"
+											class="mobile-day"
+											:class="{
+												'mobile-day--outside': !day.inCurrentMonth,
+												'mobile-day--today': day.isToday,
+												'mobile-day--selected': day.isSelected,
+												'mobile-day--range-start': day.isRangeStart,
+												'mobile-day--holiday': day.isHoliday,
+											}"
+											:title="day.holidayName"
+											@click="handleMobileDayTap(day.date)">
+											<span class="mobile-day__number">{{ day.date.getDate() }}</span>
+											<span v-if="day.dots.length" class="mobile-day__dots">
+												<span
+													v-for="(dot, dIndex) in day.dots"
+													:key="dIndex"
+													class="mobile-day__dot"
+													:style="{ backgroundColor: dot }" />
+											</span>
+										</button>
+									</div>
+								</div>
+
+								<p v-if="mobileRangeStart" class="mobile-calendar__hint">
+									{{ t('empleados', 'Tap the end day, or tap the same day again for a single day') }}
+									<button
+										type="button"
+										class="mobile-calendar__hint-cancel"
+										@click="mobileRangeStart = null">
+										{{ t('empleados', 'Cancel') }}
+									</button>
+								</p>
+
+								<!-- Tarjetas del día seleccionado -->
+								<div v-if="mobileSelectedDayEvents.length" class="mobile-day-detail">
+									<h4 class="mobile-day-detail__title">
+										{{ mobileSelectedDateLabel }}
+									</h4>
+
+									<ul class="mobile-day-detail__list">
+										<li v-for="ev in mobileSelectedDayEvents" :key="ev.id">
+											<button
+												type="button"
+												class="pending-card mobile-event-card"
+												@click="openMobileEventDetail(ev)">
+												<NcAvatar
+													disable-menu
+													class="pending-card__avatar"
+													:size="38"
+													:user="ev.nombre_empleado"
+													:display-name="ev.nombre_empleado" />
+
+												<span class="pending-card__content">
+													<strong class="pending-card__name">{{ ev.title }}</strong>
+													<span class="pending-card__type">{{ ev.statusLabel }}</span>
+												</span>
+
+												<span
+													class="mobile-event-card__dot"
+													:style="{ backgroundColor: ev.color }" />
+											</button>
+										</li>
+									</ul>
+								</div>
+
+								<div
+									v-else-if="mobileSelectedDate && !mobileRangeStart"
+									class="mobile-day-detail mobile-day-detail--empty">
+									<p>
+										{{ t('empleados', '{date}: no absences. Tap another day to select a range and request time off.', { date: mobileSelectedDateLabel }) }}
+									</p>
+								</div>
+							</div>
 						</div>
 					</div>
 					<div class="grow1">
@@ -263,7 +401,7 @@
 												class="accordion-option accordion-option--group"
 												@click="
 													typePetition = 'all';
-													$refs.fullCalendar.getApi().refetchEvents()
+													refetchCalendar()
 												">
 												<NcAvatar
 													:user="Equipo.Id_jefe_equipo"
@@ -294,7 +432,7 @@
 															employees = [];
 															typePetition = 'employee';
 															selected_user = item;
-															$refs.fullCalendar.getApi().refetchEvents()
+															refetchCalendar()
 														">
 														<NcAvatar
 															disable-menu
@@ -351,7 +489,7 @@
 												class="accordion-option accordion-option--group"
 												@click="
 													typePetition = 'all-employees';
-													$refs.fullCalendar.getApi().refetchEvents()
+													refetchCalendar()
 												">
 												<AccountGroup :size="34" />
 
@@ -381,7 +519,7 @@
 															employees = [];
 															typePetition = 'employee';
 															selected_user = item;
-															$refs.fullCalendar.getApi().refetchEvents()
+															refetchCalendar()
 														">
 														<NcAvatar
 															disable-menu
@@ -413,7 +551,7 @@
 											typePetition = null;
 											selected_user = null;
 											employees = [];
-											$refs.fullCalendar.getApi().refetchEvents()
+											refetchCalendar()
 										">
 										{{ t('empleados', 'Show my absences') }}
 									</NcButton>
@@ -614,6 +752,10 @@ import { getLanguage, translate as t } from '@nextcloud/l10n'
 import BellOutline from 'vue-material-design-icons/BellOutline.vue'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 import CalendarQuestionOutline from 'vue-material-design-icons/CalendarQuestionOutline.vue'
+import ChevronLeft from 'vue-material-design-icons/ChevronLeft.vue'
+import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
+import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 
 import {
 	NcAppContent,
@@ -653,6 +795,10 @@ export default {
 		NcNoteCard,
 		ReporteAusencias,
 		TutorialDialog,
+		ChevronLeft,
+		ChevronRight,
+		ChevronUp,
+		ChevronDown,
 	},
 
 	inject: ['employee', 'configuraciones', 'groupuser', 'subordinates'],
@@ -745,6 +891,19 @@ export default {
 			tutorialSaving: false,
 			tutorialError: null,
 			tutorialAnniversaryStep: false,
+
+			// ===== Calendario móvil =====
+			isMobile: typeof window !== 'undefined' && window.matchMedia
+				? window.matchMedia('(max-width: 700px)').matches
+				: false,
+			mobileMediaQuery: null,
+			mobileCurrentDate: new Date(),
+			mobileSelectedDate: new Date(),
+			mobileExpanded: true,
+			mobileEvents: [],
+			mobileRangeStart: null,
+			mobileWeekDayLabels: ['do.', 'lu.', 'ma.', 'mi.', 'ju.', 'vi.', 'sá.'],
+			touchStartX: null,
 		}
 	},
 
@@ -831,16 +990,125 @@ export default {
 			})
 			return mapa
 		},
+
+		// ===== Computeds del calendario móvil =====
+
+		mobileMonthLabel() {
+			const label = this.mobileCurrentDate.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+			return label.charAt(0).toUpperCase() + label.slice(1)
+		},
+
+		/**
+		 * Cuadrícula completa del mes (siempre 6 semanas, para que la
+		 * altura no "salte" al navegar entre meses).
+		 */
+		mobileMonthWeeks() {
+			const year = this.mobileCurrentDate.getFullYear()
+			const month = this.mobileCurrentDate.getMonth()
+			const firstOfMonth = new Date(year, month, 1)
+			const startDay = firstOfMonth.getDay()
+			const gridStart = new Date(year, month, 1 - startDay)
+
+			const weeks = []
+			const cursor = new Date(gridStart)
+			for (let w = 0; w < 6; w++) {
+				const week = []
+				for (let d = 0; d < 7; d++) {
+					week.push(this.buildMobileDay(new Date(cursor), month))
+					cursor.setDate(cursor.getDate() + 1)
+				}
+				weeks.push(week)
+			}
+			return weeks
+		},
+
+		/**
+		 * Semanas que realmente se pintan: el mes completo si está
+		 * expandido, o solo la semana que contiene mobileCurrentDate
+		 * si está colapsado (como el "acordeón" de Google Calendar).
+		 */
+		mobileVisibleWeeks() {
+			if (this.mobileExpanded) {
+				return this.mobileMonthWeeks
+			}
+			const anchor = new Date(this.mobileCurrentDate)
+			const startDay = anchor.getDay()
+			const weekStart = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - startDay)
+			const week = []
+			const cursor = new Date(weekStart)
+			for (let d = 0; d < 7; d++) {
+				week.push(this.buildMobileDay(new Date(cursor), null))
+				cursor.setDate(cursor.getDate() + 1)
+			}
+			return [week]
+		},
+
+		/**
+		 * Ausencias agrupadas por día ('YYYY-MM-DD'), expandiendo cada
+		 * ausencia a todos los días que abarca (no solo el de inicio),
+		 * para que el punto y el detalle aparezcan en cualquier día del rango.
+		 */
+		mobileEventsByDay() {
+			const map = {}
+			this.mobileEvents.forEach(ev => {
+				const start = new Date(ev.start)
+				const end = new Date(ev.end) // exclusivo
+				const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+				const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+				// eslint-disable-next-line no-unmodified-loop-condition
+				while (cursor < endDay) {
+					const key = this.mobileDateKey(cursor)
+					if (!map[key]) map[key] = []
+					map[key].push(ev)
+					cursor.setDate(cursor.getDate() + 1)
+				}
+			})
+			return map
+		},
+
+		mobileSelectedDayEvents() {
+			if (!this.mobileSelectedDate) return []
+			const key = this.mobileDateKey(this.mobileSelectedDate)
+			const events = this.mobileEventsByDay[key] || []
+			return events.map(ev => {
+				const cls = ev.classNames?.[0] || 'event-pending'
+				return {
+					...ev,
+					statusLabel: this.mobileStatusLabel(cls),
+					color: this.colorForClass(cls),
+				}
+			})
+		},
+
+		mobileSelectedDateLabel() {
+			if (!this.mobileSelectedDate) return ''
+			const label = this.mobileSelectedDate.toLocaleDateString('es-MX', {
+				weekday: 'long',
+				day: 'numeric',
+				month: 'long',
+			})
+			return label.charAt(0).toUpperCase() + label.slice(1)
+		},
+	},
+
+	watch: {
+		// Al cambiar de escritorio a móvil (resize), traemos los eventos
+		// del calendario móvil (la instancia de FullCalendar se destruye
+		// al dejar de renderizarse, así que no hay refetch automático).
+		isMobile(newVal) {
+			if (newVal) {
+				this.$nextTick(() => this.fetchMobileEvents())
+			}
+			this.ajustarAlturaCalendario()
+		},
 	},
 
 	mounted() {
 		this.$bus.on('close-solicitud', () => {
 			this.GetAusencias()
-
 			this.$nextTick(() => {
-				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+				this.refetchCalendar()
 			})
-
 			this.closeModal()
 		})
 		this.GetAusencias()
@@ -852,14 +1120,40 @@ export default {
 		this.getFestivosCalendario()
 		this.checkNotifications()
 		this.loadVacationTutorial()
+
+		if (this.isMobile) {
+			this.fetchMobileEvents()
+		}
+
 		this.$nextTick(() => {
 			this.ajustarAlturaCalendario()
 			window.addEventListener('resize', this.ajustarAlturaCalendario)
 		})
+
+		// Mantiene isMobile actualizado si se gira el celular o se
+		// redimensiona la ventana (mismo breakpoint de 700px usado en
+		// el resto de estilos responsivos de esta vista).
+		this.mobileMediaQuery = window.matchMedia('(max-width: 700px)')
+		this._onMobileChange = (event) => {
+			this.isMobile = event.matches
+		}
+		if (this.mobileMediaQuery.addEventListener) {
+			this.mobileMediaQuery.addEventListener('change', this._onMobileChange)
+		} else {
+			this.mobileMediaQuery.addListener(this._onMobileChange)
+		}
 	},
 
 	beforeDestroy() {
 		window.removeEventListener('resize', this.ajustarAlturaCalendario)
+
+		if (this.mobileMediaQuery) {
+			if (this.mobileMediaQuery.removeEventListener) {
+				this.mobileMediaQuery.removeEventListener('change', this._onMobileChange)
+			} else {
+				this.mobileMediaQuery.removeListener(this._onMobileChange)
+			}
+		}
 	},
 
 	methods: {
@@ -959,14 +1253,17 @@ export default {
 		 * año) para pintarlos en el calendario. Como fullCalendar ya montó
 		 * las celdas antes de que esta llamada regrese, forzamos un
 		 * re-render con .render() para que dayCellDidMount se vuelva a
-		 * ejecutar con festivosPorFecha ya lleno.
+		 * ejecutar con festivosPorFecha ya lleno. En móvil no hace falta:
+		 * la cuadrícula es un computed que ya reacciona solo.
 		 */
 		async getFestivosCalendario() {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/getFestivos'))
 				this.Festivos = response?.data?.ocs?.data ?? response?.data ?? []
 				this.$nextTick(() => {
-					this.$refs.fullCalendar?.getApi()?.render()
+					if (!this.isMobile) {
+						this.$refs.fullCalendar?.getApi()?.render()
+					}
 				})
 			} catch (err) {
 				// No bloqueamos el calendario si esto falla, solo no se pintan los festivos.
@@ -1159,6 +1456,18 @@ export default {
 			this.$refs.fullCalendar.getApi().refetchEvents()
 		},
 
+		/**
+		 * Punto único de refresco del calendario, sirve tanto para
+		 * FullCalendar (escritorio) como para el calendario móvil.
+		 */
+		refetchCalendar() {
+			if (this.isMobile) {
+				this.fetchMobileEvents()
+			} else {
+				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+			}
+		},
+
 		fetchEvents(fetchInfo, success, failure) {
 			switch (this.typePetition) {
 			case 'pending':
@@ -1241,7 +1550,7 @@ export default {
 
 		onToggleOcultarCanceladasRechazadas() {
 			this.$nextTick(() => {
-				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+				this.refetchCalendar()
 			})
 		},
 
@@ -1397,9 +1706,7 @@ export default {
 			}
 
 			this.$nextTick(() => {
-				this.$refs.fullCalendar
-					?.getApi()
-					?.refetchEvents()
+				this.refetchCalendar()
 			})
 		},
 
@@ -1430,9 +1737,7 @@ export default {
 			}
 
 			this.$nextTick(() => {
-				this.$refs.fullCalendar
-					?.getApi()
-					?.refetchEvents()
+				this.refetchCalendar()
 			})
 		},
 
@@ -1550,13 +1855,25 @@ export default {
 				this.typePetition = null
 			}
 			this.$nextTick(() => {
-				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+				this.refetchCalendar()
 			})
 		},
 		ajustarAlturaCalendario() {
 			this.$nextTick(() => {
 				const calendarContainer = this.$refs.calendarViewport
 				const sidebar = this.$refs.sidebar
+
+				// En móvil el calendario y el sidebar se dimensionan solo
+				// con CSS (height: auto). Limpiamos cualquier altura fija
+				// que haya quedado de una sesión previa en escritorio.
+				if (this.isMobile) {
+					if (sidebar) {
+						sidebar.style.height = ''
+						sidebar.style.maxHeight = ''
+					}
+					return
+				}
+
 				const calendar = this.$refs.fullCalendar?.getApi()
 
 				if (!calendarContainer || !calendar) return
@@ -1595,7 +1912,7 @@ export default {
 			this.typePetition = 'all-admin'
 
 			this.$nextTick(() => {
-				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+				this.refetchCalendar()
 			})
 		},
 		notificationEmployeeName(item) {
@@ -1653,7 +1970,7 @@ export default {
 			}
 
 			this.$nextTick(() => {
-				this.$refs.fullCalendar?.getApi()?.refetchEvents()
+				this.refetchCalendar()
 			})
 		},
 		getPendingAusencias(fetchInfo, success, failure) {
@@ -1721,6 +2038,254 @@ export default {
 				console.error('Error mostrando ausencias pendientes:', error)
 				failure(error)
 			}
+		},
+
+		// ===== Métodos del calendario móvil =====
+
+		toISODateOnly(date) {
+			const y = date.getFullYear()
+			const m = String(date.getMonth() + 1).padStart(2, '0')
+			const d = String(date.getDate()).padStart(2, '0')
+			return `${y}-${m}-${d}`
+		},
+
+		mobileDateKey(date) {
+			return this.toISODateOnly(date)
+		},
+
+		buildMobileDay(date, currentMonth) {
+			const key = this.mobileDateKey(date)
+			const todayKey = this.mobileDateKey(new Date())
+			const events = this.mobileEventsByDay[key] || []
+			const uniqueClasses = [...new Set(events.map(ev => ev.classNames?.[0] || 'event-pending'))]
+			const dots = uniqueClasses.slice(0, 4).map(cls => this.colorForClass(cls))
+			const holidayName = this.festivosPorFecha[this.formatMesDia(date)] || ''
+
+			return {
+				key,
+				date,
+				inCurrentMonth: currentMonth === null ? true : date.getMonth() === currentMonth,
+				isToday: key === todayKey,
+				isSelected: this.mobileSelectedDate ? key === this.mobileDateKey(this.mobileSelectedDate) : false,
+				isRangeStart: this.mobileRangeStart ? key === this.mobileDateKey(this.mobileRangeStart) : false,
+				isHoliday: Boolean(holidayName),
+				holidayName,
+				dots,
+			}
+		},
+
+		colorForClass(cls) {
+			const map = {
+				'event-approved': '#1e8a46',
+				'event-rejected': '#c62828',
+				'event-cancelled': '#757575',
+				'event-pending-anticipada': '#e07b28',
+				'event-pending': '#2389d7',
+			}
+			return map[cls] || '#2389d7'
+		},
+
+		mobileStatusLabel(cls) {
+			switch (cls) {
+			case 'event-approved': return t('empleados', 'Approved')
+			case 'event-rejected': return t('empleados', 'Rejected')
+			case 'event-cancelled': return t('empleados', 'Cancelled')
+			case 'event-pending-anticipada': return t('empleados', 'Pending (early request)')
+			default: return t('empleados', 'Pending')
+			}
+		},
+
+		/**
+		 * Rango de fechas (inicio inclusivo, fin exclusivo) que cubre la
+		 * cuadrícula visible actualmente, para pedirle solo esos eventos
+		 * al backend (misma lógica de fetchInfo que usa FullCalendar).
+		 */
+		computeMobileRange() {
+			const anchor = new Date(this.mobileCurrentDate)
+
+			if (this.mobileExpanded) {
+				const year = anchor.getFullYear()
+				const month = anchor.getMonth()
+				const firstOfMonth = new Date(year, month, 1)
+				const startDay = firstOfMonth.getDay()
+				const gridStart = new Date(year, month, 1 - startDay)
+				const gridEnd = new Date(gridStart)
+				gridEnd.setDate(gridEnd.getDate() + 42)
+				return { start: gridStart, end: gridEnd }
+			}
+
+			const startDay = anchor.getDay()
+			const weekStart = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - startDay)
+			const weekEnd = new Date(weekStart)
+			weekEnd.setDate(weekEnd.getDate() + 7)
+			return { start: weekStart, end: weekEnd }
+		},
+
+		fetchMobileEvents() {
+			if (!this.isMobile) return
+			const { start, end } = this.computeMobileRange()
+			const fetchInfo = {
+				startStr: this.toISODateOnly(start),
+				endStr: this.toISODateOnly(end),
+			}
+			this.fetchEvents(
+				fetchInfo,
+				(events) => { this.mobileEvents = events || [] },
+				(err) => { console.error(err); this.mobileEvents = [] },
+			)
+		},
+
+		setMobileExpanded(value) {
+			if (this.mobileExpanded === value) return
+			if (!value) {
+				// Al colapsar, centramos la semana en el día seleccionado.
+				this.mobileCurrentDate = this.mobileSelectedDate
+					? new Date(this.mobileSelectedDate)
+					: new Date(this.mobileCurrentDate)
+			}
+			this.mobileExpanded = value
+			this.fetchMobileEvents()
+		},
+
+		shiftMobileAnchor(direction) {
+			const d = new Date(this.mobileCurrentDate)
+			if (this.mobileExpanded) {
+				d.setMonth(d.getMonth() + direction, 1)
+			} else {
+				d.setDate(d.getDate() + direction * 7)
+			}
+			this.mobileCurrentDate = d
+			this.fetchMobileEvents()
+		},
+
+		mobilePrevPeriod() {
+			this.shiftMobileAnchor(-1)
+		},
+
+		mobileNextPeriod() {
+			this.shiftMobileAnchor(1)
+		},
+
+		goToToday() {
+			const today = new Date()
+			this.mobileCurrentDate = today
+			this.mobileSelectedDate = today
+			this.mobileRangeStart = null
+			this.fetchMobileEvents()
+		},
+
+		onMobileTouchStart(e) {
+			this.touchStartX = e.changedTouches[0].clientX
+		},
+
+		onMobileTouchEnd(e) {
+			if (this.touchStartX == null) return
+			const dx = e.changedTouches[0].clientX - this.touchStartX
+			this.touchStartX = null
+			if (Math.abs(dx) < 40) return
+			if (dx > 0) {
+				this.mobilePrevPeriod()
+			} else {
+				this.mobileNextPeriod()
+			}
+		},
+
+		openMobileEventDetail(ev) {
+			this.selectedEventId = ev.id
+			this.usuarioAusenciaSeleccionada = ev.nombre_empleado || null
+			this.modalEvento = true
+		},
+
+		/**
+		 * Igual que onDateRangeSelect (mismas validaciones) pero pensado
+		 * para el flujo de dos toques del calendario móvil.
+		 */
+		tryOpenMobileRequest(startDate, endDate) {
+			if (this.configuraciones.modulo_ausencias_readonly === 'true') {
+				showInfo(t('empleados', 'This module is in read-only mode'))
+				return
+			}
+
+			const nDate = new Date()
+			const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+			const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+
+			if (!this.isAdmin()) {
+				if (start < new Date(nDate.getFullYear(), nDate.getMonth(), nDate.getDate())) {
+					showError(t('empleados', 'You cannot request absences on past dates'))
+					return
+				}
+			}
+
+			const diaFin = end.getDay()
+			const diaInicio = start.getDay()
+			if (diaFin === 0 || diaFin === 6 || diaInicio === 0 || diaInicio === 6) {
+				showError(t('empleados', 'You cannot start or end your absence on a weekend'))
+				return
+			}
+
+			if (this.esFestivo(start) || this.esFestivo(end)) {
+				showError(t('empleados', 'You cannot start or end your absence on a holiday'))
+				return
+			}
+
+			let fecha = new Date(start)
+			let diasHabiles = 0
+			while (fecha <= end) {
+				const diaSemana = fecha.getDay()
+				const esFestivoDia = this.esFestivo(fecha)
+				if (diaSemana !== 0 && diaSemana !== 6 && !esFestivoDia) diasHabiles++
+				fecha = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1)
+			}
+
+			this.diasSolicitados = diasHabiles
+			this.date = { start, end }
+			this.modal = true
+		},
+
+		/**
+		 * Toque sobre un día del calendario móvil:
+		 * - Si el día ya tiene ausencias: solo lo selecciona (se muestran
+		 *   las tarjetas de detalle abajo) y cancela cualquier selección
+		 *   de rango en curso.
+		 * - Si está vacío: primer toque marca el inicio del rango;
+		 *   un segundo toque marca el fin (o, si es el mismo día,
+		 *   solicita un solo día) y abre el modal de solicitud.
+		 * @param {Date} date Día que se tocó en la cuadrícula.
+		 */
+		handleMobileDayTap(date) {
+			this.mobileSelectedDate = new Date(date)
+
+			const key = this.mobileDateKey(date)
+			const hasEvents = Boolean(this.mobileEventsByDay[key]?.length)
+
+			if (hasEvents) {
+				this.mobileRangeStart = null
+				return
+			}
+
+			if (this.configuraciones.modulo_ausencias_readonly === 'true') {
+				showInfo(t('empleados', 'This module is in read-only mode'))
+				return
+			}
+
+			if (!this.mobileRangeStart) {
+				this.mobileRangeStart = new Date(date)
+				return
+			}
+
+			const startKey = this.mobileDateKey(this.mobileRangeStart)
+			if (startKey === key) {
+				const single = this.mobileRangeStart
+				this.mobileRangeStart = null
+				this.tryOpenMobileRequest(single, single)
+				return
+			}
+
+			const start = this.mobileRangeStart < date ? this.mobileRangeStart : date
+			const end = this.mobileRangeStart < date ? date : this.mobileRangeStart
+			this.mobileRangeStart = null
+			this.tryOpenMobileRequest(start, end)
 		},
 	},
 }
@@ -1881,6 +2446,236 @@ export default {
 	min-width: 0;
 
 	--color-background-dark: transparent !important;
+}
+
+/* ========================================
+ * CALENDARIO MÓVIL (estilo Google Calendar)
+ * ======================================== */
+
+.mobile-calendar {
+	--mc-primary: #2389d7;
+	--mc-primary-dark: #1468a8;
+	--mc-text: #17354d;
+	--mc-muted: #66798a;
+	--mc-border: #e2ebf1;
+
+	box-sizing: border-box;
+	width: 100%;
+	padding: 10px 8px 14px;
+	text-align: left;
+	background: #ffffff;
+	border: 1px solid var(--mc-border);
+	border-radius: 16px;
+	box-shadow: 0 8px 20px rgba(15, 47, 74, 0.06);
+}
+
+.mobile-calendar__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 2px 4px 8px;
+}
+
+.mobile-calendar__title {
+	padding: 0;
+	color: var(--mc-text);
+	font-size: 1.05rem;
+	font-weight: 700;
+	background: none;
+	border: none;
+	cursor: pointer;
+}
+
+.mobile-calendar__nav {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.mobile-calendar__arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	color: var(--mc-muted);
+	background: transparent;
+	border: none;
+	border-radius: 50%;
+	cursor: pointer;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.mobile-calendar__arrow:hover {
+	color: var(--mc-primary-dark);
+	background: #eef5fb;
+}
+
+.mobile-calendar__arrow--active {
+	color: var(--mc-primary);
+	background: #e7f3fb;
+}
+
+.mobile-calendar__divider {
+	width: 1px;
+	height: 18px;
+	margin: 0 4px;
+	background: var(--mc-border);
+}
+
+.mobile-calendar__weekdays {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	padding: 0 2px;
+	color: var(--mc-muted);
+	font-size: 0.68rem;
+	font-weight: 700;
+	text-align: center;
+	text-transform: lowercase;
+}
+
+.mobile-calendar__grid {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-top: 2px;
+}
+
+.mobile-calendar__week {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+}
+
+.mobile-day {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 3px;
+	padding: 4px 0 6px;
+	color: var(--mc-text);
+	background: none;
+	border: none;
+	cursor: pointer;
+}
+
+.mobile-day__number {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	border-radius: 50%;
+	transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mobile-day--outside .mobile-day__number {
+	color: #b7c3cc;
+	font-weight: 500;
+}
+
+.mobile-day--selected .mobile-day__number {
+	color: #ffffff;
+	background: var(--mc-primary);
+}
+
+.mobile-day--range-start .mobile-day__number {
+	color: #7a4a00;
+	background: #ffd98a;
+}
+
+.mobile-day--holiday .mobile-day__number {
+	box-shadow: 0 0 0 2px #2f6b45 inset;
+}
+
+.mobile-day--today:not(.mobile-day--selected) .mobile-day__number {
+	color: var(--mc-primary);
+	border: 2px solid var(--mc-primary);
+}
+
+.mobile-day__dots {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	height: 6px;
+}
+
+.mobile-day__dot {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+}
+
+.mobile-calendar__hint {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin: 8px 4px 0;
+	padding: 6px 10px;
+	color: #7a4a00;
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-align: center;
+	background: #fff7e8;
+	border: 1px solid #f0ddbd;
+	border-radius: 10px;
+}
+
+.mobile-calendar__hint-cancel {
+	padding: 2px 8px;
+	color: #7a4a00;
+	font-size: 0.68rem;
+	font-weight: 700;
+	background: rgba(122, 74, 0, 0.1);
+	border: none;
+	border-radius: 999px;
+	cursor: pointer;
+}
+
+.mobile-day-detail {
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--mc-border);
+}
+
+.mobile-day-detail__title {
+	margin: 0 4px 8px;
+	color: var(--mc-text);
+	font-size: 0.85rem;
+	font-weight: 700;
+}
+
+.mobile-day-detail__list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.mobile-event-card {
+	width: 100%;
+	background: #f8fbfd;
+	border-color: var(--mc-border);
+}
+
+.mobile-event-card__dot {
+	flex: 0 0 10px;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+}
+
+.mobile-day-detail--empty {
+	color: var(--mc-muted);
+	font-size: 0.76rem;
+	line-height: 1.4;
+	text-align: center;
 }
 
 /* ========================================
@@ -2736,6 +3531,27 @@ export default {
 }
 
 @media screen and (max-width: 700px) {
+	.layout {
+		flex-direction: column;
+	}
+
+	.grow2 {
+		flex: 0 0 auto;
+		width: 100%;
+	}
+
+	.grow1 {
+		flex: 0 0 auto;
+		width: 100%;
+		min-width: 0;
+		min-height: 320px;
+	}
+
+	.cards {
+		height: auto;
+		max-height: none;
+	}
+
 	.floating-help-button {
 		right: 12px;
 		bottom: 12px;
@@ -2748,10 +3564,6 @@ export default {
 		margin: 20px;
 	}
 }
-
-/* ========================================
- * ESTADOS INTERACTIVOS
- * ======================================== */
 
 .sidebar-button:hover {
 	background: var(--sidebar-soft-hover) !important;
@@ -2892,9 +3704,6 @@ export default {
 	background: var(--sidebar-primary) !important;
 	border-color: var(--sidebar-primary) !important;
 }
-/* ========================================
- * NOTIFICACIONES PENDIENTES
- * ======================================== */
 
 .pending-list {
 	width: 100%;

@@ -4,7 +4,7 @@
 		<button
 			class="side-toggle-button"
 			type="button"
-			:class="{ 'side-toggle-button--open': navigationMode !== 'hidden' }"
+			:class="{ 'side-toggle-button--open': isMobile && navigationMode !== 'hidden' }"
 			:style="{ insetInlineStart: toggleOffset }"
 			:title="navigationModeLabel"
 			:aria-label="navigationModeLabel"
@@ -23,7 +23,8 @@
 			class="mobile-nav-backdrop"
 			@click="closeNavigation" />
 
-		<NcAppNavigation
+		<component
+			:is="navRootTag"
 			class="empleados-side-navigation"
 			:class="[
 				`empleados-side-navigation--${navigationMode}`,
@@ -245,7 +246,7 @@
 					</NcAppNavigationList>
 				</div>
 			</div>
-		</NcAppNavigation>
+		</component>
 	</div>
 </template>
 
@@ -344,9 +345,10 @@ export default {
 			return t('empleados', 'Show navigation')
 		},
 
-		// Posición horizontal del botón flotante.
-		// En móvil siempre queda fijo cerca del borde; en escritorio
-		// "persigue" el borde derecho del panel según su ancho actual.
+		navRootTag() {
+			return this.isMobile ? 'div' : 'NcAppNavigation'
+		},
+
 		toggleOffset() {
 			if (this.isMobile) {
 				return '10px'
@@ -737,11 +739,13 @@ export default {
 	background: var(--color-main-background);
 	box-shadow: 8px 0 30px rgba(0, 0, 0, 0.22);
 	border-radius: 0 18px 18px 0;
-	transform: translateX(-100%);
+	transform: translateX(-100%) !important;
 	transition: transform 220ms ease;
+	visibility: visible !important;
+	opacity: 1 !important;
 }
 
 .empleados-side-navigation--mobile.empleados-side-navigation--normal {
-	transform: translateX(0);
+	transform: translateX(0) !important;
 }
 </style>

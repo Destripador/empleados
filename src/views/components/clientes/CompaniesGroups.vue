@@ -75,33 +75,13 @@
 							</NcButton>
 						</header>
 						<div>
-							<div class="details-header"
-								:class="{ 'details-header--especial': selectedClient.especial }">
-								<div class="details-icon details-icon--logo">
-									<ClienteLogo
-										:id="selectedClient.id"
-										:logo="selectedClient.logo"
-										:bust="logoBust"
-										size="lg"
-										:alt="selectedClient.nombre || t('empleados', 'Customer')" />
-								</div>
-
-								<div class="details-title">
-									<p class="eyebrow">
-										{{ selectedClientType }}
-									</p>
-									<h2>{{ selectedClient.nombre || t('empleados', 'Without name') }}</h2>
-									<p>{{ selectedClient.detalles || t('empleados', 'No description available.') }}</p>
-									<div v-if="canEditClientLogo" class="logo-actions">
-										<NcButton type="tertiary" @click="triggerLogoUpload">
-											{{ selectedClient.logo ? t('empleados', 'Replace logo') : t('empleados', 'Add logo') }}
-										</NcButton>
-										<NcButton v-if="selectedClient.logo" type="tertiary" @click="removeClientLogo">
-											{{ t('empleados', 'Remove logo') }}
-										</NcButton>
-									</div>
-								</div>
-							</div>
+							<ClientDetailsHeader
+								:client="selectedClient"
+								:client-type="selectedClientType"
+								:logo-bust="logoBust"
+								:can-edit-logo="canEditClientLogo"
+								@trigger-logo-upload="triggerLogoUpload"
+								@remove-logo="removeClientLogo" />
 
 							<VueTabs :key="selectedClient.id"
 								class="companies-tabs"
@@ -109,160 +89,13 @@
 								active-text-color="var(--color-primary-element-text)"
 								type="grow">
 								<VTab :title="t('empleados', 'General Information')">
-									<div class="btn-top">
-										<div class="info-section">
-											<div class="section-head">
-												<div>
-													<p class="section-label">
-														{{ t('empleados', 'Company Information') }}
-													</p>
-												</div>
-											</div>
-
-											<div class="info-grid">
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Legal Business Name') }}</span>
-													<span class="value-text">{{ selectedClient.razon_social || '-'
-													}}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Project Manager') }}</span>
-
-													<div v-if="projectManager" class="pm-info">
-														<img :src="projectManager.avatar"
-															:alt="projectManager.label"
-															class="pm-avatar">
-
-														<span class="value-text">
-															{{ projectManager.label }}
-														</span>
-													</div>
-
-													<span v-else class="value-text">
-														-
-													</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Primary Contact') }}</span>
-													<span class="value-text">{{ selectedClient.nombre_contacto || '-'
-													}}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Phone Number') }}</span>
-													<span class="value-text">{{ selectedClient.telefono || '-' }}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Email Address') }}</span>
-													<span class="value-text">{{ selectedClient.correo || '-' }}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'RFC') }}</span>
-													<span class="value-text">{{ selectedClient.rfc || '-' }}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Location') }}</span>
-													<span class="value-text">{{ selectedClient.ubicacion || '-'
-													}}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Special Client') }}</span>
-													<span class="value-text">{{ Number(selectedClient.especial) ?
-														t('empleados',
-															'Yes') : t('empleados', 'No') }}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Status') }}</span>
-													<span class="value-text">{{ Number(selectedClient.estado) ?
-														t('empleados',
-															'Active') : t('empleados', 'Inactive') }}</span>
-												</div>
-											</div>
-										</div>
-									</div>
-
-									<div class="btn-top">
-										<div class="info-section">
-											<div class="section-head">
-												<div>
-													<p class="section-label">
-														{{ t('empleados', 'Group Information') }}
-													</p>
-												</div>
-											</div>
-
-											<div class="details-grid">
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Parent group') }}</span>
-													<span class="value-text">{{ parentName }}</span>
-												</div>
-
-												<div class="detail-card">
-													<span>{{ t('empleados', 'Sub-companies') }}</span>
-													<span class="value-text">{{ childCompanies.length }}</span>
-												</div>
-
-												<div class="detail-card detail-card-wide">
-													<span>{{ t('empleados', 'Hierarchy') }}</span>
-													<div class="breadcrumb">
-														<span>{{ parentName }}</span>
-														<span class="separator">/</span>
-														<span class="value-text">{{ selectedClient.nombre }}</span>
-													</div>
-												</div>
-											</div>
-											<!-- Sub-companies -->
-											<div class="children-section">
-												<div class="section-head">
-													<div>
-														<p class="section-label">
-															{{ t('empleados', 'Sub-companies') }}
-														</p>
-														<h3>{{ t('empleados', 'Companies inside this group') }}</h3>
-													</div>
-												</div>
-
-												<div v-if="childCompanies.length > 0" class="children-grid">
-													<button v-for="child in childCompanies"
-														:key="child.id"
-														type="button"
-														class="child-card"
-														@click="GetCompanieGroup(child.id)">
-														<div class="child-icon">
-															<OfficeBuilding :size="20" />
-														</div>
-
-														<div class="child-info">
-															<span class="value-text">{{ child.nombre }}</span>
-															<span>{{ child.detalles || t('empleados', 'No description available.')
-															}}</span>
-														</div>
-
-														<div class="child-count">
-															{{ child.child_count || 0 }}
-														</div>
-													</button>
-												</div>
-
-												<NcEmptyContent v-else
-													:name="t('empleados', 'No sub-companies')"
-													:description="t('empleados', 'This company or group does not have registered sub-companies.')">
-													<template #icon>
-														<OfficeBuilding />
-													</template>
-												</NcEmptyContent>
-											</div>
-										</div>
-									</div>
+									<ClientGeneralTab
+										:client="selectedClient"
+										:project-manager="projectManager"
+										:parent-name="parentName"
+										:child-companies="childCompanies"
+										@select-child="GetCompanieGroup" />
 								</VTab>
-
 								<VTab :title="t('empleados', 'Fees')">
 									<div class="info-section separator-top">
 										<div class="section-head">
@@ -661,98 +494,21 @@
 						</div>
 
 						<!-- Modal - Registrar Factura (paso 1: pendiente -> facturada) -->
-						<NcModal
-							v-if="showFacturaModal"
-							size="small"
-							:name="t('empleados', 'Register Invoice')"
-							@close="showFacturaModal = false">
-							<div class="payment-modal">
-								<div class="payment-icon-wrapper">
-									<div class="payment-icon">
-										🧾
-									</div>
-								</div>
-								<h2>{{ t('empleados', 'Register Invoice') }}</h2>
-								<p class="payment-subtitle">
-									{{ t('empleados', 'Select the invoice date for this installment.') }}
-								</p>
-								<div class="payment-field">
-									<NcTextField
-										v-model="fechaFactura"
-										type="date"
-										:label="t('empleados', 'Invoice date')" />
-								</div>
-
-								<div class="payment-advanced">
-									<button type="button"
-										class="payment-advanced__toggle"
-										@click="showAdvancedFactura = !showAdvancedFactura">
-										<DotsHorizontal :size="16" />
-										{{ t('empleados', 'Advanced options') }}
-										<ChevronDown :size="14" class="payment-advanced__chevron" :class="{ open: showAdvancedFactura }" />
-									</button>
-
-									<div v-if="showAdvancedFactura" class="payment-advanced__body">
-										<NcSelect v-model="facturaClientePagador"
-											:options="clientesPagadorOptions"
-											:clearable="true"
-											:placeholder="t('empleados', 'Invoiced by another company')"
-											label="label"
-											track-by="value" />
-										<p class="payment-advanced__hint">
-											{{ t('empleados', 'Only fill this in if a related company (parent or sister) invoiced this installment instead.') }}
-										</p>
-									</div>
-								</div>
-
-								<div class="payment-actions">
-									<NcButton @click="showFacturaModal = false">
-										{{ t('empleados', 'Cancel') }}
-									</NcButton>
-									<NcButton
-										type="primary"
-										@click="confirmarFacturaModal">
-										{{ t('empleados', 'Save') }}
-									</NcButton>
-								</div>
-							</div>
-						</NcModal>
+						<ModalFactura
+							:open="showFacturaModal"
+							:fecha.sync="fechaFactura"
+							:show-advanced.sync="showAdvancedFactura"
+							:cliente-pagador.sync="facturaClientePagador"
+							:clientes-pagador-options="clientesPagadorOptions"
+							@close="showFacturaModal = false"
+							@save="confirmarFacturaModal" />
 
 						<!-- Modal - Registrar Pago (paso 2: facturada -> pagada) -->
-						<NcModal
-							v-if="showPagoModal"
-							size="small"
-							:name="t('empleados', 'Register Payment')"
-							@close="showPagoModal = false">
-							<div class="payment-modal">
-								<div class="payment-icon-wrapper payment-icon-wrapper--pago">
-									<div class="payment-icon">
-										💳
-									</div>
-								</div>
-								<h2>{{ t('empleados', 'Register Payment') }}</h2>
-								<p class="payment-subtitle">
-									{{ t('empleados', 'Select the payment date for this installment.') }}
-								</p>
-								<div class="payment-field">
-									<NcTextField
-										v-model="fechaPago"
-										type="date"
-										:label="t('empleados', 'Payment date')" />
-								</div>
-
-								<div class="payment-actions">
-									<NcButton @click="showPagoModal = false">
-										{{ t('empleados', 'Cancel') }}
-									</NcButton>
-									<NcButton
-										type="primary"
-										@click="confirmarPagoModal">
-										{{ t('empleados', 'Save') }}
-									</NcButton>
-								</div>
-							</div>
-						</NcModal>
+						<ModalPago
+							:open="showPagoModal"
+							:fecha.sync="fechaPago"
+							@close="showPagoModal = false"
+							@save="confirmarPagoModal" />
 
 						<NcDialog :open.sync="showDeleteHonorarioDialog"
 							:name="t('empleados', 'Confirm')"
@@ -796,493 +552,103 @@
 		</div>
 
 		<!-- Modal: Cliente -->
-		<NcModal v-if="modal && canAdminCustomers"
-			ref="modalRef"
-			:name="modalTitle"
-			@close="closeModal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<p class="section-label">
-						{{ editing ? t('empleados', 'Edit') : t('empleados', 'Create') }}
-					</p>
-					<h2>{{ modalTitle }}</h2>
-					<p>
-						{{ t('empleados', 'Register a main group or link the company to an existing parent group.') }}
-					</p>
-				</div>
-
-				<div v-if="canEditClientLogo" class="logo-editor">
-					<ClienteLogo
-						:id="selectedClient.id"
-						:logo="selectedClient.logo"
-						:bust="logoBust"
-						size="lg"
-						:alt="selectedClient.nombre || t('empleados', 'Customer')" />
-					<div class="logo-actions">
-						<NcButton type="tertiary" @click="triggerLogoUpload">
-							{{ selectedClient.logo ? t('empleados', 'Replace logo') : t('empleados', 'Add logo') }}
-						</NcButton>
-						<NcButton v-if="selectedClient.logo" type="tertiary" @click="removeClientLogo">
-							{{ t('empleados', 'Remove logo') }}
-						</NcButton>
-					</div>
-				</div>
-
-				<div class="form-grid">
-					<!-- nombre -->
-					<NcTextField required
-						class="span-2"
-						:value.sync="nombre"
-						:label="t('empleados', 'Company or group name')" />
-
-					<!-- detalles -->
-					<NcTextArea class="span-2"
-						:value.sync="detalles"
-						:label="t('empleados', 'Details')"
-						:rows="3" />
-
-					<!-- razon_social -->
-					<NcTextField :value.sync="razon_social" :label="t('empleados', 'Business name')" />
-
-					<!-- correo -->
-					<NcTextField :value.sync="correo" :label="t('empleados', 'Email')" />
-
-					<!-- rfc -->
-					<NcTextField :value.sync="rfc" :label="t('empleados', 'RFC')" />
-
-					<!-- nombre_contacto -->
-					<NcTextField :value.sync="nombre_contacto" :label="t('empleados', 'Primary contact')" />
-
-					<!-- telefono -->
-					<NcTextField :value.sync="telefono" :label="t('empleados', 'Phone number')" />
-
-					<!-- ubicacion -->
-					<NcTextField class="span-2" :value.sync="ubicacion" :label="t('empleados', 'Location')" />
-					<NcSelect v-model="lider_proyecto"
-						:input-label="t('empleados', 'Project leader')"
-						:options="projectManagers"
-						:clearable="true"
-						label="label"
-						track-by="value" />
-					<NcSelect v-model="colaboradores"
-						:options="collaboratorOptions"
-						:multiple="true"
-						label="label"
-						track-by="value"
-						:placeholder="t('empleados', 'Collaborators')"
-						class="aligned-select" />
-
-					<!-- especial -->
-					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch v-model="especial" type="switch" />
-						<div class="special-client-info">
-							<h3>{{ t('empleados', 'Special Client') }}</h3>
-							<p>
-								{{ t('empleados', 'Enable this option for special handling clients.') }}
-							</p>
-						</div>
-					</div>
-
-					<!-- estado -->
-					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch v-model="estado" type="switch" />
-						<div class="special-client-info">
-							<h3>{{ t('empleados', 'Active') }}</h3>
-							<p>
-								{{ t('empleados', 'Disable to deactivate this client without deleting it.') }}
-							</p>
-						</div>
-					</div>
-
-					<!-- cliente_padre -->
-					<NcSelect :key="options.length"
-						v-model="cliente_padre"
-						class="span-2"
-						:input-label="t('empleados', 'Parent group')"
-						:options="parentOptions"
-						:clearable="true"
-						label="label"
-						track-by="id" />
-
-					<NcNoteCard type="info" class="span-2">
-						{{ t('empleados', 'Leave parent group empty to create a main group. Select a parent to create a sub-company.') }}
-					</NcNoteCard>
-				</div>
-
-				<div class="modal-actions">
-					<NcButton @click="closeModal">
-						{{ t('empleados', 'Cancel') }}
-					</NcButton>
-
-					<NcButton type="primary" :disabled="!isFormValid || saving" @click="save">
-						{{ saving ? t('empleados', 'Saving...') : saveLabel }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
+		<ModalCliente
+			v-if="modal && canAdminCustomers"
+			:open="modal"
+			:editing="editing"
+			:saving="saving"
+			:modal-title="modalTitle"
+			:save-label="saveLabel"
+			:selected-client="selectedClient"
+			:can-edit-logo="canEditClientLogo"
+			:logo-bust="logoBust"
+			:project-managers="projectManagers"
+			:parent-options="parentOptions"
+			@save="handleSaveCliente"
+			@close="closeModal"
+			@trigger-logo-upload="triggerLogoUpload"
+			@remove-logo="removeClientLogo" />
 
 		<!-- Modal: Filtros de clientes -->
-		<NcModal v-if="showListFilterModal"
-			size="small"
-			:name="t('empleados', 'Filter companies')"
-			@close="showListFilterModal = false">
-			<div class="modal-content">
-				<div class="modal-header">
-					<p class="section-label">
-						{{ t('empleados', 'Companies and groups') }}
-					</p>
-					<h2>{{ t('empleados', 'Filter companies') }}</h2>
-				</div>
-
-				<div class="form-grid">
-					<NcSelect v-model="sortOrder"
-						class="span-2"
-						:input-label="t('empleados', 'Sort')"
-						:options="sortOrderOptions"
-						label="label"
-						track-by="value"
-						:searchable="false"
-						:clearable="false" />
-
-					<NcSelect v-model="tipoFiltro"
-						class="span-2"
-						:input-label="t('empleados', 'Show')"
-						:options="tipoFiltroOptions"
-						label="label"
-						track-by="value"
-						:searchable="false"
-						:clearable="false" />
-
-					<NcSelect v-model="estadoFiltro"
-						class="span-2"
-						:input-label="t('empleados', 'Status')"
-						:options="estadoFiltroOptions"
-						label="label"
-						track-by="value"
-						:searchable="false"
-						:clearable="false" />
-
-					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch v-model="onlySpecial" type="switch" />
-						<div class="special-client-info">
-							<h3>{{ t('empleados', 'Only Special Clients') }}</h3>
-							<p>{{ t('empleados', 'Show only clients marked as special.') }}</p>
-						</div>
-					</div>
-				</div>
-
-				<div class="modal-actions">
-					<NcButton @click="resetListFilters">
-						{{ t('empleados', 'Clear filters') }}
-					</NcButton>
-					<NcButton type="primary" @click="showListFilterModal = false">
-						{{ t('empleados', 'Apply') }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
+		<ModalFiltrosLista
+			:open="showListFilterModal"
+			:sort-order.sync="sortOrder"
+			:tipo-filtro.sync="tipoFiltro"
+			:estado-filtro.sync="estadoFiltro"
+			:only-special.sync="onlySpecial"
+			@reset="resetListFilters"
+			@close="showListFilterModal = false" />
 
 		<!-- Modal: Filtros Honorarios -->
-		<NcModal v-if="honorarioFilterModal"
-			size="small"
-			:name="t('empleados', 'Filter fees')"
-			@close="honorarioFilterModal = false">
-			<div class="modal-content">
-				<div class="modal-header">
-					<p class="section-label">
-						{{ t('empleados', 'Billing') }}
-					</p>
-					<h2>{{ t('empleados', 'Filter fees') }}</h2>
-				</div>
-
-				<div class="form-grid">
-					<NcTextField class="span-2"
-						:value.sync="hf_busqueda"
-						:label="t('empleados', 'Search by service name')" />
-
-					<NcSelect v-model="hf_estado"
-						class="span-2"
-						:options="hf_estadoOptions"
-						:placeholder="t('empleados', 'Status')"
-						label="label"
-						track-by="value"
-						:clearable="true" />
-
-					<NcSelect v-model="hf_tipo"
-						class="span-2"
-						:options="hf_tipoOptions"
-						:placeholder="t('empleados', 'Fee type')"
-						label="label"
-						track-by="value"
-						:clearable="true" />
-
-					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch v-model="hf_soloEspecial" type="switch" />
-						<div class="special-client-info">
-							<h3>{{ t('empleados', 'Special fees only') }}</h3>
-						</div>
-					</div>
-
-					<div class="span-2">
-						<span class="date-label">{{ t('empleados', 'Date range') }}</span>
-					</div>
-					<NcTextField :value.sync="hf_desde" type="date" :label="t('empleados', 'From')" />
-					<NcTextField :value.sync="hf_hasta" type="date" :label="t('empleados', 'To')" />
-				</div>
-
-				<div class="modal-actions">
-					<NcButton @click="resetHonorarioFilters">
-						{{ t('empleados', 'Clear filters') }}
-					</NcButton>
-					<NcButton type="primary" @click="honorarioFilterModal = false">
-						{{ t('empleados', 'Apply') }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
+		<ModalFiltrosHonorarios
+			:open="honorarioFilterModal"
+			:busqueda.sync="hf_busqueda"
+			:estado.sync="hf_estado"
+			:tipo.sync="hf_tipo"
+			:solo-especial.sync="hf_soloEspecial"
+			:desde.sync="hf_desde"
+			:hasta.sync="hf_hasta"
+			@reset="resetHonorarioFilters"
+			@close="honorarioFilterModal = false" />
 
 		<!-- Modal - Solicitud de recibo -->
-		<NcModal v-if="reporteModal && canAdminCustomers"
-			size="normal"
-			:name="t('empleados', 'Generate request')"
-			@close="reporteModal = false">
-			<div class="modal-content">
-				<span tabindex="0" class="focus-catcher" aria-hidden="true" />
-
-				<div class="modal-header">
-					<h2>{{ t('empleados', 'Generate service fee request') }}</h2>
-				</div>
-
-				<div class="form-grid">
-					<NcSelect v-model="rep_departamento"
-						class="span-2"
-						:options="rep_departamentoOptions"
-						:placeholder="t('empleados', 'Department')"
-						label="label"
-						track-by="value" />
-
-					<NcTextField class="span-2" :value.sync="rep_asunto" :label="t('empleados', 'Subject')" />
-				</div>
-
-				<div class="modal-actions">
-					<NcButton @click="reporteModal = false">
-						{{ t('empleados', 'Cancel') }}
-					</NcButton>
-					<NcButton :disabled="generandoReporte || enviandoReporte" @click="generarReporte">
-						{{ generandoReporte ? t('empleados', 'Generating...') : t('empleados', 'Download request') }}
-					</NcButton>
-					<NcButton type="primary" :disabled="generandoReporte || enviandoReporte" @click="enviarSolicitudHonorario">
-						{{ enviandoReporte ? t('empleados', 'Sending...') : t('empleados', 'Generate request and send') }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
+		<ModalReporteHonorario
+			v-if="canAdminCustomers"
+			:open="reporteModal"
+			:departamento.sync="rep_departamento"
+			:departamento-options="rep_departamentoOptions"
+			:asunto.sync="rep_asunto"
+			:generating="generandoReporte"
+			:sending="enviandoReporte"
+			@close="reporteModal = false"
+			@generate="generarReporte"
+			@send="enviarSolicitudHonorario" />
 
 		<!-- Modal - Solicitudes múltiples -->
-		<NcModal v-if="reporteMultipleModal && canAdminCustomers"
-			size="normal"
-			:name="t('empleados', 'Generate request')"
-			@close="reporteMultipleModal = false">
-			<div class="modal-content">
-				<div class="modal-header">
-					<p class="section-label">
-						{{ t('empleados', 'Billing') }}
-					</p>
-					<h2>{{ t('empleados', 'Generate service fee requests') }}</h2>
-					<p>
-						{{ t('empleados', '{n} fee(s) selected', { n: honorariosSeleccionadosDetalle.length }) }}
-					</p>
-				</div>
-
-				<div class="multi-request-list">
-					<div v-for="honorario in honorariosSeleccionadosDetalle"
-						:key="honorario.id_honorario"
-						class="multi-request-item">
-						{{ honorario.tipo_servicio || t('empleados', 'Service') }}
-					</div>
-				</div>
-
-				<div class="modal-actions">
-					<NcButton @click="reporteMultipleModal = false">
-						{{ t('empleados', 'Cancel') }}
-					</NcButton>
-					<NcButton :disabled="descargandoMultiple || notificandoMultiple" @click="descargarSolicitudesMultiples">
-						{{ descargandoMultiple ? t('empleados', 'Downloading...') : t('empleados', 'Download requests') }}
-					</NcButton>
-					<NcButton type="primary" :disabled="descargandoMultiple || notificandoMultiple" @click="notificarHonorariosPendientes">
-						{{ notificandoMultiple ? t('empleados', 'Sending...') : t('empleados', 'Notify by email') }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
+		<ModalReporteMultiple
+			v-if="canAdminCustomers"
+			:open="reporteMultipleModal"
+			:honorarios="honorariosSeleccionadosDetalle"
+			:downloading="descargandoMultiple"
+			:notifying="notificandoMultiple"
+			@close="reporteMultipleModal = false"
+			@download="descargarSolicitudesMultiples"
+			@notify="notificarHonorariosPendientes" />
 
 		<!-- Modal: Importar -->
 		<ModalClientes v-if="showImportarModal" @close="showImportarModal = false" />
 
 		<!-- Modal - Honorarios -->
-		<NcModal v-if="honorarioModal && canAdminCustomers" :name="honorarioModalTitle" @close="closeHonorarioModal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<p class="section-label">
-						{{ t('empleados', 'Billing') }}
-					</p>
-					<h2>{{ honorarioModalTitle }}</h2>
-				</div>
-
-				<!-- Selector de tipo -->
-				<div class="tipo-honorario-selector">
-					<button v-for="tipo in tiposHonorario"
-						:key="tipo.value"
-						class="tipo-btn"
-						:class="{ 'tipo-btn--active': h_tipo_honorario === tipo.value }"
-						type="button"
-						:disabled="isEditingHonorario"
-						@click="!isEditingHonorario && (h_tipo_honorario = tipo.value)">
-						<span class="tipo-icon">
-							<span v-if="tipo.value === 'parcial'">📅</span>
-							<span v-else-if="tipo.value === 'iguala'">🔄</span>
-							<span v-else>⚡</span>
-						</span>
-						{{ tipo.label }}
-					</button>
-				</div>
-
-				<!-- Descripción contextual -->
-				<NcNoteCard type="info" class="tipo-desc">
-					<span v-if="h_tipo_honorario === 'parcial'">
-						{{ t('empleados', 'Fixed period. Installments are calculated automatically by month between start and end date.') }}
-					</span>
-					<span v-else-if="h_tipo_honorario === 'iguala'">
-						{{ t('empleados', 'Indefinite monthly fee. A new installment is generated each month. You can finalize it at any time.') }}
-					</span>
-					<span v-else>
-						{{ t('empleados', 'One-time fee. A single installment is created for the selected month.') }}
-					</span>
-				</NcNoteCard>
-
-				<!-- Aviso de edición bloqueada -->
-				<NcNoteCard v-if="isEditingHonorario" type="warning" class="tipo-desc">
-					{{ t('empleados', 'Dates and amount cannot be changed here to avoid regenerating installments. Only service, currency, title date and special flag can be edited.') }}
-				</NcNoteCard>
-
-				<div class="form-grid">
-					<NcTextField :value.sync="h_tipo_servicio" :label="t('empleados', 'Service type')" />
-
-					<NcSelect v-model="h_titulo_anio"
-						:options="anios"
-						:placeholder="t('empleados', 'Year')"
-						label="label"
-						track-by="value"
-						:searchable="false" />
-
-					<NcSelect v-model="h_tipo_moneda"
-						:options="currencyOptions"
-						label="label"
-						track-by="value"
-						:searchable="false" />
-
-					<NcTextField type="number"
-						:value.sync="h_importe_total"
-						:disabled="isEditingHonorario"
-						:label="t('empleados', 'Total amount')" />
-
-					<div class="special-client-card span-2">
-						<NcCheckboxRadioSwitch v-model="h_especial" type="switch" />
-						<div class="special-client-info">
-							<h3>{{ t('empleados', 'Special fee') }}</h3>
-							<p>{{ t('empleados', 'Marks this service fee as special.') }}</p>
-						</div>
-					</div>
-
-					<NcTextArea class="span-2"
-						:value.sync="h_descripcion"
-						:label="t('empleados', 'Description')"
-						:rows="3" />
-
-					<!-- Fecha inicio (todos los tipos) -->
-					<div class="span-2">
-						<span class="date-label">{{ t('empleados', 'Start date') }}</span>
-					</div>
-					<NcSelect v-model="h_mes_inicio"
-						:options="meses"
-						:placeholder="t('empleados', 'Month')"
-						label="label"
-						track-by="value"
-						:searchable="false"
-						:disabled="isEditingHonorario" />
-					<NcSelect v-model="h_anio_inicio"
-						:options="anios"
-						:placeholder="t('empleados', 'Year')"
-						label="label"
-						track-by="value"
-						:searchable="false"
-						:disabled="isEditingHonorario" />
-
-					<!-- Fecha fin solo para parciales -->
-					<template v-if="h_tipo_honorario === 'parcial'">
-						<div class="span-2">
-							<span class="date-label">{{ t('empleados', 'End date') }}</span>
-						</div>
-						<NcSelect v-model="h_mes_fin"
-							:options="meses"
-							:placeholder="t('empleados', 'Month')"
-							label="label"
-							track-by="value"
-							:searchable="false"
-							:disabled="isEditingHonorario" />
-						<NcSelect v-model="h_anio_fin"
-							:options="anios"
-							:placeholder="t('empleados', 'Year')"
-							label="label"
-							track-by="value"
-							:searchable="false"
-							:disabled="isEditingHonorario" />
-						<NcSelect v-model="h_periodicidad"
-							class="span-2"
-							:options="periodicidadOptions"
-							:input-label="t('empleados', 'Select installment period')"
-							label="label"
-							track-by="value"
-							:searchable="false"
-							:disabled="isEditingHonorario" />
-					</template>
-
-					<!-- Preview -->
-					<NcNoteCard v-if="!isEditingHonorario && h_tipo_honorario === 'parcial' && periodBreakdown.length > 0"
-						type="info"
-						class="span-2">
-						{{ t('empleados', '{n} installment(s): {detail} {currency}', {
-							n: periodBreakdown.length,
-							detail: periodAmounts.map(a => formatImporte(a)).join(' + '),
-							currency: h_tipo_moneda ? h_tipo_moneda.value : ''
-						}) }}
-					</NcNoteCard>
-					<NcNoteCard v-else-if="!isEditingHonorario && h_tipo_honorario === 'iguala'" type="info" class="span-2">
-						{{ t('empleados', 'Monthly fee of {amount} {currency} starting {mes} {anio}', {
-							amount: formatImporte(Number(h_importe_total || 0)),
-							currency: h_tipo_moneda ? h_tipo_moneda.value : '',
-							mes: h_mes_inicio ? h_mes_inicio.label : '—',
-							anio: h_anio_inicio ? h_anio_inicio.value : ''
-						}) }}
-					</NcNoteCard>
-					<NcNoteCard v-else-if="!isEditingHonorario && h_tipo_honorario === 'eventual'" type="info" class="span-2">
-						{{ t('empleados', 'Single installment of {amount} {currency}', {
-							amount: formatImporte(Number(h_importe_total || 0)),
-							currency: h_tipo_moneda ? h_tipo_moneda.value : ''
-						}) }}
-					</NcNoteCard>
-				</div>
-
-				<div class="modal-actions">
-					<NcButton @click="closeHonorarioModal">
-						{{ t('empleados', 'Cancel') }}
-					</NcButton>
-					<NcButton type="primary" :disabled="!isHonorarioValid || savingHonorario" @click="handleSaveHonorario">
-						{{ honorarioSaveLabel }}
-					</NcButton>
-				</div>
-			</div>
-		</NcModal>
+		<ModalHonorario
+			v-if="canAdminCustomers"
+			:open="honorarioModal"
+			:title="honorarioModalTitle"
+			:save-label="honorarioSaveLabel"
+			:saving="savingHonorario"
+			:is-editing="isEditingHonorario"
+			:is-valid="isHonorarioValid"
+			:tipos-honorario="tiposHonorario"
+			:meses="meses"
+			:anios="anios"
+			:currency-options="currencyOptions"
+			:periodicidad-options="periodicidadOptions"
+			:period-breakdown="periodBreakdown"
+			:period-amounts="periodAmounts"
+			:format-importe="formatImporte"
+			:tipo-honorario.sync="h_tipo_honorario"
+			:especial.sync="h_especial"
+			:tipo-servicio.sync="h_tipo_servicio"
+			:titulo-anio.sync="h_titulo_anio"
+			:tipo-moneda.sync="h_tipo_moneda"
+			:importe-total.sync="h_importe_total"
+			:descripcion.sync="h_descripcion"
+			:mes-inicio.sync="h_mes_inicio"
+			:anio-inicio.sync="h_anio_inicio"
+			:mes-fin.sync="h_mes_fin"
+			:anio-fin.sync="h_anio_fin"
+			:periodicidad.sync="h_periodicidad"
+			@close="closeHonorarioModal"
+			@save="handleSaveHonorario" />
 		<input v-if="canAdminCustomers"
 			ref="file"
 			type="file"
@@ -1304,10 +670,21 @@ import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
-import List from '../Helpers/Lists/List.vue'
 import ModalClientes from './ModalClientes.vue'
+import ModalCliente from './Modals/ModalCliente.vue'
+import ModalFiltrosLista from './Modals/ModalFiltrosLista.vue'
+import ModalFiltrosHonorarios from './Modals/ModalFiltrosHonorarios.vue'
+import ModalFactura from './Modals/ModalFactura.vue'
+import ModalPago from './Modals/ModalPago.vue'
+import ModalHonorario from './Modals/ModalHonorario.vue'
+import ModalReporteHonorario from './Modals/ModalReporteHonorario.vue'
+import ModalReporteMultiple from './Modals/ModalReporteMultiple.vue'
+
+import ClientDetailsHeader from './Details/ClientDetailsHeader.vue'
+import ClientGeneralTab from './Details/ClientGeneralTab.vue'
+
+import List from '../Helpers/Lists/List.vue'
 import permissionsMixin from '../../../mixins/permissions.js'
-import ClienteLogo from '../../../components/clientes/ClienteLogo.vue'
 import clientesService, { clienteLogoUrl } from '../../../services/clientesService.js'
 
 import OfficeBuilding from 'vue-material-design-icons/OfficeBuilding.vue'
@@ -1329,28 +706,18 @@ import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import 'vue-nav-tabs/themes/vue-tabs.css'
-// import DatabaseCog from 'vue-material-design-icons/DatabaseCog.vue'
-// import IconTrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
-// import IconOpenInNew from 'vue-material-design-icons/OpenInNew.vue'
-// import IconPencilOutline from 'vue-material-design-icons/PencilOutline.vue'
 
 import {
 	NcAppContent,
-	NcModal,
-	NcTextField,
 	NcButton,
-	NcTextArea,
 	NcDialog,
-	NcSelect,
 	NcEmptyContent,
-	NcNoteCard,
 	NcActions,
 	NcActionButton,
 	NcActionSeparator,
 } from '@nextcloud/vue'
 
 const ClientesDashboard = () => import(
-	/* webpackChunkName: "clientes-dashboard" */
 	'./ClientesDashboard.vue'
 )
 
@@ -1359,6 +726,9 @@ export default {
 
 	components: {
 		ModalClientes,
+		ModalCliente,
+		ModalFiltrosLista,
+		ModalFiltrosHonorarios,
 		TrashCanOutline,
 		Restore,
 		CalendarPlus,
@@ -1371,7 +741,6 @@ export default {
 		List,
 		NcCheckboxRadioSwitch,
 		OfficeBuilding,
-		ClienteLogo,
 		ClientesDashboard,
 		Cog,
 		AccountMultiplePlusOutline,
@@ -1382,21 +751,19 @@ export default {
 		ArrowLeft,
 		VueTabs,
 		VTab,
-		// IconTrashCanOutline,
-		// IconOpenInNew,
-		// IconPencilOutline,
-		// DatabaseCog,
-		NcModal,
-		NcTextField,
 		NcButton,
-		NcTextArea,
-		NcSelect,
 		NcActions,
 		NcActionButton,
 		NcActionSeparator,
 		FilterVariant,
 		NcEmptyContent,
-		NcNoteCard,
+		ModalFactura,
+		ModalPago,
+		ModalHonorario,
+		ModalReporteHonorario,
+		ModalReporteMultiple,
+		ClientDetailsHeader,
+		ClientGeneralTab,
 	},
 	mixins: [permissionsMixin],
 
@@ -1413,25 +780,11 @@ export default {
 			options: [],
 			modal: false,
 			/* cliente */
-			nombre: '',
-			detalles: null,
-			razon_social: null,
-			nombre_contacto: null,
-			telefono: null,
-			correo: null,
-			rfc: null,
-			ubicacion: null,
-			lider_proyecto: null,
-			colaboradores: [],
-			especial: false,
-			estado: true,
-			cliente_padre: null,
 			logoBust: Date.now(),
 			sortOrder: { label: t('empleados', 'A to Z'), value: 'az' },
 			tipoFiltro: { label: t('empleados', 'All customers'), value: 'todos' },
 			estadoFiltro: { label: t('empleados', 'Active'), value: 'activos' },
 			onlySpecial: false,
-			showFilters: false,
 			/* honorarios */
 			showListFilterModal: false,
 			honorarios: [],
@@ -1620,11 +973,6 @@ export default {
 				return !currentId || Number(option.id) !== Number(currentId)
 			})
 		},
-
-		isFormValid() {
-			return String(this.nombre || '').trim().length > 0
-		},
-
 		modalTitle() {
 			return this.editing
 				? t('empleados', 'Edit company or group')
@@ -1786,12 +1134,6 @@ export default {
 			return base
 		},
 
-		projectManagerName() {
-			return this.projectManagers.find(
-				(emp) => Number(emp.value) === Number(this.selectedClient?.lider_proyecto),
-			)?.label || '-'
-		},
-
 		projectManager() {
 			return this.projectManagers.find(
 				(emp) => Number(emp.value) === Number(this.selectedClient?.lider_proyecto),
@@ -1950,13 +1292,6 @@ export default {
 		}
 
 		this.loadRequiredCustomerData()
-		this._onClickOutside = (e) => {
-			const wrap = this.$el.querySelector('.filter-wrap')
-			if (wrap && !wrap.contains(e.target)) {
-				this.showFilters = false
-			}
-		}
-		document.addEventListener('click', this._onClickOutside)
 
 		this._onToggleEstado = () => this.toggleEstado()
 		if (this.canAdminCustomers) {
@@ -1974,7 +1309,6 @@ export default {
 		this.$root.$off('exportlist', this._onExport)
 		this.$root.$off('importlist', this._onImport)
 		this.$root.$off('toggleEstado', this._onToggleEstado)
-		document.removeEventListener('click', this._onClickOutside)
 	},
 
 	methods: {
@@ -2007,13 +1341,6 @@ export default {
 		closeMenus() {
 			this.button = false
 			this.settingsMenuOpen = false
-		},
-
-		matchSearch(name) {
-			if (this.query.trim() !== '') {
-				return name.toString().toLowerCase().includes(this.query.trim().toLowerCase())
-			}
-			return true
 		},
 
 		async loadRequiredCustomerData() {
@@ -2055,9 +1382,6 @@ export default {
 			this.$root.$emit('new', true)
 		},
 
-		toggle() {
-			this.button = !this.button
-		},
 		onKeyDown(e) {
 			if (e.key === 'Escape') {
 				this.onEsc()
@@ -2151,17 +1475,11 @@ export default {
 				return
 			}
 
-			if (this.showFilters) {
-				this.showFilters = false
-				return
-			}
-
 			this.select = []
 		},
 
 		openModal() {
 			this.editing = false
-			this.resetForm()
 			this.modal = true
 		},
 
@@ -2170,20 +1488,58 @@ export default {
 			this.saving = false
 		},
 
-		resetForm() {
-			this.nombre = ''
-			this.detalles = ''
-			this.lider_proyecto = null
-			this.colaboradores = []
-			this.razon_social = ''
-			this.nombre_contacto = ''
-			this.telefono = ''
-			this.correo = ''
-			this.rfc = ''
-			this.ubicacion = ''
-			this.especial = false
-			this.cliente_padre = null
-			this.estado = true
+		edit() {
+			if (!this.selectedClient?.id) {
+				showError(t('empleados', 'Select a company or group first.'))
+				return
+			}
+			this.editing = true
+			this.modal = true
+		},
+
+		handleSaveCliente(payload) {
+			return this.editing ? this.modify(payload) : this.create(payload)
+		},
+
+		async create(payload) {
+			this.saving = true
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/crearCliente'), payload)
+
+				showSuccess(t('empleados', 'Company or group created successfully'))
+				await this.GetCompaniesGroups()
+				this.closeModal()
+			} catch (err) {
+				showError(t('empleados', 'Error creating company: {error}', { error: String(err) }))
+			} finally {
+				this.saving = false
+			}
+		},
+
+		async modify(payload) {
+			if (!this.selectedClient?.id) {
+				showError(t('empleados', 'Select a company or group first.'))
+				return
+			}
+
+			this.saving = true
+
+			try {
+				await axios.post(generateUrl('/apps/empleados/modificarCliente'), {
+					id: this.selectedClient.id,
+					...payload,
+				})
+
+				showSuccess(t('empleados', 'Company or group updated successfully'))
+				await this.GetCompanieGroup(this.selectedClient.id)
+				await this.GetCompaniesGroups()
+				this.closeModal()
+			} catch (err) {
+				showError(t('empleados', 'Error updating company: {error}', { error: String(err) }))
+			} finally {
+				this.saving = false
+			}
 		},
 
 		AbrirImportarModal() {
@@ -2198,10 +1554,6 @@ export default {
 
 		getOcsData(response) {
 			return response?.data?.ocs?.data ?? response?.data ?? null
-		},
-
-		toggleFilters() {
-			this.showFilters = !this.showFilters
 		},
 
 		async GetClientesEmpleadosLookup(showFailure = true) {
@@ -2423,57 +1775,6 @@ export default {
 			}
 		},
 
-		save() {
-			if (this.editing) {
-				return this.modify()
-			}
-
-			return this.create()
-		},
-
-		getPayload() {
-			return {
-				nombre: String(this.nombre || '').trim(),
-				razon_social: String(this.razon_social || '').trim(),
-				lider_proyecto: this.lider_proyecto?.value ?? this.lider_proyecto ?? null,
-				colaboradores: JSON.stringify(
-					Array.isArray(this.colaboradores)
-						? this.colaboradores.map(c => c.value ?? c)
-						: [],
-				),
-				nombre_contacto: String(this.nombre_contacto || '').trim(),
-				telefono: String(this.telefono || '').trim(),
-				correo: String(this.correo || '').trim(),
-				rfc: String(this.rfc || '').trim(),
-				ubicacion: String(this.ubicacion || '').trim(),
-				detalles: String(this.detalles || '').trim(),
-				especial: this.especial ? 1 : 0,
-				cliente_padre: this.cliente_padre?.value ?? this.cliente_padre?.id ?? null,
-				estado: this.estado ? 1 : 0,
-			}
-		},
-
-		async create() {
-			if (!this.isFormValid) {
-				showError(t('empleados', 'Company or group name is required.'))
-				return
-			}
-
-			this.saving = true
-
-			try {
-				await axios.post(generateUrl('/apps/empleados/crearCliente'), this.getPayload())
-
-				showSuccess(t('empleados', 'Company or group created successfully'))
-				await this.GetCompaniesGroups()
-				this.closeModal()
-			} catch (err) {
-				showError(t('empleados', 'Error creating company: {error}', { error: String(err) }))
-			} finally {
-				this.saving = false
-			}
-		},
-
 		async delete() {
 			if (!this.selectedClient?.id) {
 				showError(t('empleados', 'Select a company or group first.'))
@@ -2498,75 +1799,6 @@ export default {
 			} finally {
 				this.loading = false
 			}
-		},
-
-		async modify() {
-			if (!this.selectedClient?.id) {
-				showError(t('empleados', 'Select a company or group first.'))
-				return
-			}
-
-			if (!this.isFormValid) {
-				showError(t('empleados', 'Company or group name is required.'))
-				return
-			}
-
-			this.saving = true
-
-			try {
-				await axios.post(generateUrl('/apps/empleados/modificarCliente'), {
-					id: this.selectedClient.id,
-					...this.getPayload(),
-				})
-
-				showSuccess(t('empleados', 'Company or group updated successfully'))
-				await this.GetCompanieGroup(this.selectedClient.id)
-				await this.GetCompaniesGroups()
-				this.closeModal()
-			} catch (err) {
-				showError(t('empleados', 'Error updating company: {error}', { error: String(err) }))
-			} finally {
-				this.saving = false
-			}
-		},
-
-		edit() {
-			if (!this.selectedClient?.id) {
-				showError(t('empleados', 'Select a company or group first.'))
-				return
-			}
-
-			this.editing = true
-			this.nombre = this.selectedClient.nombre || ''
-			this.detalles = this.selectedClient.detalles || ''
-			this.razon_social = this.selectedClient.razon_social || ''
-			this.nombre_contacto = this.selectedClient.nombre_contacto || ''
-			this.telefono = this.selectedClient.telefono || ''
-			this.correo = this.selectedClient.correo || ''
-			this.rfc = this.selectedClient.rfc || ''
-			this.ubicacion = this.selectedClient.ubicacion || ''
-			this.especial = Boolean(Number(this.selectedClient.especial))
-			this.estado = Boolean(Number(this.selectedClient.estado ?? 1))
-
-			this.lider_proyecto = this.projectManagers.find(
-				(emp) => Number(emp.value) === Number(this.selectedClient.lider_proyecto),
-			) || null
-
-			// colaboradores ya viene como array de ids desde el mapper
-			const colabs = Array.isArray(this.selectedClient.colaboradores)
-				? this.selectedClient.colaboradores
-				: []
-
-			this.colaboradores = this.projectManagers.filter(emp =>
-				colabs.includes(emp.value) || colabs.includes(String(emp.value)),
-			)
-
-			const parentId = this.selectedClient.cliente_padre || 0
-			this.cliente_padre = Number(parentId) === 0
-				? null
-				: this.options.find(o => Number(o.value) === Number(parentId)) || null
-
-			this.modal = true
 		},
 
 		async importar() {
@@ -2820,30 +2052,6 @@ export default {
 			// Guardar referencia para saber que es edición, no creación
 			this.honorarioBorradorId = honorario.id_honorario
 
-			this.honorarioModal = true
-		},
-
-		editarHonorario(honorario) {
-			this.resetHonorarioForm()
-
-			this.h_importe_total = String(honorario.importe_total)
-			this.h_tipo_moneda = this.currencyOptions.find(c => c.value === honorario.tipo_moneda) || this.currencyOptions[0]
-			this.h_tipo_servicio = honorario.tipo_servicio || ''
-
-			// Parsear fechas a mes/año
-			if (honorario.fecha_inicio) {
-				const [anio, mes] = honorario.fecha_inicio.split('-')
-				this.h_anio_inicio = { label: anio, value: Number(anio) }
-				this.h_mes_inicio = this.monthOptions?.find(m => m.value === Number(mes)) || null
-			}
-
-			if (honorario.fecha_fin) {
-				const [anio, mes] = honorario.fecha_fin.split('-')
-				this.h_anio_fin = { label: anio, value: Number(anio) }
-				this.h_mes_fin = this.monthOptions?.find(m => m.value === Number(mes)) || null
-			}
-
-			this.honorarioBorradorId = honorario.id_honorario
 			this.honorarioModal = true
 		},
 
@@ -3474,35 +2682,6 @@ export default {
 	margin-left: auto;
 }
 
-/* ── Header ── */
-.companies-header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 16px;
-	flex-wrap: wrap;
-	margin-left: 37px;
-
-	h2 {
-		margin: 4px 0 6px;
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--color-main-text);
-	}
-}
-
-.header-title {
-	display: flex;
-	flex-direction: column;
-}
-
-.header-actions {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex-wrap: wrap;
-}
-
 .section-label {
 	font-size: 0.75rem;
 	font-weight: 600;
@@ -3510,70 +2689,6 @@ export default {
 	letter-spacing: 0.08em;
 	color: var(--color-primary-element);
 	margin: 0;
-}
-
-.section-description {
-	font-size: 0.875rem;
-	color: var(--color-text-maxcontrast);
-	margin: 0;
-}
-
-/* ── Stats ── */
-.stats-grid {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 12px;
-
-	@media (max-width: 640px) {
-		grid-template-columns: 1fr;
-	}
-}
-
-.stat-card {
-	display: inline;
-	align-items: center;
-	gap: 12px;
-	padding: 16px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-soft);
-	border: 1px solid var(--color-border);
-
-	div {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	span {
-		font-size: 0.75rem;
-		color: var(--color-text-maxcontrast);
-	}
-
-	.value-text {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--color-main-text);
-	}
-}
-
-.stat-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 40px;
-	height: 40px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element);
-	flex-shrink: 0;
-	margin-inline: 38%;
-}
-
-.filter-wrap {
-	position: relative;
-	display: flex;
-	align-items: center;
-	gap: 8px;
 }
 
 .filter-badge {
@@ -3591,58 +2706,10 @@ export default {
 	margin-left: 4px;
 }
 
-.filter-dropdown {
-	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	z-index: 9999;
-	width: 190px;
-	box-sizing: border-box;
-	padding: 6px 0;
-	overflow: hidden;
-	border: 1px solid rgba(0, 0, 0, 0.28);
-	border-radius: var(--border-radius);
-	background: var(--color-main-background);
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.filter-section {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	box-sizing: border-box;
-	width: 100%;
-	padding: 3px 10px;
-}
-
-.filter-section-label {
-	margin: 0 0 4px;
-	color: var(--color-text-maxcontrast);
-	font-size: 10px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-}
-
-.filter-section label {
-	display: inline-flex;
-	align-items: center;
-	gap: 3px;
-	min-height: 26px;
-	color: var(--color-text-maxcontrast);
-	font-size: 12px;
-	line-height: 1;
-}
-
 .filter-section input[type='checkbox'] {
 	width: 13px;
 	height: 13px;
 	margin: 0;
-}
-
-.filter-divider {
-	margin: 1px 0;
-	border: none;
-	border-top: 1px solid var(--color-border);
 }
 
 .filter-section select {
@@ -3663,31 +2730,6 @@ export default {
 	flex-direction: column;
 	gap: 24px;
 	padding: 16px;
-}
-
-.details-header {
-	display: flex;
-	align-items: flex-start;
-	gap: 16px;
-}
-
-.details-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 52px;
-	height: 52px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element);
-	flex-shrink: 0;
-}
-
-.details-icon--logo {
-	width: auto;
-	height: auto;
-	background: transparent;
-	padding: 0;
 }
 
 .logo-actions {
@@ -3718,99 +2760,6 @@ export default {
 	}
 }
 
-.details-title {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-
-	.eyebrow {
-		font-size: 0.72rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-primary-element);
-		margin: 0;
-	}
-
-	h2 {
-		margin: 0;
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--color-main-text);
-	}
-
-	p {
-		margin: 0;
-		font-size: 0.875rem;
-		color: var(--color-text-maxcontrast);
-	}
-}
-
-/* ── Grids ── */
-.details-grid,
-.info-grid {
-	display: grid;
-	grid-template-columns: repeat(2, 1fr);
-	gap: 10px;
-
-	@media (max-width: 480px) {
-		grid-template-columns: 1fr;
-	}
-}
-
-.detail-card {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: 12px 14px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-soft);
-	border: 1px solid var(--color-border);
-
-	span {
-		font-size: 0.72rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-maxcontrast);
-	}
-
-	.value-text {
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-main-text);
-		text-transform: none;
-		letter-spacing: normal;
-	}
-
-	&.detail-card-wide {
-		grid-column: span 2;
-
-		@media (max-width: 480px) {
-			grid-column: span 1;
-		}
-	}
-}
-
-.breadcrumb {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	font-size: 0.875rem;
-	color: var(--color-main-text);
-
-	.separator {
-		color: var(--color-text-maxcontrast);
-		font-weight: 400;
-		text-transform: none;
-		letter-spacing: normal;
-	}
-
-	.value-text {
-		font-weight: 700;
-	}
-}
-
 /* ── Section heads ── */
 .info-section,
 .children-section {
@@ -3832,76 +2781,6 @@ export default {
 		font-weight: 600;
 		color: var(--color-main-text);
 	}
-}
-
-/* ── Children ── */
-.children-grid {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.child-card {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 14px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-soft);
-	border: 1px solid var(--color-border);
-	cursor: pointer;
-	text-align: left;
-	width: 100%;
-	transition: background 0.15s ease, border-color 0.15s ease;
-
-	&:hover {
-		background: var(--color-background-hover);
-		border-color: var(--color-primary-element);
-	}
-}
-
-.child-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 36px;
-	height: 36px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element);
-	flex-shrink: 0;
-}
-
-.child-info {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	flex: 1;
-	min-width: 0;
-
-	.value-text {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-main-text);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	span {
-		font-size: 0.75rem;
-		color: var(--color-text-maxcontrast);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-}
-
-.child-count {
-	font-size: 0.75rem;
-	font-weight: 600;
-	color: var(--color-text-maxcontrast);
-	flex-shrink: 0;
 }
 
 /* ── Honorarios ── */
@@ -4138,13 +3017,6 @@ export default {
 	margin-left: auto;
 }
 
-.parcialidad-fecha-pago {
-	font-size: 0.75rem;
-	color: #5ae779;
-	font-weight: 1000;
-}
-
-/* ── Modal ── */
 .modal-content {
 	display: flex;
 	flex-direction: column;
@@ -4194,35 +3066,6 @@ export default {
 	}
 }
 
-.special-client-card {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 14px;
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-soft);
-	border: 1px solid var(--color-border);
-}
-
-.special-client-info {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-
-	h3 {
-		margin: 0;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-main-text);
-	}
-
-	p {
-		margin: 0;
-		font-size: 0.75rem;
-		color: var(--color-text-maxcontrast);
-	}
-}
-
 .modal-actions {
 	display: flex;
 	justify-content: flex-end;
@@ -4232,21 +3075,6 @@ export default {
 /* ── Misc ── */
 .file-input {
 	display: none;
-}
-
-.pm-info {
-	display: flex;
-	align-items: center;
-	/* centra verticalmente */
-	gap: 10px;
-}
-
-.pm-avatar {
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	object-fit: cover;
-	flex-shrink: 0;
 }
 
 .collaborators-block {
@@ -4331,48 +3159,6 @@ export default {
 	font-size: 0.7rem;
 }
 
-.fecha-pago-input {
-	display: block;
-	width: fit-content;
-	margin: 16px auto;
-	padding: 7px 30px 30px;
-	border: 3px solid var(--color-border-maxcontrast);
-	border-radius: var(--border-radius-large);
-	background-color: var(--color-main-background);
-	color: var(--color-main-text);
-	font-size: 1rem;
-	font-weight: 700;
-	cursor: pointer;
-	text-align: center;
-	letter-spacing: 0.04em;
-}
-
-.fecha-pago-input:focus {
-	outline: none;
-	border-color: var(--color-primary);
-	box-shadow: 0 0 0 2px var(--color-primary-light);
-}
-
-.fecha-pago-input:hover {
-	border-color: var(--color-primary);
-}
-
-.details-header--especial {
-	background: linear-gradient(135deg, #6c9cda 10%, var(--color-main-background) 100%);
-	border-radius: 8px;
-	padding: 16px 16px 10px 16px;
-}
-
-.details-header--especial .eyebrow,
-.details-header--especial h2,
-.details-header--especial p {
-	color: #ffffff;
-}
-
-.details-header--especial .details-icon {
-	color: #ffffff;
-}
-
 .filter-icon-button {
 	min-width: unset !important;
 	padding-left: 4px !important;
@@ -4401,69 +3187,6 @@ export default {
 		var(--color-primary-element-light) 0%,
 		var(--color-main-background) 34%
 	);
-}
-
-.payment-modal {
-	padding: 32px 28px 28px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-}
-
-.payment-icon-wrapper {
-	width: 72px;
-	height: 72px;
-	border-radius: 50%;
-	background: linear-gradient(135deg, #43a047, #2e7d32);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-bottom: 16px;
-	box-shadow: 0 4px 14px rgba(46, 125, 50, 0.35);
-}
-
-.payment-icon {
-	font-size: 32px;
-	line-height: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-	transform: translate(0px, -5px);
-}
-
-.payment-modal h2 {
-	margin: 0 0 8px;
-	font-size: 1.3rem;
-	font-weight: 600;
-	color: var(--color-main-text);
-}
-
-.payment-subtitle {
-	margin: 0 0 24px;
-	color: var(--color-text-maxcontrast);
-	font-size: 0.9rem;
-	line-height: 1.4;
-}
-
-.payment-field {
-	width: 100%;
-	margin-bottom: 28px;
-	text-align: left;
-}
-
-.payment-actions {
-	display: flex;
-	justify-content: center;
-	gap: 12px;
-	width: 100%;
-}
-
-.payment-actions :deep(button) {
-	min-width: 110px;
-	border-radius: 8px;
 }
 
 .parcialidad-detalle {
@@ -4520,49 +3243,6 @@ export default {
 	margin-top: 4px;
 }
 
-.tipo-honorario-selector {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 4px;
-}
-
-.tipo-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-large);
-    background: var(--color-background-soft);
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: var(--color-text-maxcontrast);
-    transition: all 0.15s ease;
-
-    &:hover {
-        border-color: var(--color-primary-element);
-        background: var(--color-primary-element-light);
-    }
-
-    &--active {
-        border-color: var(--color-primary-element);
-        border-width: 2px;
-        background: var(--color-primary-element-light);
-        color: var(--color-primary-element);
-        font-weight: 600;
-    }
-}
-
-.tipo-icon {
-    font-size: 1.3rem;
-}
-
-.tipo-desc {
-    margin-bottom: 4px;
-}
-
 .badge-tipo {
     background: #f3e8ff;
     color: #7c3aed;
@@ -4602,53 +3282,6 @@ export default {
 	margin-bottom: 20px;
 }
 
-.top {
-	margin-top: 40px;
-}
-
-.payment-advanced {
-	width: 100%;
-	margin-top: -12px;
-	margin-bottom: 20px;
-}
-
-.payment-advanced__toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 4px 8px;
-	border: none;
-	background: transparent;
-	color: var(--color-text-maxcontrast);
-	font-size: 0.78rem;
-	cursor: pointer;
-	border-radius: var(--border-radius);
-
-	&:hover {
-		background: var(--color-background-hover);
-		color: var(--color-main-text);
-	}
-}
-
-.payment-advanced__chevron {
-	transition: transform 0.15s ease;
-
-	&.open {
-		transform: rotate(180deg);
-	}
-}
-
-.payment-advanced__body {
-	margin-top: 10px;
-	text-align: left;
-}
-
-.payment-advanced__hint {
-	margin: 6px 0 0;
-	font-size: 0.72rem;
-	color: var(--color-text-maxcontrast);
-}
-
 .pagador-link {
 	border: none;
 	background: none;
@@ -4657,23 +3290,6 @@ export default {
 	font-weight: 600;
 	cursor: pointer;
 	text-decoration: underline;
-}
-
-.multi-request-list {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	max-height: 260px;
-	overflow-y: auto;
-}
-
-.multi-request-item {
-	padding: 8px 12px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius);
-	background: var(--color-background-soft);
-	font-size: 0.875rem;
-	color: var(--color-main-text);
 }
 
 .honorario-descripcion {
@@ -4717,5 +3333,67 @@ export default {
 	font-size: 0.85rem;
 	font-weight: 500;
 	color: #272727;
+}
+
+.children-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.child-card {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 14px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-soft);
+	border: 1px solid var(--color-border);
+	cursor: pointer;
+	text-align: left;
+	width: 100%;
+	transition: background 0.15s ease, border-color 0.15s ease;
+
+	&:hover {
+		background: var(--color-background-hover);
+		border-color: var(--color-primary-element);
+	}
+}
+
+.child-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+	flex-shrink: 0;
+}
+
+.child-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	min-width: 0;
+
+	.value-text {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--color-main-text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	span {
+		font-size: 0.75rem;
+		color: var(--color-text-maxcontrast);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 </style>

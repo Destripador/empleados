@@ -32,6 +32,17 @@
 						</div>
 					</div>
 					<div class="button-container">
+						<NcButton
+							class="org-chart-mobile-button"
+							type="tertiary"
+							:aria-label="t('empleados', 'View org chart')"
+							:title="t('empleados', 'View org chart')"
+							@click="showOrgChart">
+							<template #icon>
+								<Sitemap :size="20" />
+							</template>
+						</NcButton>
+
 						<NcActions>
 							<template #icon>
 								<Cog :size="20" />
@@ -99,6 +110,7 @@ import DatabaseExport from 'vue-material-design-icons/DatabaseExport.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
+import Sitemap from 'vue-material-design-icons/Sitemap.vue'
 
 export default {
 	name: 'ContentList',
@@ -114,6 +126,7 @@ export default {
 		NcActionSeparator,
 		NcButton,
 		FilterVariant,
+		Sitemap,
 	},
 
 	props: {
@@ -170,6 +183,12 @@ export default {
 
 		toggleFilters() {
 			this.showFilters = !this.showFilters
+		},
+
+		// Abre el organigrama en el panel de detalle (usado sobre todo en
+		// móvil, donde ese panel está oculto por defecto).
+		showOrgChart() {
+			this.$bus.emit('show-org-chart')
 		},
 
 		async onToggleDeactivated() {
@@ -251,50 +270,14 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// Make virtual scroller scrollable
-.contacts-list {
-	max-height: calc(100vh - var(--header-height) - 48px);
-	overflow: auto;
-}
-
-// Add empty header to contacts-list that solves overlapping of contacts with app-navigation-toogle
-.contacts-list__header {
-	min-height: 48px;
-}
-
-// Search field
-.search-contacts-field {
-	padding: 5px 10px 5px 50px;
-	margin-top: 4px;
-
-	> input {
-		width: 100%;
-	}
-}
-
-.content-list {
-	overflow-y: auto;
-	padding: 0 4px;
-}
-
+// Mismo patrón que AreasFullList.vue / PuestosFullList.vue: grid de una
+// sola fila que se va encogiendo, sin reflow a 2 filas en móvil.
 .container-search {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto auto;
 	grid-template-areas: "input filters button";
 	align-items: center;
 	gap: 6px 4px;
-}
-.input-container {
-	grid-area: input;
-}
-.input-container input {
-	width: 100%;
-}
-.button-container {
-	grid-area: button;
-}
-.button-container button {
-	width: 100%;
 }
 
 .filters-container {
@@ -326,7 +309,8 @@ export default {
 	top: calc(100% + 6px);
 	right: 0;
 	z-index: 100000;
-	width: 210px;
+	width: 220px;
+	max-width: calc(100vw - 24px);
 	box-sizing: border-box;
 	padding: 6px 0;
 	overflow: hidden;
@@ -353,25 +337,106 @@ export default {
 	background-color: var(--color-main-background);
 	color: var(--color-text-maxcontrast);
 	font-size: 12px;
-	line-height: 1;
+	line-height: 1.3;
 }
 
 .filter-section input[type='checkbox'] {
 	width: 13px;
 	height: 13px;
 	margin: 0;
+	flex-shrink: 0;
 }
 
+.deactivated-loading {
+	padding: 8px 12px;
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+}
+
+// Make virtual scroller scrollable
+.contacts-list {
+	max-height: calc(100vh - var(--header-height) - 48px);
+	max-height: calc(100dvh - var(--header-height) - 48px);
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+// Add empty header to contacts-list that solves overlapping of contacts with app-navigation-toogle
+.contacts-list__header {
+	min-height: 48px;
+}
+
+// Search field: mismo padding-left de 50px que Areas/Puestos para
+// dejarle espacio al botón de hamburguesa.
+.search-contacts-field {
+	padding: 5px 10px 5px 50px;
+	margin-top: 4px;
+
+	> input {
+		width: 100%;
+	}
+}
+
+.content-list {
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 0 4px;
+}
+
+.input-container {
+	grid-area: input;
+	min-width: 0;
+}
+.input-container input {
+	width: 100%;
+	box-sizing: border-box;
+	min-width: 0;
+}
+
+.button-container {
+	grid-area: button;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+// Botón de organigrama: oculto en escritorio (ahí ya se ve el organigrama
+// directamente en el panel de detalle), visible solo en móvil.
+.org-chart-mobile-button {
+	display: none;
+	flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+	.org-chart-mobile-button {
+		display: inline-flex;
+	}
+}
+
+// Igual que Areas/Puestos: botones compactos para que quepan
+// filtro + organigrama + engranaje en una sola línea.
 .filter-icon-button {
 	min-width: unset !important;
 	padding-left: 4px !important;
 	padding-right: 4px !important;
+	flex-shrink: 0;
 }
 
-.deactivated-loading {
-	padding: 6px 10px;
-	margin: 0;
-	color: var(--color-text-maxcontrast);
-	font-size: 12px;
+// ============ RESPONSIVE ============
+@media (max-width: 600px) {
+	.search-contacts-field {
+		padding: 5px 8px 5px 46px;
+	}
+
+	.container-search {
+		gap: 6px 4px;
+	}
+
+	.filter-dropdown {
+		right: -8px;
+		width: min(240px, calc(100vw - 16px));
+	}
 }
 </style>
