@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <strong>Watch the English demo video:</strong><br>
-  <a href="https://youtu.be/WrfVQT97Mqk">Employees ERP for Nextcloud — Time Reports Update</a>
+  <strong>Demo video (spanish) :</strong><br>
+  <a href="https://youtu.be/SRsn5LIbKTY">Employees ERP for Nextcloud — Time Reports Update</a>
 </p>
 
 ---
