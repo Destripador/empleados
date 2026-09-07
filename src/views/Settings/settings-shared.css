@@ -1,0 +1,255 @@
+.admin-settings-shell {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	padding: 12px 20px 32px;
+	color: var(--color-main-text);
+}
+
+.admin-settings-content,
+.admin-settings-shell .vue-tabs,
+.admin-settings-shell .tab-content,
+.admin-settings-shell .tab-pane {
+	min-width: 0;
+}
+
+.admin-settings-loading,
+.app-settings-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 240px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-settings-page {
+	display: grid;
+	container-type: inline-size;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 1280px;
+	min-width: 0;
+	margin-inline: auto;
+	gap: 20px;
+}
+
+.app-settings-page--reading {
+	max-width: 1040px;
+}
+
+.app-settings-header {
+	display: grid;
+	max-width: 920px;
+	gap: 4px;
+	padding-block: 4px;
+}
+
+.app-settings-eyebrow,
+.app-settings-title,
+.app-settings-description,
+.app-settings-panel__header h3,
+.app-settings-panel__header p {
+	margin: 0;
+}
+
+.app-settings-eyebrow {
+	color: var(--color-primary-element);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	line-height: 1.3;
+	text-transform: uppercase;
+}
+
+.app-settings-title {
+	font-size: 1.5rem;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.app-settings-description,
+.app-settings-panel__header p {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.875rem;
+	line-height: 1.45;
+}
+
+.app-settings-panel {
+	box-sizing: border-box;
+	min-width: 0;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	overflow: hidden;
+}
+
+.app-settings-panel__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 16px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-settings-panel__header > div {
+	display: grid;
+	min-width: 0;
+	gap: 4px;
+}
+
+.app-settings-panel__header h3 {
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.app-settings-panel__body {
+	min-width: 0;
+	padding: 16px;
+}
+
+.app-settings-empty {
+	display: grid;
+	place-items: center;
+	min-height: 150px;
+	padding: 20px;
+	color: var(--color-text-maxcontrast);
+	text-align: center;
+}
+
+.app-settings-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Keep vue-nav-tabs behavior and make both navigation levels theme-safe. */
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 4px;
+	margin: 0;
+	padding: 4px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+	scrollbar-width: thin;
+}
+
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 4px;
+	margin: 0;
+	padding: 8px 12px 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	border-bottom: 1px solid var(--color-border);
+	background: var(--color-main-background);
+	scrollbar-width: thin;
+}
+
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li,
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li {
+	float: none;
+	flex: 0 0 auto;
+	margin: 0;
+}
+
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li > a,
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li > a {
+	margin: 0;
+	border: 0;
+	font-size: 0.875rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li > a {
+	padding: 8px 12px;
+	border-radius: var(--border-radius-large);
+	color: var(--color-main-text);
+	line-height: 1.4;
+}
+
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li > a {
+	padding: 8px 10px;
+	border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li > a:hover,
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li > a:focus {
+	border: 0;
+	background: var(--color-background-dark);
+	color: var(--color-main-text);
+}
+
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li > a:hover,
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li > a:focus {
+	border: 0;
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+}
+
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li > a:focus-visible,
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li > a:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.admin-settings-shell .settings-primary-tabs > .nav-tabs-navigation .nav-tabs > li.active > a {
+	border: 0;
+	background: var(--color-main-background);
+	box-shadow: inset 0 -2px 0 var(--color-primary-element);
+	color: var(--color-primary-element);
+	font-weight: 700;
+}
+
+.admin-settings-shell .settings-secondary-tabs > .nav-tabs-navigation .nav-tabs > li.active > a {
+	border: 0;
+	background: var(--color-background-hover);
+	box-shadow: inset 0 -2px 0 var(--color-primary-element);
+	color: var(--color-main-text);
+}
+
+.admin-settings-shell .settings-primary-tabs > .tab-content {
+	padding-top: 20px;
+}
+
+@media (max-width: 767px) {
+	.admin-settings-shell {
+		padding: 8px 12px 24px;
+	}
+
+	.app-settings-page {
+		gap: 16px;
+	}
+
+	.app-settings-title {
+		font-size: 1.3rem;
+	}
+
+	.app-settings-panel__header {
+		align-items: stretch;
+		flex-direction: column;
+		padding: 14px;
+	}
+
+	.app-settings-panel__body {
+		padding: 14px;
+	}
+
+	.admin-settings-shell .settings-primary-tabs > .tab-content {
+		padding-top: 16px;
+	}
+}

@@ -1,29 +1,29 @@
 <!-- eslint-disable vue/require-v-for-key -->
 <template>
-	<div v-if="loading">
-		<!-- Loading section -->
-		<div class="center-screen">
-			<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
-		</div>
+	<div v-if="loading" class="app-settings-loading" role="status">
+		<NcLoadingIcon :size="40" :name="t('empleados', 'Loading...')" />
 	</div>
 
-	<div v-else id="admin">
-		<!-- Main title -->
-		<div>
-			<h2 class="board-title">
-				<AccountGroup :size="20" decorative class="icon" />
-				<span>{{ t('empleados', 'Global settings') }}</span>
+	<div v-else class="app-settings-page global-settings">
+		<header class="app-settings-header">
+			<p class="app-settings-eyebrow">
+				{{ t('empleados', 'Configuration') }}
+			</p>
+			<h2 class="app-settings-title">
+				{{ t('empleados', 'Global settings') }}
 			</h2>
-		</div>
+			<p class="app-settings-description">
+				{{ t('empleados', 'Settings that affect core employee workflows and shared files.') }}
+			</p>
+		</header>
 
 		<div class="settings-layout">
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'General') }}
 					</p>
 					<h3>{{ t('empleados', 'Base behavior') }}</h3>
-					<p>{{ t('empleados', 'Settings that affect core employee workflows and shared files.') }}</p>
 				</div>
 
 				<div class="settings-grid">
@@ -61,9 +61,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Modules') }}
 					</p>
 					<h3>{{ t('empleados', 'Available app areas') }}</h3>
@@ -178,9 +178,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Purchases') }}
 					</p>
 					<h3>{{ t('empleados', 'Purchase document logo') }}</h3>
@@ -227,9 +227,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Time reports') }}
 					</p>
 					<h3>{{ t('empleados','Report times settings') }}</h3>
@@ -307,9 +307,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Files and security') }}
 					</p>
 					<h3>{{ t('empleados', 'Data manager and provisioning') }}</h3>
@@ -361,7 +361,6 @@
 
 <script>
 // Icons
-import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
 // @nextcloud/vue components
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
@@ -381,7 +380,6 @@ import { translate as t } from '@nextcloud/l10n'
 export default {
 	name: 'ListSettings',
 	components: {
-		AccountGroup,
 		NcSelect,
 		NcButton,
 		NcNoteCard,
@@ -852,40 +850,15 @@ export default {
 </script>
 
 <style scoped>
-/* Board title */
-.board-title {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	margin: 14px 20px 18px;
-	color: var(--color-main-text);
-	font-size: 25px;
-	font-weight: bold;
-}
-
-/* Centered loading */
-.center-screen {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 55vh;
-	text-align: center;
-}
-
 .settings-layout {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: 1fr;
 	gap: 18px;
-	padding: 0 20px 28px;
 }
 
 .settings-category {
 	min-width: 0;
 	padding: 18px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .settings-category-wide {
@@ -894,15 +867,6 @@ export default {
 
 .category-header {
 	margin-bottom: 16px;
-}
-
-.section-label {
-	margin: 0 0 4px;
-	color: var(--color-primary-element);
-	font-size: 12px;
-	font-weight: 700;
-	letter-spacing: .04em;
-	text-transform: uppercase;
 }
 
 .category-header h3 {
@@ -927,11 +891,11 @@ export default {
 }
 
 .settings-grid {
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
 }
 
 .modules-grid {
-	grid-template-columns: repeat(3, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
 }
 
 .settings-card {
@@ -990,7 +954,7 @@ export default {
 
 .switch-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 	gap: 10px 16px;
 	margin-bottom: 16px;
 }
@@ -1001,21 +965,9 @@ export default {
 	margin-top: 16px;
 }
 
-@media (max-width: 1100px) {
-	.modules-grid {
-		grid-template-columns: repeat(2, minmax(220px, 1fr));
-	}
-}
-
 @media (max-width: 700px) {
-	.board-title {
-		margin: 10px 14px 14px;
-		font-size: 22px;
-	}
-
 	.settings-layout {
-		grid-template-columns: 1fr;
-		padding: 0 14px 20px;
+		gap: 14px;
 	}
 
 	.settings-category-wide {

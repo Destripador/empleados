@@ -1,5 +1,8 @@
 <template>
-	<section class="parking-maintenance-banner" role="status">
+	<section
+		class="parking-maintenance-banner"
+		:class="{ 'parking-maintenance-banner--embedded': embedded }"
+		role="status">
 		<div class="parking-maintenance-banner__icon" aria-hidden="true">
 			⚠
 		</div>
@@ -50,6 +53,10 @@ export default {
 			default: false,
 		},
 		publishing: {
+			type: Boolean,
+			default: false,
+		},
+		embedded: {
 			type: Boolean,
 			default: false,
 		},
@@ -130,6 +137,37 @@ export default {
 	gap: 4px 16px;
 	margin-top: 7px;
 	font-size: 0.78rem;
+}
+
+.parking-maintenance-banner--embedded {
+	position: static;
+	z-index: auto;
+	gap: 12px;
+	margin: 0;
+	padding: 14px 16px;
+	border: 0;
+	border-radius: 0;
+	background: var(--color-warning-hover);
+	box-shadow: none;
+}
+
+.parking-maintenance-banner--embedded .parking-maintenance-banner__icon {
+	width: 32px;
+	height: 32px;
+	font-size: 1.05rem;
+}
+
+.parking-maintenance-banner--embedded .parking-maintenance-banner__copy > strong {
+	font-size: 0.84rem;
+	letter-spacing: 0.03em;
+}
+
+.parking-maintenance-banner--embedded .parking-maintenance-banner__copy p {
+	font-size: 0.82rem;
+}
+
+.parking-maintenance-banner--embedded .parking-maintenance-banner__meta span {
+	overflow-wrap: anywhere;
 }
 
 @media (max-width: 700px) {

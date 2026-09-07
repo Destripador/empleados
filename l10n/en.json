@@ -2963,7 +2963,26 @@
     "Can manage absences, vacations and the work calendar.": "Can manage absences, vacations and the work calendar.",
     "Sees all active employees in administrative time reports. Assign only when necessary.": "Sees all active employees in administrative time reports. Assign only when necessary.",
     "Does not show employees outside the current user team.": "Does not show employees outside the current user team.",
-    "Technical support report": "Technical support report"
+    "Technical support report": "Technical support report",
+    "Manage active, deactivated and pending employee records.": "Manage active, deactivated and pending employee records.",
+    "Movimientos": "Activity",
+    "Historial de actividades": "Activity history",
+    "Consulta las actividades realizadas dentro del módulo.": "Review activity performed within the module.",
+    "Sistema": "System",
+    "Assignments": "Assignments",
+    "Parking settings": "Parking settings",
+    "Manage publication status, space assignments and obstruction relationships.": "Manage publication status, space assignments and obstruction relationships.",
+    "Control whether the parking map is published or temporarily under maintenance.": "Control whether the parking map is published or temporarily under maintenance.",
+    "Parking published": "Parking published",
+    "Manage the occupants of each space and the spaces that it obstructs.": "Manage the occupants of each space and the spaces that it obstructs.",
+    "Parking space assignments": "Parking space assignments",
+    "Parking obstruction relationships": "Parking obstruction relationships",
+    "No parking spaces configured": "No parking spaces configured",
+    "Parking spaces will appear here when they are added.": "Parking spaces will appear here when they are added.",
+    "Select Edit to review or change assigned employees.": "Select Edit to review or change assigned employees.",
+    "Select Edit to review or change blocked spaces.": "Select Edit to review or change blocked spaces.",
+    "Could not load the parking spaces.": "Could not load the parking spaces.",
+    "Assignments cannot be shown until the space catalog is available.": "Assignments cannot be shown until the space catalog is available."
   },
   "pluralForm": "nplurals=2; plural=(n != 1);"
 }
