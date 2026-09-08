@@ -3,6 +3,14 @@
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys(data).length === 0">
 			<div class="teams-empty-state teams-empty-state--network">
+				<button
+					type="button"
+					class="mobile-back-btn"
+					:aria-label="t('empleados', 'Back to list')"
+					@click="$root.$emit('mobile-back')">
+					<ArrowLeft :size="20" />
+					<span>{{ t('empleados', 'Back') }}</span>
+				</button>
 				<EntityCountNetwork
 					:items="items"
 					entity-type="team"
@@ -12,6 +20,14 @@
 
 		<div v-else>
 			<div class="team-details">
+				<button
+					type="button"
+					class="mobile-back-btn mobile-back-btn--inline"
+					:aria-label="t('empleados', 'Back to list')"
+					@click="$root.$emit('mobile-back')">
+					<ArrowLeft :size="20" />
+					<span>{{ t('empleados', 'Back') }}</span>
+				</button>
 				<div class="team-hero">
 					<div class="team-hero__content">
 						<span class="team-hero__eyebrow">
@@ -181,6 +197,7 @@
 import DeleteAlert from 'vue-material-design-icons/DeleteAlert.vue'
 import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
 import AccountCog from 'vue-material-design-icons/AccountCog.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -210,6 +227,7 @@ export default {
 		NcActions,
 		AccountCog,
 		AccountEdit,
+		ArrowLeft,
 		NcActionButton,
 		DeleteAlert,
 		NcDialog,
@@ -711,6 +729,39 @@ export default {
 
 	.teams-empty-item {
 		text-align: center;
+	}
+}
+
+.mobile-back-btn {
+	display: none;
+}
+
+@media (max-width: 900px) {
+	.mobile-back-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-bottom: 12px;
+		padding: 8px 14px;
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		background: var(--color-main-background);
+		color: var(--color-main-text);
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		z-index: 5;
+	}
+
+	.teams-empty-state--network {
+		position: relative;
+		padding-top: 56px;
+	}
+
+	.mobile-back-btn:not(.mobile-back-btn--inline) {
+		position: absolute;
+		top: 12px;
+		left: 12px;
 	}
 }
 </style>

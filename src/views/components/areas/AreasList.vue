@@ -8,17 +8,36 @@
 	</NcAppContent>
 
 	<NcAppContent v-else :name="t('empleados', 'Loading...')">
-		<!-- contacts list -->
-		<template #list>
+		<template v-if="!isMobile" #list>
 			<AreasFullList
 				:list="areasList"
 				:contacts="Areas"
 				:search-query="searchQuery"
 				:reload-bus="reloadBus" />
 		</template>
+		<AreasDetails
+			v-if="!isMobile"
+			:data="data_areas"
+			:people-area="peopleArea"
+			:items="Areas" />
 
-		<!-- main contacts details -->
-		<AreasDetails :data="data_areas" :people-area="peopleArea" :items="Areas" />
+		<!-- Móvil: una sola vista a la vez, con navegación -->
+		<template v-if="isMobile">
+			<AreasFullList
+				v-show="mobileView === 'list'"
+				:list="areasList"
+				:contacts="Areas"
+				:search-query="searchQuery"
+				:reload-bus="reloadBus"
+				class="mobile-pane" />
+			<AreasDetails
+				v-show="mobileView !== 'list'"
+				:data="mobileView === 'map' ? {} : data_areas"
+				:people-area="peopleArea"
+				:items="Areas"
+				class="mobile-pane" />
+		</template>
+
 		<FloatingHelpButton
 			:open.sync="modalMensajeAreas"
 			:title="t('empleados', 'Areas information')"
@@ -72,17 +91,35 @@ export default {
 			peopleArea: {},
 			modalMensajeAreas: false,
 			AccountGroup,
+			isMobile: false,
+			mobileView: 'list', // 'list' | 'map' | 'detail'
+			mql: null,
 		}
 	},
 
 	async mounted() {
 		this.getall()
+
+		this.mql = window.matchMedia('(max-width: 900px)')
+		this.updateIsMobile()
+		if (this.mql.addEventListener) {
+			this.mql.addEventListener('change', this.updateIsMobile)
+		} else {
+			this.mql.addListener(this.updateIsMobile)
+		}
+
 		this.$root.$on('send-data-areas', (data) => {
 			this.data_areas = data || {}
 			if (data && data.Id_departamento) {
 				this.getalldepartament(data.Id_departamento)
+				if (this.isMobile) {
+					this.mobileView = 'detail'
+				}
 			} else {
 				this.peopleArea = {}
+				if (this.isMobile) {
+					this.mobileView = 'list'
+				}
 			}
 		})
 		this.$root.$on('delete-areas', () => {
@@ -91,11 +128,28 @@ export default {
 		this.$root.$on('reload', () => {
 			this.getall()
 		})
+		this.$root.$on('show-map', () => {
+			if (this.isMobile) {
+				this.mobileView = 'map'
+			}
+		})
+		this.$root.$on('mobile-back', () => {
+			this.mobileView = 'list'
+			this.data_areas = {}
+			this.peopleArea = {}
+		})
 		window.addEventListener('keydown', this.onKeyDown)
 	},
 
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onKeyDown)
+		if (this.mql) {
+			if (this.mql.removeEventListener) {
+				this.mql.removeEventListener('change', this.updateIsMobile)
+			} else {
+				this.mql.removeListener(this.updateIsMobile)
+			}
+		}
 	},
 
 	methods: {
@@ -108,9 +162,19 @@ export default {
 			}
 		},
 
+		updateIsMobile() {
+			this.isMobile = this.mql ? this.mql.matches : window.innerWidth <= 900
+			if (!this.isMobile) {
+				this.mobileView = 'list'
+			}
+		},
+
 		onEsc() {
 			this.data_areas = {}
 			this.peopleArea = {}
+			if (this.isMobile) {
+				this.mobileView = 'list'
+			}
 		},
 
 		async getalldepartament(departamento) {
@@ -170,5 +234,10 @@ export default {
 		.icon {
 			margin-right: 8px;
 		}
+	}
+
+	.mobile-pane {
+		width: 100%;
+		height: 100%;
 	}
 </style>

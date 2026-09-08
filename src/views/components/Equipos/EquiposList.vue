@@ -8,7 +8,7 @@
 	</NcAppContent>
 
 	<NcAppContent v-else :name="t('empleados', 'Loading')">
-		<template #list>
+		<template v-if="!isMobile" #list>
 			<EquiposFullList
 				:list="EquiposList"
 				:contacts="Equipos"
@@ -17,9 +17,27 @@
 		</template>
 
 		<EquiposDetails
+			v-if="!isMobile"
 			:data="data_Equipos"
 			:people-area="peopleArea"
 			:items="Equipos" />
+
+		<!-- Móvil: una sola vista a la vez, con navegación -->
+		<template v-if="isMobile">
+			<EquiposFullList
+				v-show="mobileView === 'list'"
+				:list="EquiposList"
+				:contacts="Equipos"
+				:search-query="searchQuery"
+				:reload-bus="reloadBus"
+				class="mobile-pane" />
+			<EquiposDetails
+				v-show="mobileView !== 'list'"
+				:data="mobileView === 'map' ? {} : data_Equipos"
+				:people-area="peopleArea"
+				:items="Equipos"
+				class="mobile-pane" />
+		</template>
 
 		<FloatingHelpButton
 			:open.sync="modalMensajeEquipos"
@@ -74,18 +92,35 @@ export default {
 			peopleArea: {},
 			modalMensajeEquipos: false,
 			AccountGroup,
+			isMobile: false,
+			mobileView: 'list', // 'list' | 'map' | 'detail'
+			mql: null,
 		}
 	},
 
 	async mounted() {
 		this.getall()
 
+		this.mql = window.matchMedia('(max-width: 900px)')
+		this.updateIsMobile()
+		if (this.mql.addEventListener) {
+			this.mql.addEventListener('change', this.updateIsMobile)
+		} else {
+			this.mql.addListener(this.updateIsMobile)
+		}
+
 		this.$root.$on('send-data-equipos', (data) => {
 			this.data_Equipos = data || {}
 			if (data && data.Id_equipo) {
 				this.getallequipo(data.Id_equipo)
+				if (this.isMobile) {
+					this.mobileView = 'detail'
+				}
 			} else {
 				this.peopleArea = {}
+				if (this.isMobile) {
+					this.mobileView = 'list'
+				}
 			}
 		})
 
@@ -96,11 +131,31 @@ export default {
 		this.$root.$on('reload', () => {
 			this.getall()
 		})
+
+		this.$root.$on('show-map', () => {
+			if (this.isMobile) {
+				this.mobileView = 'map'
+			}
+		})
+
+		this.$root.$on('mobile-back', () => {
+			this.mobileView = 'list'
+			this.data_Equipos = {}
+			this.peopleArea = {}
+		})
+
 		window.addEventListener('keydown', this.onKeyDown)
 	},
 
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onKeyDown)
+		if (this.mql) {
+			if (this.mql.removeEventListener) {
+				this.mql.removeEventListener('change', this.updateIsMobile)
+			} else {
+				this.mql.removeListener(this.updateIsMobile)
+			}
+		}
 	},
 
 	methods: {
@@ -113,9 +168,19 @@ export default {
 			}
 		},
 
+		updateIsMobile() {
+			this.isMobile = this.mql ? this.mql.matches : window.innerWidth <= 900
+			if (!this.isMobile) {
+				this.mobileView = 'list'
+			}
+		},
+
 		onEsc() {
 			this.data_Equipos = {}
 			this.peopleArea = {}
+			if (this.isMobile) {
+				this.mobileView = 'list'
+			}
 		},
 
 		async getallequipo(equipo) {
@@ -157,5 +222,10 @@ export default {
 		.icon {
 			margin-right: 8px;
 		}
+	}
+
+	.mobile-pane {
+		width: 100%;
+		height: 100%;
 	}
 </style>

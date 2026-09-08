@@ -36,4 +36,14 @@ export default {
 			margin-right: 8px;
 		}
 	}
+
+	@media (max-width: 600px) {
+		.container {
+			padding-left: 12px;
+		}
+		.board-title {
+			padding-left: 12px;
+			font-size: 20px;
+		}
+	}
 </style>
