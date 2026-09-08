@@ -22,14 +22,16 @@
 		</div>
 		<div v-else>
 			<div class="area-details">
-				<button
-					type="button"
-					class="mobile-back-btn mobile-back-btn--inline"
-					:aria-label="t('empleados', 'Back to list')"
-					@click="$root.$emit('mobile-back')">
-					<ArrowLeft :size="20" />
-					<span>{{ t('empleados', 'Back') }}</span>
-				</button>
+				<div class="mobile-back-bar">
+					<button
+						type="button"
+						class="mobile-back-btn"
+						:aria-label="t('empleados', 'Back to list')"
+						@click="$root.$emit('mobile-back')">
+						<ArrowLeft :size="20" />
+						<span>{{ t('empleados', 'Back') }}</span>
+					</button>
+				</div>
 				<div class="area-hero">
 					<div class="area-hero__content">
 						<span class="area-hero__eyebrow">
@@ -410,6 +412,7 @@ export default {
 
 <style>
 .area-details {
+	position: relative;
 	padding: 20px;
 }
 
@@ -769,20 +772,24 @@ export default {
 }
 
 @media (max-width: 900px) {
+	.mobile-back-bar {
+		display: flex;
+		justify-content: flex-end;
+		padding: 8px 10px 12px;
+	}
+
 	.mobile-back-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		margin-bottom: 12px;
 		padding: 8px 14px;
 		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: var(--color-main-background);
+		border-radius: 20px;
+		background: #e6eef3;
 		color: var(--color-main-text);
 		font-size: 13px;
 		font-weight: 600;
 		cursor: pointer;
-		z-index: 5;
 	}
 
 	.areas-empty-state--network {
@@ -793,7 +800,8 @@ export default {
 	.mobile-back-btn:not(.mobile-back-btn--inline) {
 		position: absolute;
 		top: 12px;
-		left: 12px;
+		right: 12px;
+		left: auto;
 	}
 }
 </style>

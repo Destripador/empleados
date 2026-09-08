@@ -3,7 +3,6 @@
 		<!-- Empty state -->
 		<div v-if="Object.keys(data).length === 0">
 			<div class="emptycontent">
-				<!-- Empty state -->
 				<div v-if="Object.keys(data).length === 0" class="employee-empty-state">
 					<OrganigramaNetwork />
 				</div>
@@ -12,45 +11,53 @@
 
 		<!-- Employee info -->
 		<div v-else class="container">
-			<div class="container-search-profile">
-				<div class="button-container-profile">
-					<NcActions>
+			<div class="mobile-back-bar">
+				<button
+					type="button"
+					class="mobile-back-btn"
+					:aria-label="t('empleados', 'Back to list')"
+					@click="goBackToList">
+					<ArrowLeft :size="20" />
+					<span>{{ t('empleados', 'Back') }}</span>
+				</button>
+			</div>
+			<div class="profile-toolbar">
+				<NcActions>
+					<template #icon>
+						<AccountCog :size="20" />
+					</template>
+
+					<!-- Nueva opción Importar NOI (Visible solo cuando show es true) -->
+					<NcActionButton v-if="show" :close-after-click="true" @click="confirmarImportacionNoi">
 						<template #icon>
-							<AccountCog :size="20" />
+							<DatabaseImport :size="20" />
 						</template>
+						{{ t('empleados', 'Importar NOI') }}
+					</NcActionButton>
 
-						<!-- Nueva opción Importar NOI (Visible solo cuando show es true) -->
-						<NcActionButton v-if="show" :close-after-click="true" @click="confirmarImportacionNoi">
-							<template #icon>
-								<DatabaseImport :size="20" />
-							</template>
-							{{ t('empleados', 'Importar NOI') }}
-						</NcActionButton>
+					<NcActionButton :close-after-click="true" @click="showEdit">
+						<template #icon>
+							<AccountEdit :size="20" />
+						</template>
+						{{ show ? t('empleados', 'Disable editing') : t('empleados', 'Enable editing') }}
+					</NcActionButton>
 
-						<NcActionButton :close-after-click="true" @click="showEdit">
-							<template #icon>
-								<AccountEdit :size="20" />
-							</template>
-							{{ show ? t('empleados', 'Disable editing') : t('empleados', 'Enable editing') }}
-						</NcActionButton>
+					<NcActionSeparator />
 
-						<NcActionSeparator />
+					<NcActionButton :close-after-click="true" :disabled="true">
+						<template #icon>
+							<AccountEdit :size="20" />
+						</template>
+						{{ t('empleados', 'Export') }}
+					</NcActionButton>
 
-						<NcActionButton :close-after-click="true" :disabled="true">
-							<template #icon>
-								<AccountEdit :size="20" />
-							</template>
-							{{ t('empleados', 'Export') }}
-						</NcActionButton>
-
-						<NcActionButton @click="DeactiveUserDialog(data.Id_empleados)">
-							<template #icon>
-								<AccountEdit :size="20" />
-							</template>
-							{{ t('empleados', 'Disable employee') }}
-						</NcActionButton>
-					</NcActions>
-				</div>
+					<NcActionButton @click="DeactiveUserDialog(data.Id_empleados)">
+						<template #icon>
+							<AccountEdit :size="20" />
+						</template>
+						{{ t('empleados', 'Disable employee') }}
+					</NcActionButton>
+				</NcActions>
 			</div>
 
 			<div class="card-container">
@@ -66,15 +73,15 @@
 
 					<div class="info">
 						<h2>{{ data.displayname || data.uid }}</h2>
-						<h2 v-if="data.mail">
+						<h2 v-if="data.mail" class="info-email">
 							{{ data.mail }}
 						</h2>
 					</div>
 				</div>
 			</div>
 
-			<!-- Tabs -->
-			<div class="center">
+			<!-- Tabs (PC) -->
+			<div v-if="!isMobile" class="center">
 				<VueTabs active-tab-color="#fdb913c"
 					active-text-color="white"
 					type="grow"
@@ -107,6 +114,52 @@
 						<FilesTab :data="data" :show="show" :empleados="Empleados" />
 					</VTab>
 				</VueTabs>
+			</div>
+
+			<!-- Tab selector (móvil / pantalla angosta) -->
+			<div v-else>
+				<div class="tabs-select-wrapper">
+					<select
+						v-model="activeTab"
+						class="tabs-select"
+						@change="$event.target.blur()">
+						<option v-for="tab in tabsList" :key="tab.value" :value="tab.value">
+							{{ tab.label }}
+						</option>
+					</select>
+				</div>
+
+				<div class="tab-content">
+					<EmpleadoTab
+						v-if="activeTab === 'empleado'"
+						:data="data"
+						:show="show"
+						:empleados="empleadosProp"
+						:automaticsave="automatic_save_note" />
+
+					<PersonalTab
+						v-else-if="activeTab === 'personal'"
+						:data="data"
+						:show="show"
+						:empleados="Empleados" />
+
+					<BoardingTab
+						v-else-if="activeTab === 'boarding'"
+						:data="data" />
+
+					<NotasTab
+						v-else-if="activeTab === 'notas'"
+						:data="data"
+						:show="show"
+						:empleados="Empleados"
+						:automaticsave="automatic_save_note" />
+
+					<FilesTab
+						v-else-if="activeTab === 'files'"
+						:data="data"
+						:show="show"
+						:empleados="Empleados" />
+				</div>
 			</div>
 		</div>
 
@@ -141,6 +194,7 @@
 
 <script>
 import DatabaseImport from 'vue-material-design-icons/DatabaseImport.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import OrganigramaNetwork from './Organigrama/OrganigramaNetwork.vue'
 import EmpleadoTab from './Tabs/EmpleadoTab.vue'
 import BoardingTab from './Tabs/BoardingTab.vue'
@@ -186,6 +240,7 @@ export default {
 		NcButton,
 		OrganigramaNetwork,
 		DatabaseImport,
+		ArrowLeft,
 	},
 	inject: ['configuraciones'],
 	props: {
@@ -201,6 +256,14 @@ export default {
 	data() {
 		return {
 			show: false,
+			// Tab activo del select (solo se usa en móvil). 'empleado' por default.
+			activeTab: 'empleado',
+			// Igual que en EmployeeList.vue: decide si mostramos los tabs
+			// completos (PC) o el select de un solo recuadrito (móvil).
+			isMobile: typeof window !== 'undefined' && window.matchMedia
+				? window.matchMedia('(max-width: 600px)').matches
+				: false,
+			mobileMediaQuery: null,
 			automatic_save_note: this.configuraciones.automatic_save_note,
 			Empleados: [],
 			showDeactiveUserDialog: false,
@@ -244,6 +307,24 @@ export default {
 					|| empleado.disabled === true
 			}).length
 		},
+
+		// Lista única de tabs, usada tanto por los botones (PC) como
+		// por el <select> (móvil), para no duplicar las etiquetas.
+		tabsList() {
+			return [
+				{ value: 'empleado', label: this.t('empleados', 'Employee') },
+				{ value: 'personal', label: this.t('empleados', 'Personal') },
+				{ value: 'boarding', label: this.t('empleados', 'Boarding') },
+				{ value: 'notas', label: this.t('empleados', 'Notes') },
+				{ value: 'files', label: this.t('empleados', 'Files') },
+			]
+		},
+	},
+	watch: {
+		// Al cambiar de empleado, siempre volvemos a la pestaña "Employee".
+		data() {
+			this.activeTab = 'empleado'
+		},
 	},
 	mounted() {
 		this.$bus.on('show', (data) => {
@@ -253,9 +334,38 @@ export default {
 		if (this.automatic_save_note === undefined || this.automatic_save_note === null) {
 			this.automatic_save_note = 'true'
 		}
+
+		// Mantiene isMobile actualizado si se gira el celular o se
+		// redimensiona la ventana (mismo breakpoint de 600px usado en
+		// el resto de ajustes "móvil" de este componente).
+		this.mobileMediaQuery = window.matchMedia('(max-width: 600px)')
+		this._onMobileChange = (event) => {
+			this.isMobile = event.matches
+		}
+		if (this.mobileMediaQuery.addEventListener) {
+			this.mobileMediaQuery.addEventListener('change', this._onMobileChange)
+		} else {
+			this.mobileMediaQuery.addListener(this._onMobileChange)
+		}
+	},
+
+	beforeDestroy() {
+		if (this.mobileMediaQuery) {
+			if (this.mobileMediaQuery.removeEventListener) {
+				this.mobileMediaQuery.removeEventListener('change', this._onMobileChange)
+			} else {
+				this.mobileMediaQuery.removeListener(this._onMobileChange)
+			}
+		}
 	},
 	methods: {
 		t,
+
+		// Notifica a EmployeeList.vue que debe volver a mostrar la lista
+		// (esto solo tiene efecto visual en móvil).
+		goBackToList() {
+			this.$bus.emit('back-to-list')
+		},
 
 		refreshAvatar() {
 			this.avatarKey++
@@ -319,12 +429,8 @@ export default {
 				const result = response?.data?.ocs?.data || response?.data
 
 				if (result?.status === 'success') {
-					// Rellenamos los controles de los tabs hijos con los datos de NOI
 					this.$bus.emit('fill-noi-data', result.data)
-
-					// Guardado automático: si se encontró al empleado, aplicamos los cambios sin esperar al botón manual
 					this.$bus.emit('empleados:guardar-todo')
-
 					showSuccess(this.t('empleados', 'Datos importados desde NOI y guardados correctamente'))
 				} else if (result?.status === 'error') {
 					showError(this.t('empleados', 'Error en importación NOI: {error}', { error: result?.message }))
@@ -360,19 +466,76 @@ export default {
 	&[draggable='false'] .avatardiv * { cursor: not-allowed !important; }
 }
 #emptycontent, .emptycontent { margin-top: 2vh; }
-.container { padding: 20px 15px 0px 6px; align-items: center; }
+
+.container {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	padding: 20px;
+	overflow-x: hidden;
+}
+
 .container-progress { margin: 20px 30% 0; align-items: center; }
 .wrapper { display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap; margin: 0 5%; }
 .contacts-list { max-height: calc(100vh - var(--header-height) - 48px); overflow: auto; }
 .contacts-list__header { min-height: 48px; }
 .margin-left-icon { margin-right: 20px; }
-.button-container-profile { position: absolute; right: 30px; z-index: 9999; }
+
+// Botón de editar: siempre pegado a la esquina superior derecha,
+// tanto en escritorio como en móvil.
+.profile-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 8px;
+}
+
 .well { margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-.user-card { display: flex; align-items: center; padding: 0 10px 10px; }
-.info { display: flex; flex-direction: column; }
-.info h2 { margin: 0; width: 100%; }
-.card-container { display: flex; justify-content: center; align-items: center; }
-.avatar { padding-right: 10px; }
+
+// En desktop el avatar y el nombre van en fila; en móvil se acomoda
+// centrado y en columna para que no se encimen con nombres largos.
+.card-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+}
+
+.user-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	width: 100%;
+	max-width: 480px;
+	padding: 0 10px 10px;
+	box-sizing: border-box;
+}
+
+.info {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.info h2 {
+	margin: 0;
+	width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.info-email {
+	font-size: 14px;
+	font-weight: 400;
+	color: var(--color-text-maxcontrast);
+}
+
+.avatar {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex-shrink: 0;
+	padding-right: 10px;
+}
+
 .file-input { display: none; }
 
 .employee-empty-card {
@@ -382,6 +545,7 @@ export default {
 	background: var(--color-main-background);
 	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
 	text-align: center;
+	box-sizing: border-box;
 }
 
 .employee-empty-image {
@@ -440,24 +604,144 @@ export default {
 	margin-top: 20px;
 }
 
-@media (max-width: 700px) {
-	.employee-empty-state {
-		align-items: flex-start;
-		padding: 20px 12px;
+.employee-empty-state {
+	height: calc(100vh - var(--header-height) - 80px);
+	padding: 16px;
+	box-sizing: border-box;
+	overflow-y: auto;
+}
+
+.mobile-back-bar {
+	display: none;
+}
+
+.mobile-back-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: fit-content;
+	min-width: 0;
+	height: auto;
+	box-sizing: border-box;
+	padding: 8px 14px;
+	border: 1px solid var(--color-border);
+	border-radius: 20px;
+	background: #e6eef3;
+	color: #012f3b;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+@media (max-width: 900px) {
+	.mobile-back-bar {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		width: 100%;
+		height: 52px;
+		padding: 8px 10px 12px;
+		box-sizing: border-box;
+	}
+
+	.mobile-back-btn {
+		display: inline-flex;
+		flex: 0 0 auto;
+		width: fit-content;
+		min-width: 0;
+		max-width: max-content;
+		height: auto;
+		margin: 0;
+		padding: 8px 14px;
+		border-radius: 10px;
+		background: #e6eef3;
+
+		font-weight: 680;
+		font-size: 15px;
+	}
+}
+
+::v-deep(.nav-tabs) {
+	display: flex;
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	overflow-y: hidden;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	white-space: nowrap;
+}
+
+::v-deep(.nav-tabs > li) {
+	flex: 0 0 auto;
+}
+
+::v-deep(.nav-tabs > li > a) {
+	padding: 10px 14px;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+// Selector de tabs (móvil / pantalla angosta): un solo recuadrito
+// en vez de las 5 pestañas. Solo se renderiza cuando isMobile es true.
+.tabs-select-wrapper {
+	display: flex;
+	justify-content: center;
+	margin: 4px 0 16px;
+}
+
+.tabs-select {
+	width: min(260px, 100%);
+	padding: 8px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.tabs-select:focus {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 1px;
+}
+
+.tab-content {
+	width: 100%;
+}
+
+@media (max-width: 600px) {
+	.container {
+		padding: 12px 10px 20px;
+	}
+
+	.user-card {
+		flex-direction: column;
+		text-align: center;
+		gap: 10px;
+		padding: 0 0 10px;
+	}
+
+	.info {
+		align-items: center;
+	}
+
+	.info h2 {
+		font-size: 19px;
+		text-align: center;
 	}
 
 	.employee-empty-card {
-		padding: 24px 16px;
+		padding: 20px 14px;
 	}
 
 	.employee-empty-stats {
 		grid-template-columns: 1fr;
 	}
-}
 
-.employee-empty-state {
-	height: calc(100vh - var(--header-height) - 80px);
-	padding: 16px;
-	box-sizing: border-box;
+	.employee-empty-state {
+		padding: 10px;
+	}
 }
 </style>

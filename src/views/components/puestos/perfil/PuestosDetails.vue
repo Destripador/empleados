@@ -24,14 +24,17 @@
 		<!-- Content -->
 		<div v-else>
 			<div class="position-details">
-				<button
-					type="button"
-					class="mobile-back-btn mobile-back-btn--inline"
-					:aria-label="t('empleados', 'Back to list')"
-					@click="$root.$emit('mobile-back')">
-					<ArrowLeft :size="20" />
-					<span>{{ t('empleados', 'Back') }}</span>
-				</button>
+				<div class="mobile-back-bar">
+					<button
+						type="button"
+						class="mobile-back-btn"
+						:aria-label="t('empleados', 'Back to list')"
+						@click="$root.$emit('mobile-back')">
+						<ArrowLeft :size="20" />
+						<span>{{ t('empleados', 'Back') }}</span>
+					</button>
+				</div>
+
 				<div class="position-hero">
 					<div class="position-hero__content">
 						<span class="position-hero__eyebrow">
@@ -735,25 +738,51 @@ export default {
 	}
 }
 
-.mobile-back-btn {
+.mobile-back-bar {
 	display: none;
 }
 
+.mobile-back-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: fit-content;
+	min-width: 0;
+	height: auto;
+	box-sizing: border-box;
+	padding: 8px 14px;
+	border: 1px solid var(--color-border);
+	border-radius: 20px;
+	background: #e6eef3;
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
 @media (max-width: 900px) {
+	.mobile-back-bar {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		width: 100%;
+		height: 52px;
+		padding: 8px 10px 12px;
+		box-sizing: border-box;
+	}
+
 	.mobile-back-btn {
 		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		margin-bottom: 12px;
+		flex: 0 0 auto;
+		width: fit-content;
+		min-width: 0;
+		max-width: max-content;
+		height: auto;
+		margin: 0;
 		padding: 8px 14px;
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: var(--color-main-background);
-		color: var(--color-main-text);
-		font-size: 13px;
-		font-weight: 600;
-		cursor: pointer;
-		z-index: 5;
+		border-radius: 20px;
+		background: #e6eef3;
 	}
 
 	.positions-empty-state--network {
@@ -761,10 +790,11 @@ export default {
 		padding-top: 56px;
 	}
 
-	.mobile-back-btn:not(.mobile-back-btn--inline) {
+	.positions-empty-state--network > .mobile-back-btn {
 		position: absolute;
 		top: 12px;
-		left: 12px;
+		right: 12px;
+		left: auto;
 	}
 }
 </style>

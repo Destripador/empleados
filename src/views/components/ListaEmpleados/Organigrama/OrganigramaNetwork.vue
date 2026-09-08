@@ -1101,19 +1101,6 @@ export default {
 	}
 }
 
-@media (max-width: 600px) {
-	.organigrama-view-switch {
-		right: 8px;
-		bottom: 8px;
-		left: 8px;
-		justify-content: center;
-	}
-
-	.view-switch-btn {
-		flex: 1;
-		padding: 7px 8px;
-	}
-}
 .organigrama-export {
 	position: absolute;
 	right: 16px;
@@ -1144,10 +1131,30 @@ export default {
 }
 
 @media (max-width: 600px) {
-	.organigrama-export {
-		top: 8px;
+	.organigrama-view-switch {
+		left: 8px;
 		right: 8px;
-		bottom: auto;
+		bottom: 64px;
+		justify-content: center;
+	}
+
+	.view-switch-btn {
+		flex: 1;
+		padding: 7px 8px;
+	}
+
+	.organigrama-export {
+		left: 8px;
+		right: 8px;
+		top: auto;
+		bottom: 8px;
+		display: flex;
+		justify-content: center;
+	}
+
+	.export-btn {
+		width: 100%;
+		max-width: 280px;
 	}
 }
 </style>
