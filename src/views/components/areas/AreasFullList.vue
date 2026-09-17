@@ -483,7 +483,7 @@ export default {
 
 // Search field
 .search-contacts-field {
-	padding: 5px 10px 5px 50px;
+	padding: 5px 10px;
 	margin-top: 4px;
 
 	> input {
@@ -493,6 +493,7 @@ export default {
 
 .content-list {
 	overflow-y: auto;
+	overflow-x: hidden;
 	padding: 0 4px;
 }
 
@@ -566,7 +567,7 @@ export default {
 // ============ RESPONSIVE ============
 @media (max-width: 600px) {
 	.search-contacts-field {
-		padding: 5px 8px;
+		padding: 5px 8px 5px 46px;
 	}
 
 	.container-search {

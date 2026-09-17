@@ -7,8 +7,10 @@
 		</NcEmptyContent>
 	</NcAppContent>
 
-	<NcAppContent v-else :name="t('empleados', 'Loading...')">
-		<!-- contacts list -->
+	<NcAppContent
+		v-else
+		:name="t('empleados', 'Loading...')"
+		:show-details.sync="mobileShowDetails">
 		<template #list>
 			<FullList
 				:listas="listas"
@@ -19,18 +21,25 @@
 				</template>
 			</FullList>
 		</template>
-		<!-- main details -->
-		<div class="Details">
+
+		<div
+			class="Details"
+			:class="{
+				'Details--empty': !selectionActive,
+				'Details--active': selectionActive
+			}">
 			<div class="contacts-list__item-wrapper">
 				<div v-if="custom == true && !selectionActive">
 					<slot name="custom" />
 				</div>
+
 				<div v-else-if="custom == false && !selectionActive">
 					<div class="emptycontent">
 						<DatabaseSearchOutline :size="60" />
 						<h2>{{ t('empleados', 'Select something') }}</h2>
 					</div>
 				</div>
+
 				<div v-else>
 					<div>
 						<div class="position-hero__actions">
@@ -146,19 +155,19 @@ export default {
 		loading: { type: Boolean, required: true },
 		listas: { type: Array, required: true },
 		select: { type: Array, required: true },
-		custom: { type: Boolean, default: false, required: false },
-		defaultbuttons: { type: Boolean, default: true, required: false },
-		showOptions: { type: Boolean, default: false, required: false },
-		showToggleEstado: { type: Boolean, default: false, required: false },
+		custom: { type: Boolean, default: false },
+		defaultbuttons: { type: Boolean, default: true },
+		showOptions: { type: Boolean, default: false },
+		showToggleEstado: { type: Boolean, default: false },
 		toggleEstadoLabel: { type: String, default: 'Toggle status' },
-		detailsActive: { type: Boolean, default: false, required: false },
-		// reloadBus: { type: Object, required: true },
+		detailsActive: { type: Boolean, default: false },
 	},
 
 	data() {
 		return {
 			reloadBus: mitt(),
 			showDialog: false,
+			mobileShowDetails: false,
 		}
 	},
 
@@ -178,6 +187,15 @@ export default {
 					callback: () => { this.delete() },
 				},
 			]
+		},
+	},
+
+	watch: {
+		select: {
+			deep: true,
+			handler(value) {
+				this.mobileShowDetails = Array.isArray(value) && value.length > 0
+			},
 		},
 	},
 
@@ -239,5 +257,17 @@ export default {
 
 	.button-container {
 		margin: 0;
+	}
+
+	@media (max-width: 720px) {
+		.Details--empty {
+			display: none;
+		}
+
+		.Details--active {
+			display: block;
+			width: 100%;
+			min-width: 0;
+		}
 	}
 </style>

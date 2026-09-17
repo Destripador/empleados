@@ -354,7 +354,6 @@ export default {
 	font-size: 12px;
 }
 
-// Make virtual scroller scrollable
 .contacts-list {
 	max-height: calc(100vh - var(--header-height) - 48px);
 	max-height: calc(100dvh - var(--header-height) - 48px);
@@ -362,15 +361,12 @@ export default {
 	-webkit-overflow-scrolling: touch;
 }
 
-// Add empty header to contacts-list that solves overlapping of contacts with app-navigation-toogle
 .contacts-list__header {
 	min-height: 48px;
 }
 
-// Search field: mismo padding-left de 50px que Areas/Puestos para
-// dejarle espacio al botón de hamburguesa.
 .search-contacts-field {
-	padding: 5px 10px 5px 50px;
+	padding: 5px 10px;
 	margin-top: 4px;
 
 	> input {

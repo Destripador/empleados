@@ -498,6 +498,17 @@ export default {
 		min-height: 420px;
 		height: 60vh;
 	}
+
+	.office-sim__header h2,
+	.office-sim__header p,
+	.office-sim__header small {
+		text-align: center;
+	}
+
+	.office-sim__header small {
+		display: block;   // ahora sí puede alinear su contenido
+		text-align: center;
+	}
 }
 
 @media (max-width: 560px) {

@@ -1490,6 +1490,7 @@ export default {
 
 	.toolbar-mobile {
 		display: flex;
+		justify-content: center;
 	}
 
 	.main-content {

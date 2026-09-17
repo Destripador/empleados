@@ -490,7 +490,7 @@ export default {
 
 // Search field
 .search-contacts-field {
-	padding: 5px 10px 5px 50px;
+	padding: 5px 10px;
 	margin-top: 4px;
 
 	> input {
@@ -572,8 +572,7 @@ export default {
 // ============ RESPONSIVE ============
 @media (max-width: 600px) {
 	.search-contacts-field {
-		// en móvil el botón de navegación no ocupa este espacio, liberamos margen
-		padding: 5px 8px;
+		padding: 5px 8px 5px 46px;
 	}
 
 	.container-search {

@@ -45,6 +45,9 @@ class ClientesDashboardService {
 
 		$summary = $this->buildSummary($clientes, $feeRows, $monthlyGenerated, $monthlyCollected);
 
+		$serviceRows = $this->parcialidadesMapper->getServicioBreakdownRows($filters);
+		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows);
+
 		if ($filters['solo_pendientes']) {
 			$summary['tabla'] = array_values(array_filter(
 				$summary['tabla'],
@@ -332,6 +335,138 @@ class ClientesDashboardService {
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Agrupa las filas de honorarios por servicio
+	 *
+	 * @param list<array<string,mixed>> $rows
+	 * @return list<array{moneda:string, items:list<array<string,mixed>>}>
+	 */
+	private function buildServiceBreakdown(array $rows): array {
+		$porMoneda = [];
+
+		foreach ($rows as $row) {
+			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? 'MXN');
+			$especial = (int)($row['especial'] ?? 0) === 1;
+			$importe = (float)($row['total'] ?? 0);
+
+			[$servicio, $anio, $esFijo] = $this->normalizarServicio(
+				(string)($row['tipo_servicio'] ?? ''),
+				$especial
+			);
+
+			$porMoneda[$moneda] ??= [];
+			$key = mb_strtolower($servicio);
+
+			$porMoneda[$moneda][$key] ??= [
+				'servicio' => $servicio,
+				'es_fijo' => $esFijo,
+				'total' => 0.0,
+				'anios' => [],
+			];
+
+			$porMoneda[$moneda][$key]['total'] += $importe;
+
+			$anioKey = $anio !== null ? (string)$anio : 'sin_anio';
+			$porMoneda[$moneda][$key]['anios'][$anioKey] ??= [
+				'anio' => $anio,
+				'total' => 0.0,
+			];
+			$porMoneda[$moneda][$key]['anios'][$anioKey]['total'] += $importe;
+		}
+
+		$ordenFijos = [
+			'auditoria financiera y fiscal' => 0,
+			'auditoria financiera' => 1,
+			'auditoria fiscal' => 2,
+			'procedimientos convenidos' => 3,
+			'trabajos especiales' => 4,
+		];
+
+		$result = [];
+
+		foreach ($porMoneda as $moneda => $items) {
+			$lista = [];
+
+			foreach ($items as $item) {
+				$item['total'] = round($item['total'], 2);
+
+				$anios = array_values($item['anios']);
+				foreach ($anios as &$a) {
+					$a['total'] = round($a['total'], 2);
+				}
+				unset($a);
+
+				usort($anios, static function (array $a, array $b): int {
+					if ($a['anio'] === null) {
+						return 1;
+					}
+					if ($b['anio'] === null) {
+						return -1;
+					}
+					return $b['anio'] <=> $a['anio'];
+				});
+
+				$item['anios'] = $anios;
+				$lista[] = $item;
+			}
+
+			usort($lista, static function (array $a, array $b) use ($ordenFijos): int {
+				$oa = $ordenFijos[mb_strtolower($a['servicio'])] ?? 99;
+				$ob = $ordenFijos[mb_strtolower($b['servicio'])] ?? 99;
+
+				if ($oa !== $ob) {
+					return $oa <=> $ob;
+				}
+
+				return strcasecmp($a['servicio'], $b['servicio']);
+			});
+
+			$result[] = ['moneda' => $moneda, 'items' => $lista];
+		}
+
+		usort($result, static fn (array $a, array $b): int => strcmp($a['moneda'], $b['moneda']));
+
+		return $result;
+	}
+
+	/**
+	 * Extrae el nombre base y el año 
+	 *
+	 * @return array{0:string, 1:?int, 2:bool} [servicio, anio, es_fijo]
+	 */
+	private function normalizarServicio(string $tipoServicio, bool $especial): array {
+		$nombreCompleto = trim($tipoServicio);
+		$nombreBase = $nombreCompleto;
+		$anio = null;
+
+		if (preg_match('/^(.*?)(?:\s-\s(\d{4}))?$/', $nombreCompleto, $m) === 1) {
+			$nombreBase = trim($m[1]);
+			if (!empty($m[2])) {
+				$anio = (int)$m[2];
+			}
+		}
+
+		if ($especial) {
+			return ['Trabajos Especiales', $anio, true];
+		}
+
+		$fijos = [
+			'auditoria financiera y fiscal' => 'Auditoria Financiera y Fiscal',
+			'auditoria financiera' => 'Auditoria Financiera',
+			'auditoria fiscal' => 'Auditoria Fiscal',
+			'procedimientos convenidos' => 'Procedimientos Convenidos',
+			'trabajos especiales' => 'Trabajos Especiales',
+		];
+
+		$key = mb_strtolower($nombreBase);
+
+		if (isset($fijos[$key])) {
+			return [$fijos[$key], $anio, true];
+		}
+
+		return [$nombreBase !== '' ? $nombreBase : 'Sin especificar', $anio, false];
 	}
 
 	private function mergeMonthly(array $generated, array $collected): array {

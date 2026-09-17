@@ -490,6 +490,122 @@ class honorariosParcialidadesMapper extends QBMapper {
 	}
 
 	/**
+	 * Ajusta manualmente el importe de una parcialidad
+	 *
+	 * @throws \Exception
+	 */
+	public function ajustarImporteManual(int $id_parcialidad, float $nuevoImporte): void {
+		if ($nuevoImporte < 0) {
+			throw new \Exception('El importe no puede ser negativo.');
+		}
+
+		$parcialidad = $this->findById($id_parcialidad);
+
+		if (empty($parcialidad)) {
+			throw new \Exception('No se encontró la parcialidad.');
+		}
+
+		if ((int)$parcialidad['pagado'] !== honorariosParcialidades::PENDIENTE) {
+			throw new \Exception('Solo se pueden modificar parcialidades pendientes.');
+		}
+
+		$idHonorario = (int)$parcialidad['id_honorario'];
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->orderBy('numero_parcialidad', 'ASC');
+
+		$result = $qb->executeQuery();
+		$todas = $result->fetchAll();
+		$result->closeCursor();
+
+		$qbH = $this->db->getQueryBuilder();
+		$qbH->select('importe_total')
+			->from('empleados_honorarios')
+			->where(
+				$qbH->expr()->eq(
+					'id_honorario',
+					$qbH->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$rH = $qbH->executeQuery();
+		$importeTotal = (float)$rH->fetchOne();
+		$rH->closeCursor();
+
+		$lockedSum = 0.0;
+		$otrasPendientes = [];
+
+		foreach ($todas as $row) {
+			$rowId = (int)$row['id_parcialidad'];
+
+			if ($rowId === $id_parcialidad) {
+				continue;
+			}
+
+			if ((int)$row['pagado'] === honorariosParcialidades::PENDIENTE) {
+				$otrasPendientes[] = $row;
+			} else {
+				$lockedSum += (float)$row['importe_parcialidad'];
+			}
+		}
+
+		$restante = round($importeTotal - $lockedSum - $nuevoImporte, 2);
+
+		if ($restante < -0.005) {
+			throw new \Exception('El importe ingresado excede el importe total del honorario.');
+		}
+
+		$n = count($otrasPendientes);
+
+		if ($n === 0) {
+			if (abs($restante) > 0.005) {
+				throw new \Exception('Esta es la última parcialidad pendiente; el importe debe coincidir con lo que resta del honorario.');
+			}
+			$restante = 0.0;
+		}
+
+		$qbUpd = $this->db->getQueryBuilder();
+		$qbUpd->update($this->getTableName())
+			->set('importe_parcialidad', $qbUpd->createNamedParameter($nuevoImporte))
+			->where(
+				$qbUpd->expr()->eq(
+					'id_parcialidad',
+					$qbUpd->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qbUpd->executeStatement();
+
+		if ($n > 0) {
+			$montoBase = round($restante / $n, 2);
+			$acumulado = 0.0;
+
+			foreach ($otrasPendientes as $i => $row) {
+				$esUltima = ($i === $n - 1);
+				$monto = $esUltima ? round($restante - $acumulado, 2) : $montoBase;
+				$acumulado += $monto;
+
+				$qbR = $this->db->getQueryBuilder();
+				$qbR->update($this->getTableName())
+					->set('importe_parcialidad', $qbR->createNamedParameter($monto))
+					->where(
+						$qbR->expr()->eq(
+							'id_parcialidad',
+							$qbR->createNamedParameter((int)$row['id_parcialidad'], IQueryBuilder::PARAM_INT)
+						)
+					);
+				$qbR->executeStatement();
+			}
+		}
+	}
+
+	/**
 	 * Suma el importe de las parcialidades agrupado por id_honorario
 	 */
 	public function sumByHonorarios(array $idsHonorarios): array {
@@ -545,6 +661,33 @@ class honorariosParcialidadesMapper extends QBMapper {
 		$this->applyDashboardFeeFilters($qb, $filters);
 
 		$qb->groupBy('c.id', 'h.tipo_moneda');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * Totales agrupados por tipo_servicio
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function getServicioBreakdownRows(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('h.tipo_servicio', 'tipo_servicio')
+			->selectAlias('h.especial', 'especial')
+			->selectAlias('h.tipo_moneda', 'tipo_moneda')
+			->selectAlias($qb->createFunction('SUM(p.importe_parcialidad)'), 'total')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'));
+
+		$this->applyDashboardFeeFilters($qb, $filters);
+
+		$qb->groupBy('h.tipo_servicio', 'h.especial', 'h.tipo_moneda');
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();

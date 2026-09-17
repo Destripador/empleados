@@ -5,8 +5,17 @@
 			'item--especial': Number(source.especial) === 1,
 			'item--billable': Number(source.cargable) === 1,
 			'item--disabled': Number(source.estado ?? 1) === 0,
+			'item--boton': source.esBoton,
 		}">
-		<ListItem
+		<button v-if="source.esBoton"
+			type="button"
+			class="stats-button"
+			@click="showDetails(source)">
+			<ChartBar :size="22" />
+			<span>{{ source.name }}</span>
+		</button>
+
+		<ListItem v-else
 			:compact="true"
 			class="list-item-style envelope"
 			:class="{ 'seccion-item': source.esSeccion }"
@@ -45,6 +54,7 @@ import {
 	NcAvatar as BaseAvatar,
 } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import ChartBar from 'vue-material-design-icons/ChartBar.vue'
 
 export default {
 	name: 'ListItems',
@@ -52,6 +62,7 @@ export default {
 	components: {
 		ListItem,
 		BaseAvatar,
+		ChartBar,
 	},
 
 	props: {
@@ -159,6 +170,28 @@ export default {
 		display: none;
 	}
 }
+
+.stats-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: 100%;
+	padding: 14px 12px;
+	border: none;
+	border-radius: var(--border-radius-large);
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+	font-size: 0.95rem;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.15s ease;
+
+	&:hover {
+		background: var(--color-primary-element);
+		color: var(--color-primary-element-text);
+	}
+}
 </style>
 
 <style lang="scss">
@@ -198,5 +231,19 @@ export default {
 	border-left: none !important;
 	opacity: 1 !important;
 	filter: none !important;
+}
+
+.item--boton {
+	margin: 4px 0 10px;
+	background: transparent !important;
+	border-left: none !important;
+	opacity: 1 !important;
+	filter: none !important;
+}
+
+@media (min-width: 721px) {
+	.item--boton {
+		display: none;
+	}
 }
 </style>

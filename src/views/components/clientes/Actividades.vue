@@ -11,22 +11,19 @@
 					<NcButton
 						class="filter-icon-button"
 						type="tertiary"
+						:aria-label="t('empleados', 'Filters')"
 						:title="t('empleados', 'Filters')"
 						@click.stop="toggleFilters">
 						<template #icon>
 							<FilterVariant :size="23" />
 						</template>
-
-						<span
-							v-if="activeFilterCount > 0"
-							class="filter-badge">
-							{{ activeFilterCount }}
-						</span>
 					</NcButton>
 
-					<div v-if="showFilters"
-						class="filter-dropdown"
-						@click.stop>
+					<span v-if="activeFilterCount > 0" class="filter-badge">
+						{{ activeFilterCount }}
+					</span>
+
+					<div v-if="showFilters" class="filter-dropdown" @click.stop>
 						<div class="filter-section">
 							<p class="filter-section-label">
 								{{ t('empleados', 'Sort') }}
@@ -51,7 +48,7 @@
 				</div>
 			</template>
 			<template #details>
-				<ActividadesDetalles :select="select" />
+				<ActividadesDetalles :select="select" @close="closeActivityDetails" />
 			</template>
 		</List>
 
@@ -333,6 +330,10 @@ export default {
 		},
 
 		onEsc() {
+			this.select = []
+		},
+
+		closeActivityDetails() {
 			this.select = []
 		},
 
@@ -625,18 +626,21 @@ export default {
 }
 
 .filter-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--color-primary-element);
-  color: var(--color-primary-element-text);
-  font-size: 0.7rem;
-  font-weight: 700;
-  margin-left: 4px;
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-size: 0.7rem;
+	font-weight: 700;
+	pointer-events: none;
 }
 
 .filter-dropdown {
@@ -708,5 +712,7 @@ export default {
 	min-width: unset !important;
 	padding-left: 4px !important;
 	padding-right: 4px !important;
+	flex-shrink: 0;
+	width: 34px;
 }
 </style>

@@ -761,6 +761,10 @@ export default {
 	cursor: pointer;
 }
 
+.positions-empty-state--network > .mobile-back-btn {
+	display: none;
+}
+
 @media (max-width: 900px) {
 	.mobile-back-bar {
 		display: flex;
@@ -791,6 +795,7 @@ export default {
 	}
 
 	.positions-empty-state--network > .mobile-back-btn {
+		display: inline-flex;
 		position: absolute;
 		top: 12px;
 		right: 12px;

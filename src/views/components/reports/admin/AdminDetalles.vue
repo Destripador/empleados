@@ -213,22 +213,226 @@
 				</div>
 			</article>
 
+			<!-- Calendario de días trabajados: reemplaza la antigua tendencia
+				 "Horas diarias por tipo de trabajo". Usa puntitos (igual en
+				 PC y móvil): el primer punto indica el tipo de trabajo
+				 dominante del día, el segundo es un semáforo de cumplimiento
+				 de la jornada de 8 horas. -->
 			<article class="panel panel-wide">
 				<div class="panel-heading">
 					<div>
 						<div class="panel-eyebrow">
-							{{ t('empleados', 'Trend') }}
+							{{ t('empleados', 'Attendance') }}
 						</div>
 						<h3 class="panel-title">
-							{{ t('empleados', 'Daily hours by work type') }}
+							{{ t('empleados', 'Days worked') }}
 						</h3>
 						<p class="panel-copy">
-							{{ t('empleados', 'Detect spikes and how client, internal and absence hours evolve day by day.') }}
+							{{ t('empleados', 'See what type of work dominated each day and whether the 8-hour day was met.') }}
 						</p>
 					</div>
 				</div>
-				<div class="chart-box chart-box-tall">
-					<canvas ref="chartHorasDia" />
+
+				<div class="dot-calendar">
+					<div class="dot-calendar__header">
+						<div class="dot-calendar__title-wrap">
+							<button
+								type="button"
+								class="dot-calendar__month"
+								@click="toggleMonthPickerDetalles">
+								{{ mobileMonthLabelDetalles }}
+								<ChevronDown
+									:size="18"
+									class="dot-calendar__month-caret"
+									:class="{ 'dot-calendar__month-caret--open': monthPickerOpenDetalles }" />
+							</button>
+
+							<div
+								v-if="monthPickerOpenDetalles"
+								class="month-picker__overlay"
+								@click="closeMonthPickerDetalles" />
+
+							<div v-if="monthPickerOpenDetalles" class="month-picker">
+								<div class="month-picker__year">
+									<button
+										type="button"
+										class="month-picker__year-arrow"
+										:aria-label="t('empleados', 'Previous year')"
+										@click="pickerPrevYearDetalles">
+										<ChevronLeft :size="16" />
+									</button>
+									<strong>{{ pickerYearDetalles }}</strong>
+									<button
+										type="button"
+										class="month-picker__year-arrow"
+										:aria-label="t('empleados', 'Next year')"
+										@click="pickerNextYearDetalles">
+										<ChevronRight :size="16" />
+									</button>
+								</div>
+
+								<div class="month-picker__grid">
+									<button
+										v-for="(label, index) in monthShortLabels"
+										:key="label"
+										type="button"
+										class="month-picker__month"
+										:class="{ 'month-picker__month--active': isPickerMonthActiveDetalles(index) }"
+										@click="selectMonthDetalles(index)">
+										{{ label }}
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<div class="dot-calendar__nav">
+							<button
+								type="button"
+								class="dot-calendar__arrow"
+								:aria-label="t('empleados', 'Previous')"
+								@click="mobilePrevPeriodDetalles">
+								<ChevronLeft :size="18" />
+							</button>
+							<button
+								type="button"
+								class="dot-calendar__arrow dot-calendar__arrow--today"
+								:aria-label="t('empleados', 'Today')"
+								@click="goToTodayDetalles">
+								{{ t('empleados', 'Today') }}
+							</button>
+							<button
+								type="button"
+								class="dot-calendar__arrow"
+								:aria-label="t('empleados', 'Next')"
+								@click="mobileNextPeriodDetalles">
+								<ChevronRight :size="18" />
+							</button>
+						</div>
+					</div>
+
+					<div class="dot-calendar__weekdays">
+						<span v-for="wd in mobileWeekDayLabels" :key="wd">{{ wd }}</span>
+					</div>
+
+					<div class="dot-calendar__grid">
+						<div v-for="(week, wIndex) in mobileMonthWeeksDetalles" :key="wIndex" class="dot-calendar__week">
+							<button
+								v-for="day in week"
+								:key="day.key"
+								type="button"
+								class="dot-day"
+								:class="{
+									'dot-day--outside': !day.inCurrentMonth,
+									'dot-day--today': day.isToday,
+									'dot-day--selected': day.isSelected,
+								}"
+								:style="{ '--day-bg': day.semaforoBg }"
+								@click="mobileSelectedDateDetalles = day.date">
+								<span class="dot-day__number">{{ day.date.getDate() }}</span>
+								<span v-if="day.dots.length" class="dot-day__dots">
+									<span
+										v-for="(dot, dIndex) in day.dots"
+										:key="dIndex"
+										class="dot-day__dot"
+										:style="{ backgroundColor: dot }" />
+								</span>
+							</button>
+						</div>
+					</div>
+
+					<div v-if="mobileSelectedDayInfo" class="dot-day-detail">
+						<h4 class="dot-day-detail__title">
+							{{ mobileSelectedDateLabelDetalles }}
+						</h4>
+
+						<div v-if="mostrarClientes && mobileSelectedDayInfo.cliente > 0 && !isTipoHiddenDetalles('cliente')" class="dot-day-detail__group">
+							<span class="dot-day-detail__group-title">
+								<i class="dot dot-cliente" />{{ t('empleados', 'Client work') }}
+								<strong>{{ mobileSelectedDayInfo.cliente.toFixed(1) }} h</strong>
+							</span>
+							<ul class="dot-day-detail__sublist">
+								<li v-for="empresa in mobileSelectedDayInfo.empresas" :key="empresa.nombre">
+									<span>{{ empresa.nombre }}</span>
+									<strong>{{ empresa.horas.toFixed(1) }} h</strong>
+								</li>
+							</ul>
+						</div>
+
+						<div v-if="mobileSelectedDayInfo.interno > 0 && !isTipoHiddenDetalles('interno')" class="dot-day-detail__group">
+							<span class="dot-day-detail__group-title">
+								<i class="dot dot-interno" />{{ t('empleados', 'Internal work') }}
+								<strong>{{ mobileSelectedDayInfo.interno.toFixed(1) }} h</strong>
+							</span>
+						</div>
+
+						<div v-if="mostrarAusencias && mobileSelectedDayInfo.ausencia > 0 && !isTipoHiddenDetalles('ausencia')" class="dot-day-detail__group">
+							<span class="dot-day-detail__group-title">
+								<i class="dot dot-ausencia" />{{ t('empleados', 'Absences') }}
+								<strong>{{ mobileSelectedDayInfo.ausencia.toFixed(1) }} h</strong>
+							</span>
+							<ul class="dot-day-detail__sublist">
+								<li v-for="ausencia in mobileSelectedDayInfo.ausenciasDetalle" :key="ausencia.nombre">
+									<span>{{ ausencia.nombre }}</span>
+									<strong>{{ ausencia.horas.toFixed(1) }} h</strong>
+								</li>
+							</ul>
+						</div>
+
+						<p class="dot-day-detail__total">
+							{{ t('empleados', 'Total: {hours} h · {reports} reports', {
+								hours: mobileSelectedDayInfo.total.toFixed(1),
+								reports: mobileSelectedDayInfo.reportes,
+							}) }}
+						</p>
+					</div>
+
+					<div class="calendar-legend">
+						<button
+							v-if="mostrarClientes"
+							type="button"
+							class="calendar-legend__item"
+							:class="{ 'calendar-legend__item--hidden': isTipoHiddenDetalles('cliente') }"
+							@click="toggleTipoDetalles('cliente')">
+							<i class="dot dot-cliente" />{{ t('empleados', 'Client work') }}
+						</button>
+						<button
+							type="button"
+							class="calendar-legend__item"
+							:class="{ 'calendar-legend__item--hidden': isTipoHiddenDetalles('interno') }"
+							@click="toggleTipoDetalles('interno')">
+							<i class="dot dot-interno" />{{ t('empleados', 'Internal work') }}
+						</button>
+						<button
+							v-if="mostrarAusencias"
+							type="button"
+							class="calendar-legend__item"
+							:class="{ 'calendar-legend__item--hidden': isTipoHiddenDetalles('ausencia') }"
+							@click="toggleTipoDetalles('ausencia')">
+							<i class="dot dot-ausencia" />{{ t('empleados', 'Absences') }}
+						</button>
+						<span class="calendar-legend__sep" />
+						<button
+							type="button"
+							class="calendar-legend__item"
+							:class="{ 'calendar-legend__item--hidden': isSemaforoHiddenDetalles('ok') }"
+							@click="toggleSemaforoDetalles('ok')">
+							<i class="swatch swatch-ok" />{{ t('empleados', '8h completed') }}
+						</button>
+						<button
+							type="button"
+							class="calendar-legend__item"
+							:class="{ 'calendar-legend__item--hidden': isSemaforoHiddenDetalles('warn') }"
+							@click="toggleSemaforoDetalles('warn')">
+							<i class="swatch swatch-warn" />{{ t('empleados', 'Missing 1h') }}
+						</button>
+						<button
+							type="button"
+							class="calendar-legend__item"
+							:class="{ 'calendar-legend__item--hidden': isSemaforoHiddenDetalles('bad') }"
+							@click="toggleSemaforoDetalles('bad')">
+							<i class="swatch swatch-bad" />{{ t('empleados', 'Missing 2h+') }}
+						</button>
+					</div>
 				</div>
 			</article>
 
@@ -317,6 +521,10 @@ import VirtualList from 'vue-virtual-scroll-list'
 // eslint-disable-next-line import/no-named-as-default
 import Chart from 'chart.js/auto'
 
+import ChevronLeft from 'vue-material-design-icons/ChevronLeft.vue'
+import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
+import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
+
 import {
 // NcTextField,
 } from '@nextcloud/vue'
@@ -327,6 +535,9 @@ export default {
 	components: {
 		// NcTextField,
 		VirtualList,
+		ChevronLeft,
+		ChevronRight,
+		ChevronDown,
 	},
 
 	props: {
@@ -347,12 +558,19 @@ export default {
 
 			chartProyectosInstance: null,
 			chartActividadesInstance: null,
-			chartHorasDiaInstance: null,
 			chartProyectoActividadInstance: null,
 			chartTipoTrabajoInstance: null,
 			chartLimit: 10,
 			selectedCliente: null,
 			selectedActividad: null,
+			mobileCurrentDateDetalles: new Date(),
+			mobileSelectedDateDetalles: new Date(),
+			mobileWeekDayLabels: ['do.', 'lu.', 'ma.', 'mi.', 'ju.', 'vi.', 'sá.'],
+			monthPickerOpenDetalles: false,
+			pickerYearDetalles: new Date().getFullYear(),
+			monthShortLabels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+			hiddenTiposDetalles: [],
+			hiddenSemaforoDetalles: [],
 		}
 	},
 
@@ -628,6 +846,8 @@ export default {
 						ausencia: 0,
 						total: 0,
 						reportes: 0,
+						empresasMap: new Map(),
+						ausenciasMap: new Map(),
 					})
 				}
 
@@ -635,9 +855,34 @@ export default {
 				day[bucket] += horas
 				day.total += horas
 				day.reportes++
+
+				if (bucket === 'cliente') {
+					const nombreEmpresa = r.clienteNombre || t('empleados', 'Client')
+					day.empresasMap.set(
+						nombreEmpresa,
+						(day.empresasMap.get(nombreEmpresa) || 0) + horas,
+					)
+				}
+
+				if (bucket === 'ausencia') {
+					const nombreAusencia = r.actividadNombre || t('empleados', 'Absence')
+					day.ausenciasMap.set(
+						nombreAusencia,
+						(day.ausenciasMap.get(nombreAusencia) || 0) + horas,
+					)
+				}
 			}
 
 			return Array.from(acc.values())
+				.map(day => ({
+					...day,
+					empresas: Array.from(day.empresasMap.entries())
+						.map(([nombre, horasEmpresa]) => ({ nombre, horas: horasEmpresa }))
+						.sort((a, b) => b.horas - a.horas),
+					ausenciasDetalle: Array.from(day.ausenciasMap.entries())
+						.map(([nombre, horasAusencia]) => ({ nombre, horas: horasAusencia }))
+						.sort((a, b) => b.horas - a.horas),
+				}))
 				.sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
 		},
 		graficaProyectoActividad() {
@@ -696,6 +941,65 @@ export default {
 				actividades,
 				datasets,
 			}
+		},
+
+		// ===== Computeds del calendario de puntitos (Días trabajados) =====
+
+		calendarEventosDias() {
+			return this.graficaHorasPorDia
+		},
+
+		calendarEventosDiasByKey() {
+			const map = {}
+			this.calendarEventosDias.forEach(day => {
+				map[day.fecha] = day
+			})
+			return map
+		},
+
+		mobileMonthLabelDetalles() {
+			const label = this.mobileCurrentDateDetalles.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+			return label.charAt(0).toUpperCase() + label.slice(1)
+		},
+
+		/**
+		 * Cuadrícula completa del mes (siempre 6 semanas, para que la
+		 * altura no "salte" al navegar entre meses).
+		 */
+		mobileMonthWeeksDetalles() {
+			const year = this.mobileCurrentDateDetalles.getFullYear()
+			const month = this.mobileCurrentDateDetalles.getMonth()
+			const firstOfMonth = new Date(year, month, 1)
+			const startDay = firstOfMonth.getDay()
+			const gridStart = new Date(year, month, 1 - startDay)
+
+			const weeks = []
+			const cursor = new Date(gridStart)
+			for (let w = 0; w < 6; w++) {
+				const week = []
+				for (let d = 0; d < 7; d++) {
+					week.push(this.buildMobileDayDetalles(new Date(cursor), month))
+					cursor.setDate(cursor.getDate() + 1)
+				}
+				weeks.push(week)
+			}
+			return weeks
+		},
+
+		mobileSelectedDayInfo() {
+			if (!this.mobileSelectedDateDetalles) return null
+			const key = this.toISODateOnlyDetalles(this.mobileSelectedDateDetalles)
+			return this.calendarEventosDiasByKey[key] || null
+		},
+
+		mobileSelectedDateLabelDetalles() {
+			if (!this.mobileSelectedDateDetalles) return ''
+			const label = this.mobileSelectedDateDetalles.toLocaleDateString('es-MX', {
+				weekday: 'long',
+				day: 'numeric',
+				month: 'long',
+			})
+			return label.charAt(0).toUpperCase() + label.slice(1)
 		},
 	},
 
@@ -836,7 +1140,6 @@ export default {
 		renderGraficas() {
 			this.renderGraficaActividades()
 			this.renderGraficaTipoTrabajo()
-			this.renderGraficaHorasDia()
 
 			if (this.mostrarClientes) {
 				this.renderGraficaProyectos()
@@ -1070,80 +1373,6 @@ export default {
 			})
 		},
 
-		renderGraficaHorasDia() {
-			if (!this.$refs.chartHorasDia) return
-
-			if (this.chartHorasDiaInstance) {
-				this.chartHorasDiaInstance.destroy()
-			}
-
-			const datos = this.graficaHorasPorDia
-			const datasets = []
-
-			if (this.mostrarClientes) {
-				datasets.push({
-					label: t('empleados', 'Client work'),
-					data: datos.map(x => Number(x.cliente.toFixed(2))),
-					backgroundColor: 'rgba(37, 99, 235, 0.78)',
-					stack: 'day',
-				})
-			}
-
-			datasets.push({
-				label: t('empleados', 'Internal work'),
-				data: datos.map(x => Number(x.interno.toFixed(2))),
-				backgroundColor: 'rgba(20, 184, 166, 0.78)',
-				stack: 'day',
-			})
-
-			if (this.mostrarAusencias) {
-				datasets.push({
-					label: t('empleados', 'Absences'),
-					data: datos.map(x => Number(x.ausencia.toFixed(2))),
-					backgroundColor: 'rgba(245, 158, 11, 0.78)',
-					stack: 'day',
-				})
-			}
-
-			this.chartHorasDiaInstance = new Chart(this.$refs.chartHorasDia, {
-				type: 'bar',
-				data: {
-					labels: datos.map(x => x.fecha),
-					datasets,
-				},
-				options: {
-					responsive: true,
-					maintainAspectRatio: false,
-					plugins: {
-						legend: {
-							position: 'bottom',
-						},
-						tooltip: {
-							callbacks: {
-								footer(items) {
-									const index = items?.[0]?.dataIndex
-									const day = datos[index]
-									if (!day) return ''
-									return t('empleados', 'Reports: {reports}', { reports: day.reportes })
-								},
-							},
-						},
-					},
-					scales: {
-						x: {
-							stacked: true,
-						},
-						y: {
-							stacked: true,
-							beginAtZero: true,
-							ticks: {
-								callback: value => `${value} h`,
-							},
-						},
-					},
-				},
-			})
-		},
 		renderGraficaProyectoActividad() {
 			if (!this.$refs.chartProyectoActividad) return
 
@@ -1200,10 +1429,6 @@ export default {
 				this.chartActividadesInstance.destroy()
 				this.chartActividadesInstance = null
 			}
-			if (this.chartHorasDiaInstance) {
-				this.chartHorasDiaInstance.destroy()
-				this.chartHorasDiaInstance = null
-			}
 			if (this.chartProyectoActividadInstance) {
 				this.chartProyectoActividadInstance.destroy()
 				this.chartProyectoActividadInstance = null
@@ -1212,6 +1437,149 @@ export default {
 				this.chartTipoTrabajoInstance.destroy()
 				this.chartTipoTrabajoInstance = null
 			}
+		},
+
+		toISODateOnlyDetalles(date) {
+			const y = date.getFullYear()
+			const m = String(date.getMonth() + 1).padStart(2, '0')
+			const d = String(date.getDate()).padStart(2, '0')
+			return `${y}-${m}-${d}`
+		},
+
+		colorForTipoDetalles(tipo) {
+			const map = { cliente: '#2563eb', interno: '#14b8a6', ausencia: '#f59e0b' }
+			return map[tipo] || '#14b8a6'
+		},
+
+		colorForSemaforo(totalHoras) {
+			const meta = 8
+			const falta = meta - totalHoras
+			if (falta <= 0) return '#22c55e' // verde
+			if (falta <= 1) return '#eab308' // amarillo
+			return '#ef4444' // rojo
+		},
+
+		colorForSemaforoBg(totalHoras) {
+			const meta = 8
+			const falta = meta - totalHoras
+			if (falta <= 0) return '#eefaf1' // verde pastel
+			if (falta <= 1) return '#fdf8e6' // amarillo pastel
+			return '#fdefee' // rojo pastel
+		},
+
+		semaforoLevelDetalles(totalHoras) {
+			const meta = 8
+			const falta = meta - totalHoras
+			if (falta <= 0) return 'ok'
+			if (falta <= 1) return 'warn'
+			return 'bad'
+		},
+
+		buildMobileDayDetalles(date, currentMonth) {
+			const key = this.toISODateOnlyDetalles(date)
+			const todayKey = this.toISODateOnlyDetalles(new Date())
+			const day = this.calendarEventosDiasByKey[key]
+
+			let dots = []
+			let semaforoBg = null
+
+			if (day) {
+				const tiposPresentes = ['cliente', 'interno', 'ausencia']
+					.filter(tipo => day[tipo] > 0 && !this.hiddenTiposDetalles.includes(tipo))
+
+				dots = tiposPresentes.map(tipo => this.colorForTipoDetalles(tipo))
+
+				if (tiposPresentes.length > 0) {
+					const nivel = this.semaforoLevelDetalles(day.total)
+					if (!this.hiddenSemaforoDetalles.includes(nivel)) {
+						semaforoBg = this.colorForSemaforoBg(day.total)
+					}
+				}
+			}
+
+			return {
+				key,
+				date,
+				inCurrentMonth: currentMonth === null ? true : date.getMonth() === currentMonth,
+				isToday: key === todayKey,
+				isSelected: this.mobileSelectedDateDetalles ? key === this.toISODateOnlyDetalles(this.mobileSelectedDateDetalles) : false,
+				dots,
+				semaforoBg,
+			}
+		},
+
+		toggleTipoDetalles(tipo) {
+			if (this.hiddenTiposDetalles.includes(tipo)) {
+				this.hiddenTiposDetalles = this.hiddenTiposDetalles.filter(t => t !== tipo)
+			} else {
+				this.hiddenTiposDetalles = [...this.hiddenTiposDetalles, tipo]
+			}
+		},
+
+		isTipoHiddenDetalles(tipo) {
+			return this.hiddenTiposDetalles.includes(tipo)
+		},
+
+		toggleSemaforoDetalles(nivel) {
+			if (this.hiddenSemaforoDetalles.includes(nivel)) {
+				this.hiddenSemaforoDetalles = this.hiddenSemaforoDetalles.filter(n => n !== nivel)
+			} else {
+				this.hiddenSemaforoDetalles = [...this.hiddenSemaforoDetalles, nivel]
+			}
+		},
+
+		isSemaforoHiddenDetalles(nivel) {
+			return this.hiddenSemaforoDetalles.includes(nivel)
+		},
+
+		shiftMobileAnchorDetalles(direction) {
+			const d = new Date(this.mobileCurrentDateDetalles)
+			d.setMonth(d.getMonth() + direction, 1)
+			this.mobileCurrentDateDetalles = d
+		},
+
+		mobilePrevPeriodDetalles() {
+			this.monthPickerOpenDetalles = false
+			this.shiftMobileAnchorDetalles(-1)
+		},
+
+		mobileNextPeriodDetalles() {
+			this.monthPickerOpenDetalles = false
+			this.shiftMobileAnchorDetalles(1)
+		},
+
+		goToTodayDetalles() {
+			this.monthPickerOpenDetalles = false
+			const today = new Date()
+			this.mobileCurrentDateDetalles = today
+			this.mobileSelectedDateDetalles = today
+		},
+
+		toggleMonthPickerDetalles() {
+			this.pickerYearDetalles = this.mobileCurrentDateDetalles.getFullYear()
+			this.monthPickerOpenDetalles = !this.monthPickerOpenDetalles
+		},
+
+		closeMonthPickerDetalles() {
+			this.monthPickerOpenDetalles = false
+		},
+
+		pickerPrevYearDetalles() {
+			this.pickerYearDetalles -= 1
+		},
+
+		pickerNextYearDetalles() {
+			this.pickerYearDetalles += 1
+		},
+
+		isPickerMonthActiveDetalles(index) {
+			return this.pickerYearDetalles === this.mobileCurrentDateDetalles.getFullYear()
+				&& index === this.mobileCurrentDateDetalles.getMonth()
+		},
+
+		selectMonthDetalles(index) {
+			this.mobileCurrentDateDetalles = new Date(this.pickerYearDetalles, index, 1)
+			this.monthPickerOpenDetalles = false
 		},
 	},
 }
@@ -1460,10 +1828,6 @@ export default {
 	height: 440px;
 }
 
-.chart-box-tall {
-	height: 380px;
-}
-
 .details-list-wrap {
 	max-height: min(58vh, 620px);
 	min-height: 280px;
@@ -1513,6 +1877,19 @@ export default {
 	white-space: normal;
 }
 
+.dot-day-detail__row strong {
+	margin-left: auto;
+}
+
+.dot-calendar__weekdays span {
+	padding: 8px 0;
+}
+
+.dot-day-detail__group-title strong {
+	margin-left: auto;
+	font-weight: 700;
+}
+
 .ranking-table td strong,
 .ranking-table td span {
 	display: block;
@@ -1551,6 +1928,433 @@ export default {
 	border-radius: inherit;
 	background: var(--color-primary-element, #2563eb);
 }
+
+.dot-calendar {
+	--dc-primary: #2389d7;
+	--dc-nav-bg: #22384b;
+	--dc-nav-bg-hover: #2f4a63;
+	--dc-text: #1f2933;
+	--dc-muted: #7c8b97;
+	--dc-border: #e0e4e8;
+	--dc-today-bg: #fdf6d8;
+	--dc-selected-bg: #eaf3fb;
+
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 720px;
+	margin: 0 auto;
+	background: #ffffff;
+	border: 1px solid var(--dc-border);
+	border-radius: 10px;
+	overflow: hidden;
+	box-shadow: 0 8px 20px rgba(15, 47, 74, 0.06);
+}
+
+.dot-calendar__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 18px 12px;
+}
+
+.dot-calendar__nav {
+	display: flex;
+	align-items: stretch;
+	overflow: hidden;
+	background: var(--dc-nav-bg);
+	border-radius: 6px;
+}
+
+.dot-calendar__arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 38px;
+	padding: 0 12px;
+	color: #ffffff;
+	font-size: 0.78rem;
+	font-weight: 700;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.dot-calendar__arrow + .dot-calendar__arrow {
+	border-left: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.dot-calendar__arrow:hover {
+	background: var(--dc-nav-bg-hover);
+}
+
+.dot-calendar__arrow--today {
+	text-transform: lowercase;
+}
+
+.dot-calendar__weekdays {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	color: var(--dc-muted);
+	font-size: 0.74rem;
+	font-weight: 600;
+	text-align: center;
+	background: #f7f9fa;
+	border-top: 1px solid var(--dc-border);
+	border-bottom: 1px solid var(--dc-border);
+}
+
+.dot-calendar__grid {
+	display: flex;
+	flex-direction: column;
+	border-left: 1px solid var(--dc-border);
+}
+
+.dot-calendar__week {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+}
+
+.dot-day {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: flex-start;
+	box-sizing: border-box;
+	min-height: 70px;
+	padding: 6px 8px;
+	gap: 4px;
+	color: var(--dc-text);
+	background: var(--day-bg, #ffffff);
+	border-right: 1px solid var(--dc-border);
+	border-bottom: 1px solid var(--dc-border);
+	cursor: pointer;
+	transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dot-day:hover {
+	filter: brightness(0.97);
+}
+
+.dot-day__number {
+	font-size: 0.82rem;
+	font-weight: 600;
+}
+
+.dot-day--outside {
+	background: #fbfcfd;
+}
+
+.dot-day--outside .dot-day__number {
+	color: #c3ccd3;
+	font-weight: 500;
+}
+
+.dot-day--today {
+	box-shadow: inset 0 0 0 2px #d9a71d;
+}
+
+.dot-day--today .dot-day__number {
+	color: #8a6400;
+	font-weight: 700;
+}
+
+.dot-day--selected {
+	background: var(--dc-selected-bg);
+	box-shadow: inset 3px 0 0 var(--dc-primary);
+}
+
+.dot-day--selected .dot-day__number {
+	color: var(--dc-primary);
+	font-weight: 700;
+}
+
+.dot-day__dots {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	gap: 3px;
+	margin-top: auto;
+}
+
+.dot-day__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+}
+
+.dot-day-detail {
+	margin: 0 18px 16px;
+	padding-top: 12px;
+	border-top: 1px solid var(--dc-border);
+}
+
+.dot-day-detail__title {
+	margin: 0 0 8px;
+	color: var(--dc-text);
+	font-size: 0.85rem;
+	font-weight: 700;
+}
+
+.dot-day-detail__list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 0;
+	margin: 0 0 8px;
+	list-style: none;
+}
+
+.dot-day-detail__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 0.8rem;
+	color: var(--dc-text);
+}
+
+.dot-day-detail__total {
+	margin: 0;
+	color: var(--dc-muted);
+	font-size: 0.76rem;
+}
+
+.dot-day-detail--empty {
+	color: var(--dc-muted);
+	font-size: 0.76rem;
+	line-height: 1.4;
+	text-align: center;
+}
+
+.dot-day-detail__group + .dot-day-detail__group {
+	margin-top: 10px;
+}
+
+.dot-day-detail__group-title {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: var(--dc-text);
+}
+
+.dot-day-detail__sublist {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 6px 0 0;
+	padding: 0 0 0 15px;
+	list-style: none;
+}
+
+.dot-day-detail__sublist li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 0.76rem;
+	color: var(--dc-muted);
+}
+
+.dot-day-detail__sublist li span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dot-day-detail__sublist li strong {
+	flex-shrink: 0;
+	color: var(--dc-text);
+	font-weight: 600;
+}
+
+.dot-calendar__title-wrap {
+	position: relative;
+}
+
+.dot-calendar__month {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 6px;
+	color: var(--dc-text);
+	font-size: 1.3rem;
+	font-weight: 700;
+	background: none;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.dot-calendar__month:hover {
+	background: #f2f5f7;
+}
+
+.dot-calendar__month-caret {
+	color: var(--dc-muted);
+	transition: transform 0.15s ease;
+}
+
+.dot-calendar__month-caret--open {
+	transform: rotate(180deg);
+}
+
+.month-picker__overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 19;
+	background: transparent;
+}
+
+.month-picker {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	z-index: 20;
+	width: 240px;
+	padding: 12px;
+	background: #ffffff;
+	border: 1px solid var(--dc-border);
+	border-radius: 10px;
+	box-shadow: 0 14px 34px rgba(15, 47, 74, 0.16);
+}
+
+.month-picker__year {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
+	margin-bottom: 10px;
+	color: var(--dc-text);
+	font-size: 0.95rem;
+	font-weight: 700;
+}
+
+.month-picker__year-arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	color: var(--dc-muted);
+	background: #f2f5f7;
+	border: none;
+	border-radius: 50%;
+	cursor: pointer;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.month-picker__year-arrow:hover {
+	color: var(--dc-primary);
+	background: #e7f3fb;
+}
+
+.month-picker__grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 6px;
+}
+
+.month-picker__month {
+	padding: 8px 0;
+	color: var(--dc-text);
+	font-size: 0.8rem;
+	font-weight: 600;
+	text-align: center;
+	background: #f7f9fa;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.month-picker__month:hover {
+	background: #eef5fb;
+	border-color: #cfe3f2;
+}
+
+.month-picker__month--active {
+	color: #ffffff;
+	background: var(--dc-primary);
+}
+
+.calendar-legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	margin-top: 14px;
+	font-size: 0.78rem;
+	color: var(--color-text-maxcontrast, #6b7280);
+}
+
+.calendar-legend__item {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 4px;
+	color: var(--color-text-maxcontrast, #6b7280);
+	font-size: inherit;
+	font-family: inherit;
+	background: none;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.calendar-legend__item:hover {
+	background: var(--color-background-hover, rgba(15, 23, 42, 0.05));
+}
+
+.calendar-legend__item--hidden {
+	text-decoration: line-through;
+	opacity: 0.5;
+}
+
+.calendar-legend__static {
+	display: inline-flex;
+	align-items: center;
+}
+
+.calendar-legend__sep {
+	width: 1px;
+	height: 14px;
+	background: var(--color-border, rgba(15, 23, 42, 0.12));
+}
+
+.calendar-legend .dot,
+.dot-day-detail__row .dot {
+	display: inline-block;
+	width: 9px;
+	height: 9px;
+	margin-right: 6px;
+	border-radius: 50%;
+	vertical-align: middle;
+}
+.swatch {
+	display: inline-block;
+	width: 13px;
+	height: 13px;
+	margin-right: 6px;
+	border-radius: 4px;
+	vertical-align: middle;
+}
+
+.swatch-ok { background: #eefaf1; border: 1.5px solid #22c55e; }
+.swatch-warn { background: #fdf8e6; border: 1.5px solid #eab308; }
+.swatch-bad { background: #fdefee; border: 1.5px solid #ef4444; }
+
+.dot-cliente { background: #2563eb; }
+.dot-interno { background: #14b8a6; }
+.dot-ausencia { background: #f59e0b; }
+.dot-ok { background: #22c55e; }
+.dot-warn { background: #eab308; }
+.dot-bad { background: #ef4444; }
 
 @media (max-width: 1100px) {
 	.charts-grid {
@@ -1600,6 +2404,27 @@ export default {
 	.details-list-wrap {
 		max-height: 60vh;
 		min-height: 240px;
+	}
+
+	.dot-calendar {
+		max-width: 100%;
+	}
+
+	.dot-calendar__header {
+		padding: 12px 12px 10px;
+	}
+
+	.dot-calendar__month {
+		font-size: 1.1rem;
+	}
+
+	.dot-day {
+		min-height: 52px;
+		padding: 4px 6px;
+	}
+
+	.dot-day__number {
+		font-size: 0.75rem;
 	}
 }
 

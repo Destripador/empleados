@@ -42,9 +42,15 @@
 			</NcNoteCard>
 
 			<div class="form-grid">
-				<NcTextField :value="tipoServicio"
-					:label="t('empleados', 'Service type')"
-					@update:value="$emit('update:tipoServicio', $event)" />
+				<NcSelect :value="servicioSelected"
+					:options="servicioOptions"
+					:taggable="true"
+					:create-option="createServicioOption"
+					:placeholder="t('empleados', 'Service type')"
+					:searchable="true"
+					label="label"
+					track-by="value"
+					@input="onServicioInput" />
 
 				<NcSelect :value="tituloAnio"
 					:options="anios"
@@ -227,7 +233,37 @@ export default {
 		periodicidad: { type: Object, default: null },
 	},
 
-	methods: { t },
+	computed: {
+		servicioOptions() {
+			return [
+				'Auditoria Financiera y Fiscal',
+				'Auditoria Financiera',
+				'Auditoria Fiscal',
+				'Procedimientos Convenidos',
+			].map(s => ({ label: s, value: s }))
+		},
+
+		servicioSelected() {
+			if (!this.tipoServicio) {
+				return null
+			}
+
+			const found = this.servicioOptions.find(o => o.value === this.tipoServicio)
+			return found || { label: this.tipoServicio, value: this.tipoServicio }
+		},
+	},
+
+	methods: {
+		t,
+
+		onServicioInput(option) {
+			this.$emit('update:tipoServicio', option ? option.value : '')
+		},
+
+		createServicioOption(value) {
+			return { label: value, value }
+		},
+	},
 }
 </script>
 

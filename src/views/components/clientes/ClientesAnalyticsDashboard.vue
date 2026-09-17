@@ -166,28 +166,41 @@
 					<header class="section-heading section-heading--compact">
 						<div>
 							<p class="section-eyebrow">
-								{{ t('empleados', 'Concentration') }}
+								{{ t('empleados', 'Services') }}
 							</p>
-							<h2>{{ t('empleados', 'Share of outstanding fees') }}</h2>
+							<h2>{{ t('empleados', 'Fees by service type') }}</h2>
 						</div>
+						<label v-if="serviceYearOptions.length > 0" class="compliance-mode">
+							<span class="visually-hidden">{{ t('empleados', 'Year') }}</span>
+							<select v-model="selectedServiceYear" class="compliance-mode__select">
+								<option value="all">
+									{{ t('empleados', 'All years') }}
+								</option>
+								<option v-for="year in serviceYearOptions" :key="year" :value="String(year)">
+									{{ year }}
+								</option>
+							</select>
+						</label>
 					</header>
 
-					<ul v-if="concentrationItems.length > 0" class="distribution-list">
-						<li v-for="item in concentrationItems" :key="item.key" class="distribution-item">
+					<ul v-if="serviceItemsDisplay.length > 0" class="distribution-list">
+						<li v-for="item in serviceItemsDisplay" :key="item.servicio" class="distribution-item">
 							<div class="distribution-item__heading">
 								<div class="distribution-item__label">
-									<span class="distribution-dot" :class="`distribution-dot--${item.key}`" />
-									<strong>{{ item.label }}</strong>
+									<span class="distribution-dot" :class="{ 'distribution-dot--complete': item.es_fijo }" />
+									<strong>{{ item.servicio }}</strong>
 								</div>
-								<span>{{ formatMoney(item.importe) }} · {{ formatPercent(item.porcentaje) }}</span>
+								<span>{{ formatMoney(item.displayTotal, activeServiceGroup ? activeServiceGroup.moneda : '') }}</span>
 							</div>
 							<div class="distribution-track">
-								<div class="distribution-value" :class="`distribution-value--${item.key}`" :style="{ width: `${clampPercentage(item.porcentaje)}%` }" />
+								<div class="distribution-value"
+									:class="{ 'distribution-value--complete': item.es_fijo }"
+									:style="{ width: `${serviceTotalSum > 0 ? Math.min(100, (item.displayTotal / serviceTotalSum) * 100) : 0}%` }" />
 							</div>
 						</li>
 					</ul>
 					<div v-else class="inline-state inline-state--compact">
-						{{ t('empleados', 'There is not enough outstanding balance to calculate concentration.') }}
+						{{ t('empleados', 'No fees found for this selection.') }}
 					</div>
 				</article>
 			</section>
@@ -233,20 +246,69 @@
 					<label class="compliance-mode">
 						<span class="visually-hidden">{{ t('empleados', 'Sort') }}</span>
 						<select v-model="sortKey" class="compliance-mode__select">
+							<option value="nombre">
+								{{ t('empleados', 'Name (grouped)') }}
+							</option>
 							<option value="pendiente">
 								{{ t('empleados', 'Outstanding balance') }}
 							</option>
 							<option value="total">
 								{{ t('empleados', 'Total fees') }}
 							</option>
-							<option value="nombre">
-								{{ t('empleados', 'Name') }}
-							</option>
 						</select>
 					</label>
 				</header>
 
-				<div v-if="sortedTable.length > 0" class="employee-table-wrap">
+				<!-- Vista agrupada: Groups / Individual companies, con padres + hijos con sangría -->
+				<div v-if="sortKey === 'nombre'" class="employee-grid" role="table">
+					<div class="employee-grid__head" role="row">
+						<span role="columnheader">{{ t('empleados', 'Customer') }}</span>
+						<span role="columnheader">{{ t('empleados', 'Total') }}</span>
+						<span role="columnheader">{{ t('empleados', 'Collected') }}</span>
+						<span role="columnheader">{{ t('empleados', 'Outstanding') }}</span>
+						<span role="columnheader" class="visually-hidden">{{ t('empleados', 'Details') }}</span>
+					</div>
+
+					<template v-for="group in groupedSections">
+						<div :key="'header-' + group.key"
+							class="employee-grid__row employee-grid__row--section"
+							role="row"
+							@click="toggleSeccion(group.key)">
+							<span role="cell" class="employee-section-header">
+								<span class="employee-section-icon" :class="{ 'employee-section-icon--open': !group.collapsed }">▸</span>
+								{{ group.label }} ({{ group.count }})
+							</span>
+						</div>
+
+						<div :key="'wrap-' + group.key"
+							class="employee-collapse"
+							:class="{ 'employee-collapse--open': !group.collapsed }">
+							<div class="employee-collapse__inner">
+								<div v-for="item in group.items"
+									:key="item.id"
+									class="employee-grid__row employee-grid__row--clickable"
+									role="row"
+									@click="selectClient(item.id)">
+									<span role="cell" class="employee-cell" :style="{ paddingLeft: `${item.level * 1.25}rem` }">
+										<span v-if="item.level > 0" class="employee-indent-marker">›</span>
+										<strong>{{ item.nombre }}</strong>
+									</span>
+									<span role="cell" class="employee-metric">{{ formatMoney(item.total) }}</span>
+									<span role="cell" class="employee-metric">{{ formatMoney(item.pagado) }}</span>
+									<span role="cell" class="employee-metric">{{ formatMoney(item.pendiente) }}</span>
+									<span role="cell" class="employee-table__action">
+										<NcButton type="tertiary" @click.stop="selectClient(item.id)">
+											{{ t('empleados', 'Details') }}
+										</NcButton>
+									</span>
+								</div>
+							</div>
+						</div>
+					</template>
+				</div>
+
+				<!-- Vista plana: cuando se ordena por Total u Outstanding -->
+				<div v-else-if="sortedTable.length > 0" class="employee-table-wrap">
 					<table class="employee-table">
 						<thead>
 							<tr>
@@ -260,8 +322,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr
-								v-for="row in sortedTable"
+							<tr v-for="row in sortedTable"
 								:key="row.id"
 								class="employee-row employee-row--clickable"
 								@click="selectClient(row.id)">
@@ -286,6 +347,7 @@
 						</tbody>
 					</table>
 				</div>
+
 				<div v-else class="inline-state">
 					{{ t('empleados', 'No customers match the current filters.') }}
 				</div>
@@ -328,7 +390,12 @@ export default {
 	data() {
 		return {
 			selectedCurrency: '',
-			sortKey: 'pendiente',
+			selectedServiceYear: 'all',
+			sortKey: 'nombre',
+			seccionesColapsadas: {
+				grupos: false,
+				individuales: false,
+			},
 		}
 	},
 
@@ -389,6 +456,47 @@ export default {
 			return this.monedas.find((row) => row.moneda === this.selectedCurrency) || this.monedas[0]
 		},
 
+		servicios() {
+			return Array.isArray(this.resumen?.servicios) ? this.resumen.servicios : []
+		},
+
+		activeServiceGroup() {
+			if (this.servicios.length === 0) {
+				return null
+			}
+			return this.servicios.find((row) => row.moneda === this.selectedCurrency) || this.servicios[0]
+		},
+
+		serviceYearOptions() {
+			const years = new Set()
+			;(this.activeServiceGroup?.items || []).forEach((item) => {
+				(item.anios || []).forEach((a) => {
+					if (a.anio) years.add(a.anio)
+				})
+			})
+			return Array.from(years).sort((a, b) => b - a)
+		},
+
+		serviceItemsDisplay() {
+			const items = this.activeServiceGroup?.items || []
+			const year = this.selectedServiceYear
+
+			return items
+				.map((item) => {
+					let total = item.total
+					if (year !== 'all') {
+						const found = (item.anios || []).find((a) => String(a.anio) === String(year))
+						total = found ? found.total : 0
+					}
+					return { ...item, displayTotal: total }
+				})
+				.filter((item) => year === 'all' || item.displayTotal > 0)
+		},
+
+		serviceTotalSum() {
+			return this.serviceItemsDisplay.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
+		},
+
 		pendingPercent() {
 			return this.clampPercentage(this.activeCurrency?.porcentaje_pendiente || 0)
 		},
@@ -408,24 +516,6 @@ export default {
 				...row,
 				relativeWidth: max > 0 ? Math.max(6, (Number(row.pendiente || 0) / max) * 100) : 0,
 			}))
-		},
-
-		concentrationItems() {
-			const data = this.resumen?.concentracion || {}
-			return [
-				{
-					key: 'client',
-					label: t('empleados', 'Top 5 customers'),
-					importe: data.top5?.importe || 0,
-					porcentaje: data.top5?.porcentaje || 0,
-				},
-				{
-					key: 'complete',
-					label: t('empleados', 'Top 10 customers'),
-					importe: data.top10?.importe || 0,
-					porcentaje: data.top10?.porcentaje || 0,
-				},
-			].filter((item) => Number(item.importe) > 0)
 		},
 
 		evolucion() {
@@ -449,6 +539,95 @@ export default {
 			})
 			return rows
 		},
+
+		/** Agrupa clientes en Groups / Individual companies, con jerarquía padre-hijo
+		 *  y totales acumulados (padre = suma de sí mismo + todos sus descendientes). */
+		groupedSections() {
+			const rows = [...(this.resumen?.tabla || [])]
+			const idsInSet = new Set(rows.map((r) => Number(r.id)))
+			const byParent = new Map()
+			const byId = new Map(rows.map((r) => [Number(r.id), r]))
+
+			rows.forEach((item) => {
+				const rawParent = Number(item.cliente_padre || 0)
+				const parentId = idsInSet.has(rawParent) ? rawParent : 0
+				if (!byParent.has(parentId)) byParent.set(parentId, [])
+				byParent.get(parentId).push(item)
+			})
+
+			const compareNames = (a, b) =>
+				String(a.nombre || '').localeCompare(String(b.nombre || ''), undefined, { sensitivity: 'base' })
+
+			const sumSubtree = (id) => {
+				const own = byId.get(Number(id)) || {}
+				const children = byParent.get(Number(id)) || []
+				return children.reduce((acc, child) => {
+					const childSum = sumSubtree(child.id)
+					return {
+						total: acc.total + childSum.total,
+						pagado: acc.pagado + childSum.pagado,
+						pendiente: acc.pendiente + childSum.pendiente,
+					}
+				}, {
+					total: Number(own.total || 0),
+					pagado: Number(own.pagado || 0),
+					pendiente: Number(own.pendiente || 0),
+				})
+			}
+
+			const buildRow = (item, level) => {
+				const hasChildren = (byParent.get(Number(item.id)) || []).length > 0
+				const values = hasChildren
+					? sumSubtree(item.id)
+					: {
+						total: Number(item.total || 0),
+						pagado: Number(item.pagado || 0),
+						pendiente: Number(item.pendiente || 0),
+					}
+				return { ...item, ...values, level }
+			}
+
+			const flatten = (parentId, level) => {
+				const children = (byParent.get(parentId) || []).slice().sort(compareNames)
+				const out = []
+				children.forEach((child) => {
+					out.push(buildRow(child, level))
+					out.push(...flatten(Number(child.id), level + 1))
+				})
+				return out
+			}
+
+			const roots = byParent.get(0) || []
+			const gruposRoots = roots.filter((r) => (byParent.get(Number(r.id)) || []).length > 0)
+			const individualesRoots = roots.filter((r) => (byParent.get(Number(r.id)) || []).length === 0)
+
+			gruposRoots.sort(compareNames)
+			individualesRoots.sort(compareNames)
+
+			const gruposItems = gruposRoots.flatMap((root) => [
+				buildRow(root, 0),
+				...flatten(Number(root.id), 1),
+			])
+
+			const individualesItems = individualesRoots.map((root) => buildRow(root, 0))
+
+			return [
+				{
+					key: 'grupos',
+					label: t('empleados', 'Groups'),
+					count: gruposRoots.length,
+					collapsed: this.seccionesColapsadas.grupos,
+					items: this.seccionesColapsadas.grupos ? [] : gruposItems,
+				},
+				{
+					key: 'individuales',
+					label: t('empleados', 'Individual companies'),
+					count: individualesRoots.length,
+					collapsed: this.seccionesColapsadas.individuales,
+					items: this.seccionesColapsadas.individuales ? [] : individualesItems,
+				},
+			]
+		},
 	},
 
 	watch: {
@@ -459,6 +638,11 @@ export default {
 					this.selectedCurrency = options[0] || ''
 				}
 			},
+		},
+		serviceYearOptions(options) {
+			if (this.selectedServiceYear !== 'all' && !options.map(String).includes(this.selectedServiceYear)) {
+				this.selectedServiceYear = 'all'
+			}
 		},
 	},
 
@@ -494,6 +678,13 @@ export default {
 				return 0
 			}
 			return Math.min(100, number)
+		},
+
+		toggleSeccion(key) {
+			this.seccionesColapsadas = {
+				...this.seccionesColapsadas,
+				[key]: !this.seccionesColapsadas[key],
+			}
 		},
 	},
 }
@@ -696,14 +887,6 @@ export default {
 	background: var(--color-background-hover);
 }
 
-.employee-row--clickable {
-	cursor: pointer;
-}
-
-.employee-row--clickable:hover {
-	background: var(--color-background-hover);
-}
-
 .ranking-item__heading {
 	display: flex;
 	justify-content: space-between;
@@ -739,9 +922,28 @@ export default {
 
 .distribution-dot--complete,
 .distribution-value--complete {
-	background: var(--color-success);
+	background: #ff9100;
 }
 
+.compliance-mode__select {
+	min-width: 9.375rem;
+	height: 2rem;
+	padding: 0 0.5rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+}
+
+/* ── Vista plana (tabla real, orden por Total / Outstanding) ── */
 .employee-table-wrap {
 	overflow: auto;
 }
@@ -764,40 +966,190 @@ export default {
 	white-space: nowrap;
 }
 
-.compliance-mode__select {
-	min-width: 9.375rem;
-	height: 2rem;
-	padding: 0 0.5rem;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius);
-	background: var(--color-main-background);
-	color: var(--color-main-text);
+.employee-row--clickable {
+	cursor: pointer;
 }
 
-.visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip: rect(0 0 0 0);
+.employee-row--clickable:hover {
+	background: var(--color-background-hover);
+}
+
+.employee-cell {
+	display: flex;
+	align-items: center;
 }
 
 @media (max-width: 720px) {
+	.employee-table-wrap {
+		overflow: visible;
+	}
+
+	.employee-table {
+		display: block;
+		width: 100%;
+		border-collapse: separate;
+		border-spacing: 0;
+	}
+
 	.employee-table thead {
 		display: none;
 	}
 
+	.employee-table tbody {
+		display: flex;
+		flex-direction: column;
+		gap: 0.7rem;
+	}
+
 	.employee-row {
-		display: grid;
-		gap: 0.35rem;
-		padding: 0.75rem 0;
+		display: flex !important;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.85rem;
+		padding: 1rem 1.1rem;
+		border: 1px solid var(--color-border);
+		border-radius: 14px;
+		background: var(--color-background-hover);
+		transition: border-color 0.15s ease, transform 0.15s ease;
+	}
+
+	.employee-row--clickable:active {
+		transform: scale(0.99);
+	}
+
+	.employee-row:hover {
+		border-color: var(--color-primary-element);
 	}
 
 	.employee-table td {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.75rem;
+		padding: 0;
 		border: 0;
+	}
+
+	.employee-table td.employee-metric,
+	.employee-table th:not(:first-child):not(.employee-table__action-heading) {
+		display: none !important;
+	}
+
+	.employee-cell strong {
+		display: block;
+		font-size: 1rem;
+		font-weight: 600;
+		letter-spacing: 0.01em;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.employee-table__action {
+		flex: 0 0 auto;
+	}
+
+	.employee-table__action :deep(button) {
+		white-space: nowrap;
+		font-weight: 600;
+		color: #000000;
+	}
+}
+
+/* ── Vista agrupada: Groups / Individual companies con jerarquía ── */
+.employee-grid {
+	display: flex;
+	flex-direction: column;
+}
+
+.employee-grid__head,
+.employee-grid__row {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) 1fr 1fr 1fr auto;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.65rem 0.5rem;
+	border-bottom: 1px solid var(--color-border);
+	font-size: 0.85rem;
+}
+
+.employee-grid__head {
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+
+.employee-grid__row--section {
+	cursor: pointer;
+	background: var(--color-background-hover);
+	grid-template-columns: 1fr;
+}
+
+.employee-grid__row--section:hover {
+	background: var(--color-background-darker);
+}
+
+.employee-grid__row--clickable {
+	cursor: pointer;
+}
+
+.employee-grid__row--clickable:hover {
+	background: var(--color-background-hover);
+}
+
+.employee-section-header {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+}
+
+.employee-section-icon {
+	display: inline-block;
+	transition: transform 0.2s ease;
+}
+
+.employee-section-icon--open {
+	transform: rotate(90deg);
+}
+
+.employee-indent-marker {
+	display: inline-block;
+	margin-right: 0.3rem;
+	color: var(--color-text-maxcontrast);
+}
+
+/* Transición limpia al colapsar/expandir, sin medir alturas en JS */
+.employee-collapse {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.25s ease;
+}
+
+.employee-collapse--open {
+	grid-template-rows: 1fr;
+}
+
+.employee-collapse__inner {
+	overflow: hidden;
+	min-height: 0;
+}
+
+@media (max-width: 720px) {
+	.employee-grid__head {
+		display: none;
+	}
+
+	.employee-grid__row--clickable {
+		grid-template-columns: 1fr auto;
+		border: 1px solid var(--color-border);
+		border-radius: 14px;
+		background: var(--color-background-hover);
+		margin-bottom: 0.5rem;
+		padding: 1rem 1.1rem;
+	}
+
+	.employee-grid__row--clickable [role='cell'].employee-metric {
+		display: none;
 	}
 }
 </style>

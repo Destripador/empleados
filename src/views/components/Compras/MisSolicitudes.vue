@@ -3264,6 +3264,12 @@ export default {
 		order: -1;
 	}
 
+	.purchases-side-panel h3 {
+		margin: 0;
+		font-size: 23px;
+		padding-left: 45px;
+	}
+
 	.compras-header {
 		min-height: auto;
 	}

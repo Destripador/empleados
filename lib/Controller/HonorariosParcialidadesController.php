@@ -250,6 +250,46 @@ class HonorariosParcialidadesController extends BaseController {
 	}
 
 	/**
+	 * Ajusta manualmente el importe de una parcialidad pendiente
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function ajustarImporteParcialidad(int $id_parcialidad, float $nuevo_importe): DataResponse {
+		$this->requireClientesAdminAccess();
+
+		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
+		$importeAnterior = $parcialidad['importe_parcialidad'] ?? null;
+
+		try {
+			$this->honorariosParcialidadesMapper->ajustarImporteManual($id_parcialidad, $nuevo_importe);
+		} catch (\Exception $e) {
+			return new DataResponse(
+				['status' => 'error', 'message' => $e->getMessage()],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
+		// --- Movimiento (bitácora) ---
+		if ($parcialidad) {
+			$ctx = $this->getContextoParcialidad($parcialidad);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s ajustó manualmente el importe de la %s del cliente "%s" de %s a **%s**; el resto se redistribuyó automáticamente entre las demás parcialidades pendientes.',
+				$nombreActor,
+				$ctx['etiqueta'],
+				$ctx['nombreCliente'],
+				$importeAnterior !== null ? number_format((float)$importeAnterior, 2) : '-',
+				number_format($nuevo_importe, 2)
+			);
+
+			$this->registrarMovimiento($uidActor, $id_parcialidad, $ctx['nombreCliente'], 'ajuste_importe', $mensaje);
+		}
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	/**
 	 * Revierte pagada -> facturada. La fecha de factura se conserva intacta.
 	 */
 	#[UseSession]

@@ -748,4 +748,14 @@ export default {
 .empleados-side-navigation--mobile.empleados-side-navigation--normal {
 	transform: translateX(0) !important;
 }
+
+@media (max-width: 900px) {
+	.side-toggle-button {
+		top: calc(var(--header-height, 50px) + 3.5px) !important;
+		inset-inline-start: 11px !important;
+		transition:
+			background-color 120ms ease,
+			transform 120ms ease;
+	}
+}
 </style>

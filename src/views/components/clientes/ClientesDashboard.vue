@@ -518,9 +518,9 @@ export default {
 }
 
 .report-toolbar__row--main {
-	display: grid;
-	grid-template-columns: minmax(11rem, 13rem) minmax(12rem, 1fr) auto;
-	align-items: end;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
 }
 
 .report-field {
@@ -618,6 +618,13 @@ export default {
 	.report-field--range {
 		width: 100%;
 		max-width: none;
+	}
+
+	.report-field--period,
+	.report-field--range,
+	.report-field--check,
+	.report-field {
+		flex: 1 1 auto;
 	}
 
 	.report-field--check {

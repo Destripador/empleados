@@ -229,6 +229,7 @@ return [
 		['name' => 'honorariosParcialidades#cancelarPago', 'url' => '/cancelarPagoParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#agregarParcialidadIguala', 'url' => '/agregarParcialidadIguala', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#findPagadasPorCliente', 'url' => '/findParcialidadesPagadasPorCliente', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#ajustarImporteParcialidad', 'url' => '/ajustarImporteParcialidad', 'verb' => 'POST'],
 		['name' => 'honorarios#finalizarHonorario', 'url' => '/finalizarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#reactivarHonorario', 'url' => '/reactivarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#actualizarMetadatos', 'url' => '/actualizarMetadatosHonorario', 'verb' => 'POST'],
