@@ -187,14 +187,14 @@
 						<li v-for="item in serviceItemsDisplay" :key="item.servicio" class="distribution-item">
 							<div class="distribution-item__heading">
 								<div class="distribution-item__label">
-									<span class="distribution-dot" :class="{ 'distribution-dot--complete': item.es_fijo }" />
+									<span class="distribution-dot" :class="{ 'distribution-dot--complete': item.es_fijo, 'distribution-dot--suma': item.es_suma }" />
 									<strong>{{ item.servicio }}</strong>
 								</div>
 								<span>{{ formatMoney(item.displayTotal, activeServiceGroup ? activeServiceGroup.moneda : '') }}</span>
 							</div>
 							<div class="distribution-track">
 								<div class="distribution-value"
-									:class="{ 'distribution-value--complete': item.es_fijo }"
+									:class="{ 'distribution-value--complete': item.es_fijo, 'distribution-value--suma': item.es_suma }"
 									:style="{ width: `${serviceTotalSum > 0 ? Math.min(100, (item.displayTotal / serviceTotalSum) * 100) : 0}%` }" />
 							</div>
 						</li>
@@ -287,17 +287,31 @@
 								<div v-for="item in group.items"
 									:key="item.id"
 									class="employee-grid__row employee-grid__row--clickable"
-									role="row"
-									@click="selectClient(item.id)">
+									role="row">
 									<span role="cell" class="employee-cell" :style="{ paddingLeft: `${item.level * 1.25}rem` }">
 										<span v-if="item.level > 0" class="employee-indent-marker">›</span>
 										<strong>{{ item.nombre }}</strong>
 									</span>
-									<span role="cell" class="employee-metric">{{ formatMoney(item.total) }}</span>
-									<span role="cell" class="employee-metric">{{ formatMoney(item.pagado) }}</span>
-									<span role="cell" class="employee-metric">{{ formatMoney(item.pendiente) }}</span>
+									<span role="cell" class="employee-metric">
+										<span v-for="m in item.montos" :key="m.moneda" class="money-line">
+											{{ formatMoney(m.total) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										</span>
+										<span v-if="!item.montos.length" class="money-line">0.00</span>
+									</span>
+									<span role="cell" class="employee-metric">
+										<span v-for="m in item.montos" :key="m.moneda" class="money-line">
+											{{ formatMoney(m.pagado) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										</span>
+										<span v-if="!item.montos.length" class="money-line">0.00</span>
+									</span>
+									<span role="cell" class="employee-metric">
+										<span v-for="m in item.montos" :key="m.moneda" class="money-line">
+											{{ formatMoney(m.pendiente) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										</span>
+										<span v-if="!item.montos.length" class="money-line">0.00</span>
+									</span>
 									<span role="cell" class="employee-table__action">
-										<NcButton type="tertiary" @click.stop="selectClient(item.id)">
+										<NcButton type="secondary" class="details-button" @click="selectClient(item.id)">
 											{{ t('empleados', 'Details') }}
 										</NcButton>
 									</span>
@@ -324,22 +338,19 @@
 						<tbody>
 							<tr v-for="row in sortedTable"
 								:key="row.id"
-								class="employee-row employee-row--clickable"
-								@click="selectClient(row.id)">
+								class="employee-row">
 								<td :data-label="t('empleados', 'Customer')" class="employee-cell">
 									<strong>{{ row.nombre }}</strong>
 								</td>
 								<td :data-label="t('empleados', 'Total')" class="employee-metric">
-									{{ formatMoney(row.total) }}
+									<span v-for="m in row.montos" :key="m.moneda" class="money-line">
+										{{ formatMoney(m.total) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+									</span>
+									<span v-if="!row.montos.length" class="money-line">0.00</span>
 								</td>
-								<td :data-label="t('empleados', 'Collected')" class="employee-metric">
-									{{ formatMoney(row.pagado) }}
-								</td>
-								<td :data-label="t('empleados', 'Outstanding')" class="employee-metric">
-									{{ formatMoney(row.pendiente) }}
-								</td>
+								<!-- igual para pagado y pendiente -->
 								<td class="employee-table__action">
-									<NcButton type="tertiary" @click.stop="selectClient(row.id)">
+									<NcButton type="secondary" class="details-button" @click="selectClient(row.id)">
 										{{ t('empleados', 'Details') }}
 									</NcButton>
 								</td>
@@ -481,7 +492,7 @@ export default {
 			const items = this.activeServiceGroup?.items || []
 			const year = this.selectedServiceYear
 
-			return items
+			const withTotals = items
 				.map((item) => {
 					let total = item.total
 					if (year !== 'all') {
@@ -491,10 +502,30 @@ export default {
 					return { ...item, displayTotal: total }
 				})
 				.filter((item) => year === 'all' || item.displayTotal > 0)
+
+			const auditoriaNames = ['Auditoria Financiera y Fiscal', 'Auditoria Financiera', 'Auditoria Fiscal']
+			const auditoriaItems = withTotals.filter((item) => auditoriaNames.includes(item.servicio))
+
+			if (auditoriaItems.length === 0) {
+				return withTotals
+			}
+
+			const auditoriaSum = auditoriaItems.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
+
+			return [
+				{
+					servicio: t('empleados', 'Suma Auditoria'),
+					displayTotal: auditoriaSum,
+					es_suma: true,
+				},
+				...withTotals,
+			]
 		},
 
 		serviceTotalSum() {
-			return this.serviceItemsDisplay.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
+			return this.serviceItemsDisplay
+				.filter((item) => !item.es_suma)
+				.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
 		},
 
 		pendingPercent() {
@@ -529,7 +560,10 @@ export default {
 		},
 
 		sortedTable() {
-			const rows = [...(this.resumen?.tabla || [])]
+			const rows = (this.resumen?.tabla || []).map((row) => ({
+				...row,
+				montos: this.sortMontos(this.rowMontos(row)),
+			}))
 			const key = this.sortKey
 			rows.sort((a, b) => {
 				if (key === 'nombre') {
@@ -540,8 +574,6 @@ export default {
 			return rows
 		},
 
-		/** Agrupa clientes en Groups / Individual companies, con jerarquía padre-hijo
-		 *  y totales acumulados (padre = suma de sí mismo + todos sus descendientes). */
 		groupedSections() {
 			const rows = [...(this.resumen?.tabla || [])]
 			const idsInSet = new Set(rows.map((r) => Number(r.id)))
@@ -558,34 +590,32 @@ export default {
 			const compareNames = (a, b) =>
 				String(a.nombre || '').localeCompare(String(b.nombre || ''), undefined, { sensitivity: 'base' })
 
-			const sumSubtree = (id) => {
-				const own = byId.get(Number(id)) || {}
-				const children = byParent.get(Number(id)) || []
-				return children.reduce((acc, child) => {
-					const childSum = sumSubtree(child.id)
-					return {
-						total: acc.total + childSum.total,
-						pagado: acc.pagado + childSum.pagado,
-						pendiente: acc.pendiente + childSum.pendiente,
-					}
-				}, {
-					total: Number(own.total || 0),
-					pagado: Number(own.pagado || 0),
-					pendiente: Number(own.pendiente || 0),
+			const addMontos = (target, montos) => {
+				montos.forEach((m) => {
+					const cur = target.get(m.moneda) || { moneda: m.moneda, total: 0, pagado: 0, pendiente: 0 }
+					cur.total += m.total
+					cur.pagado += m.pagado
+					cur.pendiente += m.pendiente
+					target.set(m.moneda, cur)
 				})
 			}
 
-			const buildRow = (item, level) => {
-				const hasChildren = (byParent.get(Number(item.id)) || []).length > 0
-				const values = hasChildren
-					? sumSubtree(item.id)
-					: {
-						total: Number(item.total || 0),
-						pagado: Number(item.pagado || 0),
-						pendiente: Number(item.pendiente || 0),
-					}
-				return { ...item, ...values, level }
+			const sumSubtree = (id) => {
+				const acc = new Map()
+				const visit = (nodeId) => {
+					const own = byId.get(Number(nodeId))
+					if (own) addMontos(acc, this.rowMontos(own))
+					;(byParent.get(Number(nodeId)) || []).forEach((child) => visit(child.id))
+				}
+				visit(id)
+				return this.sortMontos(Array.from(acc.values()))
 			}
+
+			const buildRow = (item, level) => ({
+				...item,
+				montos: sumSubtree(item.id),
+				level,
+			})
 
 			const flatten = (parentId, level) => {
 				const children = (byParent.get(parentId) || []).slice().sort(compareNames)
@@ -648,6 +678,29 @@ export default {
 
 	methods: {
 		t,
+
+		isForeignCurrency(moneda) {
+			return String(moneda || 'MXN').toUpperCase() !== 'MXN'
+		},
+
+		rowMontos(row) {
+			return Array.isArray(row?.monedas)
+				? row.monedas.map((m) => ({
+					moneda: String(m.moneda || 'MXN').toUpperCase(),
+					total: Number(m.total || 0),
+					pagado: Number(m.pagado || 0),
+					pendiente: Number(m.pendiente || 0),
+				}))
+				: []
+		},
+
+		sortMontos(montos) {
+			return [...montos].sort((a, b) => {
+				if (a.moneda === 'MXN') return -1
+				if (b.moneda === 'MXN') return 1
+				return a.moneda.localeCompare(b.moneda)
+			})
+		},
 
 		selectClient(id) {
 			const clientId = Number(id)
@@ -920,6 +973,11 @@ export default {
 	background: var(--color-primary-element);
 }
 
+.distribution-dot--suma,
+.distribution-value--suma {
+	background: #5347fc;
+}
+
 .distribution-dot--complete,
 .distribution-value--complete {
 	background: #ff9100;
@@ -966,14 +1024,6 @@ export default {
 	white-space: nowrap;
 }
 
-.employee-row--clickable {
-	cursor: pointer;
-}
-
-.employee-row--clickable:hover {
-	background: var(--color-background-hover);
-}
-
 .employee-cell {
 	display: flex;
 	align-items: center;
@@ -1011,10 +1061,6 @@ export default {
 		border-radius: 14px;
 		background: var(--color-background-hover);
 		transition: border-color 0.15s ease, transform 0.15s ease;
-	}
-
-	.employee-row--clickable:active {
-		transform: scale(0.99);
 	}
 
 	.employee-row:hover {
@@ -1084,14 +1130,6 @@ export default {
 	background: var(--color-background-darker);
 }
 
-.employee-grid__row--clickable {
-	cursor: pointer;
-}
-
-.employee-grid__row--clickable:hover {
-	background: var(--color-background-hover);
-}
-
 .employee-section-header {
 	display: flex;
 	align-items: center;
@@ -1151,5 +1189,26 @@ export default {
 	.employee-grid__row--clickable [role='cell'].employee-metric {
 		display: none;
 	}
+}
+
+.currency-tag {
+	margin-left: 0.25rem;
+	font-size: 0.68rem;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.details-button {
+	background-color: #000000 !important;
+	color: #ffffff !important;
+	font-weight: 500;
+}
+
+.details-button:hover:not(:disabled) {
+	background-color: #464545 !important;
+}
+
+.money-line {
+	display: block;
 }
 </style>
