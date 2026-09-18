@@ -962,4 +962,59 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		return $total !== false ? (float)$total : 0.0;
 	}
+
+	/**
+	 * Parcialidades PAGADAS de honorarios en moneda distinta a MXN.
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDashboardFxRows(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'p.id_parcialidad',
+			'p.numero_parcialidad',
+			'p.importe_parcialidad',
+			'p.cambio_moneda',
+			'p.fecha_pago',
+			'h.tipo_servicio',
+			'h.tipo_moneda'
+		)
+			->selectAlias('c.id', 'id_cliente')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
+			->where($qb->expr()->eq(
+				'p.pagado',
+				$qb->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT)
+			))
+			->andWhere($qb->expr()->neq(
+				$qb->createFunction('UPPER(h.tipo_moneda)'),
+				$qb->createNamedParameter('MXN')
+			))
+			->andWhere($qb->expr()->isNotNull('h.tipo_moneda'));
+
+		$this->applyDashboardFeeFilters($qb, $filters);
+
+		$qb->orderBy('c.id', 'ASC')
+			->addOrderBy('h.tipo_moneda', 'ASC')
+			->addOrderBy('p.fecha_pago', 'DESC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($rows as &$row) {
+			$row['id_cliente'] = (int)$row['id_cliente'];
+			$row['id_parcialidad'] = (int)$row['id_parcialidad'];
+			$row['numero_parcialidad'] = (int)$row['numero_parcialidad'];
+			$row['importe_parcialidad'] = round((float)$row['importe_parcialidad'], 2);
+			$row['cambio_moneda'] = $row['cambio_moneda'] !== null
+				? (float)$row['cambio_moneda']
+				: null;
+		}
+		unset($row);
+
+		return $rows;
+	}
 }

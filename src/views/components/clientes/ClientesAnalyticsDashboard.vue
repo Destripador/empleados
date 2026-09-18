@@ -284,38 +284,116 @@
 							class="employee-collapse"
 							:class="{ 'employee-collapse--open': !group.collapsed }">
 							<div class="employee-collapse__inner">
-								<div v-for="item in group.items"
-									:key="item.id"
-									class="employee-grid__row employee-grid__row--clickable"
-									role="row">
-									<span role="cell" class="employee-cell" :style="{ paddingLeft: `${item.level * 1.25}rem` }">
-										<span v-if="item.level > 0" class="employee-indent-marker">›</span>
-										<strong>{{ item.nombre }}</strong>
-									</span>
-									<span role="cell" class="employee-metric">
-										<span v-for="m in item.montos" :key="m.moneda" class="money-line">
-											{{ formatMoney(m.total) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+								<template v-for="item in group.items">
+									<div :key="item.id"
+										class="employee-grid__row employee-grid__row--clickable"
+										:class="{ 'employee-grid__row--fx-open': item.hasFx && fxAbierto[item.id] }"
+										role="row">
+										<span role="cell" class="employee-cell" :style="{ paddingLeft: `${item.level * 1.25}rem` }">
+											<button v-if="item.hasFx"
+												type="button"
+												class="fx-toggle"
+												:class="{ 'fx-toggle--open': fxAbierto[item.id] }"
+												:aria-expanded="String(!!fxAbierto[item.id])"
+												:aria-label="t('empleados', 'Show currency conversion breakdown')"
+												@click.stop="toggleFx(item.id)">
+												<ChevronRight :size="16" />
+											</button>
+											<span v-else-if="item.level > 0" class="employee-indent-marker">›</span>
+											<strong>{{ item.nombre }}</strong>
 										</span>
-										<span v-if="!item.montos.length" class="money-line">0.00</span>
-									</span>
-									<span role="cell" class="employee-metric">
-										<span v-for="m in item.montos" :key="m.moneda" class="money-line">
-											{{ formatMoney(m.pagado) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										<span role="cell" class="employee-metric">
+											<span v-for="m in item.montos" :key="m.moneda" class="money-line">
+												{{ formatMoney(m.total) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+											</span>
+											<span v-if="!item.montos.length" class="money-line">0.00</span>
 										</span>
-										<span v-if="!item.montos.length" class="money-line">0.00</span>
-									</span>
-									<span role="cell" class="employee-metric">
-										<span v-for="m in item.montos" :key="m.moneda" class="money-line">
-											{{ formatMoney(m.pendiente) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										<span role="cell" class="employee-metric">
+											<span v-for="m in item.montos" :key="m.moneda" class="money-line">
+												{{ formatMoney(m.pagado) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+											</span>
+											<span v-if="!item.montos.length" class="money-line">0.00</span>
 										</span>
-										<span v-if="!item.montos.length" class="money-line">0.00</span>
-									</span>
-									<span role="cell" class="employee-table__action">
-										<NcButton type="secondary" class="details-button" @click="selectClient(item.id)">
-											{{ t('empleados', 'Details') }}
-										</NcButton>
-									</span>
-								</div>
+										<span role="cell" class="employee-metric">
+											<span v-for="m in item.montos" :key="m.moneda" class="money-line">
+												{{ formatMoney(m.pendiente) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+											</span>
+											<span v-if="!item.montos.length" class="money-line">0.00</span>
+										</span>
+										<span role="cell" class="employee-table__action">
+											<NcButton type="secondary" class="details-button" @click="selectClient(item.id)">
+												{{ t('empleados', 'Details') }}
+											</NcButton>
+										</span>
+									</div>
+
+									<div v-if="item.hasFx"
+										:key="'fx-' + item.id"
+										class="fx-collapse"
+										:class="{ 'fx-collapse--open': fxAbierto[item.id] }">
+										<div class="fx-collapse__inner">
+											<div class="fx-panel" :style="{ marginLeft: `${item.level * 1.25}rem` }">
+												<section v-for="fx in item.fx" :key="fx.moneda" class="fx-block">
+													<header class="fx-block__head">
+														<strong>{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
+														<span>{{ fx.convertidas }} {{ t('empleados', 'converted installments') }}</span>
+													</header>
+
+													<div class="fx-stats">
+														<div class="fx-stat">
+															<span>{{ t('empleados', 'Paid in') }} {{ fx.moneda }}</span>
+															<strong>{{ formatMoney(fx.importe_origen, fx.moneda) }}</strong>
+														</div>
+														<div class="fx-stat">
+															<span>{{ t('empleados', 'Received in MXN') }}</span>
+															<strong>{{ formatMoney(fx.importe_mxn, 'MXN') }}</strong>
+														</div>
+														<div class="fx-stat">
+															<span>{{ t('empleados', 'Weighted average rate') }}</span>
+															<strong>{{ formatRate(fx.tipo_cambio_promedio) }}</strong>
+														</div>
+														<div v-if="fx.convertidas > 0" class="fx-stat">
+															<span>{{ t('empleados', 'Rate range') }}</span>
+															<strong>{{ formatRate(fx.tipo_cambio_min) }} – {{ formatRate(fx.tipo_cambio_max) }}</strong>
+														</div>
+													</div>
+
+													<div class="fx-table-wrap">
+														<table class="fx-table">
+															<thead>
+																<tr>
+																	<th>#</th>
+																	<th>{{ t('empleados', 'Service') }}</th>
+																	<th>{{ t('empleados', 'Payment date') }}</th>
+																	<th class="fx-num">{{ fx.moneda }}</th>
+																	<th class="fx-num">{{ t('empleados', 'Rate') }}</th>
+																	<th class="fx-num">MXN</th>
+																</tr>
+															</thead>
+															<tbody>
+																<tr v-for="p in fx.parcialidades" :key="p.id_parcialidad">
+																	<td>#{{ p.numero }}</td>
+																	<td>{{ p.servicio || t('empleados', 'Service') }}</td>
+																	<td>{{ p.fecha_pago || '—' }}</td>
+																	<td class="fx-num">{{ formatMoney(p.importe) }}</td>
+																	<td class="fx-num">{{ formatRate(p.tipo_cambio) }}</td>
+																	<td class="fx-num fx-num--strong">{{ formatMoney(p.importe_mxn) }}</td>
+																</tr>
+															</tbody>
+														</table>
+													</div>
+
+													<p v-if="fx.detalle_truncado" class="fx-note">
+														{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.parcialidades.length }) }}
+													</p>
+													<p v-if="fx.sin_tipo_cambio > 0" class="fx-note">
+														{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
+													</p>
+												</section>
+											</div>
+										</div>
+									</div>
+								</template>
 							</div>
 						</div>
 					</template>
@@ -336,25 +414,115 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="row in sortedTable"
-								:key="row.id"
-								class="employee-row">
-								<td :data-label="t('empleados', 'Customer')" class="employee-cell">
-									<strong>{{ row.nombre }}</strong>
-								</td>
-								<td :data-label="t('empleados', 'Total')" class="employee-metric">
-									<span v-for="m in row.montos" :key="m.moneda" class="money-line">
-										{{ formatMoney(m.total) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
-									</span>
-									<span v-if="!row.montos.length" class="money-line">0.00</span>
-								</td>
-								<!-- igual para pagado y pendiente -->
-								<td class="employee-table__action">
-									<NcButton type="secondary" class="details-button" @click="selectClient(row.id)">
-										{{ t('empleados', 'Details') }}
-									</NcButton>
-								</td>
-							</tr>
+							<template v-for="row in sortedTable">
+								<tr :key="row.id"
+									class="employee-row"
+									:class="{ 'employee-row--fx-open': row.hasFx && fxAbierto[row.id] }">
+									<td :data-label="t('empleados', 'Customer')" class="employee-cell">
+										<button v-if="row.hasFx"
+											type="button"
+											class="fx-toggle"
+											:class="{ 'fx-toggle--open': fxAbierto[row.id] }"
+											:aria-expanded="String(!!fxAbierto[row.id])"
+											:aria-label="t('empleados', 'Show currency conversion breakdown')"
+											@click.stop="toggleFx(row.id)">
+											<ChevronRight :size="16" />
+										</button>
+										<strong>{{ row.nombre }}</strong>
+									</td>
+									<td :data-label="t('empleados', 'Total')" class="employee-metric">
+										<span v-for="m in row.montos" :key="m.moneda" class="money-line">
+											{{ formatMoney(m.total) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										</span>
+										<span v-if="!row.montos.length" class="money-line">0.00</span>
+									</td>
+									<td :data-label="t('empleados', 'Collected')" class="employee-metric">
+										<span v-for="m in row.montos" :key="m.moneda" class="money-line">
+											{{ formatMoney(m.pagado) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										</span>
+										<span v-if="!row.montos.length" class="money-line">0.00</span>
+									</td>
+									<td :data-label="t('empleados', 'Outstanding')" class="employee-metric">
+										<span v-for="m in row.montos" :key="m.moneda" class="money-line">
+											{{ formatMoney(m.pendiente) }}<small v-if="isForeignCurrency(m.moneda)" class="currency-tag">({{ m.moneda }})</small>
+										</span>
+										<span v-if="!row.montos.length" class="money-line">0.00</span>
+									</td>
+									<td class="employee-table__action">
+										<NcButton type="secondary" class="details-button" @click="selectClient(row.id)">
+											{{ t('empleados', 'Details') }}
+										</NcButton>
+									</td>
+								</tr>
+
+								<tr v-if="row.hasFx" :key="'fx-' + row.id" class="fx-row">
+									<td colspan="5" class="fx-row__cell">
+										<div class="fx-collapse" :class="{ 'fx-collapse--open': fxAbierto[row.id] }">
+											<div class="fx-collapse__inner">
+												<div class="fx-panel">
+													<section v-for="fx in row.fx" :key="fx.moneda" class="fx-block">
+														<header class="fx-block__head">
+															<strong>{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
+															<span>{{ fx.convertidas }} {{ t('empleados', 'converted installments') }}</span>
+														</header>
+
+														<div class="fx-stats">
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Paid in') }} {{ fx.moneda }}</span>
+																<strong>{{ formatMoney(fx.importe_origen, fx.moneda) }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Received in MXN') }}</span>
+																<strong>{{ formatMoney(fx.importe_mxn, 'MXN') }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Weighted average rate') }}</span>
+																<strong>{{ formatRate(fx.tipo_cambio_promedio) }}</strong>
+															</div>
+															<div v-if="fx.convertidas > 0" class="fx-stat">
+																<span>{{ t('empleados', 'Rate range') }}</span>
+																<strong>{{ formatRate(fx.tipo_cambio_min) }} – {{ formatRate(fx.tipo_cambio_max) }}</strong>
+															</div>
+														</div>
+
+														<div class="fx-table-wrap">
+															<table class="fx-table">
+																<thead>
+																	<tr>
+																		<th>#</th>
+																		<th>{{ t('empleados', 'Service') }}</th>
+																		<th>{{ t('empleados', 'Payment date') }}</th>
+																		<th class="fx-num">{{ fx.moneda }}</th>
+																		<th class="fx-num">{{ t('empleados', 'Rate') }}</th>
+																		<th class="fx-num">MXN</th>
+																	</tr>
+																</thead>
+																<tbody>
+																	<tr v-for="p in fx.parcialidades" :key="p.id_parcialidad">
+																		<td>#{{ p.numero }}</td>
+																		<td>{{ p.servicio || t('empleados', 'Service') }}</td>
+																		<td>{{ p.fecha_pago || '—' }}</td>
+																		<td class="fx-num">{{ formatMoney(p.importe) }}</td>
+																		<td class="fx-num">{{ formatRate(p.tipo_cambio) }}</td>
+																		<td class="fx-num fx-num--strong">{{ formatMoney(p.importe_mxn) }}</td>
+																	</tr>
+																</tbody>
+															</table>
+														</div>
+
+														<p v-if="fx.detalle_truncado" class="fx-note">
+															{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.parcialidades.length }) }}
+														</p>
+														<p v-if="fx.sin_tipo_cambio > 0" class="fx-note">
+															{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
+														</p>
+													</section>
+												</div>
+											</div>
+										</div>
+									</td>
+								</tr>
+							</template>
 						</tbody>
 					</table>
 				</div>
@@ -370,6 +538,7 @@
 <script>
 import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 import ClienteLogo from '../../../components/clientes/ClienteLogo.vue'
 
 export default {
@@ -378,6 +547,7 @@ export default {
 	components: {
 		NcButton,
 		NcLoadingIcon,
+		ChevronRight,
 		ClienteLogo,
 	},
 
@@ -407,6 +577,7 @@ export default {
 				grupos: false,
 				individuales: false,
 			},
+			fxAbierto: {},
 		}
 	},
 
@@ -563,6 +734,8 @@ export default {
 			const rows = (this.resumen?.tabla || []).map((row) => ({
 				...row,
 				montos: this.sortMontos(this.rowMontos(row)),
+				fx: Array.isArray(row.fx) ? row.fx : [],
+				hasFx: Array.isArray(row.fx) && row.fx.length > 0,
 			}))
 			const key = this.sortKey
 			rows.sort((a, b) => {
@@ -614,6 +787,8 @@ export default {
 			const buildRow = (item, level) => ({
 				...item,
 				montos: sumSubtree(item.id),
+				fx: Array.isArray(item.fx) ? item.fx : [],
+				hasFx: Array.isArray(item.fx) && item.fx.length > 0,
 				level,
 			})
 
@@ -681,6 +856,23 @@ export default {
 
 		isForeignCurrency(moneda) {
 			return String(moneda || 'MXN').toUpperCase() !== 'MXN'
+		},
+
+		toggleFx(id) {
+			this.fxAbierto = {
+				...this.fxAbierto,
+				[id]: !this.fxAbierto[id],
+			}
+		},
+
+		formatRate(value) {
+			if (value === null || value === undefined) {
+				return '—'
+			}
+			return Number(value).toLocaleString('es-MX', {
+				minimumFractionDigits: 4,
+				maximumFractionDigits: 4,
+			})
 		},
 
 		rowMontos(row) {
@@ -1210,5 +1402,170 @@ export default {
 
 .money-line {
 	display: block;
+}
+
+.fx-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 1.375rem;
+	height: 1.375rem;
+	margin-right: 0.35rem;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--color-text-maxcontrast);
+	cursor: pointer;
+	transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+		background-color 0.15s ease, color 0.15s ease;
+}
+
+.fx-toggle:hover {
+	background: var(--color-background-darker);
+	color: var(--color-primary-element);
+}
+
+.fx-toggle--open {
+	transform: rotate(90deg);
+	color: var(--color-primary-element);
+}
+
+.employee-grid__row--fx-open,
+.employee-row--fx-open {
+	background: var(--color-background-hover);
+}
+
+.fx-row td {
+	padding: 0 !important;
+	border-bottom: none !important;
+}
+
+.fx-row__cell {
+	border-bottom: 1px solid var(--color-border) !important;
+}
+
+/* Misma técnica de 0fr → 1fr que ya usas para las secciones */
+.fx-collapse {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+		opacity 0.2s ease;
+}
+
+.fx-collapse--open {
+	grid-template-rows: 1fr;
+	opacity: 1;
+}
+
+.fx-collapse__inner {
+	overflow: hidden;
+	min-height: 0;
+}
+
+.fx-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	margin: 0.25rem 0 0.6rem;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--color-border);
+	border-left: 3px solid var(--color-primary-element);
+	border-radius: 12px;
+	background: var(--color-background-hover);
+}
+
+.fx-block__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.6rem;
+	font-size: 0.85rem;
+}
+
+.fx-block__head span {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+}
+
+.fx-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+	gap: 0.5rem;
+	margin-bottom: 0.7rem;
+}
+
+.fx-stat {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	padding: 0.5rem 0.65rem;
+	border: 1px solid var(--color-border);
+	border-radius: 10px;
+	background: var(--color-main-background);
+}
+
+.fx-stat span {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.fx-stat strong {
+	font-size: 0.9rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.fx-table-wrap {
+	overflow-x: auto;
+}
+
+.fx-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.78rem;
+}
+
+.fx-table th,
+.fx-table td {
+	padding: 0.35rem 0.5rem;
+	border-bottom: 1px solid var(--color-border);
+	text-align: left;
+	white-space: nowrap;
+}
+
+.fx-table th {
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+
+.fx-table tr:last-child td {
+	border-bottom: none;
+}
+
+.fx-num {
+	text-align: right !important;
+	font-variant-numeric: tabular-nums;
+}
+
+.fx-num--strong {
+	font-weight: 600;
+}
+
+.fx-note {
+	margin: 0.5rem 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+}
+
+@media (max-width: 720px) {
+	.fx-panel {
+		margin-left: 0 !important;
+	}
 }
 </style>

@@ -25,6 +25,10 @@ class ClientesDashboardService {
 	public const TOP_LIMIT = 10;
 	public const CONCENTRACION = [5, 10];
 
+	public const MONEDA_BASE = 'MXN';
+	public const FX_DETALLE_LIMIT = 24;
+	public const FX_DECIMALES = 4;
+
 	private clientesMapper $clientesMapper;
 	private honorariosParcialidadesMapper $parcialidadesMapper;
 
@@ -48,6 +52,16 @@ class ClientesDashboardService {
 		$serviceRows = $this->parcialidadesMapper->getServicioBreakdownRows($filters);
 		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows);
 
+		// El desglose de conversión se adjunta ANTES de filtrar por solo_pendientes,
+		// para que el campo 'fx' sobreviva al array_filter posterior.
+		$fxRows = $this->parcialidadesMapper->getDashboardFxRows($filters);
+		$fxByClient = $this->buildFxByClient($fxRows);
+
+		$summary['tabla'] = array_map(
+			static fn (array $row): array => $row + ['fx' => $fxByClient[(int)$row['id']] ?? []],
+			$summary['tabla']
+		);
+
 		if ($filters['solo_pendientes']) {
 			$summary['tabla'] = array_values(array_filter(
 				$summary['tabla'],
@@ -59,6 +73,123 @@ class ClientesDashboardService {
 		}
 
 		return $summary;
+	}
+
+	/**
+	 * Desglose de la conversión a moneda base, por cliente y moneda de origen.
+	 *
+	 * Solo entran parcialidades PAGADAS de honorarios en moneda extranjera.
+	 * Las que no tienen tipo de cambio registrado no suman a los totales:
+	 * se cuentan aparte en 'sin_tipo_cambio' para poder avisarlo en la UI.
+	 *
+	 * @param list<array<string,mixed>> $rows
+	 * @return array<int, list<array<string,mixed>>> indexado por id de cliente
+	 */
+	private function buildFxByClient(array $rows): array {
+		$acc = [];
+
+		foreach ($rows as $row) {
+			$id = (int)($row['id_cliente'] ?? 0);
+			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
+
+			if ($id <= 0 || $moneda === self::MONEDA_BASE) {
+				continue;
+			}
+
+			$importe = (float)($row['importe_parcialidad'] ?? 0);
+			$tc = isset($row['cambio_moneda']) && $row['cambio_moneda'] !== null
+				? (float)$row['cambio_moneda']
+				: null;
+
+			$acc[$id][$moneda] ??= [
+				'moneda' => $moneda,
+				'moneda_destino' => self::MONEDA_BASE,
+				'convertidas' => 0,
+				'sin_tipo_cambio' => 0,
+				'importe_origen' => 0.0,
+				'importe_mxn' => 0.0,
+				'tipo_cambio_min' => null,
+				'tipo_cambio_max' => null,
+				'tipo_cambio_promedio' => 0.0,
+				'parcialidades' => [],
+			];
+
+			if ($tc === null || $tc <= 0) {
+				$acc[$id][$moneda]['sin_tipo_cambio']++;
+				continue;
+			}
+
+			$mxn = $importe * $tc;
+			$min = $acc[$id][$moneda]['tipo_cambio_min'];
+			$max = $acc[$id][$moneda]['tipo_cambio_max'];
+
+			$acc[$id][$moneda]['convertidas']++;
+			$acc[$id][$moneda]['importe_origen'] += $importe;
+			$acc[$id][$moneda]['importe_mxn'] += $mxn;
+			$acc[$id][$moneda]['tipo_cambio_min'] = $min === null ? $tc : min($min, $tc);
+			$acc[$id][$moneda]['tipo_cambio_max'] = $max === null ? $tc : max($max, $tc);
+
+			$acc[$id][$moneda]['parcialidades'][] = [
+				'id_parcialidad' => (int)($row['id_parcialidad'] ?? 0),
+				'numero' => (int)($row['numero_parcialidad'] ?? 0),
+				'servicio' => (string)($row['tipo_servicio'] ?? ''),
+				'fecha_pago' => $row['fecha_pago'] ?? null,
+				'importe' => round($importe, 2),
+				'tipo_cambio' => round($tc, self::FX_DECIMALES),
+				'importe_mxn' => round($mxn, 2),
+			];
+		}
+
+		$result = [];
+
+		foreach ($acc as $id => $porMoneda) {
+			$lista = [];
+
+			foreach ($porMoneda as $fx) {
+				// Más recientes primero; las que no tienen fecha quedan al final.
+				usort($fx['parcialidades'], static function (array $a, array $b): int {
+					$fa = (string)($a['fecha_pago'] ?? '');
+					$fb = (string)($b['fecha_pago'] ?? '');
+
+					if ($fa === '' && $fb === '') {
+						return $b['numero'] <=> $a['numero'];
+					}
+					if ($fa === '') {
+						return 1;
+					}
+					if ($fb === '') {
+						return -1;
+					}
+
+					return strcmp($fb, $fa);
+				});
+
+				$fx['detalle_truncado'] = count($fx['parcialidades']) > self::FX_DETALLE_LIMIT;
+				$fx['parcialidades'] = array_slice($fx['parcialidades'], 0, self::FX_DETALLE_LIMIT);
+
+				$fx['importe_origen'] = round($fx['importe_origen'], 2);
+				$fx['importe_mxn'] = round($fx['importe_mxn'], 2);
+
+				$fx['tipo_cambio_promedio'] = $fx['importe_origen'] > 0.009
+					? round($fx['importe_mxn'] / $fx['importe_origen'], self::FX_DECIMALES)
+					: 0.0;
+
+				$fx['tipo_cambio_min'] = $fx['tipo_cambio_min'] !== null
+					? round($fx['tipo_cambio_min'], self::FX_DECIMALES)
+					: null;
+				$fx['tipo_cambio_max'] = $fx['tipo_cambio_max'] !== null
+					? round($fx['tipo_cambio_max'], self::FX_DECIMALES)
+					: null;
+
+				$lista[] = $fx;
+			}
+
+			usort($lista, static fn (array $a, array $b): int => strcmp($a['moneda'], $b['moneda']));
+
+			$result[$id] = $lista;
+		}
+
+		return $result;
 	}
 
 	public function getClienteDetail(int $idCliente, array $filters = []): ?array {
@@ -73,7 +204,7 @@ class ClientesDashboardService {
 
 		$porMoneda = [];
 		foreach ($honorarios as $honorario) {
-			$moneda = $this->normalizeCurrency($honorario['tipo_moneda'] ?? 'MXN');
+			$moneda = $this->normalizeCurrency($honorario['tipo_moneda'] ?? self::MONEDA_BASE);
 			if (!isset($porMoneda[$moneda])) {
 				$porMoneda[$moneda] = $this->emptyMoney();
 			}
@@ -87,6 +218,11 @@ class ClientesDashboardService {
 		}
 		unset($row);
 
+		$fxRows = $this->parcialidadesMapper->getDashboardFxRows(
+			array_merge($filters, ['id_cliente' => $idCliente])
+		);
+		$fx = $this->buildFxByClient($fxRows)[$idCliente] ?? [];
+
 		return [
 			'cliente' => [
 				'id' => (int)$cliente['id'],
@@ -99,6 +235,7 @@ class ClientesDashboardService {
 				'lider_proyecto' => $cliente['lider_proyecto'] ?? null,
 			],
 			'totales' => array_values($porMoneda),
+			'fx' => $fx,
 			'honorarios' => $honorarios,
 			'parcialidades_pendientes' => $pendientes,
 			'analisis' => $this->capabilities(),
@@ -141,6 +278,7 @@ class ClientesDashboardService {
 			'antiguedad' => false,
 			'pagos_parciales_por_parcialidad' => true,
 			'pagos_fraccionados_en_parcialidad' => false,
+			'desglose_tipo_cambio' => true,
 		];
 	}
 
@@ -228,7 +366,7 @@ class ClientesDashboardService {
 			if ($id <= 0 || !isset($byClient[$id])) {
 				continue;
 			}
-			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? 'MXN');
+			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
 			$total = (float)($row['total'] ?? 0);
 			$pagado = (float)($row['pagado'] ?? 0);
 			$pendiente = (float)($row['pendiente'] ?? 0);
@@ -347,7 +485,7 @@ class ClientesDashboardService {
 		$porMoneda = [];
 
 		foreach ($rows as $row) {
-			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? 'MXN');
+			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
 			$especial = (int)($row['especial'] ?? 0) === 1;
 			$importe = (float)($row['total'] ?? 0);
 
@@ -432,7 +570,7 @@ class ClientesDashboardService {
 	}
 
 	/**
-	 * Extrae el nombre base y el año 
+	 * Extrae el nombre base y el año
 	 *
 	 * @return array{0:string, 1:?int, 2:bool} [servicio, anio, es_fijo]
 	 */
@@ -520,7 +658,7 @@ class ClientesDashboardService {
 
 	private function normalizeCurrency(?string $value): string {
 		$moneda = strtoupper(trim((string)$value));
-		return $moneda !== '' ? $moneda : 'MXN';
+		return $moneda !== '' ? $moneda : self::MONEDA_BASE;
 	}
 
 	private function normalizeDate(mixed $value): ?string {
