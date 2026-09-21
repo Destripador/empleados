@@ -1,383 +1,443 @@
 <!-- eslint-disable vue/require-v-for-key -->
 <template>
-	<div class="settings-page">
-		<div class="settings-header">
-			<p class="page-eyebrow">
+	<div class="app-settings-page working-time-settings">
+		<header class="app-settings-header">
+			<p class="app-settings-eyebrow">
 				{{ t('empleados', 'Working time') }}
 			</p>
-			<h2>{{ t('empleados', 'Time & Absence Configuration') }}</h2>
-			<p class="page-description">
+			<h2 class="app-settings-title">
+				{{ t('empleados', 'Time & Absence Configuration') }}
+			</h2>
+			<p class="app-settings-description">
 				{{ t('empleados', 'Manage anniversaries, absence types and holidays used across the system.') }}
 			</p>
-		</div>
+		</header>
 
-		<div class="settings-grid">
-			<!-- ── Anniversaries ── -->
-			<div class="settings-card">
-				<div class="card-header">
-					<div class="card-title-wrap">
-						<div class="card-icon">
-							<CalendarStar :size="20" />
+		<div class="working-time-grid">
+			<div class="working-time-column working-time-column--compact">
+				<!-- ── Anniversaries ── -->
+				<section class="app-settings-panel working-time-card working-time-card--anniversaries" aria-labelledby="working-time-anniversaries-title">
+					<header class="app-settings-panel__header working-time-card__header">
+						<div class="card-title-wrap">
+							<div class="card-icon">
+								<CalendarStar :size="20" />
+							</div>
+							<div>
+								<p class="card-eyebrow">
+									{{ t('empleados', 'Seniority') }}
+								</p>
+								<h3 id="working-time-anniversaries-title">
+									{{ t('empleados', 'Anniversaries') }}
+								</h3>
+							</div>
 						</div>
-						<div>
-							<p class="card-eyebrow">
-								{{ t('empleados', 'Seniority') }}
-							</p>
-							<h3>{{ t('empleados', 'Anniversaries') }}</h3>
-						</div>
+						<NcActions>
+							<NcActionButton :close-after-click="true" @click="showAddAniversario">
+								<template #icon>
+									<Plus :size="20" />
+								</template>
+								{{ t('empleados', 'Add anniversary') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="$refs.file.click()">
+								<template #icon>
+									<Import :size="20" />
+								</template>
+								{{ t('empleados', 'Import list') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="Exportar()">
+								<template #icon>
+									<Export :size="20" />
+								</template>
+								{{ t('empleados', 'Export / template') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="vaciar()">
+								<template #icon>
+									<Delete :size="20" />
+								</template>
+								{{ t('empleados', 'Clear table') }}
+							</NcActionButton>
+						</NcActions>
+					</header>
+
+					<div class="card-table-wrap card-table-wrap--long"
+						role="region"
+						aria-labelledby="working-time-anniversaries-title"
+						tabindex="0">
+						<table class="data-table">
+							<caption class="app-settings-sr-only">
+								{{ t('empleados', 'Anniversaries') }}
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">
+										{{ t('empleados', 'Anniversary') }}
+									</th>
+									<th scope="col">
+										{{ t('empleados', 'Days off') }}
+									</th>
+									<th class="col-actions" scope="col">
+										<span class="app-settings-sr-only">{{ t('empleados', 'Actions') }}</span>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="Aniversarios.length === 0">
+									<td colspan="3" class="empty-row">
+										{{ t('empleados', 'No anniversaries defined yet.') }}
+									</td>
+								</tr>
+								<tr v-for="item in Aniversarios" :key="item.numero_aniversario">
+									<td>
+										<span class="badge">{{ item.numero_aniversario }}</span>
+									</td>
+									<td>{{ item.dias }} {{ t('empleados', 'days') }}</td>
+									<td class="col-actions">
+										<NcActions>
+											<NcActionButton :close-after-click="true" @click="editAniversario(item)">
+												<template #icon>
+													<Pencil :size="20" />
+												</template>
+												{{ t('empleados', 'Edit') }}
+											</NcActionButton>
+											<NcActionButton :close-after-click="true" @click="deleteAniversario(item.numero_aniversario)">
+												<template #icon>
+													<Delete :size="20" />
+												</template>
+												{{ t('empleados', 'Delete') }}
+											</NcActionButton>
+										</NcActions>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
-					<NcActions>
-						<NcActionButton :close-after-click="true" @click="showAddAniversario">
-							<template #icon>
-								<Plus :size="20" />
-							</template>
-							{{ t('empleados', 'Add anniversary') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="$refs.file.click()">
-							<template #icon>
-								<Import :size="20" />
-							</template>
-							{{ t('empleados', 'Import list') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="Exportar()">
-							<template #icon>
-								<Export :size="20" />
-							</template>
-							{{ t('empleados', 'Export / template') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="vaciar()">
-							<template #icon>
-								<Delete :size="20" />
-							</template>
-							{{ t('empleados', 'Clear table') }}
-						</NcActionButton>
-					</NcActions>
-				</div>
+				</section>
 
-				<div class="card-table-wrap">
-					<table class="data-table">
-						<thead>
-							<tr>
-								<th>{{ t('empleados', 'Anniversary') }}</th>
-								<th>{{ t('empleados', 'Days off') }}</th>
-								<th class="col-actions" />
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-if="Aniversarios.length === 0">
-								<td colspan="3" class="empty-row">
-									{{ t('empleados', 'No anniversaries defined yet.') }}
-								</td>
-							</tr>
-							<tr v-for="item in Aniversarios" :key="item.numero_aniversario">
-								<td>
-									<span class="badge">{{ item.numero_aniversario }}</span>
-								</td>
-								<td>{{ item.dias }} {{ t('empleados', 'days') }}</td>
-								<td class="col-actions">
-									<NcActions>
-										<NcActionButton :close-after-click="true" @click="editAniversario(item)">
-											<template #icon>
-												<Pencil :size="20" />
-											</template>
-											{{ t('empleados', 'Edit') }}
-										</NcActionButton>
-										<NcActionButton :close-after-click="true" @click="deleteAniversario(item.numero_aniversario)">
-											<template #icon>
-												<Delete :size="20" />
-											</template>
-											{{ t('empleados', 'Delete') }}
-										</NcActionButton>
-									</NcActions>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
+				<!-- ── Boarding catalog: compact lifecycle column ── -->
+				<section class="app-settings-panel working-time-card working-time-card--boarding" aria-labelledby="working-time-boarding-title">
+					<header class="app-settings-panel__header working-time-card__header">
+						<div class="card-title-wrap">
+							<div class="card-icon">
+								<AccountArrowRightOutline :size="20" />
+							</div>
+							<div>
+								<p class="card-eyebrow">
+									{{ t('empleados', 'Checklist') }}
+								</p>
+								<h3 id="working-time-boarding-title">
+									{{ t('empleados', 'Boarding') }}
+								</h3>
+							</div>
+						</div>
+						<NcActions>
+							<NcActionButton :close-after-click="true" @click="showAddBoardingItem">
+								<template #icon>
+									<Plus :size="20" />
+								</template>
+								{{ t('empleados', 'Add item') }}
+							</NcActionButton>
+						</NcActions>
+					</header>
+
+					<div class="card-table-wrap">
+						<table class="data-table">
+							<caption class="app-settings-sr-only">
+								{{ t('empleados', 'Boarding') }}
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">
+										{{ t('empleados', 'Name') }}
+									</th>
+									<th class="col-center" scope="col">
+										{{ t('empleados', 'Type') }}
+									</th>
+									<th class="col-actions" scope="col">
+										<span class="app-settings-sr-only">{{ t('empleados', 'Actions') }}</span>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="BoardingCatalogo.length === 0">
+									<td colspan="3" class="empty-row">
+										{{ t('empleados', 'No boarding items defined yet.') }}
+									</td>
+								</tr>
+								<tr v-for="item in BoardingCatalogo" :key="item.id_boarding">
+									<td class="col-name" :title="item.nombre">
+										{{ item.nombre }}
+									</td>
+									<td class="col-center">
+										<span :class="Number(item.on) === 1 ? 'pill pill--yes' : 'pill pill--no'">
+											{{ Number(item.on) === 1 ? t('empleados', 'OnBoarding') : t('empleados', 'OffBoarding') }}
+										</span>
+									</td>
+									<td class="col-actions">
+										<NcActions>
+											<NcActionButton :close-after-click="true" @click="editBoardingItem(item)">
+												<template #icon>
+													<Pencil :size="20" />
+												</template>
+												{{ t('empleados', 'Edit') }}
+											</NcActionButton>
+											<NcActionButton :close-after-click="true" @click="deleteBoardingItem(item.id_boarding)">
+												<template #icon>
+													<Delete :size="20" />
+												</template>
+												{{ t('empleados', 'Delete') }}
+											</NcActionButton>
+										</NcActions>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
 			</div>
 
-			<!-- ── Absence types ── -->
-			<div class="settings-card">
-				<div class="card-header">
-					<div class="card-title-wrap">
-						<div class="card-icon">
-							<FileDocumentOutline :size="20" />
+			<div class="working-time-column working-time-column--wide">
+				<!-- ── Absence types ── -->
+				<section class="app-settings-panel working-time-card working-time-card--absence-types" aria-labelledby="working-time-absence-types-title">
+					<header class="app-settings-panel__header working-time-card__header">
+						<div class="card-title-wrap">
+							<div class="card-icon">
+								<FileDocumentOutline :size="20" />
+							</div>
+							<div>
+								<p class="card-eyebrow">
+									{{ t('empleados', 'Absences') }}
+								</p>
+								<h3 id="working-time-absence-types-title">
+									{{ t('empleados', 'Absence types') }}
+								</h3>
+							</div>
 						</div>
-						<div>
-							<p class="card-eyebrow">
-								{{ t('empleados', 'Absences') }}
-							</p>
-							<h3>{{ t('empleados', 'Absence types') }}</h3>
-						</div>
+						<NcActions>
+							<NcActionButton :close-after-click="true" @click="showAddTipo">
+								<template #icon>
+									<Plus :size="20" />
+								</template>
+								{{ t('empleados', 'Add type') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="$refs.fileTipo.click()">
+								<template #icon>
+									<Import :size="20" />
+								</template>
+								{{ t('empleados', 'Import list') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="ExportarTipo()">
+								<template #icon>
+									<Export :size="20" />
+								</template>
+								{{ t('empleados', 'Export / template') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="vaciarTipo()">
+								<template #icon>
+									<Delete :size="20" />
+								</template>
+								{{ t('empleados', 'Clear table') }}
+							</NcActionButton>
+						</NcActions>
+					</header>
+
+					<div class="card-table-wrap">
+						<table class="data-table data-table--wide">
+							<caption class="app-settings-sr-only">
+								{{ t('empleados', 'Absence types') }}
+							</caption>
+							<colgroup>
+								<col class="absence-col--name">
+								<col class="absence-col--description">
+								<col class="absence-col--boolean">
+								<col class="absence-col--boolean">
+								<col class="absence-col--boolean">
+								<col class="absence-col--boolean">
+								<col class="absence-col--actions">
+							</colgroup>
+							<thead>
+								<tr>
+									<th scope="col">
+										{{ t('empleados', 'Name') }}
+									</th>
+									<th scope="col">
+										{{ t('empleados', 'Description') }}
+									</th>
+									<th class="col-center" scope="col">
+										{{ t('empleados', 'File') }}
+									</th>
+									<th class="col-center" scope="col">
+										{{ t('empleados', 'Billable') }}
+									</th>
+									<th class="col-center" scope="col">
+										{{ t('empleados', 'Private') }}
+									</th>
+									<th class="col-center" scope="col">
+										{{ t('empleados', 'Half day') }}
+									</th>
+									<th class="col-actions" scope="col">
+										<span class="app-settings-sr-only">{{ t('empleados', 'Actions') }}</span>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="TipoAusencias.length === 0">
+									<td colspan="7" class="empty-row">
+										{{ t('empleados', 'No absence types defined yet.') }}
+									</td>
+								</tr>
+								<tr v-for="item in TipoAusencias" :key="item.id">
+									<td class="col-name" :title="item.nombre">
+										{{ item.nombre }}
+									</td>
+									<td class="col-desc" :title="item.descripcion">
+										{{ item.descripcion }}
+									</td>
+									<td class="col-center">
+										<span :class="item.solicitar_archivo == 1 ? 'pill pill--yes' : 'pill pill--no'">
+											{{ item.solicitar_archivo == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+										</span>
+									</td>
+									<td class="col-center">
+										<span :class="item.cargable == 1 ? 'pill pill--yes' : 'pill pill--no'">
+											{{ item.cargable == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+										</span>
+									</td>
+									<td class="col-center">
+										<span :class="item.privado > 0 ? 'pill pill--yes' : 'pill pill--no'">
+											{{ item.privado > 0 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+										</span>
+									</td>
+									<td class="col-center">
+										<span :class="item.es_medio_dia == 1 ? 'pill pill--yes' : 'pill pill--no'">
+											{{ item.es_medio_dia == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+										</span>
+									</td>
+									<td class="col-actions">
+										<NcActions>
+											<NcActionButton :close-after-click="true" @click="editTipo(item)">
+												<template #icon>
+													<Pencil :size="20" />
+												</template>
+												{{ t('empleados', 'Edit') }}
+											</NcActionButton>
+											<NcActionButton :close-after-click="true" @click="deleteTipo(item.id_tipo_ausencia)">
+												<template #icon>
+													<Delete :size="20" />
+												</template>
+												{{ t('empleados', 'Delete') }}
+											</NcActionButton>
+										</NcActions>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
-					<NcActions>
-						<NcActionButton :close-after-click="true" @click="showAddTipo">
-							<template #icon>
-								<Plus :size="20" />
-							</template>
-							{{ t('empleados', 'Add type') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="$refs.fileTipo.click()">
-							<template #icon>
-								<Import :size="20" />
-							</template>
-							{{ t('empleados', 'Import list') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="ExportarTipo()">
-							<template #icon>
-								<Export :size="20" />
-							</template>
-							{{ t('empleados', 'Export / template') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="vaciarTipo()">
-							<template #icon>
-								<Delete :size="20" />
-							</template>
-							{{ t('empleados', 'Clear table') }}
-						</NcActionButton>
-					</NcActions>
-				</div>
+				</section>
 
-				<div class="card-table-wrap">
-					<table class="data-table">
-						<thead>
-							<tr>
-								<th>{{ t('empleados', 'Name') }}</th>
-								<th>{{ t('empleados', 'Description') }}</th>
-								<th class="col-center">
-									{{ t('empleados', 'File') }}
-								</th>
-								<th class="col-center">
-									{{ t('empleados', 'Billable') }}
-								</th>
-								<th class="col-center">
-									{{ t('empleados', 'Private') }}
-								</th>
-								<th class="col-center">
-									{{ t('empleados', 'Half day') }}
-								</th>
-								<th class="col-actions" />
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-if="TipoAusencias.length === 0">
-								<td colspan="7" class="empty-row">
-									{{ t('empleados', 'No absence types defined yet.') }}
-								</td>
-							</tr>
-							<tr v-for="item in TipoAusencias" :key="item.id">
-								<td class="col-name">
-									{{ item.nombre }}
-								</td>
-								<td class="col-desc">
-									{{ item.descripcion }}
-								</td>
-								<td class="col-center">
-									<span :class="item.solicitar_archivo == 1 ? 'pill pill--yes' : 'pill pill--no'">
-										{{ item.solicitar_archivo == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
-									</span>
-								</td>
-								<td class="col-center">
-									<span :class="item.cargable == 1 ? 'pill pill--yes' : 'pill pill--no'">
-										{{ item.cargable == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
-									</span>
-								</td>
-								<td class="col-center">
-									<span :class="item.privado > 0 ? 'pill pill--yes' : 'pill pill--no'">
-										{{ item.privado > 0 ? t('empleados', 'Yes') : t('empleados', 'No') }}
-									</span>
-								</td>
-								<td class="col-center">
-									<span :class="item.es_medio_dia == 1 ? 'pill pill--yes' : 'pill pill--no'">
-										{{ item.es_medio_dia == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
-									</span>
-								</td>
-								<td class="col-actions">
-									<NcActions>
-										<NcActionButton :close-after-click="true" @click="editTipo(item)">
-											<template #icon>
-												<Pencil :size="20" />
-											</template>
-											{{ t('empleados', 'Edit') }}
-										</NcActionButton>
-										<NcActionButton :close-after-click="true" @click="deleteTipo(item.id_tipo_ausencia)">
-											<template #icon>
-												<Delete :size="20" />
-											</template>
-											{{ t('empleados', 'Delete') }}
-										</NcActionButton>
-									</NcActions>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
+				<!-- ── Holidays ── -->
+				<section class="app-settings-panel working-time-card working-time-card--holidays" aria-labelledby="working-time-holidays-title">
+					<header class="app-settings-panel__header working-time-card__header">
+						<div class="card-title-wrap">
+							<div class="card-icon">
+								<CalendarMultiple :size="20" />
+							</div>
+							<div>
+								<p class="card-eyebrow">
+									{{ t('empleados', 'Calendar') }}
+								</p>
+								<h3 id="working-time-holidays-title">
+									{{ t('empleados', 'Holidays') }}
+								</h3>
+							</div>
+						</div>
+						<NcActions>
+							<NcActionButton :close-after-click="true" @click="showAddFestivo">
+								<template #icon>
+									<Plus :size="20" />
+								</template>
+								{{ t('empleados', 'Add holiday') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="$refs.fileFestivo.click()">
+								<template #icon>
+									<Import :size="20" />
+								</template>
+								{{ t('empleados', 'Import list') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="exportarFestivos()">
+								<template #icon>
+									<Export :size="20" />
+								</template>
+								{{ t('empleados', 'Export / template') }}
+							</NcActionButton>
+							<NcActionButton :close-after-click="true" @click="vaciarFestivos()">
+								<template #icon>
+									<Delete :size="20" />
+								</template>
+								{{ t('empleados', 'Clear table') }}
+							</NcActionButton>
+						</NcActions>
+					</header>
 
-			<!-- ── Boarding catalog ── -->
-			<div class="settings-card">
-				<div class="card-header">
-					<div class="card-title-wrap">
-						<div class="card-icon">
-							<AccountArrowRightOutline :size="20" />
-						</div>
-						<div>
-							<p class="card-eyebrow">
-								{{ t('empleados', 'Checklist') }}
-							</p>
-							<h3>{{ t('empleados', 'Boarding') }}</h3>
-						</div>
+					<div class="card-table-wrap">
+						<table class="data-table">
+							<caption class="app-settings-sr-only">
+								{{ t('empleados', 'Holidays') }}
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">
+										{{ t('empleados', 'Name') }}
+									</th>
+									<th scope="col">
+										{{ t('empleados', 'Date') }}
+									</th>
+									<th class="col-center" scope="col">
+										{{ t('empleados', 'Official') }}
+									</th>
+									<th class="col-actions" scope="col">
+										<span class="app-settings-sr-only">{{ t('empleados', 'Actions') }}</span>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="Festivos.length === 0">
+									<td colspan="4" class="empty-row">
+										{{ t('empleados', 'No holidays defined yet.') }}
+									</td>
+								</tr>
+								<tr v-for="item in Festivos" :key="item.id_festivo">
+									<td class="col-name" :title="item.nombre">
+										{{ item.nombre }}
+									</td>
+									<td>
+										<span class="date-chip">{{ item.fecha }}</span>
+									</td>
+									<td class="col-center">
+										<span :class="item.oficial == 1 ? 'pill pill--yes' : 'pill pill--no'">
+											{{ item.oficial == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
+										</span>
+									</td>
+									<td class="col-actions">
+										<NcActions>
+											<NcActionButton :close-after-click="true" @click="editFestivo(item)">
+												<template #icon>
+													<Pencil :size="20" />
+												</template>
+												{{ t('empleados', 'Edit') }}
+											</NcActionButton>
+											<NcActionButton v-if="item.oficial != 1" :close-after-click="true" @click="deleteFestivo(item.id_festivo)">
+												<template #icon>
+													<Delete :size="20" />
+												</template>
+												{{ t('empleados', 'Delete') }}
+											</NcActionButton>
+										</NcActions>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
-					<NcActions>
-						<NcActionButton :close-after-click="true" @click="showAddBoardingItem">
-							<template #icon>
-								<Plus :size="20" />
-							</template>
-							{{ t('empleados', 'Add item') }}
-						</NcActionButton>
-					</NcActions>
-				</div>
-
-				<div class="card-table-wrap">
-					<table class="data-table">
-						<thead>
-							<tr>
-								<th>{{ t('empleados', 'Name') }}</th>
-								<th class="col-center">
-									{{ t('empleados', 'Type') }}
-								</th>
-								<th class="col-actions" />
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-if="BoardingCatalogo.length === 0">
-								<td colspan="3" class="empty-row">
-									{{ t('empleados', 'No boarding items defined yet.') }}
-								</td>
-							</tr>
-							<tr v-for="item in BoardingCatalogo" :key="item.id_boarding">
-								<td class="col-name">
-									{{ item.nombre }}
-								</td>
-								<td class="col-center">
-									<span :class="Number(item.on) === 1 ? 'pill pill--yes' : 'pill pill--no'">
-										{{ Number(item.on) === 1 ? t('empleados', 'OnBoarding') : t('empleados', 'OffBoarding') }}
-									</span>
-								</td>
-								<td class="col-actions">
-									<NcActions>
-										<NcActionButton :close-after-click="true" @click="editBoardingItem(item)">
-											<template #icon>
-												<Pencil :size="20" />
-											</template>
-											{{ t('empleados', 'Edit') }}
-										</NcActionButton>
-										<NcActionButton :close-after-click="true" @click="deleteBoardingItem(item.id_boarding)">
-											<template #icon>
-												<Delete :size="20" />
-											</template>
-											{{ t('empleados', 'Delete') }}
-										</NcActionButton>
-									</NcActions>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-			<!-- ── Holidays ── -->
-			<div class="settings-card">
-				<div class="card-header">
-					<div class="card-title-wrap">
-						<div class="card-icon">
-							<CalendarMultiple :size="20" />
-						</div>
-						<div>
-							<p class="card-eyebrow">
-								{{ t('empleados', 'Calendar') }}
-							</p>
-							<h3>{{ t('empleados', 'Holidays') }}</h3>
-						</div>
-					</div>
-					<NcActions>
-						<NcActionButton :close-after-click="true" @click="showAddFestivo">
-							<template #icon>
-								<Plus :size="20" />
-							</template>
-							{{ t('empleados', 'Add holiday') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="$refs.fileFestivo.click()">
-							<template #icon>
-								<Import :size="20" />
-							</template>
-							{{ t('empleados', 'Import list') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="exportarFestivos()">
-							<template #icon>
-								<Export :size="20" />
-							</template>
-							{{ t('empleados', 'Export / template') }}
-						</NcActionButton>
-						<NcActionButton :close-after-click="true" @click="vaciarFestivos()">
-							<template #icon>
-								<Delete :size="20" />
-							</template>
-							{{ t('empleados', 'Clear table') }}
-						</NcActionButton>
-					</NcActions>
-				</div>
-
-				<div class="card-table-wrap">
-					<table class="data-table">
-						<thead>
-							<tr>
-								<th>{{ t('empleados', 'Name') }}</th>
-								<th>{{ t('empleados', 'Date') }}</th>
-								<th class="col-center">
-									{{ t('empleados', 'Official') }}
-								</th>
-								<th class="col-actions" />
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-if="Festivos.length === 0">
-								<td colspan="4" class="empty-row">
-									{{ t('empleados', 'No holidays defined yet.') }}
-								</td>
-							</tr>
-							<tr v-for="item in Festivos" :key="item.id_festivo">
-								<td class="col-name">
-									{{ item.nombre }}
-								</td>
-								<td>
-									<span class="date-chip">{{ item.fecha }}</span>
-								</td>
-								<td class="col-center">
-									<span :class="item.oficial == 1 ? 'pill pill--yes' : 'pill pill--no'">
-										{{ item.oficial == 1 ? t('empleados', 'Yes') : t('empleados', 'No') }}
-									</span>
-								</td>
-								<td class="col-actions">
-									<NcActions>
-										<NcActionButton :close-after-click="true" @click="editFestivo(item)">
-											<template #icon>
-												<Pencil :size="20" />
-											</template>
-											{{ t('empleados', 'Edit') }}
-										</NcActionButton>
-										<NcActionButton v-if="item.oficial != 1" :close-after-click="true" @click="deleteFestivo(item.id_festivo)">
-											<template #icon>
-												<Delete :size="20" />
-											</template>
-											{{ t('empleados', 'Delete') }}
-										</NcActionButton>
-									</NcActions>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
+				</section>
 			</div>
 		</div>
 
@@ -1105,81 +1165,61 @@ export default {
 </script>
 
 <style scoped lang="scss">
-/* ── Page layout ── */
-.settings-page {
-	display: flex;
-	flex-direction: column;
-	gap: 24px;
-	padding: 24px;
-	max-width: 1200px;
+.working-time-settings {
+	gap: 14px;
 }
 
-.settings-header {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-
-	h2 {
-		margin: 4px 0 6px;
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--color-main-text);
-	}
+.working-time-settings > .app-settings-header {
+	gap: 2px;
+	padding-block: 0;
 }
 
-.page-eyebrow {
-	font-size: 0.72rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--color-primary-element);
-	margin: 0;
-}
-
-.page-description {
-	font-size: 0.875rem;
-	color: var(--color-text-maxcontrast);
-	margin: 0;
-}
-
-/* ── Cards grid ── */
-.settings-grid {
+/* ── Content-driven 12-column layout ── */
+.working-time-grid {
 	display: grid;
-	grid-template-columns: 0.85fr 1.15fr;
-	grid-auto-rows: 1fr;
-	gap: 16px;
-	align-items: stretch;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 14px;
+	align-items: start;
+}
 
-	@media (max-width: 1024px) {
-		grid-template-columns: 1fr;
+.working-time-column {
+	display: grid;
+	grid-column: 1 / -1;
+	align-content: start;
+	min-width: 0;
+	gap: 14px;
+}
+
+@container (min-width: 68rem) {
+	.working-time-column--compact {
+		grid-column: span 4;
+	}
+
+	.working-time-column--wide {
+		grid-column: span 8;
 	}
 }
 
-/* ── Card ── */
-.settings-card {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-border);
-	background: var(--color-main-background);
-	overflow: hidden;
+.working-time-card {
+	align-self: start;
 }
 
-.card-header {
-	display: flex;
+.working-time-card__header {
 	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 16px 12px 16px 16px;
-	border-bottom: 1px solid var(--color-border);
-	background: var(--color-background-soft);
+	gap: 8px;
+	padding: 10px 10px 10px 12px;
 }
 
-.card-title-wrap {
+@media (max-width: 767px) {
+	.working-time-card__header {
+		align-items: stretch;
+	}
+}
+
+.working-time-card__header > .card-title-wrap {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 10px;
 
 	h3 {
 		margin: 0;
@@ -1202,8 +1242,8 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 36px;
-	height: 36px;
+	width: 32px;
+	height: 32px;
 	border-radius: var(--border-radius-large);
 	background: var(--color-primary-element-light);
 	color: var(--color-primary-element);
@@ -1212,9 +1252,29 @@ export default {
 
 /* ── Table ── */
 .card-table-wrap {
+	min-width: 0;
 	overflow-x: auto;
-	max-height: calc(60vh - 4rem);
-	overflow-y: auto;
+	overscroll-behavior-inline: contain;
+}
+
+.card-table-wrap:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+@container (min-width: 68rem) {
+	.card-table-wrap--long {
+		max-height: min(58vh, 30rem);
+		overflow-y: auto;
+		scrollbar-width: thin;
+	}
+
+	.card-table-wrap--long .data-table th {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: var(--color-background-soft);
+	}
 }
 
 .data-table {
@@ -1228,7 +1288,7 @@ export default {
 	}
 
 	th {
-		padding: 10px 14px;
+		padding: 8px 12px;
 		font-size: 0.7rem;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -1252,7 +1312,7 @@ export default {
 	}
 
 	td {
-		padding: 10px 14px;
+		padding: 8px 12px;
 		color: var(--color-main-text);
 		vertical-align: middle;
 	}
@@ -1283,11 +1343,37 @@ export default {
 	text-align: center;
 }
 
+.data-table--wide {
+	table-layout: fixed;
+	min-width: 42rem;
+}
+
+.data-table--wide .col-name,
+.data-table--wide .col-desc {
+	max-width: none;
+}
+
+.data-table--wide .col-center {
+	padding-inline: 6px;
+}
+
+.absence-col--name {
+	width: 22%;
+}
+
+.absence-col--boolean {
+	width: 4.5rem;
+}
+
+.absence-col--actions {
+	width: 3rem;
+}
+
 .empty-row {
 	text-align: center;
 	color: var(--color-text-maxcontrast);
 	font-style: italic;
-	padding: 24px 14px !important;
+	padding: 18px 12px !important;
 }
 
 /* ── Badges / chips ── */
@@ -1308,14 +1394,16 @@ export default {
 .pill {
 	display: inline-flex;
 	align-items: center;
-	padding: 2px 10px;
+	justify-content: center;
+	min-width: 28px;
+	padding: 2px 6px;
 	border-radius: 999px;
 	font-size: 0.7rem;
 	font-weight: 600;
 
 	&--yes {
-		background: #dcfce7;
-		color: #166534;
+		background: var(--color-success-hover);
+		color: var(--color-success-text);
 	}
 
 	&--no {
@@ -1340,9 +1428,10 @@ export default {
 .official-warning {
 	margin: 6px 0 0 !important;
 	padding: 8px 12px;
+	border: 1px solid var(--color-warning);
 	border-radius: var(--border-radius);
-	background: #fef9c3;
-	color: #713f12;
+	background: var(--color-warning-hover);
+	color: var(--color-warning-text);
 	font-size: 0.8rem !important;
 }
 

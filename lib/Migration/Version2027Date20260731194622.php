@@ -4,15 +4,26 @@ declare(strict_types=1);
 namespace OCA\Empleados\Migration;
 
 use Closure;
+use DateTime;
 use OCP\DB\ISchemaWrapper;
+use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 class Version2027Date20260731194622 extends SimpleMigrationStep {
 
+	public function __construct(
+		private IDBConnection $db,
+	) {
+	}
+
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
+		if (!$schema->hasTable('empleados_festivos')) {
+			return $schema;
+		}
+
 		$table = $schema->getTable('empleados_festivos');
 
 		if (!$table->hasColumn('tipo')) {
@@ -40,10 +51,15 @@ class Version2027Date20260731194622 extends SimpleMigrationStep {
 	}
 
 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
+		/** @var ISchemaWrapper $schema */
+		$schema = $schemaClosure();
+		if (!$schema->hasTable('empleados_festivos')) {
+			return;
+		}
+
 		// Sembrar los 7 festivos oficiales solo si la tabla está vacía de oficiales
-		$connection = \OC::$server->getDatabaseConnection();
-		$qb = $connection->getQueryBuilder();
-		$count = $qb->select($qb->createFunction('COUNT(*)'))
+		$qb = $this->db->getQueryBuilder();
+		$count = $qb->select($qb->func()->count('*'))
 			->from('empleados_festivos')
 			->where($qb->expr()->eq('oficial', $qb->createNamedParameter(1)))
 			->executeQuery()->fetchOne();
@@ -66,9 +82,9 @@ class Version2027Date20260731194622 extends SimpleMigrationStep {
 		foreach ($oficiales as $f) {
 			$fecha = $f['tipo'] === 'fijo'
 				? $f['fecha']
-				: \OCA\Empleados\Service\FestivosCalculator::nthWeekday($anio, $f['mes'], $f['dia'], $f['semana'])->format('m-d');
+				: $this->nthWeekday($anio, $f['mes'], $f['dia'], $f['semana'])->format('m-d');
 
-			$insert = $connection->getQueryBuilder();
+			$insert = $this->db->getQueryBuilder();
 			$insert->insert('empleados_festivos')
 				->values([
 					'nombre' => $insert->createNamedParameter($f['nombre']),
@@ -82,5 +98,28 @@ class Version2027Date20260731194622 extends SimpleMigrationStep {
 				])
 				->executeStatement();
 		}
+	}
+
+	/**
+	 * @param int $anio
+	 * @param int $mes 1-12
+	 * @param int $diaSemana ISO-8601: 1=lunes ... 7=domingo
+	 * @param int $semana 1,2,3,4 = esa ocurrencia; -1 = última del mes
+	 */
+	private function nthWeekday(int $anio, int $mes, int $diaSemana, int $semana): DateTime {
+		if ($semana > 0) {
+			$fecha = new DateTime(sprintf('%04d-%02d-01', $anio, $mes));
+			$primerDiaSemana = (int)$fecha->format('N');
+			$offset = ($diaSemana - $primerDiaSemana + 7) % 7;
+			$dia = 1 + $offset + ($semana - 1) * 7;
+			return new DateTime(sprintf('%04d-%02d-%02d', $anio, $mes, $dia));
+		}
+
+		$fecha = new DateTime(sprintf('%04d-%02d-01', $anio, $mes));
+		$fecha->modify('last day of this month');
+		$ultimoDiaSemana = (int)$fecha->format('N');
+		$offset = ($ultimoDiaSemana - $diaSemana + 7) % 7;
+		$fecha->modify("-{$offset} days");
+		return $fecha;
 	}
 }

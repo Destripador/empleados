@@ -1,109 +1,219 @@
 <template>
-	<div v-if="loading">
-		<!-- Loading section -->
-		<div class="center-screen">
-			<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
-		</div>
+	<div v-if="loading" class="app-settings-loading" role="status">
+		<NcLoadingIcon :size="40" :name="t('empleados', 'Loading...')" />
 	</div>
-	<div v-else id="admin">
-		<div class="container">
-			<section class="parking-mode-control" aria-labelledby="parking-mode-title">
-				<h2 id="parking-mode-title">
-					{{ t('empleados', 'Parking publication status') }}
-				</h2>
-				<p class="parking-mode-current">
-					<span>{{ t('empleados', 'Current state') }}</span>
-					<strong>{{ isMaintenance ? t('empleados', 'Under maintenance') : t('empleados', 'Operational') }}</strong>
-				</p>
+	<div v-else class="app-settings-page parking-settings">
+		<header class="app-settings-header">
+			<p class="app-settings-eyebrow">
+				{{ t('empleados', 'Parking') }}
+			</p>
+			<h2 class="app-settings-title">
+				{{ t('empleados', 'Parking settings') }}
+			</h2>
+			<p class="app-settings-description">
+				{{ t('empleados', 'Manage publication status, space assignments and obstruction relationships.') }}
+			</p>
+		</header>
+
+		<section class="app-settings-panel parking-status-card" aria-labelledby="parking-mode-title">
+			<header class="app-settings-panel__header">
+				<div>
+					<h3 id="parking-mode-title">
+						{{ t('empleados', 'Parking publication status') }}
+					</h3>
+					<p>{{ t('empleados', 'Control whether the parking map is published or temporarily under maintenance.') }}</p>
+				</div>
+				<span v-if="parkingStatusLoaded"
+					class="parking-status"
+					:class="isMaintenance ? 'parking-status--maintenance' : 'parking-status--operational'">
+					<AlertCircleOutline v-if="isMaintenance" :size="16" aria-hidden="true" />
+					<CheckCircleOutline v-else :size="16" aria-hidden="true" />
+					{{ isMaintenance ? t('empleados', 'Under maintenance') : t('empleados', 'Operational') }}
+				</span>
+			</header>
+
+			<div class="app-settings-panel__body parking-status-card__body">
+				<div v-if="!parkingStatusLoaded" class="parking-status-unavailable" role="status">
+					<AlertCircleOutline :size="28" aria-hidden="true" />
+					<div>
+						<strong>{{ t('empleados', 'Parking status is unavailable') }}</strong>
+						<p>{{ t('empleados', 'The map cannot be displayed safely until its publication status is known.') }}</p>
+					</div>
+					<NcButton @click="fetchParkingStatus">
+						{{ t('empleados', 'Retry') }}
+					</NcButton>
+				</div>
+
 				<ParkingMaintenanceBanner
-					v-if="isMaintenance"
+					v-else-if="isMaintenance"
+					embedded
 					:status="parkingStatus"
 					:can-publish="true"
 					:publishing="publishing"
 					@publish="showPublishModal = true" />
+
 				<div v-else class="parking-mode-operational">
 					<div>
-						<strong>{{ t('empleados', 'Operational') }}</strong>
+						<strong>{{ t('empleados', 'Parking published') }}</strong>
 						<p>{{ t('empleados', 'The current parking map is visible to authorized users.') }}</p>
 					</div>
 					<NcButton type="primary" @click="showActivationModal = true">
 						{{ t('empleados', 'Activate maintenance') }}
 					</NcButton>
 				</div>
-			</section>
-			<VueTabs>
-				<VTab :title="t('empleados', 'Asignar espacios')">
-					<div class="table_component" role="region" tabindex="0">
-						<table>
-							<thead>
-								<tr>
-									<th>{{ t('empleados', 'Space') }}</th>
-									<th>{{ t('empleados', 'Employees') }}</th>
-									<th>{{ t('empleados', 'Action') }}</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-for="espacio in espacios" :key="espacio.id_espacio">
-									<td>{{ espacio.numero }}</td>
-									<td v-if="casillaEdit == espacio.id_espacio">
-										<NcSelect
-											v-bind="selectConfig"
-											v-model="empleados"
-											:input-label="t('empleados','Usuarios que ocupa el espacio')" />
-									</td>
-									<td v-else>
-										{{ t('empleados', 'Ready to edit') }}
-									</td>
-									<td>
-										<NcButton v-if="casillaEdit == espacio.id_espacio" @click="guardar(espacio.id_espacio)">
-											{{ t('empleados', 'Save') }}
-										</NcButton>
-										<NcButton v-else @click="edit(espacio.id_espacio)">
-											{{ t('empleados', 'Edit') }}
-										</NcButton>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+			</div>
+		</section>
+
+		<section class="app-settings-panel parking-assignments" aria-labelledby="parking-assignments-title">
+			<header class="app-settings-panel__header">
+				<div>
+					<h3 id="parking-assignments-title">
+						{{ t('empleados', 'Assignments') }}
+					</h3>
+					<p>{{ t('empleados', 'Manage the occupants of each space and the spaces that it obstructs.') }}</p>
+				</div>
+			</header>
+
+			<div v-if="espaciosLoadError" class="parking-spaces-error" role="alert">
+				<AlertCircleOutline :size="28" aria-hidden="true" />
+				<div>
+					<strong>{{ t('empleados', 'Could not load the parking spaces.') }}</strong>
+					<p>{{ t('empleados', 'Assignments cannot be shown until the space catalog is available.') }}</p>
+				</div>
+				<NcButton :disabled="espaciosLoading" @click="fetchEspacios">
+					{{ t('empleados', 'Retry') }}
+				</NcButton>
+			</div>
+
+			<VueTabs v-else class="settings-secondary-tabs parking-tabs">
+				<VTab id="parking-space-assignments" :title="t('empleados', 'Asignar espacios')">
+					<div class="parking-tab-body">
+						<div v-if="espacios.length"
+							class="parking-table-region"
+							role="region"
+							:aria-label="t('empleados', 'Parking space assignments')"
+							tabindex="0">
+							<table class="parking-table">
+								<caption class="app-settings-sr-only">
+									{{ t('empleados', 'Parking space assignments') }}
+								</caption>
+								<thead>
+									<tr>
+										<th scope="col" class="parking-table__space">
+											{{ t('empleados', 'Space') }}
+										</th>
+										<th scope="col">
+											{{ t('empleados', 'Employees') }}
+										</th>
+										<th scope="col" class="parking-table__actions">
+											{{ t('empleados', 'Action') }}
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr v-for="espacio in espacios" :key="espacio.id_espacio">
+										<td class="parking-table__space">
+											<strong>{{ espacio.numero }}</strong>
+										</td>
+										<td v-if="casillaEdit == espacio.id_espacio">
+											<NcSelect
+												v-bind="selectConfig"
+												v-model="empleados"
+												:input-label="t('empleados','Usuarios que ocupa el espacio')" />
+										</td>
+										<td v-else>
+											<span class="parking-table__hint">
+												{{ t('empleados', 'Select Edit to review or change assigned employees.') }}
+											</span>
+										</td>
+										<td class="parking-table__actions">
+											<NcButton v-if="casillaEdit == espacio.id_espacio"
+												type="primary"
+												@click="guardar(espacio.id_espacio)">
+												{{ t('empleados', 'Save') }}
+											</NcButton>
+											<NcButton v-else @click="edit(espacio.id_espacio)">
+												{{ t('empleados', 'Edit') }}
+											</NcButton>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<NcEmptyContent v-else
+							:name="t('empleados', 'No parking spaces configured')"
+							:description="t('empleados', 'Parking spaces will appear here when they are added.')">
+							<template #icon>
+								<ParkingIcon :size="32" />
+							</template>
+						</NcEmptyContent>
 					</div>
 				</VTab>
-				<VTab :title="t('empleados', 'Espacios que obstruyen')">
-					<div class="table_component" role="region" tabindex="0">
-						<table>
-							<thead>
-								<tr>
-									<th>{{ t('empleados', 'Space') }}</th>
-									<th>{{ t('empleados', 'Blocked spaces') }}</th>
-									<th>{{ t('empleados', 'Action') }}</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-for="espacio in espacios" :key="espacio.id_espacio">
-									<td>{{ espacio.numero }}</td>
-									<td v-if="casillaEditObs == espacio.id_espacio">
-										<NcSelect
-											v-bind="selectObstruyenConfig"
-											v-model="espaciosObstruyen"
-											:input-label="t('empleados','Espacios a los que obstruye')" />
-									</td>
-									<td v-else>
-										{{ t('empleados', 'Ready to edit') }}
-									</td>
-									<td>
-										<NcButton v-if="casillaEditObs == espacio.id_espacio" @click="guardarObstruye(espacio.id_espacio)">
-											{{ t('empleados', 'Save') }}
-										</NcButton>
-										<NcButton v-else @click="editObstruye(espacio.id_espacio)">
-											{{ t('empleados', 'Edit') }}
-										</NcButton>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+				<VTab id="parking-obstruction-relationships" :title="t('empleados', 'Espacios que obstruyen')">
+					<div class="parking-tab-body">
+						<div v-if="espacios.length"
+							class="parking-table-region"
+							role="region"
+							:aria-label="t('empleados', 'Parking obstruction relationships')"
+							tabindex="0">
+							<table class="parking-table">
+								<caption class="app-settings-sr-only">
+									{{ t('empleados', 'Parking obstruction relationships') }}
+								</caption>
+								<thead>
+									<tr>
+										<th scope="col" class="parking-table__space">
+											{{ t('empleados', 'Space') }}
+										</th>
+										<th scope="col">
+											{{ t('empleados', 'Blocked spaces') }}
+										</th>
+										<th scope="col" class="parking-table__actions">
+											{{ t('empleados', 'Action') }}
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr v-for="espacio in espacios" :key="espacio.id_espacio">
+										<td class="parking-table__space">
+											<strong>{{ espacio.numero }}</strong>
+										</td>
+										<td v-if="casillaEditObs == espacio.id_espacio">
+											<NcSelect
+												v-bind="selectObstruyenConfig"
+												v-model="espaciosObstruyen"
+												:input-label="t('empleados','Espacios a los que obstruye')" />
+										</td>
+										<td v-else>
+											<span class="parking-table__hint">
+												{{ t('empleados', 'Select Edit to review or change blocked spaces.') }}
+											</span>
+										</td>
+										<td class="parking-table__actions">
+											<NcButton v-if="casillaEditObs == espacio.id_espacio"
+												type="primary"
+												@click="guardarObstruye(espacio.id_espacio)">
+												{{ t('empleados', 'Save') }}
+											</NcButton>
+											<NcButton v-else @click="editObstruye(espacio.id_espacio)">
+												{{ t('empleados', 'Edit') }}
+											</NcButton>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<NcEmptyContent v-else
+							:name="t('empleados', 'No parking spaces configured')"
+							:description="t('empleados', 'Parking spaces will appear here when they are added.')">
+							<template #icon>
+								<ParkingIcon :size="32" />
+							</template>
+						</NcEmptyContent>
 					</div>
 				</VTab>
 			</VueTabs>
-		</div>
+		</section>
 
 		<NcModal v-if="showActivationModal"
 			:name="t('empleados', 'Activate parking maintenance')"
@@ -164,6 +274,7 @@
 
 // nextcloud/vue
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
 import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
@@ -175,16 +286,23 @@ import axios from '@nextcloud/axios'
 import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js'
 import { translate as t } from '@nextcloud/l10n'
 import ParkingMaintenanceBanner from '../components/Estacionamiento/ParkingMaintenanceBanner.vue'
+import AlertCircleOutline from 'vue-material-design-icons/AlertCircleOutline.vue'
+import CheckCircleOutline from 'vue-material-design-icons/CheckCircleOutline.vue'
+import ParkingIcon from 'vue-material-design-icons/Parking.vue'
 
 export default {
 	name: 'EstacionamientoSettings',
 	components: {
+		AlertCircleOutline,
+		CheckCircleOutline,
 		NcButton,
+		NcEmptyContent,
 		NcModal,
 		NcSelect,
 		NcTextField,
 		NcLoadingIcon,
 		ParkingMaintenanceBanner,
+		ParkingIcon,
 		VueTabs,
 		VTab,
 	},
@@ -192,6 +310,9 @@ export default {
 	data() {
 		return {
 			loading: true,
+			parkingStatusLoaded: false,
+			espaciosLoading: false,
+			espaciosLoadError: false,
 			parkingStatus: {
 				mode: 'operational',
 				maintenance: false,
@@ -284,6 +405,7 @@ export default {
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/espacios/status'))
 				this.parkingStatus = response?.data?.ocs?.data || this.parkingStatus
+				this.parkingStatusLoaded = true
 				if (!this.isMaintenance) {
 					this.showPublishModal = false
 				}
@@ -437,11 +559,17 @@ export default {
 			}
 		},
 		async fetchEspacios() {
+			this.espaciosLoading = true
 			try {
 				const response = await axios.get(generateUrl('/apps/empleados/GetEspacios'))
-				this.espacios = response?.data?.ocs?.data.Espacio
+				const espacios = response?.data?.ocs?.data?.Espacio
+				this.espacios = Array.isArray(espacios) ? espacios : []
+				this.espaciosLoadError = false
 			} catch (err) {
-				showError('Error al cargar espacios')
+				this.espaciosLoadError = true
+				showError(t('empleados', 'Could not load the parking spaces.'))
+			} finally {
+				this.espaciosLoading = false
 			}
 		},
 	},
@@ -449,120 +577,208 @@ export default {
 </script>
 
 <style scoped>
-.container {
-    display: grid;
-    gap: 22px;
+.parking-status-card__body {
+	padding: 0;
 }
 
-.parking-mode-control {
-    display: grid;
-    gap: 12px;
-    max-width: 1100px;
+.parking-status {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 6px;
+	min-height: 26px;
+	padding: 2px 9px;
+	border-radius: var(--border-radius-pill, 999px);
+	font-size: 0.8rem;
+	font-weight: 700;
+	white-space: nowrap;
 }
 
-.parking-mode-control h2 {
-    margin: 0;
+.parking-status--maintenance {
+	background: var(--color-warning-hover);
+	color: var(--color-warning-text);
 }
 
-.parking-mode-current {
-    display: flex;
-    gap: 8px;
-    margin: 0;
+.parking-status--operational {
+	background: var(--color-success-hover);
+	color: var(--color-success-text);
 }
 
-.parking-mode-operational {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 16px;
-    border: 1px solid var(--color-border);
-    border-inline-start: 5px solid var(--color-success);
-    border-radius: var(--border-radius-large);
-    background: var(--color-main-background);
+.parking-mode-operational,
+.parking-status-unavailable {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 16px;
 }
 
-.parking-mode-operational p {
-    margin: 4px 0 0;
-    color: var(--color-text-maxcontrast);
+.parking-mode-operational > div,
+.parking-status-unavailable > div {
+	display: grid;
+	min-width: 0;
+	gap: 3px;
+}
+
+.parking-mode-operational p,
+.parking-status-unavailable p {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.875rem;
+	line-height: 1.4;
+}
+
+.parking-status-unavailable {
+	justify-content: flex-start;
+	color: var(--color-warning-text);
+	background: var(--color-warning-hover);
+}
+
+.parking-spaces-error {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin: 16px;
+	padding: 16px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-error-hover);
+	color: var(--color-error-text);
+}
+
+.parking-spaces-error > div {
+	display: grid;
+	min-width: 0;
+	gap: 3px;
+}
+
+.parking-spaces-error p {
+	margin: 0;
+	line-height: 1.4;
+}
+
+.parking-spaces-error :deep(.button-vue) {
+	margin-inline-start: auto;
+}
+
+.parking-status-unavailable :deep(.button-vue) {
+	margin-inline-start: auto;
+}
+
+.parking-tab-body {
+	min-width: 0;
+	padding: 16px;
+}
+
+.parking-table-region {
+	width: 100%;
+	overflow-x: auto;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+}
+
+.parking-table-region:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.parking-table {
+	width: 100%;
+	min-width: 620px;
+	border-collapse: collapse;
+	font-size: 0.875rem;
+	text-align: start;
+}
+
+.parking-table thead {
+	background: var(--color-background-hover);
+}
+
+.parking-table th,
+.parking-table td {
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--color-border);
+	color: var(--color-main-text);
+	vertical-align: middle;
+}
+
+.parking-table th {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-align: start;
+	text-transform: uppercase;
+}
+
+.parking-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.parking-table tbody tr:hover {
+	background: var(--color-background-hover);
+}
+
+.parking-table__space {
+	width: 7rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.parking-table__actions {
+	width: 8rem;
+	text-align: end !important;
+	white-space: nowrap;
+}
+
+.parking-table__hint {
+	color: var(--color-text-maxcontrast);
 }
 
 .parking-mode-modal {
-    display: grid;
-    gap: 14px;
-    box-sizing: border-box;
-    width: min(540px, calc(100vw - 32px));
-    padding: 22px 24px 24px;
+	display: grid;
+	box-sizing: border-box;
+	width: min(540px, calc(100vw - 32px));
+	gap: 14px;
+	padding: 22px 24px 24px;
 }
 
 .parking-mode-modal h3,
 .parking-mode-modal p {
-    margin: 0;
+	margin: 0;
 }
 
 .parking-mode-modal__error {
-    color: var(--color-error);
-    font-weight: 600;
+	color: var(--color-error);
+	font-weight: 600;
 }
 
 .parking-mode-modal__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 6px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 6px;
 }
 
 @media (max-width: 600px) {
-    .parking-mode-operational {
-        align-items: stretch;
-        flex-direction: column;
-    }
+	.parking-mode-operational,
+	.parking-status-unavailable,
+	.parking-spaces-error {
+		align-items: stretch;
+		flex-direction: column;
+	}
 
-    .parking-mode-modal__actions {
-        flex-direction: column-reverse;
-    }
-}
+	.parking-status-unavailable :deep(.button-vue),
+	.parking-spaces-error :deep(.button-vue) {
+		margin-inline-start: 0;
+	}
 
-    .table_component {
-    overflow: auto;
-    width: 100%;
-}
+	.parking-mode-operational :deep(.button-vue),
+	.parking-status-unavailable :deep(.button-vue),
+	.parking-spaces-error :deep(.button-vue) {
+		width: 100%;
+	}
 
-.table_component table {
-    border: 1px solid #dededf;
-    height: 100%;
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    border-spacing: 1px;
-    text-align: left;
-}
-
-.table_component caption {
-    caption-side: top;
-    text-align: left;
-}
-
-.table_component th {
-    border: 1px solid #dededf;
-    background-color: #eceff1;
-    color: #000000;
-    padding: 5px;
-}
-
-.table_component td {
-    border: 1px solid #dededf;
-    background-color: #ffffff;
-    color: #000000;
-    padding: 5px;
-}
-
-/* Centered loading */
-.center-screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 100vh;
+	.parking-mode-modal__actions {
+		flex-direction: column-reverse;
+	}
 }
 </style>

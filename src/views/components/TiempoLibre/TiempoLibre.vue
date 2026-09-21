@@ -2196,10 +2196,6 @@ export default {
 			this.modalEvento = true
 		},
 
-		/**
-		 * Igual que onDateRangeSelect (mismas validaciones) pero pensado
-		 * para el flujo de dos toques del calendario móvil.
-		 */
 		tryOpenMobileRequest(startDate, endDate) {
 			if (this.configuraciones.modulo_ausencias_readonly === 'true') {
 				showInfo(t('empleados', 'This module is in read-only mode'))

@@ -50,10 +50,10 @@ class Version2044Date20260825020800 extends SimpleMigrationStep {
 			->setMaxResults(1);
 
 		$result = $qb->executeQuery();
-		$exists = $result->fetch();
+		$exists = $result->fetchOne();
 		$result->closeCursor();
 
-		if ($exists) {
+		if ($exists !== false) {
 			return;
 		}
 

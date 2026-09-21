@@ -97,6 +97,9 @@ class Version2026Date20260804005705 extends SimpleMigrationStep {
 		];
 
 		foreach ($configEntries as $nombre => $data) {
+			if ($this->configExists($nombre)) {
+				continue;
+			}
 			$query = $this->connection->getQueryBuilder();
 			$query->insert('empleados_noi_conf')
 				->values([
@@ -143,6 +146,9 @@ class Version2026Date20260804005705 extends SimpleMigrationStep {
 		];
 
 		foreach ($estados as $clave => $nombre) {
+			if ($this->estadoExists($clave)) {
+				continue;
+			}
 			$query = $this->connection->getQueryBuilder();
 			$query->insert('empleados_ent_fed_noi')
 				->values([
@@ -151,5 +157,29 @@ class Version2026Date20260804005705 extends SimpleMigrationStep {
 				])
 				->executeStatement();
 		}
+	}
+
+	private function configExists(string $nombre): bool {
+		$qb = $this->connection->getQueryBuilder();
+		$result = $qb->select('id_noi_conf')
+			->from('empleados_noi_conf')
+			->where($qb->expr()->eq('nombre', $qb->createNamedParameter($nombre)))
+			->setMaxResults(1)
+			->executeQuery();
+		$exists = $result->fetchOne();
+		$result->closeCursor();
+		return $exists !== false;
+	}
+
+	private function estadoExists(string $clave): bool {
+		$qb = $this->connection->getQueryBuilder();
+		$result = $qb->select('id_ent_fed_noi')
+			->from('empleados_ent_fed_noi')
+			->where($qb->expr()->eq('clave', $qb->createNamedParameter($clave)))
+			->setMaxResults(1)
+			->executeQuery();
+		$exists = $result->fetchOne();
+		$result->closeCursor();
+		return $exists !== false;
 	}
 }

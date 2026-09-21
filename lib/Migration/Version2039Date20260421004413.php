@@ -40,6 +40,10 @@ class Version2039Date20260421004413 extends SimpleMigrationStep {
 		/** @var ISchemaWrapper $schema */
         $schema = $schemaClosure();
 
+        if (!$schema->hasTable('espacio')) {
+            return $schema;
+        }
+
         $tableEspacio = $schema->getTable('espacio');
 
         // 1. Modificar tabla 'espacio'

@@ -50,7 +50,7 @@ class ClientesDashboardService {
 		$summary = $this->buildSummary($clientes, $feeRows, $monthlyGenerated, $monthlyCollected);
 
 		$serviceRows = $this->parcialidadesMapper->getServicioBreakdownRows($filters);
-		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows);
+		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows, $clientes);
 
 		// El desglose de conversión se adjunta ANTES de filtrar por solo_pendientes,
 		// para que el campo 'fx' sobreviva al array_filter posterior.
@@ -481,13 +481,25 @@ class ClientesDashboardService {
 	 * @param list<array<string,mixed>> $rows
 	 * @return list<array{moneda:string, items:list<array<string,mixed>>}>
 	 */
-	private function buildServiceBreakdown(array $rows): array {
+	private function buildServiceBreakdown(array $rows, array $clientes = []): array {
+		$catalogo = [];
+		foreach ($clientes as $cliente) {
+			$id = (int)($cliente['id'] ?? 0);
+			if ($id > 0) {
+				$catalogo[$id] = [
+					'nombre' => (string)($cliente['nombre'] ?? ''),
+					'logo' => $cliente['logo'] ?? null,
+				];
+			}
+		}
+
 		$porMoneda = [];
 
 		foreach ($rows as $row) {
 			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
 			$especial = (int)($row['especial'] ?? 0) === 1;
 			$importe = (float)($row['total'] ?? 0);
+			$idCliente = (int)($row['id_cliente'] ?? 0);
 
 			[$servicio, $anio, $esFijo] = $this->normalizarServicio(
 				(string)($row['tipo_servicio'] ?? ''),
@@ -502,20 +514,35 @@ class ClientesDashboardService {
 				'es_fijo' => $esFijo,
 				'total' => 0.0,
 				'anios' => [],
+				'clientes' => [],
 			];
-
-			$porMoneda[$moneda][$key]['total'] += $importe;
 
 			$anioKey = $anio !== null ? (string)$anio : 'sin_anio';
-			$porMoneda[$moneda][$key]['anios'][$anioKey] ??= [
-				'anio' => $anio,
-				'total' => 0.0,
-			];
+
+			$porMoneda[$moneda][$key]['total'] += $importe;
+			$porMoneda[$moneda][$key]['anios'][$anioKey] ??= ['anio' => $anio, 'total' => 0.0];
 			$porMoneda[$moneda][$key]['anios'][$anioKey]['total'] += $importe;
+
+			if ($idCliente > 0) {
+				$porMoneda[$moneda][$key]['clientes'][$idCliente] ??= [
+					'id' => $idCliente,
+					'nombre' => $catalogo[$idCliente]['nombre'] ?? ('Cliente #' . $idCliente),
+					'logo' => $catalogo[$idCliente]['logo'] ?? null,
+					'total' => 0.0,
+					'anios' => [],
+				];
+
+				$porMoneda[$moneda][$key]['clientes'][$idCliente]['total'] += $importe;
+				$porMoneda[$moneda][$key]['clientes'][$idCliente]['anios'][$anioKey] ??= [
+					'anio' => $anio,
+					'total' => 0.0,
+				];
+				$porMoneda[$moneda][$key]['clientes'][$idCliente]['anios'][$anioKey]['total'] += $importe;
+			}
 		}
 
 		$ordenFijos = [
-			'auditoria financiera y fiscal' => 0,
+			'auditoria fiscal y financiera' => 0,
 			'auditoria financiera' => 1,
 			'auditoria fiscal' => 2,
 			'procedimientos convenidos' => 3,
@@ -529,24 +556,21 @@ class ClientesDashboardService {
 
 			foreach ($items as $item) {
 				$item['total'] = round($item['total'], 2);
+				$item['anios'] = $this->finalizeAnios($item['anios']);
 
-				$anios = array_values($item['anios']);
-				foreach ($anios as &$a) {
-					$a['total'] = round($a['total'], 2);
+				$clientesItem = [];
+				foreach ($item['clientes'] as $c) {
+					$c['total'] = round($c['total'], 2);
+					$c['anios'] = $this->finalizeAnios($c['anios']);
+					$clientesItem[] = $c;
 				}
-				unset($a);
 
-				usort($anios, static function (array $a, array $b): int {
-					if ($a['anio'] === null) {
-						return 1;
-					}
-					if ($b['anio'] === null) {
-						return -1;
-					}
-					return $b['anio'] <=> $a['anio'];
+				usort($clientesItem, static function (array $a, array $b): int {
+					$cmp = $b['total'] <=> $a['total'];
+					return $cmp !== 0 ? $cmp : strcasecmp($a['nombre'], $b['nombre']);
 				});
 
-				$item['anios'] = $anios;
+				$item['clientes'] = $clientesItem;
 				$lista[] = $item;
 			}
 
@@ -567,6 +591,33 @@ class ClientesDashboardService {
 		usort($result, static fn (array $a, array $b): int => strcmp($a['moneda'], $b['moneda']));
 
 		return $result;
+	}
+
+	/**
+	 * Redondea y ordena los totales por año
+	 *
+	 * @param array<string, array{anio:?int,total:float}> $anios
+	 * @return list<array{anio:?int,total:float}>
+	 */
+	private function finalizeAnios(array $anios): array {
+		$lista = array_values($anios);
+
+		foreach ($lista as &$a) {
+			$a['total'] = round($a['total'], 2);
+		}
+		unset($a);
+
+		usort($lista, static function (array $a, array $b): int {
+			if ($a['anio'] === null) {
+				return 1;
+			}
+			if ($b['anio'] === null) {
+				return -1;
+			}
+			return $b['anio'] <=> $a['anio'];
+		});
+
+		return $lista;
 	}
 
 	/**
@@ -591,7 +642,7 @@ class ClientesDashboardService {
 		}
 
 		$fijos = [
-			'auditoria financiera y fiscal' => 'Auditoria Financiera y Fiscal',
+			'auditoria fiscal y financiera' => 'Auditoria Fiscal y Financiera',
 			'auditoria financiera' => 'Auditoria Financiera',
 			'auditoria fiscal' => 'Auditoria Fiscal',
 			'procedimientos convenidos' => 'Procedimientos Convenidos',

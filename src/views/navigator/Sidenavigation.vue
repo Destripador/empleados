@@ -230,7 +230,7 @@
 				</div>
 
 				<!-- ESTACIONAMIENTO -->
-				<div>
+				<!--div>
 					<NcAppNavigationCaption v-if="navigationMode === 'normal'"
 						:heading-id="t('empleados', 'Estacionamiento')"
 						is-heading
@@ -244,7 +244,7 @@
 							</template>
 						</NcAppNavigationItem>
 					</NcAppNavigationList>
-				</div>
+				</div-->
 			</div>
 		</component>
 	</div>

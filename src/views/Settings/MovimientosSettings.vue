@@ -1,65 +1,109 @@
 <template>
-	<div v-if="loading">
-		<div class="center-screen">
-			<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
-		</div>
+	<div v-if="loading" class="app-settings-loading" role="status">
+		<NcLoadingIcon :size="40" :name="t('empleados', 'Loading...')" />
 	</div>
-	<div v-else class="card">
-		<div class="card-header">
-			<h3 class="card-title">
+	<div v-else class="app-settings-page app-settings-page--reading movements-page">
+		<header class="app-settings-header">
+			<p class="app-settings-eyebrow">
+				{{ t('empleados', 'Movimientos') }}
+			</p>
+			<h2 class="app-settings-title">
 				{{ t('empleados', 'Historial de actividades') }}
-			</h3>
+			</h2>
+			<p class="app-settings-description">
+				{{ t('empleados', 'Consulta las actividades realizadas dentro del módulo.') }}
+			</p>
+		</header>
 
-			<button class="filtros-btn" :class="{ activo: hayFiltrosActivos }" @click="abrirModal">
-				<FilterVariantIcon :size="18" />
-				<span>{{ t('empleados', 'Filtros') }}</span>
-				<span v-if="hayFiltrosActivos" class="filtros-dot" />
-			</button>
-		</div>
+		<section class="app-settings-panel movements-panel" aria-labelledby="movements-history-title">
+			<div class="app-settings-panel__header movements-panel__header">
+				<div>
+					<h3 id="movements-history-title">
+						{{ t('empleados', 'Historial de actividades') }}
+					</h3>
+				</div>
 
-		<div class="scroll-container">
-			<div v-if="loadingFiltro" class="center-screen small">
-				<NcLoadingIcon :size="32" appearance="dark" :name="t('empleados', 'Loading...')" />
+				<NcButton
+					class="movements-filter-button"
+					:class="{ 'movements-filter-button--active': hayFiltrosActivos }"
+					type="secondary"
+					:aria-label="etiquetaAriaFiltros"
+					:aria-expanded="modalAbierto ? 'true' : 'false'"
+					aria-haspopup="dialog"
+					aria-controls="movimientos-filtros-modal"
+					@click="abrirModal">
+					<template #icon>
+						<FilterVariantIcon :size="20" aria-hidden="true" />
+					</template>
+					<span>{{ t('empleados', 'Filtros') }}</span>
+					<span
+						v-if="hayFiltrosActivos"
+						class="movements-filter-count"
+						aria-hidden="true">
+						{{ cantidadFiltrosActivos }}
+					</span>
+				</NcButton>
 			</div>
 
-			<p v-else-if="movimientos.length === 0" class="empty">
-				<BellOutlineIcon :size="40" fill-color="#c4c4c4" />
-				<span>{{ t('empleados', 'No movements yet') }}</span>
-			</p>
+			<div class="app-settings-panel__body movements-panel__body">
+				<div
+					class="movements-scroll"
+					role="region"
+					aria-labelledby="movements-history-title"
+					tabindex="0">
+					<div v-if="loadingFiltro" class="movements-loading" role="status">
+						<NcLoadingIcon :size="32" :name="t('empleados', 'Loading...')" />
+					</div>
 
-			<ul v-else class="timeline">
-				<li v-for="mov in movimientos" :key="mov.id" class="timeline-item">
-					<div class="timeline-icon" :class="`bg-${getTipo(mov).color}`">
-						<component :is="getTipo(mov).icon" :size="18" fill-color="#ffffff" />
+					<div v-else-if="movimientos.length === 0" class="app-settings-empty movements-empty">
+						<BellOutlineIcon :size="40" aria-hidden="true" />
+						<p>{{ t('empleados', 'No movements yet') }}</p>
 					</div>
-					<div class="timeline-content">
-						<div class="timeline-header">
-							<span class="timeline-texto" v-html="formatMensaje(mov)" />
-						</div>
-						<div class="timeline-fecha">
-							<CalendarBlankOutlineIcon :size="14" fill-color="#8a8a8a" />
-							<span>{{ formatFecha(mov.fecha) }}</span>
-						</div>
-					</div>
-				</li>
-			</ul>
-		</div>
+
+					<ul v-else class="timeline">
+						<li v-for="mov in movimientos" :key="mov.id" class="timeline-item">
+							<div class="timeline-icon" :class="`bg-${getTipo(mov).color}`" aria-hidden="true">
+								<component :is="getTipo(mov).icon" :size="18" />
+							</div>
+							<article class="timeline-content">
+								<p class="timeline-actor">
+									{{ nombreActorMovimiento(mov) }}
+								</p>
+								<p v-if="descripcionMovimiento(mov)" class="timeline-description">
+									{{ descripcionMovimiento(mov) }}
+								</p>
+								<div class="timeline-date">
+									<CalendarBlankOutlineIcon :size="14" aria-hidden="true" />
+									<time :datetime="fechaIso(mov.fecha)">{{ formatFecha(mov.fecha) }}</time>
+								</div>
+							</article>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</section>
 
 		<!-- Modal de filtros -->
-		<NcModal v-if="modalAbierto" size="normal" @close="modalAbierto = false">
-			<div class="modal-filtros">
-				<!-- Atrapa el autofocus de NcModal para que no caiga en el primer NcSelect
-                    y lo abra solo. No es visible ni interactivo para el usuario. -->
-				<div ref="focusTrap" tabindex="-1" class="focus-trap-inicial" />
-
-				<h3 class="modal-titulo">
+		<NcModal
+			v-if="modalAbierto"
+			label-id="movimientos-filtros-title"
+			size="normal"
+			@close="modalAbierto = false">
+			<div id="movimientos-filtros-modal" class="modal-filtros">
+				<h3
+					id="movimientos-filtros-title"
+					ref="modalTitle"
+					tabindex="-1"
+					class="modal-titulo">
 					{{ t('empleados', 'Filtros') }}
 				</h3>
 
 				<div class="filtro-campo">
-					<label>{{ t('empleados', 'Módulo') }}</label>
+					<label for="movements-filter-module">{{ t('empleados', 'Módulo') }}</label>
 					<NcSelect
 						v-model="borrador.modulo"
+						input-id="movements-filter-module"
+						label-outside
 						:options="opcionesModulo"
 						label="nombre"
 						:reduce="o => o.id"
@@ -68,9 +112,11 @@
 				</div>
 
 				<div class="filtro-campo">
-					<label>{{ t('empleados', 'Empleado') }}</label>
+					<label for="movements-filter-employee">{{ t('empleados', 'Empleado') }}</label>
 					<NcSelect
 						v-model="borrador.idEmpleado"
+						input-id="movements-filter-employee"
+						label-outside
 						:options="opcionesEmpleado"
 						label="nombre"
 						:reduce="o => o.id_empleado"
@@ -79,9 +125,11 @@
 				</div>
 
 				<div v-if="borrador.modulo" class="filtro-campo">
-					<label>{{ t('empleados', 'Tipo de movimiento') }}</label>
+					<label for="movements-filter-type">{{ t('empleados', 'Tipo de movimiento') }}</label>
 					<NcSelect
 						v-model="borrador.tipo"
+						input-id="movements-filter-type"
+						label-outside
 						:options="opcionesTipoActual"
 						label="nombre"
 						:reduce="o => o.id"
@@ -91,12 +139,18 @@
 
 				<div class="filtro-fechas">
 					<div class="filtro-campo">
-						<label>{{ t('empleados', 'Desde') }}</label>
-						<input v-model="borrador.desde" type="date" class="input-fecha">
+						<label for="movements-filter-from">{{ t('empleados', 'Desde') }}</label>
+						<input id="movements-filter-from"
+							v-model="borrador.desde"
+							type="date"
+							class="input-fecha">
 					</div>
 					<div class="filtro-campo">
-						<label>{{ t('empleados', 'Hasta') }}</label>
-						<input v-model="borrador.hasta" type="date" class="input-fecha">
+						<label for="movements-filter-to">{{ t('empleados', 'Hasta') }}</label>
+						<input id="movements-filter-to"
+							v-model="borrador.hasta"
+							type="date"
+							class="input-fecha">
 					</div>
 				</div>
 
@@ -114,11 +168,15 @@
 </template>
 
 <script>
-import { NcLoadingIcon, NcSelect, NcModal, NcButton } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
+
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 
 import CheckCircleOutlineIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
 import CloseCircleOutlineIcon from 'vue-material-design-icons/CloseCircleOutline.vue'
@@ -242,9 +300,19 @@ export default {
 		}
 	},
 	computed: {
-		hayFiltrosActivos() {
+		cantidadFiltrosActivos() {
 			const f = this.filtrosAplicados
-			return !!(f.modulo || f.idEmpleado || f.tipo || f.desde || f.hasta)
+			return [f.modulo, f.idEmpleado, f.tipo, f.desde, f.hasta]
+				.filter(valor => valor !== null && valor !== '').length
+		},
+		hayFiltrosActivos() {
+			return this.cantidadFiltrosActivos > 0
+		},
+		etiquetaAriaFiltros() {
+			const etiqueta = t('empleados', 'Filtros')
+			return this.hayFiltrosActivos
+				? `${etiqueta}: ${this.cantidadFiltrosActivos}`
+				: etiqueta
 		},
 		// Catálogo de tipos correspondiente al módulo seleccionado en el modal
 		// (borrador, no filtrosAplicados, porque se usa mientras se edita el filtro).
@@ -271,43 +339,36 @@ export default {
 	},
 	methods: {
 		t,
+		fechaIso(fecha) {
+			return fecha ? `${String(fecha).replace(' ', 'T')}Z` : ''
+		},
 		formatFecha(fecha) {
-			const d = new Date(fecha.replace(' ', 'T') + 'Z')
+			const d = new Date(this.fechaIso(fecha))
 
 			return `${d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`
 		},
-		formatMensaje(mov) {
-			let mensaje = mov.mensaje || ''
+		nombreActorMovimiento(mov) {
+			const actor = String(mov?.nombre_actor || '').trim()
+			return actor || t('empleados', 'Sistema')
+		},
+		descripcionMovimiento(mov) {
+			const mensaje = String(mov?.mensaje || '')
+				.replace(/\*\*(.*?)\*\*/g, '$1')
+				.trim()
 
 			if (!mensaje) return ''
 
-			const nombres = [mov.nombre_actor, mov.nombre_afectado]
-				.filter(n => n && String(n).trim() !== '')
-				.map(n => String(n))
+			const actor = String(mov?.nombre_actor || '').trim()
+			const prefijo = actor || (/^Sistema(?=\s|[-–—:])/i.test(mensaje) ? 'Sistema' : '')
+			if (!prefijo) return mensaje
 
-			if (!mov.nombre_actor && mensaje.startsWith('Sistema')) {
-				nombres.push('Sistema')
-			}
+			const escapado = prefijo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+			const sinActor = mensaje
+				.replace(new RegExp(`^${escapado}(?=\\s|[-–—:])\\s*(?:[-–—:]\\s*)?`, 'i'), '')
+				.trim()
 
-			const unicos = [...new Set(nombres)].sort((a, b) => b.length - a.length)
-
-			unicos.forEach((nombre) => {
-				const escapado = nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-				const regex = new RegExp(escapado, 'g')
-
-				mensaje = mensaje.replace(
-					regex,
-					`<strong>${nombre}</strong>`,
-				)
-			})
-
-			// Convertir **texto** a negritas
-			mensaje = mensaje.replace(
-				/\*\*(.*?)\*\*/g,
-				'<strong>$1</strong>',
-			)
-
-			return mensaje
+			if (!sinActor) return mensaje
+			return sinActor.charAt(0).toLocaleUpperCase() + sinActor.slice(1)
 		},
 		getTipo(mov) {
 			const mapa = {
@@ -345,7 +406,7 @@ export default {
 			this.borrador = { ...this.filtrosAplicados }
 			this.modalAbierto = true
 			await this.$nextTick()
-			this.$refs.focusTrap?.focus()
+			this.$refs.modalTitle?.focus()
 		},
 		async aplicarFiltros() {
 			this.filtrosAplicados = { ...this.borrador }
@@ -392,71 +453,49 @@ export default {
 </script>
 
 <style scoped>
-.card {
-	max-width: 700px;
-	margin: 0 auto;
-	border: 1px solid var(--color-border);
-	border-radius: 12px;
-	background: var(--color-main-background);
-	overflow: hidden;
-}
-
-.card-header {
-	display: flex;
+.movements-panel__header {
 	align-items: center;
-	justify-content: space-between;
-	padding: 14px 16px;
-	border-bottom: 1px solid var(--color-border);
 }
 
-.card-title {
-	margin: 0;
-	font-size: 1rem;
-	font-weight: 700;
-	color: var(--color-main-text);
+.movements-panel__body {
+	padding: 0;
 }
 
-/* ---------- Botón de filtros ---------- */
-.filtros-btn {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
-	border-radius: 20px;
-	border: 1px solid var(--color-border);
-	background: var(--color-background-hover);
-	color: var(--color-main-text);
-	font-size: 0.85rem;
-	font-weight: 600;
-	cursor: pointer;
-	position: relative;
-	transition: background-color 0.15s ease, border-color 0.15s ease;
+.movements-filter-button {
+	flex: 0 0 auto;
 }
 
-.filtros-btn:hover {
-	background: var(--color-background-dark);
-}
-
-.filtros-btn.activo {
-	border-color: var(--color-primary-element);
+.movements-filter-button--active {
 	color: var(--color-primary-element);
 }
 
-.filtros-dot {
-	width: 7px;
-	height: 7px;
-	border-radius: 50%;
+.movements-filter-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: 20px;
+	height: 20px;
+	margin-inline-start: 2px;
+	padding-inline: 6px;
+	border-radius: 999px;
 	background: var(--color-primary-element);
-	margin-left: 2px;
+	color: var(--color-primary-element-text);
+	font-size: 0.75rem;
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+	line-height: 1;
 }
 
 /* ---------- Modal de filtros ---------- */
 .modal-filtros {
-	padding: 24px;
 	display: flex;
+	box-sizing: border-box;
+	width: min(480px, calc(100vw - 32px));
+	min-width: 0;
+	padding: 24px;
 	flex-direction: column;
 	gap: 16px;
-	min-width: 320px;
 }
 
 .modal-titulo {
@@ -478,93 +517,94 @@ export default {
 	color: var(--color-text-maxcontrast);
 }
 
-.focus-trap-inicial {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	outline: none;
+.modal-titulo:focus {
+	border-radius: var(--border-radius);
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 3px;
 }
 
 .filtro-fechas {
-	display: flex;
-	gap: 24px;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
 	margin-top: 4px;
 }
 
 .filtro-fechas .filtro-campo {
-	flex: 1;
 	gap: 8px;
+	min-width: 0;
 }
 
 .input-fecha {
-	height: 42px;
-	border-radius: var(--border-radius, 6px);
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 42px;
+	padding: 0 12px;
 	border: 1px solid var(--color-border-maxcontrast);
+	border-radius: var(--border-radius);
 	background: var(--color-main-background);
 	color: var(--color-main-text);
-	padding: 0 14px;
 	font-size: 0.95rem;
-	width: 100%;
-	box-sizing: border-box;
 }
 
-.input-fecha:focus {
+.input-fecha:focus-visible {
 	border-color: var(--color-primary-element);
-	outline: none;
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .modal-acciones {
 	display: flex;
+	flex-wrap: wrap;
 	justify-content: flex-end;
 	gap: 8px;
 	margin-top: 8px;
 }
 
-/* ---------- Contenedor con scroll (la "tablita") ---------- */
-.scroll-container {
-	max-height: 420px;
+/* ---------- Historial con scroll sólo cuando el contenido lo requiere ---------- */
+.movements-scroll {
+	max-height: min(68vh, 720px);
 	overflow-y: auto;
-	padding: 6px 10px;
+	padding: 4px 12px 8px;
+	scrollbar-width: thin;
 }
 
-/* ---------- Estado vacío ---------- */
-.empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10px;
-	text-align: center;
+.movements-scroll:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.movements-loading {
+	display: grid;
+	place-items: center;
+	min-height: 180px;
 	color: var(--color-text-maxcontrast);
-	padding: 50px 20px;
-	font-size: 0.95rem;
 }
 
-.center-screen {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 40vh;
+.movements-empty {
+	gap: 8px;
 }
 
-.center-screen.small {
-	min-height: 120px;
+.movements-empty p {
+	margin: 0;
 }
 
 /* ---------- Timeline ---------- */
 .timeline {
+	position: relative;
+	min-width: 0;
 	list-style: none;
 	margin: 0;
 	padding: 0;
-	position: relative;
 }
 
 .timeline-item {
 	position: relative;
-	display: flex;
-	gap: 16px;
+	display: grid;
+	grid-template-columns: 36px minmax(0, 1fr);
+	gap: 12px;
 	padding: 14px 8px;
-	border-radius: 12px;
+	border-radius: var(--border-radius-large);
 	transition: background-color 0.15s ease;
 }
 
@@ -575,71 +615,129 @@ export default {
 .timeline-item:not(:last-child)::before {
 	content: '';
 	position: absolute;
-	left: 25px;
-	top: 46px;
+	top: 50px;
 	bottom: -14px;
-	width: 2px;
-	background: linear-gradient(to bottom, var(--color-border), transparent);
+	left: 25px;
+	width: 1px;
+	background: var(--color-border);
 }
 
 .timeline-icon {
+	position: relative;
+	z-index: 1;
+	display: flex;
 	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
 	width: 34px;
 	height: 34px;
 	border-radius: 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-	z-index: 1;
+	box-shadow: 0 0 0 2px var(--color-main-background);
 }
 
 .timeline-content {
-	flex: 1;
 	min-width: 0;
 	padding-top: 2px;
 }
 
-.timeline-header {
-	margin-bottom: 4px;
+.timeline-actor,
+.timeline-description {
+	margin: 0;
 }
 
-.timeline-texto {
-	font-size: 0.92rem;
-	line-height: 1.5;
+.timeline-actor {
 	color: var(--color-main-text);
-}
-
-.timeline-texto :deep(strong) {
-	color: var(--color-main-text);
+	font-size: 0.9rem;
 	font-weight: 700;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
 }
 
-.timeline-fecha {
+.timeline-description {
+	margin-top: 2px;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.92rem;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.timeline-date {
 	display: flex;
 	align-items: center;
 	gap: 5px;
+	margin-top: 5px;
 	font-size: 0.78rem;
 	color: var(--color-text-maxcontrast);
 }
 
 /* ---------- Colores de los íconos según tipo de movimiento ---------- */
 .bg-green {
-	background: linear-gradient(135deg, #4caf50, #388e3c);
+	background: var(--color-success-hover);
+	color: var(--color-success-text);
 }
+
 .bg-red {
-	background: linear-gradient(135deg, #ef5350, #c62828);
+	background: var(--color-error-hover);
+	color: var(--color-error-text);
 }
+
 .bg-orange {
-	background: linear-gradient(135deg, #ffa726, #ef6c00);
+	background: var(--color-warning-hover);
+	color: var(--color-warning-text);
 }
+
 .bg-blue {
-	background: linear-gradient(135deg, #42a5f5, #1565c0);
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
 }
+
 .bg-purple {
-	background: linear-gradient(135deg, #ab47bc, #6a1b9a);
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
 }
+
 .bg-gray {
-	background: linear-gradient(135deg, #9e9e9e, #616161);
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+}
+
+@media (max-width: 767px) {
+	.movements-panel__header {
+		align-items: flex-start;
+	}
+
+	.movements-filter-button {
+		align-self: flex-start;
+	}
+
+	.movements-scroll {
+		max-height: none;
+		padding-inline: 10px;
+	}
+
+	.timeline-item {
+		grid-template-columns: 32px minmax(0, 1fr);
+		gap: 10px;
+		padding: 12px 4px;
+	}
+
+	.timeline-item:not(:last-child)::before {
+		top: 44px;
+		bottom: -12px;
+		left: 19px;
+	}
+
+	.timeline-icon {
+		width: 30px;
+		height: 30px;
+	}
+
+	.modal-filtros {
+		padding: 18px;
+	}
+
+	.filtro-fechas {
+		grid-template-columns: 1fr;
+	}
 }
 </style>

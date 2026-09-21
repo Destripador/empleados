@@ -162,7 +162,7 @@
 					</div>
 				</article>
 
-				<article class="ranking-card">
+				<article class="ranking-card services-card">
 					<header class="section-heading section-heading--compact">
 						<div>
 							<p class="section-eyebrow">
@@ -170,7 +170,27 @@
 							</p>
 							<h2>{{ t('empleados', 'Fees by service type') }}</h2>
 						</div>
-						<label v-if="serviceYearOptions.length > 0" class="compliance-mode">
+					</header>
+
+					<div v-if="serviceCurrencyOptions.length > 1 || serviceYearOptions.length > 0"
+						class="service-toolbar">
+						<div v-if="serviceCurrencyOptions.length > 1"
+							class="currency-tabs"
+							role="tablist"
+							:aria-label="t('empleados', 'Currency')">
+							<button v-for="option in serviceCurrencyOptions"
+								:key="option"
+								type="button"
+								role="tab"
+								class="currency-tab"
+								:class="{ 'currency-tab--active': option === activeServiceCurrencyCode }"
+								:aria-selected="String(option === activeServiceCurrencyCode)"
+								@click="selectedServiceCurrency = option">
+								{{ option }}
+							</button>
+						</div>
+
+						<label v-if="serviceYearOptions.length > 0" class="compliance-mode service-toolbar__year">
 							<span class="visually-hidden">{{ t('empleados', 'Year') }}</span>
 							<select v-model="selectedServiceYear" class="compliance-mode__select">
 								<option value="all">
@@ -181,21 +201,79 @@
 								</option>
 							</select>
 						</label>
-					</header>
+					</div>
 
-					<ul v-if="serviceItemsDisplay.length > 0" class="distribution-list">
-						<li v-for="item in serviceItemsDisplay" :key="item.servicio" class="distribution-item">
-							<div class="distribution-item__heading">
-								<div class="distribution-item__label">
-									<span class="distribution-dot" :class="{ 'distribution-dot--complete': item.es_fijo, 'distribution-dot--suma': item.es_suma }" />
-									<strong>{{ item.servicio }}</strong>
-								</div>
-								<span>{{ formatMoney(item.displayTotal, activeServiceGroup ? activeServiceGroup.moneda : '') }}</span>
-							</div>
+					<ul v-if="serviceItemsDisplay.length > 0" class="distribution-list service-list">
+						<li v-for="(item, index) in serviceItemsDisplay"
+							:key="item.key"
+							class="service-item"
+							:class="{ 'service-item--open': isServiceOpen(item.key) }">
+							<button type="button"
+								class="service-toggle"
+								:disabled="item.clientes.length === 0"
+								:aria-expanded="String(isServiceOpen(item.key))"
+								:aria-controls="'service-clients-' + index"
+								@click="toggleService(item.key)">
+								<ChevronRight :size="18"
+									class="service-chevron"
+									:class="{
+										'service-chevron--open': isServiceOpen(item.key),
+										'service-chevron--hidden': item.clientes.length === 0,
+									}" />
+								<span class="service-toggle__main">
+									<span class="service-toggle__title">
+										<span class="distribution-dot" :class="{ 'distribution-dot--complete': item.es_fijo, 'distribution-dot--suma': item.es_suma }" />
+										<strong>{{ item.servicio }}</strong>
+									</span>
+									<small v-if="item.clientes.length > 0" class="service-count">
+										{{ n('empleados', '%n customer', '%n customers', item.clientes.length) }}
+									</small>
+								</span>
+								<span class="service-toggle__amount">
+									{{ formatMoney(item.displayTotal) }}
+									<small v-if="activeServiceGroup" class="service-currency">{{ activeServiceGroup.moneda }}</small>
+								</span>
+							</button>
+
 							<div class="distribution-track">
 								<div class="distribution-value"
 									:class="{ 'distribution-value--complete': item.es_fijo, 'distribution-value--suma': item.es_suma }"
 									:style="{ width: `${serviceTotalSum > 0 ? Math.min(100, (item.displayTotal / serviceTotalSum) * 100) : 0}%` }" />
+							</div>
+
+							<div :id="'service-clients-' + index"
+								class="service-collapse"
+								:class="{ 'service-collapse--open': isServiceOpen(item.key) }">
+								<div class="service-collapse__inner">
+									<ul class="service-clients">
+										<li v-for="cliente in item.clientes" :key="cliente.id">
+											<button type="button"
+												class="service-client"
+												:title="t('empleados', 'View fees for {name}', { name: cliente.nombre })"
+												@click="selectClient(cliente.id)">
+												<ClienteLogo :id="cliente.id"
+													:logo="cliente.logo"
+													size="sm"
+													:alt="cliente.nombre" />
+												<span class="service-client__content">
+													<span class="service-client__heading">
+														<strong>{{ cliente.nombre }}</strong>
+														<span class="service-client__amount">{{ formatMoney(cliente.displayTotal) }}</span>
+													</span>
+													<span class="service-client__bar">
+														<span class="ranking-track service-client__track">
+															<span class="ranking-value ranking-value--client"
+																:style="{ width: `${sharePercent(cliente.displayTotal, item.displayTotal)}%` }" />
+														</span>
+														<small class="service-client__percent">
+															{{ formatPercent(sharePercent(cliente.displayTotal, item.displayTotal)) }}
+														</small>
+													</span>
+												</span>
+											</button>
+										</li>
+									</ul>
+								</div>
 							</div>
 						</li>
 					</ul>
@@ -537,7 +615,7 @@
 
 <script>
 import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 import ClienteLogo from '../../../components/clientes/ClienteLogo.vue'
 
@@ -578,6 +656,8 @@ export default {
 				individuales: false,
 			},
 			fxAbierto: {},
+			serviceOpen: {},
+			selectedServiceCurrency: 'MXN',
 		}
 	},
 
@@ -642,11 +722,25 @@ export default {
 			return Array.isArray(this.resumen?.servicios) ? this.resumen.servicios : []
 		},
 
+		serviceCurrencyOptions() {
+			return this.servicios
+				.map((group) => group.moneda)
+				.filter(Boolean)
+				.sort((a, b) => {
+					if (a === 'MXN') return -1
+					if (b === 'MXN') return 1
+					return a.localeCompare(b)
+				})
+		},
+
+		activeServiceCurrencyCode() {
+			return this.serviceCurrencyOptions.includes(this.selectedServiceCurrency)
+				? this.selectedServiceCurrency
+				: (this.serviceCurrencyOptions[0] || '')
+		},
+
 		activeServiceGroup() {
-			if (this.servicios.length === 0) {
-				return null
-			}
-			return this.servicios.find((row) => row.moneda === this.selectedCurrency) || this.servicios[0]
+			return this.servicios.find((group) => group.moneda === this.activeServiceCurrencyCode) || null
 		},
 
 		serviceYearOptions() {
@@ -665,16 +759,21 @@ export default {
 
 			const withTotals = items
 				.map((item) => {
-					let total = item.total
+					let total = Number(item.total || 0)
 					if (year !== 'all') {
 						const found = (item.anios || []).find((a) => String(a.anio) === String(year))
-						total = found ? found.total : 0
+						total = found ? Number(found.total || 0) : 0
 					}
-					return { ...item, displayTotal: total }
+					return {
+						...item,
+						key: item.servicio,
+						displayTotal: total,
+						clientes: this.buildServiceClients(item.clientes, year),
+					}
 				})
 				.filter((item) => year === 'all' || item.displayTotal > 0)
 
-			const auditoriaNames = ['Auditoria Financiera y Fiscal', 'Auditoria Financiera', 'Auditoria Fiscal']
+			const auditoriaNames = ['Auditoria Fiscal y Financiera', 'Auditoria Financiera', 'Auditoria Fiscal']
 			const auditoriaItems = withTotals.filter((item) => auditoriaNames.includes(item.servicio))
 
 			if (auditoriaItems.length === 0) {
@@ -683,11 +782,24 @@ export default {
 
 			const auditoriaSum = auditoriaItems.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
 
+			// Une los clientes de las 3 auditorías en un solo desglose
+			const merged = new Map()
+			auditoriaItems.forEach((item) => {
+				item.clientes.forEach((c) => {
+					const cur = merged.get(c.id) || { ...c, displayTotal: 0 }
+					cur.displayTotal += c.displayTotal
+					merged.set(c.id, cur)
+				})
+			})
+			const sumaClientes = Array.from(merged.values()).sort((a, b) => b.displayTotal - a.displayTotal)
+
 			return [
 				{
+					key: '__suma__',
 					servicio: t('empleados', 'Suma Auditoria'),
 					displayTotal: auditoriaSum,
 					es_suma: true,
+					clientes: sumaClientes,
 				},
 				...withTotals,
 			]
@@ -853,6 +965,7 @@ export default {
 
 	methods: {
 		t,
+		n,
 
 		isForeignCurrency(moneda) {
 			return String(moneda || 'MXN').toUpperCase() !== 'MXN'
@@ -930,6 +1043,36 @@ export default {
 				...this.seccionesColapsadas,
 				[key]: !this.seccionesColapsadas[key],
 			}
+		},
+
+		isServiceOpen(key) {
+			return !!this.serviceOpen[key]
+		},
+
+		toggleService(key) {
+			this.serviceOpen = {
+				...this.serviceOpen,
+				[key]: !this.serviceOpen[key],
+			}
+		},
+
+		buildServiceClients(clientes, year) {
+			return (Array.isArray(clientes) ? clientes : [])
+				.map((c) => {
+					let total = Number(c.total || 0)
+					if (year !== 'all') {
+						const found = (c.anios || []).find((a) => String(a.anio) === String(year))
+						total = found ? Number(found.total || 0) : 0
+					}
+					return { id: c.id, nombre: c.nombre, logo: c.logo, displayTotal: total }
+				})
+				.filter((c) => c.displayTotal > 0)
+				.sort((a, b) => b.displayTotal - a.displayTotal)
+		},
+
+		sharePercent(part, whole) {
+			const w = Number(whole || 0)
+			return w > 0 ? this.clampPercentage((Number(part || 0) / w) * 100) : 0
 		},
 	},
 }
@@ -1024,6 +1167,10 @@ export default {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
 	gap: 0.875rem;
+}
+
+.rankings-grid {
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
 }
 
 .compliance-card,
@@ -1566,6 +1713,350 @@ export default {
 @media (max-width: 720px) {
 	.fx-panel {
 		margin-left: 0 !important;
+	}
+}
+
+.services-card {
+	container-type: inline-size;
+	container-name: services;
+}
+
+.service-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem 0.75rem;
+}
+
+.service-toolbar__year {
+	margin-left: auto;
+}
+
+.service-toolbar .compliance-mode__select {
+	min-width: 8rem;
+	margin: 0;
+}
+
+.currency-tabs {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	width: fit-content;
+	padding: 3px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-dark);
+}
+
+.currency-tab {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 3rem;
+	min-height: 0;
+	height: 1.75rem;
+	margin: 0;
+	padding: 0 0.75rem;
+	border: none;
+	border-radius: var(--border-radius);
+	background: transparent;
+	box-shadow: none;
+	color: var(--color-text-maxcontrast);
+	font: inherit;
+	font-size: 0.78rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	line-height: 1;
+	cursor: pointer;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.currency-tab:hover {
+	background: var(--color-background-darker);
+	color: var(--color-main-text);
+}
+
+.currency-tab--active,
+.currency-tab--active:hover {
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+}
+
+.currency-tab:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.service-list {
+	gap: 0.35rem;
+}
+
+.service-item {
+	padding: 0.75rem 0.85rem;
+	border: 1px solid transparent;
+	border-radius: var(--border-radius-large);
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.service-item:hover {
+	background: var(--color-background-hover);
+}
+
+.service-item--open {
+	border-color: var(--color-border);
+	background: var(--color-background-hover);
+}
+
+.service-toggle {
+	display: grid;
+	grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+	column-gap: 0.5rem;
+	align-items: start;
+	width: 100%;
+	min-height: 0;
+	margin: 0 0 0.55rem;
+	padding: 0;
+	border: none;
+	border-radius: var(--border-radius);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	font-size: 0.88rem;
+	text-align: left;
+	cursor: pointer;
+}
+
+.service-toggle:hover,
+.service-toggle:active {
+	background: transparent;
+}
+
+.service-toggle:disabled {
+	color: inherit;
+	opacity: 1;
+	cursor: default;
+}
+
+.service-toggle:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.service-chevron--open {
+	transform: rotate(90deg);
+	color: var(--color-primary-element);
+}
+
+.service-chevron {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25rem;
+	height: 1.4rem;
+	color: var(--color-text-maxcontrast);
+	transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
+}
+
+.service-toggle:not(:disabled):hover .service-chevron {
+	color: var(--color-primary-element);
+}
+
+.service-chevron--hidden {
+	visibility: hidden;
+}
+
+.service-toggle__main {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 0;
+}
+
+.service-toggle__title {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.45rem;
+	min-width: 0;
+}
+
+.service-toggle__title strong {
+	font-weight: 600;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.service-toggle__title .distribution-dot {
+	flex: 0 0 auto;
+	margin-top: 0.42rem;
+}
+
+.service-count {
+	padding-left: 1rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	white-space: nowrap;
+}
+
+.service-toggle__amount {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.4;
+	text-align: right;
+	white-space: nowrap;
+}
+
+.service-currency {
+	margin-left: 0.25rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+}
+
+.service-collapse {
+	display: grid;
+	grid-template-rows: 0fr;
+	visibility: hidden;
+	transition: grid-template-rows 0.25s ease, visibility 0s linear 0.25s;
+}
+
+.service-collapse--open {
+	grid-template-rows: 1fr;
+	visibility: visible;
+	transition: grid-template-rows 0.25s ease, visibility 0s;
+}
+
+.service-collapse__inner {
+	overflow: hidden;
+	min-height: 0;
+}
+
+.service-clients {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	margin: 0.75rem 0 0 0.6rem;
+	padding: 0 0 0 0.75rem;
+	list-style: none;
+	border-left: 2px solid var(--color-border);
+}
+
+.service-client {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 0.65rem;
+	align-items: center;
+	width: 100%;
+	min-height: 0;
+	margin: 0;
+	padding: 0.45rem 0.5rem;
+	border: none;
+	border-radius: var(--border-radius);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	font-size: 0.82rem;
+	text-align: left;
+	cursor: pointer;
+}
+
+.service-client:hover,
+.service-client:focus-visible {
+	background: var(--color-background-dark);
+}
+
+.service-client:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+}
+
+.service-client__content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 0;
+}
+
+.service-client__heading {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	min-width: 0;
+}
+
+.service-client__heading strong {
+	min-width: 0;
+	overflow: hidden;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.service-client__amount {
+	flex: 0 0 auto;
+	font-variant-numeric: tabular-nums;
+}
+
+.service-client__bar {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.service-client__track {
+	display: block;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.service-client__track .ranking-value {
+	display: block;
+}
+
+.service-client__percent {
+	flex: 0 0 auto;
+	min-width: 2.9rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+}
+
+@container services (max-width: 24rem) {
+	.service-item {
+		padding: 0.65rem 0.55rem;
+	}
+
+	.service-clients {
+		margin-left: 0.3rem;
+		padding-left: 0.5rem;
+	}
+
+	.service-client {
+		gap: 0.5rem;
+		padding: 0.4rem 0.3rem;
+	}
+}
+
+@container services (max-width: 19rem) {
+	.service-toggle {
+		grid-template-columns: 1.25rem minmax(0, 1fr);
+	}
+
+	.service-toggle__amount {
+		grid-column: 2;
+		margin-top: 0.15rem;
+		text-align: left;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.service-collapse,
+	.service-chevron,
+	.service-item {
+		transition: none;
 	}
 }
 </style>

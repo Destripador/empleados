@@ -236,7 +236,7 @@ export default {
 	computed: {
 		servicioOptions() {
 			return [
-				'Auditoria Financiera y Fiscal',
+				'Auditoria Fiscal y Financiera',
 				'Auditoria Financiera',
 				'Auditoria Fiscal',
 				'Procedimientos Convenidos',

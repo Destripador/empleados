@@ -2,14 +2,24 @@
 <template>
 	<div class="empleados-settings">
 		<!-- Loading -->
-		<div v-if="loading">
-			<div class="center-screen">
-				<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
-			</div>
+		<div v-if="loading" class="app-settings-loading" role="status">
+			<NcLoadingIcon :size="40" :name="t('empleados', 'Loading...')" />
 		</div>
 
 		<!-- Main -->
-		<div v-else id="admin">
+		<div v-else class="app-settings-page empleados-settings__content">
+			<header class="app-settings-header">
+				<p class="app-settings-eyebrow">
+					{{ t('empleados', 'Employees') }}
+				</p>
+				<h2 class="app-settings-title">
+					{{ t('empleados', 'Manage employees') }}
+				</h2>
+				<p class="app-settings-description">
+					{{ t('empleados', 'Manage active, deactivated and pending employee records.') }}
+				</p>
+			</header>
+
 			<div class="stats-grid">
 				<div class="stat-card">
 					<div class="stat-card__icon">
@@ -40,9 +50,9 @@
 				</div>
 			</div>
 
-			<VueTabs>
+			<VueTabs class="app-settings-panel settings-secondary-tabs employees-tabs">
 				<!-- Active employees -->
-				<VTab :title="t('empleados', 'Active employees')">
+				<VTab id="employees-active" :title="t('empleados', 'Active employees')">
 					<div class="tab-toolbar">
 						<div>
 							<h3>{{ t('empleados', 'Active employees') }}</h3>
@@ -56,17 +66,24 @@
 							:label="t('empleados', 'Search active employees')" />
 					</div>
 
-					<div v-if="filteredEmpleados.length > 0" class="container list-container">
+					<div v-if="filteredEmpleados.length > 0" class="employees-table-container list-container">
 						<table class="grid empleados-table">
+							<caption class="app-settings-sr-only">
+								{{ t('empleados', 'Active employees') }}
+							</caption>
 							<tr>
-								<th class="header__cell header__cell--avatar">
+								<th scope="col" class="header__cell header__cell--avatar">
 									&nbsp;
 								</th>
-								<th>{{ t('empleados', 'Name') }}</th>
-								<th class="employee-id-column">
+								<th scope="col">
+									{{ t('empleados', 'Name') }}
+								</th>
+								<th scope="col" class="employee-id-column">
 									{{ t('empleados', 'User') }}
 								</th>
-								<th>{{ t('empleados', 'Options') }}</th>
+								<th scope="col">
+									{{ t('empleados', 'Options') }}
+								</th>
 							</tr>
 							<tr v-for="item in filteredEmpleados" :key="getEmpleadoUid(item)" v-bind="$attrs">
 								<td class="row__cell row__cell--avatar">
@@ -87,7 +104,7 @@
 									<code>{{ getEmpleadoUid(item) }}</code>
 								</td>
 								<td>
-									<NcActions>
+									<NcActions :aria-label="t('empleados', 'Actions for {name}', { name: getEmpleadoDisplayName(item) })">
 										<NcActionButton close-after-click @click="openPermisosDialog(item)">
 											<template #icon>
 												<AccountGroup :size="20" />
@@ -107,7 +124,7 @@
 							</tr>
 						</table>
 					</div>
-					<div v-else class="container empty-container">
+					<div v-else class="employees-table-container empty-container">
 						<NcEmptyContent :name="activeSearch ? t('empleados', 'No employees match the search') : t('empleados', 'No users yet')">
 							<template #icon>
 								<AccountOff :size="20" />
@@ -117,7 +134,7 @@
 				</VTab>
 
 				<!-- Deactivated employees -->
-				<VTab :title="t('empleados', 'Deactivated employees')">
+				<VTab id="employees-deactivated" :title="t('empleados', 'Deactivated employees')">
 					<div class="tab-toolbar">
 						<div>
 							<h3>{{ t('empleados', 'Deactivated employees') }}</h3>
@@ -131,17 +148,24 @@
 							:label="t('empleados', 'Search deactivated employees')" />
 					</div>
 
-					<div v-if="filteredDesactivados.length > 0" class="container list-container">
+					<div v-if="filteredDesactivados.length > 0" class="employees-table-container list-container">
 						<table class="grid empleados-table">
+							<caption class="app-settings-sr-only">
+								{{ t('empleados', 'Deactivated employees') }}
+							</caption>
 							<tr>
-								<th class="header__cell header__cell--avatar">
+								<th scope="col" class="header__cell header__cell--avatar">
 									&nbsp;
 								</th>
-								<th>{{ t('empleados', 'Name') }}</th>
-								<th class="employee-id-column">
+								<th scope="col">
+									{{ t('empleados', 'Name') }}
+								</th>
+								<th scope="col" class="employee-id-column">
 									{{ t('empleados', 'User') }}
 								</th>
-								<th>{{ t('empleados', 'Options') }}</th>
+								<th scope="col">
+									{{ t('empleados', 'Options') }}
+								</th>
 							</tr>
 							<tr v-for="item in filteredDesactivados"
 								:key="getEmpleadoUid(item)"
@@ -164,7 +188,7 @@
 									<code>{{ getEmpleadoUid(item) }}</code>
 								</td>
 								<td>
-									<NcActions>
+									<NcActions :aria-label="t('empleados', 'Actions for {name}', { name: getEmpleadoDisplayName(item) })">
 										<NcActionButton close-after-click @click="ActivarUsuario(getDesactivadoIndex(item))">
 											<template #icon>
 												<AccountPlus :size="20" />
@@ -182,7 +206,7 @@
 							</tr>
 						</table>
 					</div>
-					<div v-else class="container empty-container">
+					<div v-else class="employees-table-container empty-container">
 						<NcEmptyContent :name="inactiveSearch ? t('empleados', 'No deactivated employees match the search') : t('empleados', 'No users yet')">
 							<template #icon>
 								<AccountOff :size="20" />
@@ -192,7 +216,7 @@
 				</VTab>
 
 				<!-- Users without employee record -->
-				<VTab :title="t('empleados', 'Users without employee record')">
+				<VTab id="employees-pending" :title="t('empleados', 'Users without employee record')">
 					<div class="tab-toolbar">
 						<div>
 							<h3>{{ t('empleados', 'Users without employee record') }}</h3>
@@ -204,21 +228,28 @@
 							:label="t('empleados', 'Search pending users')" />
 					</div>
 
-					<div v-if="loadingEmployees" class="loader-settings">
-						<NcLoadingIcon :size="70" />
+					<div v-if="loadingEmployees" class="loader-settings" role="status">
+						<NcLoadingIcon :size="40" :name="t('empleados', 'Loading...')" />
 					</div>
 					<div v-else>
-						<div v-if="filteredUsuarios.length > 0" class="container list-container">
+						<div v-if="filteredUsuarios.length > 0" class="employees-table-container list-container">
 							<table class="grid empleados-table">
+								<caption class="app-settings-sr-only">
+									{{ t('empleados', 'Users without employee record') }}
+								</caption>
 								<tr>
-									<th class="header__cell header__cell--avatar">
+									<th scope="col" class="header__cell header__cell--avatar">
 										&nbsp;
 									</th>
-									<th>{{ t('empleados', 'Name') }}</th>
-									<th class="employee-id-column">
+									<th scope="col">
+										{{ t('empleados', 'Name') }}
+									</th>
+									<th scope="col" class="employee-id-column">
 										{{ t('empleados', 'User') }}
 									</th>
-									<th>{{ t('empleados', 'Options') }}</th>
+									<th scope="col">
+										{{ t('empleados', 'Options') }}
+									</th>
 								</tr>
 								<tr v-for="item in filteredUsuarios" :key="item.uid" v-bind="$attrs">
 									<td class="row__cell row__cell--avatar">
@@ -239,7 +270,7 @@
 										<code>{{ item.uid }}</code>
 									</td>
 									<td>
-										<NcActions>
+										<NcActions :aria-label="t('empleados', 'Actions for {name}', { name: getUsuarioDisplayName(item) })">
 											<NcActionButton close-after-click @click="ActivarUser(getUsuarioIndex(item))">
 												<template #icon>
 													<Plus :size="20" />
@@ -251,7 +282,7 @@
 								</tr>
 							</table>
 						</div>
-						<div v-else class="container empty-container">
+						<div v-else class="employees-table-container empty-container">
 							<NcEmptyContent :name="pendingSearch ? t('empleados', 'No pending users match the search') : t('empleados', 'No pending users')">
 								<template #icon>
 									<AccountPlus :size="20" />
@@ -285,8 +316,8 @@
 					{{ t('empleados', 'Assign module permissions using controlled Nextcloud groups.') }}
 				</NcNoteCard>
 
-				<div v-if="loadingPermisos" class="permisos-loader">
-					<NcLoadingIcon :size="44" />
+				<div v-if="loadingPermisos" class="permisos-loader" role="status">
+					<NcLoadingIcon :size="44" :name="t('empleados', 'Loading...')" />
 				</div>
 
 				<div v-else class="permisos-groups">
@@ -1048,88 +1079,39 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .empleados-settings {
 	color: var(--color-main-text);
 }
 
-/* Board title */
-.settings-header {
-	display: flex;
-	align-items: flex-start;
-	gap: 14px;
-	margin: 0 20px 8px;
-	padding: 18px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
-}
-
-.settings-header__icon,
 .stat-card__icon {
 	display: inline-flex;
 	flex: 0 0 auto;
 	align-items: center;
 	justify-content: center;
+	width: 42px;
+	height: 42px;
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
 	color: var(--color-primary-element);
 }
 
-.settings-header__icon {
-	width: 52px;
-	height: 52px;
-}
-
-.settings-header__content {
+.employees-table-container {
 	min-width: 0;
-}
-
-.section-label {
-	margin: 0 0 4px;
-	color: var(--color-primary-element);
-	font-size: 12px;
-	font-weight: 700;
-	letter-spacing: .04em;
-	text-transform: uppercase;
-}
-
-.board-title {
-	margin: 0;
-	color: var(--color-main-text);
-	font-size: 24px;
-	font-weight: bold;
-}
-
-.settings-description {
-	max-width: 820px;
-	margin: 8px 0 0;
-	color: var(--color-text-maxcontrast);
-	font-size: 14px;
-	line-height: 1.4;
-}
-
-/* Centered loading */
-.center-screen {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	min-height: 100vh;
-	background: var(--color-main-background);
-}
-
-/* Container */
-.container {
-	padding-left: 20px;
-	padding-right: 20px;
+	overflow-x: auto;
 }
 
 .stats-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(160px, 1fr));
+	grid-template-columns: minmax(0, 1fr);
 	gap: 12px;
-	padding: 8px 20px 16px;
+	padding-bottom: 0;
+}
+
+@container (min-width: 48rem) {
+	.stats-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
 }
 
 .stat-card {
@@ -1140,12 +1122,6 @@ export default {
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius-large);
 	background: var(--color-main-background);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, .04);
-}
-
-.stat-card__icon {
-	width: 42px;
-	height: 42px;
 }
 
 .stat-card__label {
@@ -1165,7 +1141,7 @@ export default {
 	align-items: flex-end;
 	justify-content: space-between;
 	gap: 16px;
-	padding: 16px 20px 8px;
+	padding: 16px 16px 8px;
 }
 
 .tab-toolbar h3 {
@@ -1186,6 +1162,7 @@ export default {
 
 .list-container {
 	max-height: calc(80vh - 10rem);
+	overflow-x: auto;
 	overflow-y: auto;
 }
 
@@ -1193,8 +1170,15 @@ export default {
 	padding-top: 24px;
 }
 
+.loader-settings {
+	display: grid;
+	place-items: center;
+	min-height: 180px;
+}
+
 .empleados-table {
 	width: 100%;
+	min-width: 560px;
 	border-collapse: separate;
 	border-spacing: 0;
 	border-radius: var(--border-radius-large);
@@ -1251,13 +1235,13 @@ export default {
 }
 
 .status-badge--active {
-	background: var(--color-success, #008000);
-	color: var(--color-success-text, #fff);
+	background: var(--color-success-hover);
+	color: var(--color-success-text);
 }
 
 .status-badge--disabled {
-	background: var(--color-warning, #eca700);
-	color: var(--color-warning-text, #222);
+	background: var(--color-warning-hover);
+	color: var(--color-warning-text);
 }
 
 .status-badge--pending {
@@ -1266,8 +1250,8 @@ export default {
 }
 
 .status-badge--restricted {
-	background: var(--color-error, #e9322d);
-	color: var(--color-error-text, #fff);
+	background: var(--color-error-hover);
+	color: var(--color-error-text);
 }
 
 .employee-id-column code {
@@ -1466,14 +1450,9 @@ export default {
 	background: var(--color-main-background);
 }
 @media (max-width: 800px) {
-	.settings-header,
 	.tab-toolbar {
 		align-items: stretch;
 		flex-direction: column;
-	}
-
-	.stats-grid {
-		grid-template-columns: 1fr;
 	}
 
 	.tab-search {
@@ -1488,6 +1467,10 @@ export default {
 	.empleados-table th,
 	.empleados-table td {
 		padding: 10px;
+	}
+
+	.empleados-table {
+		min-width: 0;
 	}
 	.permisos-dialog-modal {
 		--permissions-modal-width: calc(100vw - 24px);
