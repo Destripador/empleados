@@ -131,9 +131,6 @@ import { translate as t } from '@nextcloud/l10n'
 import CloudSearchOutlineIcon from 'vue-material-design-icons/CloudSearchOutline.vue'
 import CashSyncIcon from 'vue-material-design-icons/CashSync.vue'
 
-/**
- * yyyy-mm-dd de una fecha, en hora local (evita corrimientos de un día por UTC).
- */
 function toISODate(date) {
 	const y = date.getFullYear()
 	const m = String(date.getMonth() + 1).padStart(2, '0')

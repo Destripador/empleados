@@ -6,10 +6,15 @@ namespace OCA\Empleados\Migration;
 
 use Closure;
 use OCP\DB\ISchemaWrapper;
+use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 class Version2028Date20260801090000 extends SimpleMigrationStep {
+	public function __construct(
+		private IDBConnection $db,
+	) {
+	}
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		$schema = $schemaClosure();
 		if ($schema->hasTable('emp_cont_emer')) {
@@ -39,31 +44,30 @@ class Version2028Date20260801090000 extends SimpleMigrationStep {
 	}
 
 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-		$db = \OC::$server->getDatabaseConnection();
-		$db->beginTransaction();
+		$this->db->beginTransaction();
 		try {
-			$select = $db->getQueryBuilder();
+			$select = $this->db->getQueryBuilder();
 			$result = $select->select('Id_empleados', 'Contacto_emergencia', 'Numero_emergencia')
 				->from('empleados')
 				->where($select->expr()->orX(
 					$select->expr()->isNotNull('Contacto_emergencia'),
 					$select->expr()->isNotNull('Numero_emergencia')
 				))->executeQuery();
-			$rows = $result->fetchAll();
+			$rows = $result->fetchAllAssociative();
 			$result->closeCursor();
 			$now = date('Y-m-d H:i:s');
 			foreach ($rows as $row) {
 				$nombre = trim((string)($row['Contacto_emergencia'] ?? ''));
 				$numero = trim((string)($row['Numero_emergencia'] ?? ''));
 				if ($nombre === '' || $numero === '') continue;
-				$check = $db->getQueryBuilder();
+				$check = $this->db->getQueryBuilder();
 				$checkResult = $check->select('id')->from('emp_cont_emer')
 					->where($check->expr()->eq('id_empleado', $check->createNamedParameter((int)$row['Id_empleados'])))
 					->setMaxResults(1)->executeQuery();
 				$exists = $checkResult->fetchOne();
 				$checkResult->closeCursor();
 				if ($exists !== false) continue;
-				$insert = $db->getQueryBuilder();
+				$insert = $this->db->getQueryBuilder();
 				$insert->insert('emp_cont_emer')->values([
 					'id_empleado' => $insert->createNamedParameter((int)$row['Id_empleados']),
 					'nombre' => $insert->createNamedParameter($nombre),
@@ -76,9 +80,9 @@ class Version2028Date20260801090000 extends SimpleMigrationStep {
 					'updated_at' => $insert->createNamedParameter($now),
 				])->executeStatement();
 			}
-			$db->commit();
+			$this->db->commit();
 		} catch (\Throwable $e) {
-			$db->rollBack();
+			$this->db->rollBack();
 			throw $e;
 		}
 	}

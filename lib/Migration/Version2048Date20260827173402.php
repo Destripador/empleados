@@ -6,10 +6,15 @@ namespace OCA\Empleados\Migration;
 
 use Closure;
 use OCP\DB\ISchemaWrapper;
+use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 class Version2048Date20260827173402 extends SimpleMigrationStep {
+	public function __construct(
+		private IDBConnection $db,
+	) {
+	}
 
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		/** @var ISchemaWrapper $schema */
@@ -58,9 +63,7 @@ class Version2048Date20260827173402 extends SimpleMigrationStep {
 	}
 
 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-		$connection = \OC::$server->get(\OCP\IDBConnection::class);
-
-		$qb = $connection->getQueryBuilder();
+		$qb = $this->db->getQueryBuilder();
 		$count = $qb->select($qb->func()->count('*'))
 			->from('empleados_monedas')
 			->executeQuery()
@@ -76,7 +79,7 @@ class Version2048Date20260827173402 extends SimpleMigrationStep {
 		];
 
 		foreach ($monedas as $moneda) {
-			$qb = $connection->getQueryBuilder();
+			$qb = $this->db->getQueryBuilder();
 			$qb->insert('empleados_monedas')
 				->values([
 					'tipo_moneda' => $qb->createNamedParameter($moneda['tipo_moneda']),

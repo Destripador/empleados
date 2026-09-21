@@ -35,6 +35,10 @@ class Version2043Date20260824185437 extends SimpleMigrationStep {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
 
+		if (!$schema->hasTable('empleados_honorarios_p')) {
+			return $schema;
+		}
+
 		$table = $schema->getTable('empleados_honorarios_p');
 
 		if (!$table->hasColumn('fecha_factura')) {

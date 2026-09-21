@@ -13,29 +13,31 @@ class Version2037Date20260806220436 extends SimpleMigrationStep {
         /** @var ISchemaWrapper $schema */
         $schema = $schemaClosure();
 
-        $tipoTable = $schema->getTable('tipo_ausencia');
-        if (!$tipoTable->hasColumn('es_medio_dia')) {
-            $tipoTable->addColumn('es_medio_dia', 'smallint', [
-                'notnull' => true,
-                'default' => 0,
-            ]);
+        if ($schema->hasTable('tipo_ausencia')) {
+			$tipoTable = $schema->getTable('tipo_ausencia');
+			if (!$tipoTable->hasColumn('es_medio_dia')) {
+				$tipoTable->addColumn('es_medio_dia', 'smallint', [
+					'notnull' => true,
+					'default' => 0,
+				]);
+			}
         }
 
-        $historialTable = $schema->getTable('historial_ausencias');
-        if (!$historialTable->hasColumn('turno')) {
-            $historialTable->addColumn('turno', 'string', [
-                'notnull' => false,
-                'length' => 10,
-            ]);
-        }
+        if ($schema->hasTable('historial_ausencias')) {
+			$historialTable = $schema->getTable('historial_ausencias');
+			if (!$historialTable->hasColumn('turno')) {
+				$historialTable->addColumn('turno', 'string', [
+					'notnull' => false,
+					'length' => 10,
+				]);
+			}
 
-        if ($historialTable->hasColumn('dias_solicitados')) {
-        	$historialTable->changeColumn('dias_solicitados', [
-        	'type' => \Doctrine\DBAL\Types\Type::getType('decimal'),
-        	'precision' => 5,
-        	'scale' => 1,
-        	'notnull' => true,
-        	]);
+			if ($historialTable->hasColumn('dias_solicitados')) {
+				$diasSolicitados = $historialTable->getColumn('dias_solicitados');
+				$diasSolicitados->setPrecision(5);
+				$diasSolicitados->setScale(1);
+				$diasSolicitados->setNotnull(true);
+			}
         }
 
         return $schema;

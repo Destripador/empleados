@@ -12,6 +12,9 @@ class Version2020Date20260708193202 extends SimpleMigrationStep {
     public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
         /** @var ISchemaWrapper $schema */
         $schema = $schemaClosure();
+        if (!$schema->hasTable('historial_vacaciones')) {
+            return $schema;
+        }
         $table = $schema->getTable('historial_vacaciones');
 
         if (!$table->hasColumn('asignado_manualmente')) {

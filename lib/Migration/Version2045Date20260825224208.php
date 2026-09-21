@@ -32,7 +32,7 @@ class Version2045Date20260825224208 extends SimpleMigrationStep {
 			->from('empleados_honorarios_p');
 
 		$result = $qb->executeQuery();
-		$rows = $result->fetchAll();
+		$rows = $result->fetchAllAssociative();
 		$result->closeCursor();
 
 		$actualizados = 0;
