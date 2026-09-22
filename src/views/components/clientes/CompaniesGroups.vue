@@ -2334,12 +2334,16 @@ export default {
 
 		async confirmarFacturaModal() {
 			try {
+				const honorario = this.honorarios.find(h => h.id_honorario === this.honorarioSeleccionado)
+				const idMoneda = this.idMonedaPorTipo(honorario?.tipo_moneda)
+
 				await axios.post(
 					generateUrl('/apps/empleados/marcarParcialidadFacturada'),
 					{
 						id_parcialidad: this.parcialidadSeleccionada,
 						fecha_factura: this.fechaFactura,
 						id_cliente_pagador: this.facturaClientePagador?.value ?? null,
+						id_moneda: idMoneda,
 					},
 				)
 

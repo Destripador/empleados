@@ -11,6 +11,8 @@ use Psr\Log\LoggerInterface;
 
 class SincronizarTipoCambioJob extends TimedJob {
 
+	private const DIAS_RESPALDO = 5;
+
 	public function __construct(
 		ITimeFactory $time,
 		private BanxicoService $banxicoService,
@@ -25,11 +27,16 @@ class SincronizarTipoCambioJob extends TimedJob {
 	}
 
 	protected function run($argument): void {
-		$hoy = $this->getTime()->getDateTime()->format('Y-m-d');
+		$hoyDt = $this->time->getDateTime();
+		$hoy = $hoyDt->format('Y-m-d');
+
+		$inicioDt = clone $hoyDt;
+		$inicioDt->modify('-' . self::DIAS_RESPALDO . ' days');
+		$fechaInicio = $inicioDt->format('Y-m-d');
 
 		try {
-			$this->banxicoService->sincronizarTodasLasMonedas($hoy, $hoy);
-			$this->logger->info("SincronizarTipoCambioJob: sincronización de {$hoy} completada.");
+			$this->banxicoService->sincronizarTodasLasMonedas($fechaInicio, $hoy);
+			$this->logger->info("SincronizarTipoCambioJob: sincronización {$fechaInicio} a {$hoy} completada.");
 		} catch (\Throwable $e) {
 			$this->logger->error('SincronizarTipoCambioJob: error al sincronizar tipo de cambio: ' . $e->getMessage());
 		}

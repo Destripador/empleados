@@ -52,8 +52,6 @@ class ClientesDashboardService {
 		$serviceRows = $this->parcialidadesMapper->getServicioBreakdownRows($filters);
 		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows, $clientes);
 
-		// El desglose de conversión se adjunta ANTES de filtrar por solo_pendientes,
-		// para que el campo 'fx' sobreviva al array_filter posterior.
 		$fxRows = $this->parcialidadesMapper->getDashboardFxRows($filters);
 		$fxByClient = $this->buildFxByClient($fxRows);
 
@@ -97,9 +95,26 @@ class ClientesDashboardService {
 			}
 
 			$importe = (float)($row['importe_parcialidad'] ?? 0);
-			$tc = isset($row['cambio_moneda']) && $row['cambio_moneda'] !== null
+			$estado = (int)($row['pagado'] ?? honorariosParcialidades::PENDIENTE);
+			$servicio = (string)($row['tipo_servicio'] ?? '');
+
+			$tcFactura = isset($row['cambio_moneda_factura']) && $row['cambio_moneda_factura'] !== null
+				? (float)$row['cambio_moneda_factura']
+				: null;
+			$tcPago = isset($row['cambio_moneda']) && $row['cambio_moneda'] !== null
 				? (float)$row['cambio_moneda']
 				: null;
+
+			$mxnFactura = ($tcFactura !== null && $tcFactura > 0) ? $importe * $tcFactura : null;
+			$mxnPago = ($tcPago !== null && $tcPago > 0) ? $importe * $tcPago : null;
+
+			$diferencia = ($mxnPago !== null && $mxnFactura !== null)
+				? round($mxnPago - $mxnFactura, 2)
+				: null;
+
+			// "Mejor disponible" para las estadísticas agregadas del bloque.
+			$tcBest = $tcPago ?? $tcFactura;
+			$mxnBest = $mxnPago ?? $mxnFactura;
 
 			$acc[$id][$moneda] ??= [
 				'moneda' => $moneda,
@@ -111,32 +126,54 @@ class ClientesDashboardService {
 				'tipo_cambio_min' => null,
 				'tipo_cambio_max' => null,
 				'tipo_cambio_promedio' => 0.0,
+				'ganancia_cambiaria' => 0.0,
+				'servicios' => [],
+			];
+
+			$servicioKey = $servicio !== '' ? $servicio : 'Sin especificar';
+
+			$acc[$id][$moneda]['servicios'][$servicioKey] ??= [
+				'servicio' => $servicioKey,
+				'subtotal_origen' => 0.0,
+				'subtotal_mxn' => 0.0,
+				'subtotal_diferencia' => 0.0,
 				'parcialidades' => [],
 			];
 
-			if ($tc === null || $tc <= 0) {
+			if ($tcBest !== null && $tcBest > 0) {
+				$min = $acc[$id][$moneda]['tipo_cambio_min'];
+				$max = $acc[$id][$moneda]['tipo_cambio_max'];
+
+				$acc[$id][$moneda]['convertidas']++;
+				$acc[$id][$moneda]['importe_origen'] += $importe;
+				$acc[$id][$moneda]['importe_mxn'] += $mxnBest;
+				$acc[$id][$moneda]['tipo_cambio_min'] = $min === null ? $tcBest : min($min, $tcBest);
+				$acc[$id][$moneda]['tipo_cambio_max'] = $max === null ? $tcBest : max($max, $tcBest);
+
+				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_origen'] += $importe;
+				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_mxn'] += $mxnBest;
+			} else {
 				$acc[$id][$moneda]['sin_tipo_cambio']++;
-				continue;
 			}
 
-			$mxn = $importe * $tc;
-			$min = $acc[$id][$moneda]['tipo_cambio_min'];
-			$max = $acc[$id][$moneda]['tipo_cambio_max'];
+			if ($diferencia !== null) {
+				$acc[$id][$moneda]['ganancia_cambiaria'] += $diferencia;
+				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_diferencia'] += $diferencia;
+			}
 
-			$acc[$id][$moneda]['convertidas']++;
-			$acc[$id][$moneda]['importe_origen'] += $importe;
-			$acc[$id][$moneda]['importe_mxn'] += $mxn;
-			$acc[$id][$moneda]['tipo_cambio_min'] = $min === null ? $tc : min($min, $tc);
-			$acc[$id][$moneda]['tipo_cambio_max'] = $max === null ? $tc : max($max, $tc);
-
-			$acc[$id][$moneda]['parcialidades'][] = [
+			$acc[$id][$moneda]['servicios'][$servicioKey]['parcialidades'][] = [
 				'id_parcialidad' => (int)($row['id_parcialidad'] ?? 0),
 				'numero' => (int)($row['numero_parcialidad'] ?? 0),
-				'servicio' => (string)($row['tipo_servicio'] ?? ''),
+				'servicio' => $servicioKey,
+				'estado' => $estado,
+				'fecha_factura' => $row['fecha_factura'] ?? null,
 				'fecha_pago' => $row['fecha_pago'] ?? null,
 				'importe' => round($importe, 2),
-				'tipo_cambio' => round($tc, self::FX_DECIMALES),
-				'importe_mxn' => round($mxn, 2),
+				'tipo_cambio_factura' => $tcFactura !== null ? round($tcFactura, self::FX_DECIMALES) : null,
+				'importe_mxn_factura' => $mxnFactura !== null ? round($mxnFactura, 2) : null,
+				'tipo_cambio_pago' => $tcPago !== null ? round($tcPago, self::FX_DECIMALES) : null,
+				'importe_mxn_pago' => $mxnPago !== null ? round($mxnPago, 2) : null,
+				'diferencia_cambiaria' => $diferencia,
 			];
 		}
 
@@ -146,29 +183,32 @@ class ClientesDashboardService {
 			$lista = [];
 
 			foreach ($porMoneda as $fx) {
-				// Más recientes primero; las que no tienen fecha quedan al final.
-				usort($fx['parcialidades'], static function (array $a, array $b): int {
-					$fa = (string)($a['fecha_pago'] ?? '');
-					$fb = (string)($b['fecha_pago'] ?? '');
+				// Ordena las parcialidades de cada honorario: #1, #2, #3...
+				foreach ($fx['servicios'] as &$servicioGrupo) {
+					usort(
+						$servicioGrupo['parcialidades'],
+						static fn (array $a, array $b): int => $a['numero'] <=> $b['numero']
+					);
+					$servicioGrupo['subtotal_origen'] = round($servicioGrupo['subtotal_origen'], 2);
+					$servicioGrupo['subtotal_mxn'] = round($servicioGrupo['subtotal_mxn'], 2);
+					$servicioGrupo['subtotal_diferencia'] = round($servicioGrupo['subtotal_diferencia'], 2);
+				}
+				unset($servicioGrupo);
 
-					if ($fa === '' && $fb === '') {
-						return $b['numero'] <=> $a['numero'];
-					}
-					if ($fa === '') {
-						return 1;
-					}
-					if ($fb === '') {
-						return -1;
-					}
+				// Honorarios entre sí: el que más convirtió a MXN primero.
+				$servicios = array_values($fx['servicios']);
+				usort($servicios, static fn (array $a, array $b): int => $b['subtotal_mxn'] <=> $a['subtotal_mxn']);
 
-					return strcmp($fb, $fa);
-				});
-
-				$fx['detalle_truncado'] = count($fx['parcialidades']) > self::FX_DETALLE_LIMIT;
-				$fx['parcialidades'] = array_slice($fx['parcialidades'], 0, self::FX_DETALLE_LIMIT);
+				$fx['servicios'] = $servicios;
+				$fx['mostradas'] = array_sum(array_map(
+					static fn (array $s): int => count($s['parcialidades']),
+					$servicios
+				));
+				$fx['detalle_truncado'] = false;
 
 				$fx['importe_origen'] = round($fx['importe_origen'], 2);
 				$fx['importe_mxn'] = round($fx['importe_mxn'], 2);
+				$fx['ganancia_cambiaria'] = round($fx['ganancia_cambiaria'], 2);
 
 				$fx['tipo_cambio_promedio'] = $fx['importe_origen'] > 0.009
 					? round($fx['importe_mxn'] / $fx['importe_origen'], self::FX_DECIMALES)

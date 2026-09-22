@@ -436,33 +436,75 @@
 														</div>
 													</div>
 
-													<div class="fx-table-wrap">
-														<table class="fx-table">
-															<thead>
-																<tr>
-																	<th>#</th>
-																	<th>{{ t('empleados', 'Service') }}</th>
-																	<th>{{ t('empleados', 'Payment date') }}</th>
-																	<th class="fx-num">{{ fx.moneda }}</th>
-																	<th class="fx-num">{{ t('empleados', 'Rate') }}</th>
-																	<th class="fx-num">MXN</th>
-																</tr>
-															</thead>
-															<tbody>
-																<tr v-for="p in fx.parcialidades" :key="p.id_parcialidad">
-																	<td>#{{ p.numero }}</td>
-																	<td>{{ p.servicio || t('empleados', 'Service') }}</td>
-																	<td>{{ p.fecha_pago || '—' }}</td>
-																	<td class="fx-num">{{ formatMoney(p.importe) }}</td>
-																	<td class="fx-num">{{ formatRate(p.tipo_cambio) }}</td>
-																	<td class="fx-num fx-num--strong">{{ formatMoney(p.importe_mxn) }}</td>
-																</tr>
-															</tbody>
-														</table>
+													<div v-for="grupo in fx.servicios" :key="grupo.servicio" class="fx-service-group">
+														<header class="fx-service-group__head">
+															<strong>{{ grupo.servicio }}</strong>
+															<span>
+																{{ formatMoney(grupo.subtotal_origen, fx.moneda) }} → {{ formatMoney(grupo.subtotal_mxn, 'MXN') }}
+																<span v-if="grupo.subtotal_diferencia !== 0" :class="fxDiffClass(grupo.subtotal_diferencia)">
+																	({{ formatSignedMoney(grupo.subtotal_diferencia) }})
+																</span>
+															</span>
+														</header>
+
+														<div class="fx-table-wrap">
+															<table class="fx-table">
+																<thead>
+																	<tr>
+																		<th>#</th>
+																		<th>{{ t('empleados', 'Invoice date') }}</th>
+																		<th>{{ t('empleados', 'Payment date') }}</th>
+																		<th class="fx-num">
+																			{{ fx.moneda }}
+																		</th>
+																		<th class="fx-num">
+																			{{ t('empleados', 'Rate (invoice)') }}
+																		</th>
+																		<th class="fx-num">
+																			{{ t('empleados', 'MXN (invoice)') }}
+																		</th>
+																		<th class="fx-num">
+																			{{ t('empleados', 'Rate (paid)') }}
+																		</th>
+																		<th class="fx-num">
+																			{{ t('empleados', 'MXN (paid)') }}
+																		</th>
+																		<th class="fx-num">
+																			{{ t('empleados', 'Gain/loss') }}
+																		</th>
+																	</tr>
+																</thead>
+																<tbody>
+																	<tr v-for="p in grupo.parcialidades" :key="p.id_parcialidad">
+																		<td>#{{ p.numero }}</td>
+																		<td>{{ p.fecha_factura || '-' }}</td>
+																		<td>{{ p.fecha_pago || '-' }}</td>
+																		<td class="fx-num">
+																			{{ formatMoney(p.importe) }}
+																		</td>
+																		<td class="fx-num">
+																			{{ p.tipo_cambio_factura !== null ? formatRate(p.tipo_cambio_factura) : '-' }}
+																		</td>
+																		<td class="fx-num">
+																			{{ p.importe_mxn_factura !== null ? formatMoney(p.importe_mxn_factura) : '-' }}
+																		</td>
+																		<td class="fx-num">
+																			{{ p.tipo_cambio_pago !== null ? formatRate(p.tipo_cambio_pago) : '-' }}
+																		</td>
+																		<td class="fx-num fx-num--strong">
+																			{{ p.importe_mxn_pago !== null ? formatMoney(p.importe_mxn_pago) : '-' }}
+																		</td>
+																		<td class="fx-num fx-num--strong" :class="fxDiffClass(p.diferencia_cambiaria)">
+																			{{ p.diferencia_cambiaria !== null ? formatSignedMoney(p.diferencia_cambiaria) : '-' }}
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</div>
 													</div>
 
 													<p v-if="fx.detalle_truncado" class="fx-note">
-														{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.parcialidades.length }) }}
+														{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.mostradas }) }}
 													</p>
 													<p v-if="fx.sin_tipo_cambio > 0" class="fx-note">
 														{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
@@ -538,7 +580,7 @@
 										<div class="fx-collapse" :class="{ 'fx-collapse--open': fxAbierto[row.id] }">
 											<div class="fx-collapse__inner">
 												<div class="fx-panel">
-													<section v-for="fx in row.fx" :key="fx.moneda" class="fx-block">
+													<section v-for="fx in item.fx" :key="fx.moneda" class="fx-block">
 														<header class="fx-block__head">
 															<strong>{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
 															<span>{{ fx.convertidas }} {{ t('empleados', 'converted installments') }}</span>
@@ -561,35 +603,81 @@
 																<span>{{ t('empleados', 'Rate range') }}</span>
 																<strong>{{ formatRate(fx.tipo_cambio_min) }} – {{ formatRate(fx.tipo_cambio_max) }}</strong>
 															</div>
+															<div class="fx-stat fx-stat--diff" :class="fxDiffClass(fx.ganancia_cambiaria)">
+																<span>{{ t('empleados', 'Exchange gain/loss') }}</span>
+																<strong>{{ formatSignedMoney(fx.ganancia_cambiaria) }}</strong>
+															</div>
 														</div>
 
-														<div class="fx-table-wrap">
-															<table class="fx-table">
-																<thead>
-																	<tr>
-																		<th>#</th>
-																		<th>{{ t('empleados', 'Service') }}</th>
-																		<th>{{ t('empleados', 'Payment date') }}</th>
-																		<th class="fx-num">{{ fx.moneda }}</th>
-																		<th class="fx-num">{{ t('empleados', 'Rate') }}</th>
-																		<th class="fx-num">MXN</th>
-																	</tr>
-																</thead>
-																<tbody>
-																	<tr v-for="p in fx.parcialidades" :key="p.id_parcialidad">
-																		<td>#{{ p.numero }}</td>
-																		<td>{{ p.servicio || t('empleados', 'Service') }}</td>
-																		<td>{{ p.fecha_pago || '—' }}</td>
-																		<td class="fx-num">{{ formatMoney(p.importe) }}</td>
-																		<td class="fx-num">{{ formatRate(p.tipo_cambio) }}</td>
-																		<td class="fx-num fx-num--strong">{{ formatMoney(p.importe_mxn) }}</td>
-																	</tr>
-																</tbody>
-															</table>
+														<div v-for="grupo in fx.servicios" :key="grupo.servicio" class="fx-service-group">
+															<header class="fx-service-group__head">
+																<strong>{{ grupo.servicio }}</strong>
+																<span>
+																	{{ formatMoney(grupo.subtotal_origen, fx.moneda) }} → {{ formatMoney(grupo.subtotal_mxn, 'MXN') }}
+																	<span v-if="grupo.subtotal_diferencia !== 0" :class="fxDiffClass(grupo.subtotal_diferencia)">
+																		({{ formatSignedMoney(grupo.subtotal_diferencia) }})
+																	</span>
+																</span>
+															</header>
+
+															<div class="fx-table-wrap">
+																<table class="fx-table">
+																	<thead>
+																		<tr>
+																			<th>#</th>
+																			<th>{{ t('empleados', 'Invoice date') }}</th>
+																			<th>{{ t('empleados', 'Payment date') }}</th>
+																			<th class="fx-num">
+																				{{ fx.moneda }}
+																			</th>
+																			<th class="fx-num">
+																				{{ t('empleados', 'Rate (invoice)') }}
+																			</th>
+																			<th class="fx-num">
+																				{{ t('empleados', 'MXN (invoice)') }}
+																			</th>
+																			<th class="fx-num">
+																				{{ t('empleados', 'Rate (paid)') }}
+																			</th>
+																			<th class="fx-num">
+																				{{ t('empleados', 'MXN (paid)') }}
+																			</th>
+																			<th class="fx-num">
+																				{{ t('empleados', 'Gain/loss') }}
+																			</th>
+																		</tr>
+																	</thead>
+																	<tbody>
+																		<tr v-for="p in grupo.parcialidades" :key="p.id_parcialidad">
+																			<td>#{{ p.numero }}</td>
+																			<td>{{ p.fecha_factura || '-' }}</td>
+																			<td>{{ p.fecha_pago || '-' }}</td>
+																			<td class="fx-num">
+																				{{ formatMoney(p.importe) }}
+																			</td>
+																			<td class="fx-num">
+																				{{ p.tipo_cambio_factura !== null ? formatRate(p.tipo_cambio_factura) : '-' }}
+																			</td>
+																			<td class="fx-num">
+																				{{ p.importe_mxn_factura !== null ? formatMoney(p.importe_mxn_factura) : '-' }}
+																			</td>
+																			<td class="fx-num">
+																				{{ p.tipo_cambio_pago !== null ? formatRate(p.tipo_cambio_pago) : '-' }}
+																			</td>
+																			<td class="fx-num fx-num--strong">
+																				{{ p.importe_mxn_pago !== null ? formatMoney(p.importe_mxn_pago) : '-' }}
+																			</td>
+																			<td class="fx-num fx-num--strong" :class="fxDiffClass(p.diferencia_cambiaria)">
+																				{{ p.diferencia_cambiaria !== null ? formatSignedMoney(p.diferencia_cambiaria) : '-' }}
+																			</td>
+																		</tr>
+																	</tbody>
+																</table>
+															</div>
 														</div>
 
 														<p v-if="fx.detalle_truncado" class="fx-note">
-															{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.parcialidades.length }) }}
+															{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.mostradas }) }}
 														</p>
 														<p v-if="fx.sin_tipo_cambio > 0" class="fx-note">
 															{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
@@ -986,6 +1074,19 @@ export default {
 				minimumFractionDigits: 4,
 				maximumFractionDigits: 4,
 			})
+		},
+
+		formatSignedMoney(value) {
+			const n = Number(value || 0)
+			const sign = n > 0.004 ? '+' : ''
+			return `${sign}${this.formatMoney(n)}`
+		},
+
+		fxDiffClass(value) {
+			const n = Number(value || 0)
+			if (n > 0.004) return 'fx-diff--gain'
+			if (n < -0.004) return 'fx-diff--loss'
+			return 'fx-diff--neutral'
 		},
 
 		rowMontos(row) {
@@ -1639,6 +1740,34 @@ export default {
 	font-size: 0.75rem;
 }
 
+.fx-service-group {
+	margin-bottom: 0.75rem;
+}
+
+.fx-service-group:last-child {
+	margin-bottom: 0;
+}
+
+.fx-service-group__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.35rem;
+	font-size: 0.8rem;
+}
+
+.fx-service-group__head strong {
+	color: var(--color-main-text);
+}
+
+.fx-service-group__head span {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	font-variant-numeric: tabular-nums;
+}
+
 .fx-stats {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
@@ -2058,5 +2187,21 @@ export default {
 	.service-item {
 		transition: none;
 	}
+}
+
+.fx-diff--gain {
+	color: #005f08;
+}
+
+.fx-diff--loss {
+	color: #770000;
+}
+
+.fx-diff--neutral {
+	color: #000000;
+}
+
+.fx-stat--diff strong {
+	font-size: 0.9rem;
 }
 </style>

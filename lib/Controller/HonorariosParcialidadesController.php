@@ -207,21 +207,29 @@ class HonorariosParcialidadesController extends BaseController {
 	}
 
 	/**
-	 * Marcar parcialidad como facturada
+	 * Marcar parcialidad como facturada. Si se indica $id_moneda, registra
+	 * el tipo de cambio vigente a la fecha de factura. Si con esto todas
+	 * las parcialidades del honorario quedan facturadas (o pagadas), se
+	 * cierra el total convertido a MXN de la factura.
 	 */
 	#[UseSession]
 	#[NoAdminRequired]
 	public function marcarFacturada(
 		int $id_parcialidad,
 		string $fecha_factura,
-		?int $id_cliente_pagador = null
+		?int $id_cliente_pagador = null,
+		?int $id_moneda = null
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
 		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
 
-		$this->honorariosParcialidadesMapper
-			->marcarFacturada($id_parcialidad, $fecha_factura, $id_cliente_pagador);
+		$idHonorarioFacturado = $this->honorariosParcialidadesMapper
+			->marcarFacturada($id_parcialidad, $fecha_factura, $id_cliente_pagador, $id_moneda);
+
+		if ($idHonorarioFacturado !== null) {
+			$this->honorariosMapper->registrarCambioMonedaFacturaTotal($idHonorarioFacturado);
+		}
 
 		// --- Movimiento (bitácora) ---
 		if ($parcialidad) {

@@ -244,6 +244,7 @@ class honorariosMapper extends QBMapper {
 		$qb3 = $this->db->getQueryBuilder();
 		$qb3->update($this->getTableName())
 			->set('cambio_moneda', $qb3->createNamedParameter(null))
+			->set('cambio_moneda_factura', $qb3->createNamedParameter(null))
 			->where(
 				$qb3->expr()->eq(
 					'id_honorario',
@@ -363,6 +364,7 @@ class honorariosMapper extends QBMapper {
 		$qb->update($this->getTableName())
 			->set('activo', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
 			->set('cambio_moneda', $qb->createNamedParameter(null))
+			->set('cambio_moneda_factura', $qb->createNamedParameter(null))
 			->where($qb->expr()->eq(
 				'id_honorario',
 				$qb->createNamedParameter($idHonorario, IQueryBuilder::PARAM_INT)
@@ -460,6 +462,40 @@ class honorariosMapper extends QBMapper {
 
 		$qb->update($this->getTableName())
 			->set('cambio_moneda', $qb->createNamedParameter($totalMXN))
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Cuando las parcialidades de un honorario ya fueron facturadas (o
+	 * pagadas), calcula el total ya convertido a MXN usando el tipo de
+	 * cambio registrado al momento de la factura (cambio_moneda_factura).
+	 */
+	public function registrarCambioMonedaFacturaTotal(int $id_honorario): void {
+		$honorario = $this->findById($id_honorario);
+
+		if (empty($honorario)) {
+			return;
+		}
+
+		$tipoMoneda = strtoupper((string)($honorario['tipo_moneda'] ?? 'MXN'));
+
+		if ($tipoMoneda === 'MXN') {
+			return;
+		}
+
+		$totalMXN = $this->parcialidadesMapper->sumConvertidoMXNFactura($id_honorario);
+
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->update($this->getTableName())
+			->set('cambio_moneda_factura', $qb->createNamedParameter($totalMXN))
 			->where(
 				$qb->expr()->eq(
 					'id_honorario',

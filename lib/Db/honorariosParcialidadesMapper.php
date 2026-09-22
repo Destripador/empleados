@@ -160,13 +160,62 @@ class honorariosParcialidadesMapper extends QBMapper {
 	}
 
 	/**
+	 * Igual que verificarHonorarioCompleto, pero considera "completo" en
+	 * cuanto ninguna parcialidad queda PENDIENTE (es decir, todas fueron al
+	 * menos facturadas, sin importar si ya se pagaron o no).
+	 */
+	private function verificarHonorarioFacturadoCompleto(int $id_parcialidad): ?int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id_honorario')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$result = $qb->executeQuery();
+		$id_honorario = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		$qb2 = $this->db->getQueryBuilder();
+		$qb2->selectAlias($qb2->createFunction('COUNT(*)'), 'total')
+			->from($this->getTableName())
+			->where(
+				$qb2->expr()->eq(
+					'id_honorario',
+					$qb2->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->andWhere(
+				$qb2->expr()->eq(
+					'pagado',
+					$qb2->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$result = $qb2->executeQuery();
+		$pendientes = (int)($result->fetch()['total'] ?? 0);
+		$result->closeCursor();
+
+		return $pendientes === 0 ? $id_honorario : null;
+	}
+
+	/**
 	 * Paso 1: pendiente -> facturada.
+	 * Si se indica $id_moneda, registra además el tipo de cambio vigente a
+	 * la fecha de factura en cambio_moneda_factura.
+	 *
+	 * Devuelve el id_honorario si con esto TODAS sus parcialidades quedaron
+	 * facturadas (o pagadas), para que el llamador pueda cerrar el total
+	 * convertido (registrarCambioMonedaFacturaTotal) igual que se hace con
+	 * el pago.
 	 */
 	public function marcarFacturada(
 		int $id_parcialidad,
 		string $fecha_factura,
-		?int $id_cliente_pagador = null
-	): void {
+		?int $id_cliente_pagador = null,
+		?int $id_moneda = null
+	): ?int {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->update($this->getTableName())
@@ -186,6 +235,12 @@ class honorariosParcialidadesMapper extends QBMapper {
 			);
 
 		$qb->executeStatement();
+
+		if ($id_moneda !== null) {
+			$this->registrarCambioMonedaFactura($id_parcialidad, $id_moneda, $fecha_factura);
+		}
+
+		return $this->verificarHonorarioFacturadoCompleto($id_parcialidad);
 	}
 
 	/**
@@ -215,7 +270,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 	}
 
 	/**
-	 * Busca el tipo de cambio más cercano
+	 * Busca el tipo de cambio más cercano a la fecha de pago
 	 */
 	private function registrarCambioMoneda(int $id_parcialidad, int $id_moneda, string $fecha_pago): void {
 		$tipoCambio = $this->tipoCambioMapper->findAnterior($id_moneda, $fecha_pago);
@@ -227,6 +282,28 @@ class honorariosParcialidadesMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->getTableName())
 			->set('cambio_moneda', $qb->createNamedParameter($tipoCambio->getValor()))
+			->where(
+				$qb->expr()->eq(
+					'id_parcialidad',
+					$qb->createNamedParameter($id_parcialidad, IQueryBuilder::PARAM_INT)
+				)
+			);
+		$qb->executeStatement();
+	}
+
+	/**
+	 * Busca el tipo de cambio más cercano a la fecha de factura
+	 */
+	private function registrarCambioMonedaFactura(int $id_parcialidad, int $id_moneda, string $fecha_factura): void {
+		$tipoCambio = $this->tipoCambioMapper->findAnterior($id_moneda, $fecha_factura);
+
+		if ($tipoCambio === null) {
+			return;
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->getTableName())
+			->set('cambio_moneda_factura', $qb->createNamedParameter($tipoCambio->getValor()))
 			->where(
 				$qb->expr()->eq(
 					'id_parcialidad',
@@ -370,7 +447,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 	}
 
 	/**
-	* Revertir facturación (facturada -> pendiente) 
+	* Revertir facturación (facturada -> pendiente)
 	*/
 	public function cancelarFactura(int $id_parcialidad): void {
 		$qb = $this->db->getQueryBuilder();
@@ -379,6 +456,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 			->set('pagado', $qb->createNamedParameter(honorariosParcialidades::PENDIENTE, IQueryBuilder::PARAM_INT))
 			->set('fecha_factura', $qb->createNamedParameter(null))
 			->set('id_cliente_pagador', $qb->createNamedParameter(null))
+			->set('cambio_moneda_factura', $qb->createNamedParameter(null))
 			->where(
 				$qb->expr()->eq(
 					'id_parcialidad',
@@ -941,6 +1019,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 	/**
 	 * Suma el total ya convertido de las parcialidades PAGADAS de un honorario
+	 * (usando el tipo de cambio registrado al momento del pago)
 	 */
 	public function sumConvertidoMXN(int $id_honorario): float {
 		$qb = $this->db->getQueryBuilder();
@@ -972,6 +1051,44 @@ class honorariosParcialidadesMapper extends QBMapper {
 	}
 
 	/**
+	 * Suma el total ya convertido de las parcialidades ya FACTURADAS 
+	 */
+	public function sumConvertidoMXNFactura(int $id_honorario): float {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias(
+				$qb->createFunction('SUM(importe_parcialidad * cambio_moneda_factura)'),
+				'total'
+			)
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq(
+					'id_honorario',
+					$qb->createNamedParameter($id_honorario, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->andWhere(
+				$qb->expr()->in(
+					'pagado',
+					$qb->createNamedParameter(
+						[
+							honorariosParcialidades::FACTURADA,
+							honorariosParcialidades::PAGADA,
+						],
+						IQueryBuilder::PARAM_INT_ARRAY
+					)
+				)
+			)
+			->andWhere($qb->expr()->isNotNull('cambio_moneda_factura'));
+
+		$result = $qb->executeQuery();
+		$total = $result->fetchOne();
+		$result->closeCursor();
+
+		return $total !== false ? (float)$total : 0.0;
+	}
+
+	/**
 	 * Parcialidades PAGADAS de honorarios en moneda distinta a MXN.
 	 *
 	 * @return list<array<string,mixed>>
@@ -983,7 +1100,10 @@ class honorariosParcialidadesMapper extends QBMapper {
 			'p.id_parcialidad',
 			'p.numero_parcialidad',
 			'p.importe_parcialidad',
+			'p.pagado',
 			'p.cambio_moneda',
+			'p.cambio_moneda_factura',
+			'p.fecha_factura',
 			'p.fecha_pago',
 			'h.tipo_servicio',
 			'h.tipo_moneda'
@@ -992,11 +1112,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 			->from($this->getTableName(), 'p')
 			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
 			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
-			->where($qb->expr()->eq(
-				'p.pagado',
-				$qb->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT)
-			))
-			->andWhere($qb->expr()->neq(
+			->where($qb->expr()->neq(
 				$qb->createFunction('UPPER(h.tipo_moneda)'),
 				$qb->createNamedParameter('MXN')
 			))
@@ -1006,7 +1122,7 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		$qb->orderBy('c.id', 'ASC')
 			->addOrderBy('h.tipo_moneda', 'ASC')
-			->addOrderBy('p.fecha_pago', 'DESC');
+			->addOrderBy('p.numero_parcialidad', 'ASC');
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
@@ -1016,9 +1132,13 @@ class honorariosParcialidadesMapper extends QBMapper {
 			$row['id_cliente'] = (int)$row['id_cliente'];
 			$row['id_parcialidad'] = (int)$row['id_parcialidad'];
 			$row['numero_parcialidad'] = (int)$row['numero_parcialidad'];
+			$row['pagado'] = (int)$row['pagado'];
 			$row['importe_parcialidad'] = round((float)$row['importe_parcialidad'], 2);
 			$row['cambio_moneda'] = $row['cambio_moneda'] !== null
 				? (float)$row['cambio_moneda']
+				: null;
+			$row['cambio_moneda_factura'] = $row['cambio_moneda_factura'] !== null
+				? (float)$row['cambio_moneda_factura']
 				: null;
 		}
 		unset($row);

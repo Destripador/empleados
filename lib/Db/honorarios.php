@@ -15,6 +15,7 @@ class honorarios extends Entity {
 	protected float $importe_total = 0;
 	protected string $tipo_moneda = 'MXN';
 	protected ?float $cambio_moneda = null;
+	protected ?float $cambio_moneda_factura = null;
 	/*--------------- Periodo -----------------*/
 	protected ?string $fecha_inicio = null;
 	protected ?string $fecha_fin = null;
@@ -36,7 +37,7 @@ class honorarios extends Entity {
 		$this->addType('importe_total', 'float');
 		$this->addType('tipo_moneda', 'string');
 		$this->addType('cambio_moneda', 'float');
-
+		$this->addType('cambio_moneda_factura', 'float');
 		$this->addType('fecha_inicio', 'string');
 		$this->addType('fecha_fin', 'string');
 		$this->addType('numero_parcialidades', 'integer');
@@ -58,7 +59,7 @@ class honorarios extends Entity {
 			'importe_total' => $this->importe_total,
 			'tipo_moneda' => $this->tipo_moneda,
 			'cambio_moneda' => $this->cambio_moneda,
-
+			'cambio_moneda_factura' => $this->cambio_moneda_factura,
 			'fecha_inicio' => $this->fecha_inicio,
 			'fecha_fin' => $this->fecha_fin,
 			'numero_parcialidades' => $this->numero_parcialidades,

@@ -20,6 +20,7 @@ class honorariosParcialidades extends Entity {
 	protected ?string $pfecha_fin = null;
 	protected float $importe_parcialidad = 0;
 	protected ?float $cambio_moneda = null;
+	protected ?float $cambio_moneda_factura = null;
 	/*--------------- Facturación / Pago -----------------*/
 	protected int $pagado = 0;
 	protected ?string $fecha_factura = null;
@@ -35,7 +36,7 @@ class honorariosParcialidades extends Entity {
 		$this->addType('pfecha_fin', 'string');
 		$this->addType('importe_parcialidad', 'float');
 		$this->addType('cambio_moneda', 'float');
-
+		$this->addType('cambio_moneda_factura', 'float');
 		$this->addType('pagado', 'integer');
 		$this->addType('fecha_factura', 'string');
 		$this->addType('fecha_pago', 'string');
@@ -52,6 +53,7 @@ class honorariosParcialidades extends Entity {
 			'pfecha_fin' => $this->pfecha_fin,
 			'importe_parcialidad' => $this->importe_parcialidad,
 			'cambio_moneda' => $this->cambio_moneda,
+			'cambio_moneda_factura' => $this->cambio_moneda_factura,
 
 			'pagado' => $this->pagado,
 			'fecha_factura' => $this->fecha_factura,

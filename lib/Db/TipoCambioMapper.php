@@ -37,7 +37,8 @@ class TipoCambioMapper extends QBMapper {
 	}
 
 	/**
-	 * Intenta insertar, si ya existe (unique index) lo ignora.
+	 * Intenta insertar; si ya existe (choque del índice único
+	 * empl_tc_moneda_fecha_uidx) actualiza el valor en su lugar.
 	 */
 	public function upsert(int $idMoneda, string $fecha, float $valor): void {
 		$qb = $this->db->getQueryBuilder();
@@ -50,7 +51,12 @@ class TipoCambioMapper extends QBMapper {
 		try {
 			$qb->executeStatement();
 		} catch (DBException $e) {
-			// Ya existe el registro para esa fecha/moneda -> lo actualizamos
+			// Solo lo tratamos como "ya existe" si es realmente un choque
+			// de llave única; cualquier otro error de BD se vuelve a lanzar.
+			if ($e->getReason() !== DBException::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
+				throw $e;
+			}
+
 			$update = $this->db->getQueryBuilder();
 			$update->update($this->getTableName())
 				->set('valor', $update->createNamedParameter($valor))
