@@ -201,14 +201,8 @@ class honorariosParcialidadesMapper extends QBMapper {
 	}
 
 	/**
-	 * Paso 1: pendiente -> facturada.
-	 * Si se indica $id_moneda, registra además el tipo de cambio vigente a
-	 * la fecha de factura en cambio_moneda_factura.
-	 *
 	 * Devuelve el id_honorario si con esto TODAS sus parcialidades quedaron
-	 * facturadas (o pagadas), para que el llamador pueda cerrar el total
-	 * convertido (registrarCambioMonedaFacturaTotal) igual que se hace con
-	 * el pago.
+	 * facturadas (o pagadas)
 	 */
 	public function marcarFacturada(
 		int $id_parcialidad,
@@ -311,6 +305,142 @@ class honorariosParcialidadesMapper extends QBMapper {
 				)
 			);
 		$qb->executeStatement();
+	}
+
+	/**
+	 * Mapa tipo_moneda => id de la moneda (ej. ['USD' => 2, 'EUR' => 3]).
+	 * OJO: ajusta el nombre de la tabla y columnas a las tuyas.
+	 */
+	private function cargarMapaMonedas(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id', 'tipo_moneda')
+			->from('empleados_monedas');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$mapa = [];
+		foreach ($rows as $row) {
+			$mapa[strtoupper((string)$row['tipo_moneda'])] = (int)$row['id'];
+		}
+
+		return $mapa;
+	}
+
+	/**
+	 * Rellena los tipos de cambio que quedaron en NULL en parcialidades
+	 * que ya estaban facturadas / pagadas
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function rellenarTiposCambioFaltantes(): array {
+		$mapaMonedas = $this->cargarMapaMonedas();
+
+		$resultado = [
+			'factura_actualizadas' => 0,
+			'factura_sin_tipo_cambio' => [],
+			'pago_actualizadas' => 0,
+			'pago_sin_tipo_cambio' => [],
+			'honorarios_factura_completos' => [],
+			'honorarios_pago_completos' => [],
+		];
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('p.id_parcialidad', 'p.fecha_factura', 'h.tipo_moneda')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->where($qb->expr()->neq(
+				$qb->createFunction('UPPER(h.tipo_moneda)'),
+				$qb->createNamedParameter('MXN')
+			))
+			->andWhere($qb->expr()->in(
+				'p.pagado',
+				$qb->createNamedParameter(
+					[honorariosParcialidades::FACTURADA, honorariosParcialidades::PAGADA],
+					IQueryBuilder::PARAM_INT_ARRAY
+				)
+			))
+			->andWhere($qb->expr()->isNotNull('p.fecha_factura'))
+			->andWhere($qb->expr()->isNull('p.cambio_moneda_factura'));
+
+		$result = $qb->executeQuery();
+		$filasFactura = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($filasFactura as $fila) {
+			$idParcialidad = (int)$fila['id_parcialidad'];
+			$idMoneda = $mapaMonedas[strtoupper((string)$fila['tipo_moneda'])] ?? null;
+
+			if ($idMoneda === null) {
+				$resultado['factura_sin_tipo_cambio'][] = $idParcialidad;
+				continue;
+			}
+
+			$this->registrarCambioMonedaFactura($idParcialidad, $idMoneda, (string)$fila['fecha_factura']);
+
+			$actualizada = $this->findById($idParcialidad);
+
+			if (($actualizada['cambio_moneda_factura'] ?? null) === null) {
+				$resultado['factura_sin_tipo_cambio'][] = $idParcialidad;
+				continue;
+			}
+
+			$resultado['factura_actualizadas']++;
+
+			$idHonorario = $this->verificarHonorarioFacturadoCompleto($idParcialidad);
+			if ($idHonorario !== null) {
+				$resultado['honorarios_factura_completos'][$idHonorario] = $idHonorario;
+			}
+		}
+
+		// ---------- 2) Tipo de cambio del PAGO ----------
+		$qb2 = $this->db->getQueryBuilder();
+		$qb2->select('p.id_parcialidad', 'p.fecha_pago', 'h.tipo_moneda')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb2->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->where($qb2->expr()->neq(
+				$qb2->createFunction('UPPER(h.tipo_moneda)'),
+				$qb2->createNamedParameter('MXN')
+			))
+			->andWhere($qb2->expr()->eq(
+				'p.pagado',
+				$qb2->createNamedParameter(honorariosParcialidades::PAGADA, IQueryBuilder::PARAM_INT)
+			))
+			->andWhere($qb2->expr()->isNotNull('p.fecha_pago'))
+			->andWhere($qb2->expr()->isNull('p.cambio_moneda'));
+
+		$result2 = $qb2->executeQuery();
+		$filasPago = $result2->fetchAll();
+		$result2->closeCursor();
+
+		foreach ($filasPago as $fila) {
+			$idParcialidad = (int)$fila['id_parcialidad'];
+			$idMoneda = $mapaMonedas[strtoupper((string)$fila['tipo_moneda'])] ?? null;
+
+			if ($idMoneda === null) {
+				$resultado['pago_sin_tipo_cambio'][] = $idParcialidad;
+				continue;
+			}
+
+			$this->registrarCambioMoneda($idParcialidad, $idMoneda, (string)$fila['fecha_pago']);
+
+			$actualizada = $this->findById($idParcialidad);
+
+			if (($actualizada['cambio_moneda'] ?? null) === null) {
+				$resultado['pago_sin_tipo_cambio'][] = $idParcialidad;
+				continue;
+			}
+
+			$resultado['pago_actualizadas']++;
+
+			$idHonorario = $this->verificarHonorarioCompleto($idParcialidad);
+			if ($idHonorario !== null) {
+				$resultado['honorarios_pago_completos'][$idHonorario] = $idHonorario;
+			}
+		}
+
+		return $resultado;
 	}
 
 	public function generarParcialidades(

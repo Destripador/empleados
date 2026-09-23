@@ -127,6 +127,7 @@ This project is currently in beta and under active development. It is already fu
         <command>OCA\Empleados\Command\ResetBetaSchemaCommand</command>
         <command>OCA\Empleados\Command\SeedFestivosOficiales</command>
 		<command>OCA\Empleados\Command\SyncSupportTimeCommand</command>
+        <command>OCA\Empleados\Command\RellenarTiposCambioCommand</command>
     </commands>
 
     <settings>

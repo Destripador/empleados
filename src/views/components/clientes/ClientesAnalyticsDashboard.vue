@@ -257,7 +257,16 @@
 													:alt="cliente.nombre" />
 												<span class="service-client__content">
 													<span class="service-client__heading">
-														<strong>{{ cliente.nombre }}</strong>
+														<span class="service-client__name">
+															<strong>{{ cliente.nombre }}</strong>
+															<span v-if="cliente.tiposAuditoria && cliente.tiposAuditoria.length > 0" class="audit-tags">
+																<span v-for="tipo in cliente.tiposAuditoria"
+																	:key="tipo"
+																	class="audit-tag">
+																	{{ auditoriaLabel(tipo) }}
+																</span>
+															</span>
+														</span>
 														<span class="service-client__amount">{{ formatMoney(cliente.displayTotal) }}</span>
 													</span>
 													<span class="service-client__bar">
@@ -423,16 +432,20 @@
 															<strong>{{ formatMoney(fx.importe_origen, fx.moneda) }}</strong>
 														</div>
 														<div class="fx-stat">
+															<span>{{ t('empleados', 'Expected MXN') }}</span>
+															<strong>{{ formatMoney(fxExpectedMxn(fx), 'MXN') }}</strong>
+														</div>
+														<div class="fx-stat">
 															<span>{{ t('empleados', 'Received in MXN') }}</span>
 															<strong>{{ formatMoney(fx.importe_mxn, 'MXN') }}</strong>
+														</div>
+														<div class="fx-stat fx-stat--diff" :class="fxDiffClass(fx.ganancia_cambiaria)">
+															<span>{{ t('empleados', 'Exchange difference') }}</span>
+															<strong>{{ formatSignedMoney(fx.ganancia_cambiaria) }}</strong>
 														</div>
 														<div class="fx-stat">
 															<span>{{ t('empleados', 'Weighted average rate') }}</span>
 															<strong>{{ formatRate(fx.tipo_cambio_promedio) }}</strong>
-														</div>
-														<div v-if="fx.convertidas > 0" class="fx-stat">
-															<span>{{ t('empleados', 'Rate range') }}</span>
-															<strong>{{ formatRate(fx.tipo_cambio_min) }} – {{ formatRate(fx.tipo_cambio_max) }}</strong>
 														</div>
 													</div>
 
@@ -519,7 +532,7 @@
 					</template>
 				</div>
 
-				<!-- Vista plana: cuando se ordena por Total u Outstanding -->
+				<!-- Vista plana: cuando se ordena por Total -->
 				<div v-else-if="sortedTable.length > 0" class="employee-table-wrap">
 					<table class="employee-table">
 						<thead>
@@ -580,7 +593,7 @@
 										<div class="fx-collapse" :class="{ 'fx-collapse--open': fxAbierto[row.id] }">
 											<div class="fx-collapse__inner">
 												<div class="fx-panel">
-													<section v-for="fx in item.fx" :key="fx.moneda" class="fx-block">
+													<section v-for="fx in row.fx" :key="fx.moneda" class="fx-block">
 														<header class="fx-block__head">
 															<strong>{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
 															<span>{{ fx.convertidas }} {{ t('empleados', 'converted installments') }}</span>
@@ -592,20 +605,20 @@
 																<strong>{{ formatMoney(fx.importe_origen, fx.moneda) }}</strong>
 															</div>
 															<div class="fx-stat">
+																<span>{{ t('empleados', 'Expected MXN') }}</span>
+																<strong>{{ formatMoney(fxExpectedMxn(fx), 'MXN') }}</strong>
+															</div>
+															<div class="fx-stat">
 																<span>{{ t('empleados', 'Received in MXN') }}</span>
 																<strong>{{ formatMoney(fx.importe_mxn, 'MXN') }}</strong>
+															</div>
+															<div class="fx-stat fx-stat--diff" :class="fxDiffClass(fx.ganancia_cambiaria)">
+																<span>{{ t('empleados', 'Exchange difference') }}</span>
+																<strong>{{ formatSignedMoney(fx.ganancia_cambiaria) }}</strong>
 															</div>
 															<div class="fx-stat">
 																<span>{{ t('empleados', 'Weighted average rate') }}</span>
 																<strong>{{ formatRate(fx.tipo_cambio_promedio) }}</strong>
-															</div>
-															<div v-if="fx.convertidas > 0" class="fx-stat">
-																<span>{{ t('empleados', 'Rate range') }}</span>
-																<strong>{{ formatRate(fx.tipo_cambio_min) }} – {{ formatRate(fx.tipo_cambio_max) }}</strong>
-															</div>
-															<div class="fx-stat fx-stat--diff" :class="fxDiffClass(fx.ganancia_cambiaria)">
-																<span>{{ t('empleados', 'Exchange gain/loss') }}</span>
-																<strong>{{ formatSignedMoney(fx.ganancia_cambiaria) }}</strong>
 															</div>
 														</div>
 
@@ -868,35 +881,44 @@ export default {
 				return withTotals
 			}
 
+			// Los servicios que NO son auditoría (los 3 individuales ya no se muestran)
+			const otrosServicios = withTotals.filter((item) => !auditoriaNames.includes(item.servicio))
+
 			const auditoriaSum = auditoriaItems.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
 
-			// Une los clientes de las 3 auditorías en un solo desglose
+			// Une los clientes de las 3 auditorías y guarda cuáles de las 3 tiene cada uno
 			const merged = new Map()
 			auditoriaItems.forEach((item) => {
 				item.clientes.forEach((c) => {
-					const cur = merged.get(c.id) || { ...c, displayTotal: 0 }
+					const cur = merged.get(c.id) || { ...c, displayTotal: 0, tiposAuditoria: [] }
 					cur.displayTotal += c.displayTotal
+					cur.tiposAuditoria.push(item.servicio)
 					merged.set(c.id, cur)
 				})
 			})
-			const sumaClientes = Array.from(merged.values()).sort((a, b) => b.displayTotal - a.displayTotal)
+
+			const sumaClientes = Array.from(merged.values())
+				.map((c) => ({
+					...c,
+					// Los dejo siempre en el mismo orden
+					tiposAuditoria: auditoriaNames.filter((name) => c.tiposAuditoria.includes(name)),
+				}))
+				.sort((a, b) => b.displayTotal - a.displayTotal)
 
 			return [
 				{
 					key: '__suma__',
-					servicio: t('empleados', 'Suma Auditoria'),
+					servicio: t('empleados', 'Auditoria'),
 					displayTotal: auditoriaSum,
 					es_suma: true,
 					clientes: sumaClientes,
 				},
-				...withTotals,
+				...otrosServicios,
 			]
 		},
 
 		serviceTotalSum() {
-			return this.serviceItemsDisplay
-				.filter((item) => !item.es_suma)
-				.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
+			return this.serviceItemsDisplay.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
 		},
 
 		pendingPercent() {
@@ -1082,6 +1104,10 @@ export default {
 			return `${sign}${this.formatMoney(n)}`
 		},
 
+		fxExpectedMxn(fx) {
+			return Number(fx.importe_mxn || 0) - Number(fx.ganancia_cambiaria || 0)
+		},
+
 		fxDiffClass(value) {
 			const n = Number(value || 0)
 			if (n > 0.004) return 'fx-diff--gain'
@@ -1174,6 +1200,19 @@ export default {
 		sharePercent(part, whole) {
 			const w = Number(whole || 0)
 			return w > 0 ? this.clampPercentage((Number(part || 0) / w) * 100) : 0
+		},
+
+		auditoriaLabel(servicio) {
+			if (servicio === 'Auditoria Fiscal y Financiera') {
+				return t('empleados', 'Fiscal y Fin.')
+			}
+			if (servicio === 'Auditoria Financiera') {
+				return t('empleados', 'Financiera')
+			}
+			if (servicio === 'Auditoria Fiscal') {
+				return t('empleados', 'Fiscal')
+			}
+			return servicio
 		},
 	},
 }
@@ -1415,12 +1454,12 @@ export default {
 
 .distribution-dot--suma,
 .distribution-value--suma {
-	background: #5347fc;
+	background: #ec5700;
 }
 
 .distribution-dot--complete,
 .distribution-value--complete {
-	background: #ff9100;
+	background: #ff7b00;
 }
 
 .compliance-mode__select {
@@ -2203,5 +2242,38 @@ export default {
 
 .fx-stat--diff strong {
 	font-size: 0.9rem;
+}
+
+.service-client__name {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem 0.4rem;
+	min-width: 0;
+}
+
+.service-client__name strong {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.audit-tags {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.2rem;
+}
+
+.audit-tag {
+	padding: 0.05rem 0.4rem;
+	border-radius: 999px;
+	background: var(--color-background-darker);
+	color: var(--color-text-maxcontrast);
+	font-size: 0.62rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	line-height: 1.4;
+	white-space: nowrap;
 }
 </style>
