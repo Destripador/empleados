@@ -885,10 +885,13 @@ class honorariosParcialidadesMapper extends QBMapper {
 	public function getServicioBreakdownRows(array $filters): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->selectAlias('h.id_cliente', 'id_cliente')
+		$qb->selectAlias('h.id_honorario', 'id_honorario')
+			->selectAlias('h.id_cliente', 'id_cliente')
 			->selectAlias('h.tipo_servicio', 'tipo_servicio')
 			->selectAlias('h.especial', 'especial')
 			->selectAlias('h.tipo_moneda', 'tipo_moneda')
+			->selectAlias('h.descripcion', 'descripcion')
+			->selectAlias('h.fecha_inicio', 'fecha_inicio')
 			->selectAlias($qb->createFunction('SUM(p.importe_parcialidad)'), 'total')
 			->from($this->getTableName(), 'p')
 			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
@@ -896,13 +899,22 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		$this->applyDashboardFeeFilters($qb, $filters);
 
-		$qb->groupBy('h.id_cliente', 'h.tipo_servicio', 'h.especial', 'h.tipo_moneda');
+		$qb->groupBy(
+			'h.id_honorario',
+			'h.id_cliente',
+			'h.tipo_servicio',
+			'h.especial',
+			'h.tipo_moneda',
+			'h.descripcion',
+			'h.fecha_inicio'
+		);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
 		$result->closeCursor();
 
 		foreach ($rows as &$row) {
+			$row['id_honorario'] = (int)$row['id_honorario'];
 			$row['id_cliente'] = (int)$row['id_cliente'];
 			$row['especial'] = (int)($row['especial'] ?? 0);
 			$row['total'] = round((float)$row['total'], 2);

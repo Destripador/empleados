@@ -51,6 +51,7 @@ class ClientesDashboardService {
 
 		$serviceRows = $this->parcialidadesMapper->getServicioBreakdownRows($filters);
 		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows, $clientes);
+		$summary['revision'] = $this->buildRevision($serviceRows, $clientes);
 
 		$fxRows = $this->parcialidadesMapper->getDashboardFxRows($filters);
 		$fxByClient = $this->buildFxByClient($fxRows);
@@ -74,11 +75,53 @@ class ClientesDashboardService {
 	}
 
 	/**
-	 * Desglose de la conversión a moneda base, por cliente y moneda de origen.
+	 * Todos los honorarios, para revisión manual
 	 *
-	 * Solo entran parcialidades PAGADAS de honorarios en moneda extranjera.
-	 * Las que no tienen tipo de cambio registrado no suman a los totales:
-	 * se cuentan aparte en 'sin_tipo_cambio' para poder avisarlo en la UI.
+	 * @param list<array<string,mixed>> $rows
+	 * @param list<array<string,mixed>> $clientes
+	 * @return list<array<string,mixed>>
+	 */
+	private function buildRevision(array $rows, array $clientes = []): array {
+		$catalogo = [];
+		foreach ($clientes as $cliente) {
+			$id = (int)($cliente['id'] ?? 0);
+			if ($id > 0) {
+				$catalogo[$id] = (string)($cliente['nombre'] ?? '');
+			}
+		}
+
+		$lista = [];
+
+		foreach ($rows as $row) {
+			$idCliente = (int)($row['id_cliente'] ?? 0);
+			$servicioOriginal = trim((string)($row['tipo_servicio'] ?? ''));
+			[$servicioNormalizado, , $esFijo] = $this->normalizarServicio($servicioOriginal);
+
+			$lista[] = [
+				'id_honorario' => (int)($row['id_honorario'] ?? 0),
+				'id_cliente' => $idCliente,
+				'cliente' => $catalogo[$idCliente] ?? ('Cliente #' . $idCliente),
+				'servicio' => $servicioOriginal !== '' ? $servicioOriginal : 'Sin especificar',
+				'servicio_normalizado' => $servicioNormalizado,
+				'es_catalogo' => $esFijo,
+				'especial' => (int)($row['especial'] ?? 0) === 1,
+				'moneda' => $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE),
+				'descripcion' => trim((string)($row['descripcion'] ?? '')),
+				'fecha_inicio' => $row['fecha_inicio'] !== null ? substr((string)$row['fecha_inicio'], 0, 10) : null,
+				'total' => round((float)($row['total'] ?? 0), 2),
+			];
+		}
+
+		usort($lista, static function (array $a, array $b): int {
+			$cmp = strcasecmp($a['cliente'], $b['cliente']);
+			return $cmp !== 0 ? $cmp : strcmp((string)$b['fecha_inicio'], (string)$a['fecha_inicio']);
+		});
+
+		return $lista;
+	}
+
+	/**
+	 * Desglose de la conversión a moneda base, por cliente y moneda de origen.
 	 *
 	 * @param list<array<string,mixed>> $rows
 	 * @return array<int, list<array<string,mixed>>> indexado por id de cliente
@@ -537,14 +580,12 @@ class ClientesDashboardService {
 
 		foreach ($rows as $row) {
 			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
-			$especial = (int)($row['especial'] ?? 0) === 1;
 			$importe = (float)($row['total'] ?? 0);
 			$idCliente = (int)($row['id_cliente'] ?? 0);
+			$descripcion = trim((string)($row['descripcion'] ?? ''));
+			$orden = sprintf('%s|%010d', substr((string)($row['fecha_inicio'] ?? ''), 0, 10), (int)($row['id_honorario'] ?? 0));
 
-			[$servicio, $anio, $esFijo] = $this->normalizarServicio(
-				(string)($row['tipo_servicio'] ?? ''),
-				$especial
-			);
+			[$servicio, $anio, $esFijo] = $this->normalizarServicio((string)($row['tipo_servicio'] ?? ''));
 
 			$porMoneda[$moneda] ??= [];
 			$key = mb_strtolower($servicio);
@@ -565,19 +606,29 @@ class ClientesDashboardService {
 
 			if ($idCliente > 0) {
 				$porMoneda[$moneda][$key]['clientes'][$idCliente] ??= [
-					'id' => $idCliente,
-					'nombre' => $catalogo[$idCliente]['nombre'] ?? ('Cliente #' . $idCliente),
-					'logo' => $catalogo[$idCliente]['logo'] ?? null,
-					'total' => 0.0,
-					'anios' => [],
-				];
+				'id' => $idCliente,
+				'nombre' => $catalogo[$idCliente]['nombre'] ?? ('Cliente #' . $idCliente),
+				'logo' => $catalogo[$idCliente]['logo'] ?? null,
+				'total' => 0.0,
+				'anios' => [],
+				'descripcion' => null,
+				'descripcion_orden' => '',
+			];
 
-				$porMoneda[$moneda][$key]['clientes'][$idCliente]['total'] += $importe;
-				$porMoneda[$moneda][$key]['clientes'][$idCliente]['anios'][$anioKey] ??= [
-					'anio' => $anio,
-					'total' => 0.0,
-				];
-				$porMoneda[$moneda][$key]['clientes'][$idCliente]['anios'][$anioKey]['total'] += $importe;
+			$porMoneda[$moneda][$key]['clientes'][$idCliente]['total'] += $importe;
+			$porMoneda[$moneda][$key]['clientes'][$idCliente]['anios'][$anioKey] ??= [
+				'anio' => $anio,
+				'total' => 0.0,
+				'descripcion' => null,
+				'descripcion_orden' => '',
+			];
+			$porMoneda[$moneda][$key]['clientes'][$idCliente]['anios'][$anioKey]['total'] += $importe;
+
+			// Descripción más reciente: global del cliente y por año
+			$ref =& $porMoneda[$moneda][$key]['clientes'][$idCliente];
+			$ref = $this->mergeDescripcion($ref, $descripcion, $orden);
+			$ref['anios'][$anioKey] = $this->mergeDescripcion($ref['anios'][$anioKey], $descripcion, $orden);
+			unset($ref);
 			}
 		}
 
@@ -587,6 +638,7 @@ class ClientesDashboardService {
 			'auditoria fiscal' => 2,
 			'procedimientos convenidos' => 3,
 			'trabajos especiales' => 4,
+			'contabilidad' => 5,
 		];
 
 		$result = [];
@@ -633,6 +685,18 @@ class ClientesDashboardService {
 		return $result;
 	}
 
+	/** Se queda con la descripción más reciente según $orden. */
+	private function mergeDescripcion(array $target, string $descripcion, string $orden): array {
+		if ($descripcion === '') {
+			return $target;
+		}
+		if (($target['descripcion_orden'] ?? '') === '' || $orden > $target['descripcion_orden']) {
+			$target['descripcion'] = $descripcion;
+			$target['descripcion_orden'] = $orden;
+		}
+		return $target;
+	}
+
 	/**
 	 * Redondea y ordena los totales por año
 	 *
@@ -665,7 +729,7 @@ class ClientesDashboardService {
 	 *
 	 * @return array{0:string, 1:?int, 2:bool} [servicio, anio, es_fijo]
 	 */
-	private function normalizarServicio(string $tipoServicio, bool $especial): array {
+	private function normalizarServicio(string $tipoServicio): array {
 		$nombreCompleto = trim($tipoServicio);
 		$nombreBase = $nombreCompleto;
 		$anio = null;
@@ -677,16 +741,13 @@ class ClientesDashboardService {
 			}
 		}
 
-		if ($especial) {
-			return ['Trabajos Especiales', $anio, true];
-		}
-
 		$fijos = [
 			'auditoria fiscal y financiera' => 'Auditoria Fiscal y Financiera',
 			'auditoria financiera' => 'Auditoria Financiera',
 			'auditoria fiscal' => 'Auditoria Fiscal',
 			'procedimientos convenidos' => 'Procedimientos Convenidos',
 			'trabajos especiales' => 'Trabajos Especiales',
+			'contabilidad' => 'Contabilidad',
 		];
 
 		$key = mb_strtolower($nombreBase);

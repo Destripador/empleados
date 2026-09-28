@@ -19,25 +19,210 @@
 			<section class="dashboard-section" aria-labelledby="clientes-kpis-heading">
 				<header class="section-heading">
 					<div>
+						<p class="section-eyebrow">
+							{{ t('empleados', 'Services') }}
+						</p>
 						<h2 id="clientes-kpis-heading">
-							{{ t('empleados', 'Customer overview') }}
+							{{ t('empleados', 'Fees by service type') }}
 						</h2>
+					</div>
+
+					<div v-if="serviceCurrencyOptions.length > 1 || serviceYearOptions.length > 0" class="service-toolbar">
+						<div v-if="serviceCurrencyOptions.length > 1"
+							class="currency-tabs"
+							role="tablist"
+							:aria-label="t('empleados', 'Currency')">
+							<button v-for="option in serviceCurrencyOptions"
+								:key="option"
+								type="button"
+								role="tab"
+								class="currency-tab"
+								:class="{ 'currency-tab--active': option === activeServiceCurrencyCode }"
+								:aria-selected="String(option === activeServiceCurrencyCode)"
+								@click="selectedServiceCurrency = option">
+								{{ option }}
+							</button>
+						</div>
+
+						<label v-if="serviceYearOptions.length > 0" class="compliance-mode service-toolbar__year">
+							<span class="visually-hidden">{{ t('empleados', 'Year') }}</span>
+							<select v-model="selectedServiceYear" class="compliance-mode__select">
+								<option value="all">
+									{{ t('empleados', 'All years') }}
+								</option>
+								<option v-for="year in serviceYearOptions" :key="year" :value="String(year)">
+									{{ year }}
+								</option>
+							</select>
+						</label>
 					</div>
 				</header>
 
-				<div class="compliance-grid">
-					<article v-for="item in catalogCards"
-						:key="item.key"
-						class="compliance-card"
-						:class="item.status">
-						<div class="compliance-card__heading">
-							<div class="compliance-card__title">
-								<h3>{{ item.label }}</h3>
-								<p>{{ item.hint }}</p>
+				<div class="service-cards">
+					<article v-for="card in serviceCards"
+						:key="card.key"
+						class="service-card"
+						:class="{ 'service-card--open': isServiceOpen(card.key) }"
+						:style="{ '--tone': card.color }">
+						<button type="button"
+							class="service-card__toggle"
+							:disabled="card.clientes.length === 0"
+							:aria-expanded="String(isServiceOpen(card.key))"
+							:aria-controls="'service-clients-' + card.key"
+							@click="toggleService(card.key)">
+							<ChevronRight :size="18"
+								class="service-chevron"
+								:class="{
+									'service-chevron--open': isServiceOpen(card.key),
+									'service-chevron--hidden': card.clientes.length === 0,
+								}" />
+
+							<span class="service-card__main">
+								<strong class="service-card__name">{{ card.servicio }}</strong>
+								<small class="service-card__count">
+									{{ n('empleados', '%n customer', '%n customers', card.clientes.length) }}
+								</small>
+							</span>
+
+							<span class="service-card__figures">
+								<span class="service-card__amount">
+									{{ formatMoney(card.displayTotal) }}
+									<small>{{ activeServiceCurrencyCode }}</small>
+								</span>
+								<span class="service-card__ring"
+									:style="{ '--pct': card.percent }"
+									role="img"
+									:aria-label="formatPercent(card.percent)">
+									<span>{{ formatPercent(card.percent) }}</span>
+								</span>
+							</span>
+						</button>
+
+						<div :id="'service-clients-' + card.key"
+							class="service-collapse"
+							:class="{ 'service-collapse--open': isServiceOpen(card.key) }">
+							<div class="service-collapse__inner">
+								<ul class="service-clients">
+									<li v-for="cliente in card.clientes" :key="cliente.id">
+										<button type="button"
+											class="service-client"
+											:title="t('empleados', 'View fees for {name}', { name: cliente.nombre })"
+											@click="selectClient(cliente.id)">
+											<ClienteLogo :id="cliente.id"
+												:logo="cliente.logo"
+												size="sm"
+												:alt="cliente.nombre" />
+											<span class="service-client__content">
+												<span class="service-client__heading">
+													<span class="service-client__name">
+														<strong>{{ cliente.nombre }}</strong>
+														<span v-if="cliente.tiposAuditoria && cliente.tiposAuditoria.length > 0" class="audit-tags">
+															<span v-for="tipo in cliente.tiposAuditoria"
+																:key="tipo"
+																class="audit-tag">
+																{{ auditoriaLabel(tipo) }}
+															</span>
+														</span>
+													</span>
+													<span class="service-client__amount">{{ formatMoney(cliente.displayTotal) }}</span>
+												</span>
+												<span class="service-client__bar">
+													<span class="ranking-track service-client__track">
+														<span class="ranking-value ranking-value--client"
+															:style="{ width: `${sharePercent(cliente.displayTotal, card.displayTotal)}%` }" />
+													</span>
+													<small class="service-client__percent">
+														{{ formatPercent(sharePercent(cliente.displayTotal, card.displayTotal)) }}
+													</small>
+												</span>
+												<small v-if="card.showDescription && cliente.descripcion" class="service-client__desc" :title="cliente.descripcion">
+													{{ cliente.descripcion }}
+												</small>
+											</span>
+										</button>
+									</li>
+								</ul>
 							</div>
-							<strong class="compliance-card__percent">{{ item.value }}</strong>
 						</div>
 					</article>
+				</div>
+			</section>
+
+			<section v-if="revision.length > 0" class="dashboard-section" aria-labelledby="clientes-revision-heading">
+				<header class="section-heading section-heading--with-control">
+					<div>
+						<p class="section-eyebrow">
+							{{ t('empleados', 'Review') }}
+						</p>
+						<h2 id="clientes-revision-heading">
+							{{ t('empleados', 'All fees by service') }} ({{ revisionFiltered.length }})
+						</h2>
+					</div>
+					<label class="compliance-mode">
+						<span class="visually-hidden">{{ t('empleados', 'Filter') }}</span>
+						<select v-model="revisionFilter" class="compliance-mode__select">
+							<option value="all">
+								{{ t('empleados', 'All') }}
+							</option>
+							<option value="review">
+								{{ t('empleados', 'To review') }}
+							</option>
+							<option value="catalog">
+								{{ t('empleados', 'Catalog only') }}
+							</option>
+						</select>
+					</label>
+				</header>
+
+				<p class="chart-note">
+					{{ t('empleados', 'Orange dot: recognized catalog service. Gray dot: service name does not match the catalog and needs a fix. Open the customer to correct it.') }}
+				</p>
+
+				<div class="fx-table-wrap">
+					<table class="fx-table">
+						<thead>
+							<tr>
+								<th>{{ t('empleados', 'Customer') }}</th>
+								<th>{{ t('empleados', 'Service') }}</th>
+								<th>{{ t('empleados', 'Description') }}</th>
+								<th>{{ t('empleados', 'Start date') }}</th>
+								<th class="fx-num">
+									{{ t('empleados', 'Total') }}
+								</th>
+								<th>
+									<span class="visually-hidden">{{ t('empleados', 'Details') }}</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="item in revisionFiltered" :key="item.id_honorario">
+								<td><strong>{{ item.cliente }}</strong></td>
+								<td>
+									<span class="distribution-dot revision-dot" :class="{ 'distribution-dot--complete': item.es_catalogo }" />
+									{{ item.servicio }}
+									<span v-if="item.especial" class="audit-tag revision-tag">
+										{{ t('empleados', 'Special switch on') }}
+									</span>
+								</td>
+								<td class="especial-desc" :title="item.descripcion">
+									{{ item.descripcion || '-' }}
+								</td>
+								<td>{{ item.fecha_inicio || '-' }}</td>
+								<td class="fx-num">
+									{{ formatMoney(item.total, item.moneda) }}
+								</td>
+								<td>
+									<NcButton type="secondary" class="details-button" @click="selectClient(item.id_cliente)">
+										{{ t('empleados', 'Details') }}
+									</NcButton>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div v-if="revisionFiltered.length === 0" class="inline-state inline-state--compact">
+					{{ t('empleados', 'Nothing matches this filter.') }}
 				</div>
 			</section>
 
@@ -159,135 +344,6 @@
 					</ol>
 					<div v-else class="inline-state inline-state--compact">
 						{{ t('empleados', 'No outstanding fees for this selection.') }}
-					</div>
-				</article>
-
-				<article class="ranking-card services-card">
-					<header class="section-heading section-heading--compact">
-						<div>
-							<p class="section-eyebrow">
-								{{ t('empleados', 'Services') }}
-							</p>
-							<h2>{{ t('empleados', 'Fees by service type') }}</h2>
-						</div>
-					</header>
-
-					<div v-if="serviceCurrencyOptions.length > 1 || serviceYearOptions.length > 0"
-						class="service-toolbar">
-						<div v-if="serviceCurrencyOptions.length > 1"
-							class="currency-tabs"
-							role="tablist"
-							:aria-label="t('empleados', 'Currency')">
-							<button v-for="option in serviceCurrencyOptions"
-								:key="option"
-								type="button"
-								role="tab"
-								class="currency-tab"
-								:class="{ 'currency-tab--active': option === activeServiceCurrencyCode }"
-								:aria-selected="String(option === activeServiceCurrencyCode)"
-								@click="selectedServiceCurrency = option">
-								{{ option }}
-							</button>
-						</div>
-
-						<label v-if="serviceYearOptions.length > 0" class="compliance-mode service-toolbar__year">
-							<span class="visually-hidden">{{ t('empleados', 'Year') }}</span>
-							<select v-model="selectedServiceYear" class="compliance-mode__select">
-								<option value="all">
-									{{ t('empleados', 'All years') }}
-								</option>
-								<option v-for="year in serviceYearOptions" :key="year" :value="String(year)">
-									{{ year }}
-								</option>
-							</select>
-						</label>
-					</div>
-
-					<ul v-if="serviceItemsDisplay.length > 0" class="distribution-list service-list">
-						<li v-for="(item, index) in serviceItemsDisplay"
-							:key="item.key"
-							class="service-item"
-							:class="{ 'service-item--open': isServiceOpen(item.key) }">
-							<button type="button"
-								class="service-toggle"
-								:disabled="item.clientes.length === 0"
-								:aria-expanded="String(isServiceOpen(item.key))"
-								:aria-controls="'service-clients-' + index"
-								@click="toggleService(item.key)">
-								<ChevronRight :size="18"
-									class="service-chevron"
-									:class="{
-										'service-chevron--open': isServiceOpen(item.key),
-										'service-chevron--hidden': item.clientes.length === 0,
-									}" />
-								<span class="service-toggle__main">
-									<span class="service-toggle__title">
-										<span class="distribution-dot" :class="{ 'distribution-dot--complete': item.es_fijo, 'distribution-dot--suma': item.es_suma }" />
-										<strong>{{ item.servicio }}</strong>
-									</span>
-									<small v-if="item.clientes.length > 0" class="service-count">
-										{{ n('empleados', '%n customer', '%n customers', item.clientes.length) }}
-									</small>
-								</span>
-								<span class="service-toggle__amount">
-									{{ formatMoney(item.displayTotal) }}
-									<small v-if="activeServiceGroup" class="service-currency">{{ activeServiceGroup.moneda }}</small>
-								</span>
-							</button>
-
-							<div class="distribution-track">
-								<div class="distribution-value"
-									:class="{ 'distribution-value--complete': item.es_fijo, 'distribution-value--suma': item.es_suma }"
-									:style="{ width: `${serviceTotalSum > 0 ? Math.min(100, (item.displayTotal / serviceTotalSum) * 100) : 0}%` }" />
-							</div>
-
-							<div :id="'service-clients-' + index"
-								class="service-collapse"
-								:class="{ 'service-collapse--open': isServiceOpen(item.key) }">
-								<div class="service-collapse__inner">
-									<ul class="service-clients">
-										<li v-for="cliente in item.clientes" :key="cliente.id">
-											<button type="button"
-												class="service-client"
-												:title="t('empleados', 'View fees for {name}', { name: cliente.nombre })"
-												@click="selectClient(cliente.id)">
-												<ClienteLogo :id="cliente.id"
-													:logo="cliente.logo"
-													size="sm"
-													:alt="cliente.nombre" />
-												<span class="service-client__content">
-													<span class="service-client__heading">
-														<span class="service-client__name">
-															<strong>{{ cliente.nombre }}</strong>
-															<span v-if="cliente.tiposAuditoria && cliente.tiposAuditoria.length > 0" class="audit-tags">
-																<span v-for="tipo in cliente.tiposAuditoria"
-																	:key="tipo"
-																	class="audit-tag">
-																	{{ auditoriaLabel(tipo) }}
-																</span>
-															</span>
-														</span>
-														<span class="service-client__amount">{{ formatMoney(cliente.displayTotal) }}</span>
-													</span>
-													<span class="service-client__bar">
-														<span class="ranking-track service-client__track">
-															<span class="ranking-value ranking-value--client"
-																:style="{ width: `${sharePercent(cliente.displayTotal, item.displayTotal)}%` }" />
-														</span>
-														<small class="service-client__percent">
-															{{ formatPercent(sharePercent(cliente.displayTotal, item.displayTotal)) }}
-														</small>
-													</span>
-												</span>
-											</button>
-										</li>
-									</ul>
-								</div>
-							</div>
-						</li>
-					</ul>
-					<div v-else class="inline-state inline-state--compact">
-						{{ t('empleados', 'No fees found for this selection.') }}
 					</div>
 				</article>
 			</section>
@@ -759,6 +815,7 @@ export default {
 			fxAbierto: {},
 			serviceOpen: {},
 			selectedServiceCurrency: 'MXN',
+			revisionFilter: 'review',
 		}
 	},
 
@@ -771,37 +828,22 @@ export default {
 			return this.resumen?.catalogo || {}
 		},
 
-		catalogCards() {
-			return [
-				{
-					key: 'total',
-					label: t('empleados', 'Total records'),
-					hint: t('empleados', 'Companies and groups'),
-					value: this.catalog.total || 0,
-					status: 'status-neutral',
-				},
-				{
-					key: 'activos',
-					label: t('empleados', 'Active'),
-					hint: t('empleados', 'Enabled customers'),
-					value: this.catalog.activos || 0,
-					status: 'status-complete',
-				},
-				{
-					key: 'grupos',
-					label: t('empleados', 'Main groups'),
-					hint: t('empleados', 'Parent companies'),
-					value: this.catalog.grupos || 0,
-					status: 'status-neutral',
-				},
-				{
-					key: 'sub',
-					label: t('empleados', 'Sub-companies'),
-					hint: t('empleados', 'Linked companies'),
-					value: this.catalog.subempresas || 0,
-					status: 'status-neutral',
-				},
-			]
+		revision() {
+			return Array.isArray(this.resumen?.revision) ? this.resumen.revision : []
+		},
+
+		revisionFiltered() {
+			if (this.revisionFilter === 'catalog') {
+				return this.revision.filter((item) => item.es_catalogo)
+			}
+			if (this.revisionFilter === 'review') {
+				return this.revision.filter((item) => !item.es_catalogo || item.especial)
+			}
+			return this.revision
+		},
+
+		especiales() {
+			return Array.isArray(this.resumen?.especiales) ? this.resumen.especiales : []
 		},
 
 		monedas() {
@@ -881,18 +923,20 @@ export default {
 				return withTotals
 			}
 
-			// Los servicios que NO son auditoría (los 3 individuales ya no se muestran)
 			const otrosServicios = withTotals.filter((item) => !auditoriaNames.includes(item.servicio))
 
 			const auditoriaSum = auditoriaItems.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
 
-			// Une los clientes de las 3 auditorías y guarda cuáles de las 3 tiene cada uno
 			const merged = new Map()
 			auditoriaItems.forEach((item) => {
 				item.clientes.forEach((c) => {
 					const cur = merged.get(c.id) || { ...c, displayTotal: 0, tiposAuditoria: [] }
 					cur.displayTotal += c.displayTotal
 					cur.tiposAuditoria.push(item.servicio)
+					if (c.descripcion && (!cur.descripcion || c.descripcionOrden > cur.descripcionOrden)) {
+						cur.descripcion = c.descripcion
+						cur.descripcionOrden = c.descripcionOrden
+					}
 					merged.set(c.id, cur)
 				})
 			})
@@ -917,8 +961,46 @@ export default {
 			]
 		},
 
-		serviceTotalSum() {
-			return this.serviceItemsDisplay.reduce((sum, item) => sum + Number(item.displayTotal || 0), 0)
+		serviceCards() {
+			const items = this.serviceItemsDisplay
+			const defs = [
+				{ key: '__suma__', label: t('empleados', 'Auditoria'), color: '#ec5700' },
+				{ key: 'Procedimientos Convenidos', label: t('empleados', 'Procedimientos Convenidos'), color: '#ff7b00' },
+				{ key: 'Trabajos Especiales', label: t('empleados', 'Trabajos Especiales'), color: 'var(--color-primary-element)', showDescription: true },
+				{ key: 'Contabilidad', label: t('empleados', 'Contabilidad'), color: '#2e9e5b' },
+			]
+
+			const cards = defs.map((def) => {
+				const found = items.find((item) => item.key === def.key)
+				return {
+					key: def.key,
+					servicio: def.label,
+					color: def.color,
+					showDescription: !!def.showDescription,
+					displayTotal: Number(found?.displayTotal || 0),
+					clientes: found?.clientes || [],
+					percent: 0,
+				}
+			})
+
+			const total = cards.reduce((sum, c) => sum + c.displayTotal, 0)
+			if (total > 0) {
+				const raw = cards.map((c) => (c.displayTotal / total) * 1000)
+				const floors = raw.map(Math.floor)
+				let left = 1000 - floors.reduce((a, b) => a + b, 0)
+				raw
+					.map((v, i) => ({ i, r: v - floors[i] }))
+					.sort((a, b) => b.r - a.r)
+					.forEach(({ i }) => {
+						if (left > 0) {
+							floors[i]++
+							left--
+						}
+					})
+				cards.forEach((c, i) => { c.percent = floors[i] / 10 })
+			}
+
+			return cards
 		},
 
 		pendingPercent() {
@@ -1187,11 +1269,22 @@ export default {
 			return (Array.isArray(clientes) ? clientes : [])
 				.map((c) => {
 					let total = Number(c.total || 0)
+					let descripcion = c.descripcion || ''
+					let descripcionOrden = c.descripcion_orden || ''
 					if (year !== 'all') {
 						const found = (c.anios || []).find((a) => String(a.anio) === String(year))
 						total = found ? Number(found.total || 0) : 0
+						descripcion = found?.descripcion || ''
+						descripcionOrden = found?.descripcion_orden || ''
 					}
-					return { id: c.id, nombre: c.nombre, logo: c.logo, displayTotal: total }
+					return {
+						id: c.id,
+						nombre: c.nombre,
+						logo: c.logo,
+						displayTotal: total,
+						descripcion,
+						descripcionOrden,
+					}
 				})
 				.filter((c) => c.displayTotal > 0)
 				.sort((a, b) => b.displayTotal - a.displayTotal)
@@ -1884,11 +1977,6 @@ export default {
 	}
 }
 
-.services-card {
-	container-type: inline-size;
-	container-name: services;
-}
-
 .service-toolbar {
 	display: flex;
 	flex-wrap: wrap;
@@ -1957,58 +2045,6 @@ export default {
 
 .service-list {
 	gap: 0.35rem;
-}
-
-.service-item {
-	padding: 0.75rem 0.85rem;
-	border: 1px solid transparent;
-	border-radius: var(--border-radius-large);
-	transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.service-item:hover {
-	background: var(--color-background-hover);
-}
-
-.service-item--open {
-	border-color: var(--color-border);
-	background: var(--color-background-hover);
-}
-
-.service-toggle {
-	display: grid;
-	grid-template-columns: 1.25rem minmax(0, 1fr) auto;
-	column-gap: 0.5rem;
-	align-items: start;
-	width: 100%;
-	min-height: 0;
-	margin: 0 0 0.55rem;
-	padding: 0;
-	border: none;
-	border-radius: var(--border-radius);
-	background: transparent;
-	box-shadow: none;
-	color: inherit;
-	font: inherit;
-	font-size: 0.88rem;
-	text-align: left;
-	cursor: pointer;
-}
-
-.service-toggle:hover,
-.service-toggle:active {
-	background: transparent;
-}
-
-.service-toggle:disabled {
-	color: inherit;
-	opacity: 1;
-	cursor: default;
-}
-
-.service-toggle:focus-visible {
-	outline: 2px solid var(--color-primary-element);
-	outline-offset: 2px;
 }
 
 .service-chevron--open {
@@ -2275,5 +2311,153 @@ export default {
 	letter-spacing: 0.02em;
 	line-height: 1.4;
 	white-space: nowrap;
+}
+
+.service-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	align-items: start; /* al abrir una tarjeta no estira las demás */
+	gap: 0.875rem;
+}
+
+.service-card {
+	container-type: inline-size;
+	container-name: services;
+	padding: 1.125rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--dash-radius);
+	background: var(--color-background-hover);
+	border-left: 4px solid var(--color-primary-element);
+}
+
+.service-card__toggle {
+	display: grid;
+	grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+	column-gap: 0.5rem;
+	align-items: start;
+	width: 100%;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.service-card__toggle:hover,
+.service-card__toggle:active {
+	background: transparent;
+}
+
+.service-card__toggle:disabled {
+	opacity: 1;
+	cursor: default;
+}
+
+.service-card__toggle:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.service-card__main {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	min-width: 0;
+}
+
+.service-card__name {
+	font-size: 0.92rem;
+	font-weight: 700;
+	line-height: 1.3;
+	overflow-wrap: break-word;
+}
+
+.service-card__count {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+}
+
+.service-card__figures {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.5rem;
+}
+
+.service-card__amount {
+	font-size: 0.95rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.3;
+	white-space: nowrap;
+}
+
+.service-card__amount small {
+	margin-left: 0.2rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.68rem;
+	font-weight: 600;
+}
+
+.service-card__ring {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 3.2rem;
+	height: 3.2rem;
+	border-radius: 50%;
+	margin-top: 1.6rem;
+	background: conic-gradient(var(--color-primary-element) calc(var(--pct) * 1%), var(--color-background-darker) 0);
+}
+
+.service-client__desc {
+	display: -webkit-box;
+	overflow: hidden;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	line-height: 1.35;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.service-card__ring::before {
+	content: '';
+	position: absolute;
+	inset: 4px;
+	border-radius: 50%;
+	background: var(--color-background-hover);
+}
+
+.service-card__ring span {
+	position: relative;
+	font-size: 0.62rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.service-card .service-clients {
+	margin-top: 1rem;
+}
+
+.especial-desc {
+	max-width: 22rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.revision-dot {
+	margin-right: 0.4rem;
+	vertical-align: middle;
+}
+
+.revision-tag {
+	margin-left: 0.4rem;
+	background: #fff1e0;
+	color: #a35400;
 }
 </style>

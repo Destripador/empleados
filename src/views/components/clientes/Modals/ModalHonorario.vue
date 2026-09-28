@@ -240,6 +240,8 @@ export default {
 				'Auditoria Financiera',
 				'Auditoria Fiscal',
 				'Procedimientos Convenidos',
+				'Trabajos Especiales',
+				'Contabilidad',
 			].map(s => ({ label: s, value: s }))
 		},
 
