@@ -53,8 +53,8 @@ class ClientesDashboardService {
 		$summary['servicios'] = $this->buildServiceBreakdown($serviceRows, $clientes);
 		$summary['revision'] = $this->buildRevision($serviceRows, $clientes);
 
-		$fxRows = $this->parcialidadesMapper->getDashboardFxRows($filters);
-		$fxByClient = $this->buildFxByClient($fxRows);
+		$fxRows = $this->parcialidadesMapper->getDashboardDetalleRows($filters);
+		$fxByClient = $this->buildDetalleByClient($fxRows);
 
 		$summary['tabla'] = array_map(
 			static fn (array $row): array => $row + ['fx' => $fxByClient[(int)$row['id']] ?? []],
@@ -121,49 +121,36 @@ class ClientesDashboardService {
 	}
 
 	/**
-	 * Desglose de la conversión a moneda base, por cliente y moneda de origen.
+	 * Desglose por moneda y por servicio, para todos los honorarios
 	 *
 	 * @param list<array<string,mixed>> $rows
 	 * @return array<int, list<array<string,mixed>>> indexado por id de cliente
 	 */
-	private function buildFxByClient(array $rows): array {
+	private function buildDetalleByClient(array $rows): array {
 		$acc = [];
 
 		foreach ($rows as $row) {
 			$id = (int)($row['id_cliente'] ?? 0);
-			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
-
-			if ($id <= 0 || $moneda === self::MONEDA_BASE) {
+			if ($id <= 0) {
 				continue;
 			}
 
+			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
+			$esExtranjera = $moneda !== self::MONEDA_BASE;
 			$importe = (float)($row['importe_parcialidad'] ?? 0);
 			$estado = (int)($row['pagado'] ?? honorariosParcialidades::PENDIENTE);
 			$servicio = (string)($row['tipo_servicio'] ?? '');
-
-			$tcFactura = isset($row['cambio_moneda_factura']) && $row['cambio_moneda_factura'] !== null
-				? (float)$row['cambio_moneda_factura']
-				: null;
-			$tcPago = isset($row['cambio_moneda']) && $row['cambio_moneda'] !== null
-				? (float)$row['cambio_moneda']
-				: null;
-
-			$mxnFactura = ($tcFactura !== null && $tcFactura > 0) ? $importe * $tcFactura : null;
-			$mxnPago = ($tcPago !== null && $tcPago > 0) ? $importe * $tcPago : null;
-
-			$diferencia = ($mxnPago !== null && $mxnFactura !== null)
-				? round($mxnPago - $mxnFactura, 2)
-				: null;
-
-			// "Mejor disponible" para las estadísticas agregadas del bloque.
-			$tcBest = $tcPago ?? $tcFactura;
-			$mxnBest = $mxnPago ?? $mxnFactura;
+			$servicioKey = $servicio !== '' ? $servicio : 'Sin especificar';
 
 			$acc[$id][$moneda] ??= [
 				'moneda' => $moneda,
-				'moneda_destino' => self::MONEDA_BASE,
+				'moneda_destino' => $esExtranjera ? self::MONEDA_BASE : null,
+				'es_extranjera' => $esExtranjera,
 				'convertidas' => 0,
 				'sin_tipo_cambio' => 0,
+				'total' => 0.0,
+				'pagado' => 0.0,
+				'pendiente' => 0.0,
 				'importe_origen' => 0.0,
 				'importe_mxn' => 0.0,
 				'tipo_cambio_min' => null,
@@ -173,51 +160,91 @@ class ClientesDashboardService {
 				'servicios' => [],
 			];
 
-			$servicioKey = $servicio !== '' ? $servicio : 'Sin especificar';
+			$acc[$id][$moneda]['total'] += $importe;
+			if ($estado === honorariosParcialidades::PAGADA) {
+				$acc[$id][$moneda]['pagado'] += $importe;
+			} else {
+				$acc[$id][$moneda]['pendiente'] += $importe;
+			}
 
 			$acc[$id][$moneda]['servicios'][$servicioKey] ??= [
 				'servicio' => $servicioKey,
 				'subtotal_origen' => 0.0,
 				'subtotal_mxn' => 0.0,
 				'subtotal_diferencia' => 0.0,
+				'subtotal_pagado' => 0.0,
+				'subtotal_pendiente' => 0.0,
 				'parcialidades' => [],
 			];
 
-			if ($tcBest !== null && $tcBest > 0) {
-				$min = $acc[$id][$moneda]['tipo_cambio_min'];
-				$max = $acc[$id][$moneda]['tipo_cambio_max'];
-
-				$acc[$id][$moneda]['convertidas']++;
-				$acc[$id][$moneda]['importe_origen'] += $importe;
-				$acc[$id][$moneda]['importe_mxn'] += $mxnBest;
-				$acc[$id][$moneda]['tipo_cambio_min'] = $min === null ? $tcBest : min($min, $tcBest);
-				$acc[$id][$moneda]['tipo_cambio_max'] = $max === null ? $tcBest : max($max, $tcBest);
-
-				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_origen'] += $importe;
-				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_mxn'] += $mxnBest;
+			$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_origen'] += $importe;
+			if ($estado === honorariosParcialidades::PAGADA) {
+				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_pagado'] += $importe;
 			} else {
-				$acc[$id][$moneda]['sin_tipo_cambio']++;
+				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_pendiente'] += $importe;
 			}
 
-			if ($diferencia !== null) {
-				$acc[$id][$moneda]['ganancia_cambiaria'] += $diferencia;
-				$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_diferencia'] += $diferencia;
-			}
-
-			$acc[$id][$moneda]['servicios'][$servicioKey]['parcialidades'][] = [
+			$parcialidad = [
 				'id_parcialidad' => (int)($row['id_parcialidad'] ?? 0),
 				'numero' => (int)($row['numero_parcialidad'] ?? 0),
 				'servicio' => $servicioKey,
 				'estado' => $estado,
+				'estado_key' => $this->estadoKey($estado),
 				'fecha_factura' => $row['fecha_factura'] ?? null,
 				'fecha_pago' => $row['fecha_pago'] ?? null,
 				'importe' => round($importe, 2),
-				'tipo_cambio_factura' => $tcFactura !== null ? round($tcFactura, self::FX_DECIMALES) : null,
-				'importe_mxn_factura' => $mxnFactura !== null ? round($mxnFactura, 2) : null,
-				'tipo_cambio_pago' => $tcPago !== null ? round($tcPago, self::FX_DECIMALES) : null,
-				'importe_mxn_pago' => $mxnPago !== null ? round($mxnPago, 2) : null,
-				'diferencia_cambiaria' => $diferencia,
 			];
+
+			if ($esExtranjera) {
+				$tcFactura = isset($row['cambio_moneda_factura']) && $row['cambio_moneda_factura'] !== null
+					? (float)$row['cambio_moneda_factura']
+					: null;
+				$tcPago = isset($row['cambio_moneda']) && $row['cambio_moneda'] !== null
+					? (float)$row['cambio_moneda']
+					: null;
+
+				$mxnFactura = ($tcFactura !== null && $tcFactura > 0) ? $importe * $tcFactura : null;
+				$mxnPago = ($tcPago !== null && $tcPago > 0) ? $importe * $tcPago : null;
+
+				$diferencia = ($mxnPago !== null && $mxnFactura !== null)
+					? round($mxnPago - $mxnFactura, 2)
+					: null;
+
+				$tcBest = $tcPago ?? $tcFactura;
+				$mxnBest = $mxnPago ?? $mxnFactura;
+
+				if ($tcBest !== null && $tcBest > 0) {
+					$min = $acc[$id][$moneda]['tipo_cambio_min'];
+					$max = $acc[$id][$moneda]['tipo_cambio_max'];
+
+					$acc[$id][$moneda]['convertidas']++;
+					$acc[$id][$moneda]['importe_origen'] += $importe;
+					$acc[$id][$moneda]['importe_mxn'] += $mxnBest;
+					$acc[$id][$moneda]['tipo_cambio_min'] = $min === null ? $tcBest : min($min, $tcBest);
+					$acc[$id][$moneda]['tipo_cambio_max'] = $max === null ? $tcBest : max($max, $tcBest);
+
+					$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_mxn'] += $mxnBest;
+				} else {
+					$acc[$id][$moneda]['sin_tipo_cambio']++;
+				}
+
+				if ($diferencia !== null) {
+					$acc[$id][$moneda]['ganancia_cambiaria'] += $diferencia;
+					$acc[$id][$moneda]['servicios'][$servicioKey]['subtotal_diferencia'] += $diferencia;
+				}
+
+				$parcialidad['tipo_cambio_factura'] = $tcFactura !== null ? round($tcFactura, self::FX_DECIMALES) : null;
+				$parcialidad['importe_mxn_factura'] = $mxnFactura !== null ? round($mxnFactura, 2) : null;
+				$parcialidad['tipo_cambio_pago'] = $tcPago !== null ? round($tcPago, self::FX_DECIMALES) : null;
+				$parcialidad['importe_mxn_pago'] = $mxnPago !== null ? round($mxnPago, 2) : null;
+				$parcialidad['diferencia_cambiaria'] = $diferencia;
+			} else {
+				$acc[$id][$moneda]['convertidas']++;
+				$acc[$id][$moneda]['importe_origen'] += $importe;
+				$acc[$id][$moneda]['importe_mxn'] += $importe;
+			}
+
+			$acc[$id][$moneda]['servicios'][$servicioKey]['parcialidades'][] = $parcialidad;
 		}
 
 		$result = [];
@@ -225,9 +252,8 @@ class ClientesDashboardService {
 		foreach ($acc as $id => $porMoneda) {
 			$lista = [];
 
-			foreach ($porMoneda as $fx) {
-				// Ordena las parcialidades de cada honorario: #1, #2, #3...
-				foreach ($fx['servicios'] as &$servicioGrupo) {
+			foreach ($porMoneda as $bloque) {
+				foreach ($bloque['servicios'] as &$servicioGrupo) {
 					usort(
 						$servicioGrupo['parcialidades'],
 						static fn (array $a, array $b): int => $a['numero'] <=> $b['numero']
@@ -235,44 +261,62 @@ class ClientesDashboardService {
 					$servicioGrupo['subtotal_origen'] = round($servicioGrupo['subtotal_origen'], 2);
 					$servicioGrupo['subtotal_mxn'] = round($servicioGrupo['subtotal_mxn'], 2);
 					$servicioGrupo['subtotal_diferencia'] = round($servicioGrupo['subtotal_diferencia'], 2);
+					$servicioGrupo['subtotal_pagado'] = round($servicioGrupo['subtotal_pagado'], 2);
+					$servicioGrupo['subtotal_pendiente'] = round($servicioGrupo['subtotal_pendiente'], 2);
 				}
 				unset($servicioGrupo);
 
-				// Honorarios entre sí: el que más convirtió a MXN primero.
-				$servicios = array_values($fx['servicios']);
-				usort($servicios, static fn (array $a, array $b): int => $b['subtotal_mxn'] <=> $a['subtotal_mxn']);
+				$servicios = array_values($bloque['servicios']);
+				usort($servicios, static fn (array $a, array $b): int => $b['subtotal_origen'] <=> $a['subtotal_origen']);
+				$bloque['servicios'] = $servicios;
 
-				$fx['servicios'] = $servicios;
-				$fx['mostradas'] = array_sum(array_map(
+				$bloque['mostradas'] = array_sum(array_map(
 					static fn (array $s): int => count($s['parcialidades']),
 					$servicios
 				));
-				$fx['detalle_truncado'] = false;
+				$bloque['detalle_truncado'] = false;
 
-				$fx['importe_origen'] = round($fx['importe_origen'], 2);
-				$fx['importe_mxn'] = round($fx['importe_mxn'], 2);
-				$fx['ganancia_cambiaria'] = round($fx['ganancia_cambiaria'], 2);
+				$bloque['total'] = round($bloque['total'], 2);
+				$bloque['pagado'] = round($bloque['pagado'], 2);
+				$bloque['pendiente'] = round($bloque['pendiente'], 2);
+				$bloque['importe_origen'] = round($bloque['importe_origen'], 2);
+				$bloque['importe_mxn'] = round($bloque['importe_mxn'], 2);
+				$bloque['ganancia_cambiaria'] = round($bloque['ganancia_cambiaria'], 2);
 
-				$fx['tipo_cambio_promedio'] = $fx['importe_origen'] > 0.009
-					? round($fx['importe_mxn'] / $fx['importe_origen'], self::FX_DECIMALES)
+				$bloque['tipo_cambio_promedio'] = $bloque['es_extranjera'] && $bloque['importe_origen'] > 0.009
+					? round($bloque['importe_mxn'] / $bloque['importe_origen'], self::FX_DECIMALES)
 					: 0.0;
 
-				$fx['tipo_cambio_min'] = $fx['tipo_cambio_min'] !== null
-					? round($fx['tipo_cambio_min'], self::FX_DECIMALES)
+				$bloque['tipo_cambio_min'] = $bloque['tipo_cambio_min'] !== null
+					? round($bloque['tipo_cambio_min'], self::FX_DECIMALES)
 					: null;
-				$fx['tipo_cambio_max'] = $fx['tipo_cambio_max'] !== null
-					? round($fx['tipo_cambio_max'], self::FX_DECIMALES)
+				$bloque['tipo_cambio_max'] = $bloque['tipo_cambio_max'] !== null
+					? round($bloque['tipo_cambio_max'], self::FX_DECIMALES)
 					: null;
 
-				$lista[] = $fx;
+				$lista[] = $bloque;
 			}
 
-			usort($lista, static fn (array $a, array $b): int => strcmp($a['moneda'], $b['moneda']));
+			// MXN primero, luego monedas extranjeras en orden alfabético.
+			usort($lista, static function (array $a, array $b): int {
+				if ($a['es_extranjera'] !== $b['es_extranjera']) {
+					return $a['es_extranjera'] <=> $b['es_extranjera'];
+				}
+				return strcmp($a['moneda'], $b['moneda']);
+			});
 
 			$result[$id] = $lista;
 		}
 
 		return $result;
+	}
+
+	private function estadoKey(int $estado): string {
+		return match ($estado) {
+			honorariosParcialidades::PAGADA => 'pagada',
+			honorariosParcialidades::FACTURADA => 'facturada',
+			default => 'pendiente',
+		};
 	}
 
 	public function getClienteDetail(int $idCliente, array $filters = []): ?array {
@@ -301,10 +345,13 @@ class ClientesDashboardService {
 		}
 		unset($row);
 
-		$fxRows = $this->parcialidadesMapper->getDashboardFxRows(
+		$fxRows = $this->parcialidadesMapper->getDashboardDetalleRows(
 			array_merge($filters, ['id_cliente' => $idCliente])
 		);
-		$fx = $this->buildFxByClient($fxRows)[$idCliente] ?? [];
+		$fx = $this->buildDetalleByClient($fxRows)[$idCliente] ?? [];
+
+		$detalleRows = $this->parcialidadesMapper->getDashboardParcialidadesDetalleByCliente($idCliente, $filters);
+		$honorariosDetalle = $this->buildHonorariosDetalle($detalleRows);
 
 		return [
 			'cliente' => [
@@ -320,6 +367,7 @@ class ClientesDashboardService {
 			'totales' => array_values($porMoneda),
 			'fx' => $fx,
 			'honorarios' => $honorarios,
+			'honorarios_detalle' => $honorariosDetalle,
 			'parcialidades_pendientes' => $pendientes,
 			'analisis' => $this->capabilities(),
 		];
@@ -420,6 +468,103 @@ class ClientesDashboardService {
 			'subempresas' => $subempresas,
 			'especiales' => $especiales,
 		];
+	}
+
+	/**
+	 * Desglose completo por honorario
+	 *
+	 * @param list<array<string,mixed>> $rows
+	 * @return array{mxn: list<array<string,mixed>>, extranjera: list<array<string,mixed>>}
+	 */
+	private function buildHonorariosDetalle(array $rows): array {
+		$porHonorario = [];
+
+		foreach ($rows as $row) {
+			$idHonorario = (int)($row['id_honorario'] ?? 0);
+			if ($idHonorario <= 0) {
+				continue;
+			}
+
+			$moneda = $this->normalizeCurrency($row['tipo_moneda'] ?? self::MONEDA_BASE);
+			$esExtranjera = $moneda !== self::MONEDA_BASE;
+			$importe = (float)($row['importe_parcialidad'] ?? 0);
+			$estado = (int)($row['pagado'] ?? honorariosParcialidades::PENDIENTE);
+
+			$porHonorario[$idHonorario] ??= [
+				'id_honorario' => $idHonorario,
+				'servicio' => trim((string)($row['tipo_servicio'] ?? '')) ?: 'Sin especificar',
+				'moneda' => $moneda,
+				'es_extranjera' => $esExtranjera,
+				'total' => 0.0,
+				'pagado' => 0.0,
+				'pendiente' => 0.0,
+				'ganancia_cambiaria' => 0.0,
+				'parcialidades' => [],
+			];
+
+			$porHonorario[$idHonorario]['total'] += $importe;
+			if ($estado === honorariosParcialidades::PAGADA) {
+				$porHonorario[$idHonorario]['pagado'] += $importe;
+			} else {
+				$porHonorario[$idHonorario]['pendiente'] += $importe;
+			}
+
+			$parcialidad = [
+				'id_parcialidad' => (int)($row['id_parcialidad'] ?? 0),
+				'numero' => (int)($row['numero_parcialidad'] ?? 0),
+				'estado' => $estado,
+				'fecha_factura' => $row['fecha_factura'] ?? null,
+				'fecha_pago' => $row['fecha_pago'] ?? null,
+				'importe' => round($importe, 2),
+			];
+
+			if ($esExtranjera) {
+				$tcFactura = $row['cambio_moneda_factura'] ?? null;
+				$tcPago = $row['cambio_moneda'] ?? null;
+				$mxnFactura = ($tcFactura !== null && $tcFactura > 0) ? $importe * $tcFactura : null;
+				$mxnPago = ($tcPago !== null && $tcPago > 0) ? $importe * $tcPago : null;
+				$diferencia = ($mxnPago !== null && $mxnFactura !== null) ? round($mxnPago - $mxnFactura, 2) : null;
+
+				$parcialidad['tipo_cambio_factura'] = $tcFactura !== null ? round($tcFactura, self::FX_DECIMALES) : null;
+				$parcialidad['importe_mxn_factura'] = $mxnFactura !== null ? round($mxnFactura, 2) : null;
+				$parcialidad['tipo_cambio_pago'] = $tcPago !== null ? round($tcPago, self::FX_DECIMALES) : null;
+				$parcialidad['importe_mxn_pago'] = $mxnPago !== null ? round($mxnPago, 2) : null;
+				$parcialidad['diferencia_cambiaria'] = $diferencia;
+
+				if ($diferencia !== null) {
+					$porHonorario[$idHonorario]['ganancia_cambiaria'] += $diferencia;
+				}
+			}
+
+			$porHonorario[$idHonorario]['parcialidades'][] = $parcialidad;
+		}
+
+		$mxn = [];
+		$extranjera = [];
+
+		foreach ($porHonorario as $honorario) {
+			usort(
+				$honorario['parcialidades'],
+				static fn (array $a, array $b): int => $a['numero'] <=> $b['numero']
+			);
+
+			$honorario['total'] = round($honorario['total'], 2);
+			$honorario['pagado'] = round($honorario['pagado'], 2);
+			$honorario['pendiente'] = round($honorario['pendiente'], 2);
+			$honorario['ganancia_cambiaria'] = round($honorario['ganancia_cambiaria'], 2);
+
+			if ($honorario['es_extranjera']) {
+				$extranjera[] = $honorario;
+			} else {
+				$mxn[] = $honorario;
+			}
+		}
+
+		$byServicio = static fn (array $a, array $b): int => strcasecmp($a['servicio'], $b['servicio']);
+		usort($mxn, $byServicio);
+		usort($extranjera, $byServicio);
+
+		return ['mxn' => $mxn, 'extranjera' => $extranjera];
 	}
 
 	private function mergeClientFees(array $clientes, array $feeRows): array {

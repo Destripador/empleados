@@ -1287,4 +1287,111 @@ class honorariosParcialidadesMapper extends QBMapper {
 
 		return $rows;
 	}
+
+	/**
+	 * Todas las parcialidades
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDashboardDetalleRows(array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'p.id_parcialidad',
+			'p.numero_parcialidad',
+			'p.importe_parcialidad',
+			'p.pagado',
+			'p.cambio_moneda',
+			'p.cambio_moneda_factura',
+			'p.fecha_factura',
+			'p.fecha_pago',
+			'h.id_honorario',
+			'h.tipo_servicio',
+			'h.tipo_moneda'
+		)
+			->selectAlias('c.id', 'id_cliente')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'));
+
+		$this->applyDashboardFeeFilters($qb, $filters);
+
+		$qb->orderBy('c.id', 'ASC')
+			->addOrderBy('h.tipo_moneda', 'ASC')
+			->addOrderBy('h.id_honorario', 'ASC')
+			->addOrderBy('p.numero_parcialidad', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($rows as &$row) {
+			$row['id_cliente'] = (int)$row['id_cliente'];
+			$row['id_honorario'] = (int)$row['id_honorario'];
+			$row['id_parcialidad'] = (int)$row['id_parcialidad'];
+			$row['numero_parcialidad'] = (int)$row['numero_parcialidad'];
+			$row['pagado'] = (int)$row['pagado'];
+			$row['importe_parcialidad'] = round((float)$row['importe_parcialidad'], 2);
+			$row['cambio_moneda'] = $row['cambio_moneda'] !== null ? (float)$row['cambio_moneda'] : null;
+			$row['cambio_moneda_factura'] = $row['cambio_moneda_factura'] !== null ? (float)$row['cambio_moneda_factura'] : null;
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
+	 * Todas las parcialidades de un cliente
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDashboardParcialidadesDetalleByCliente(int $idCliente, array $filters): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'p.id_parcialidad',
+			'p.numero_parcialidad',
+			'p.importe_parcialidad',
+			'p.pagado',
+			'p.cambio_moneda',
+			'p.cambio_moneda_factura',
+			'p.fecha_factura',
+			'p.fecha_pago',
+			'h.id_honorario',
+			'h.tipo_servicio',
+			'h.tipo_moneda'
+		)
+			->selectAlias('c.id', 'id_cliente')
+			->from($this->getTableName(), 'p')
+			->innerJoin('p', 'empleados_honorarios', 'h', $qb->expr()->eq('p.id_honorario', 'h.id_honorario'))
+			->innerJoin('h', 'empleados_clientes', 'c', $qb->expr()->eq('h.id_cliente', 'c.id'))
+			->where($qb->expr()->eq(
+				'h.id_cliente',
+				$qb->createNamedParameter($idCliente, IQueryBuilder::PARAM_INT)
+			));
+
+		$this->applyDashboardFeeFilters($qb, array_merge($filters, ['id_cliente' => $idCliente]));
+
+		$qb->orderBy('h.tipo_moneda', 'ASC')
+			->addOrderBy('h.id_honorario', 'ASC')
+			->addOrderBy('p.numero_parcialidad', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		foreach ($rows as &$row) {
+			$row['id_cliente'] = (int)$row['id_cliente'];
+			$row['id_honorario'] = (int)$row['id_honorario'];
+			$row['id_parcialidad'] = (int)$row['id_parcialidad'];
+			$row['numero_parcialidad'] = (int)$row['numero_parcialidad'];
+			$row['pagado'] = (int)$row['pagado'];
+			$row['importe_parcialidad'] = round((float)$row['importe_parcialidad'], 2);
+			$row['cambio_moneda'] = $row['cambio_moneda'] !== null ? (float)$row['cambio_moneda'] : null;
+			$row['cambio_moneda_factura'] = $row['cambio_moneda_factura'] !== null ? (float)$row['cambio_moneda_factura'] : null;
+		}
+		unset($row);
+
+		return $rows;
+	}
 }

@@ -16,6 +16,17 @@
 		</div>
 
 		<div v-else class="dashboard-content">
+			<section class="dashboard-section" aria-labelledby="clientes-total-heading">
+				<article class="compliance-card status-neutral clientes-total-card">
+					<div class="compliance-card__heading">
+						<div class="compliance-card__title">
+							<h3 id="clientes-total-heading">{{ t('empleados', 'All Customers') }}</h3>
+							<p>{{ t('empleados', 'Groups, sub-companies and individual companies') }}</p>
+						</div>
+						<strong class="compliance-card__percent">{{ catalog.total || 0 }}</strong>
+					</div>
+				</article>
+			</section>
 			<section class="dashboard-section" aria-labelledby="clientes-kpis-heading">
 				<header class="section-heading">
 					<div>
@@ -476,49 +487,77 @@
 										:class="{ 'fx-collapse--open': fxAbierto[item.id] }">
 										<div class="fx-collapse__inner">
 											<div class="fx-panel" :style="{ marginLeft: `${item.level * 1.25}rem` }">
-												<section v-for="fx in item.fx" :key="fx.moneda" class="fx-block">
+
+												<section
+													v-for="fx in item.fx"
+													:key="fx.moneda"
+													class="fx-block"
+													:class="fx.es_extranjera ? 'fx-block--foreign' : 'fx-block--mxn'">
 													<header class="fx-block__head">
-														<strong>{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
-														<span>{{ fx.convertidas }} {{ t('empleados', 'converted installments') }}</span>
+														<strong v-if="fx.es_extranjera">{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
+														<strong v-else>{{ fx.moneda }}</strong>
+														<span>{{ fx.convertidas }} {{ t('empleados', 'installments') }}</span>
 													</header>
 
 													<div class="fx-stats">
-														<div class="fx-stat">
-															<span>{{ t('empleados', 'Paid in') }} {{ fx.moneda }}</span>
-															<strong>{{ formatMoney(fx.importe_origen, fx.moneda) }}</strong>
-														</div>
-														<div class="fx-stat">
-															<span>{{ t('empleados', 'Expected MXN') }}</span>
-															<strong>{{ formatMoney(fxExpectedMxn(fx), 'MXN') }}</strong>
-														</div>
-														<div class="fx-stat">
-															<span>{{ t('empleados', 'Received in MXN') }}</span>
-															<strong>{{ formatMoney(fx.importe_mxn, 'MXN') }}</strong>
-														</div>
-														<div class="fx-stat fx-stat--diff" :class="fxDiffClass(fx.ganancia_cambiaria)">
-															<span>{{ t('empleados', 'Exchange difference') }}</span>
-															<strong>{{ formatSignedMoney(fx.ganancia_cambiaria) }}</strong>
-														</div>
-														<div class="fx-stat">
-															<span>{{ t('empleados', 'Weighted average rate') }}</span>
-															<strong>{{ formatRate(fx.tipo_cambio_promedio) }}</strong>
-														</div>
+														<template v-if="fx.es_extranjera">
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Paid in') }} {{ fx.moneda }}</span>
+																<strong>{{ formatMoney(fx.importe_origen, fx.moneda) }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Expected MXN') }}</span>
+																<strong>{{ formatMoney(fxExpectedMxn(fx), 'MXN') }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Received in MXN') }}</span>
+																<strong>{{ formatMoney(fx.importe_mxn, 'MXN') }}</strong>
+															</div>
+															<div class="fx-stat fx-stat--diff" :class="fxDiffClass(fx.ganancia_cambiaria)">
+																<span>{{ t('empleados', 'Exchange difference') }}</span>
+																<strong>{{ formatSignedMoney(fx.ganancia_cambiaria) }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Weighted average rate') }}</span>
+																<strong>{{ formatRate(fx.tipo_cambio_promedio) }}</strong>
+															</div>
+														</template>
+														<template v-else>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Total') }}</span>
+																<strong>{{ formatMoney(fx.total) }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Collected') }}</span>
+																<strong>{{ formatMoney(fx.pagado) }}</strong>
+															</div>
+															<div class="fx-stat">
+																<span>{{ t('empleados', 'Outstanding') }}</span>
+																<strong>{{ formatMoney(fx.pendiente) }}</strong>
+															</div>
+														</template>
 													</div>
 
 													<div v-for="grupo in fx.servicios" :key="grupo.servicio" class="fx-service-group">
 														<header class="fx-service-group__head">
 															<strong>{{ grupo.servicio }}</strong>
-															<span>
+															<span v-if="fx.es_extranjera">
 																{{ formatMoney(grupo.subtotal_origen, fx.moneda) }} → {{ formatMoney(grupo.subtotal_mxn, 'MXN') }}
 																<span v-if="grupo.subtotal_diferencia !== 0" :class="fxDiffClass(grupo.subtotal_diferencia)">
 																	({{ formatSignedMoney(grupo.subtotal_diferencia) }})
 																</span>
 															</span>
+															<span v-else>
+																{{ formatMoney(grupo.subtotal_origen) }}
+																<small class="fx-note-inline">
+																	({{ t('empleados', 'Paid') }}: {{ formatMoney(grupo.subtotal_pagado) }} · {{ t('empleados', 'Pending') }}: {{ formatMoney(grupo.subtotal_pendiente) }})
+																</small>
+															</span>
 														</header>
 
 														<div class="fx-table-wrap">
 															<table class="fx-table">
-																<thead>
+																<thead v-if="fx.es_extranjera">
 																	<tr>
 																		<th>#</th>
 																		<th>{{ t('empleados', 'Invoice date') }}</th>
@@ -543,41 +582,57 @@
 																		</th>
 																	</tr>
 																</thead>
+																<thead v-else>
+																	<tr>
+																		<th>#</th>
+																		<th>{{ t('empleados', 'Invoice date') }}</th>
+																		<th>{{ t('empleados', 'Payment date') }}</th>
+																		<th class="fx-num">
+																			{{ t('empleados', 'Amount') }}
+																		</th>
+																		<th>{{ t('empleados', 'Status') }}</th>
+																	</tr>
+																</thead>
 																<tbody>
 																	<tr v-for="p in grupo.parcialidades" :key="p.id_parcialidad">
 																		<td>#{{ p.numero }}</td>
 																		<td>{{ p.fecha_factura || '-' }}</td>
 																		<td>{{ p.fecha_pago || '-' }}</td>
-																		<td class="fx-num">
-																			{{ formatMoney(p.importe) }}
-																		</td>
-																		<td class="fx-num">
-																			{{ p.tipo_cambio_factura !== null ? formatRate(p.tipo_cambio_factura) : '-' }}
-																		</td>
-																		<td class="fx-num">
-																			{{ p.importe_mxn_factura !== null ? formatMoney(p.importe_mxn_factura) : '-' }}
-																		</td>
-																		<td class="fx-num">
-																			{{ p.tipo_cambio_pago !== null ? formatRate(p.tipo_cambio_pago) : '-' }}
-																		</td>
-																		<td class="fx-num fx-num--strong">
-																			{{ p.importe_mxn_pago !== null ? formatMoney(p.importe_mxn_pago) : '-' }}
-																		</td>
-																		<td class="fx-num fx-num--strong" :class="fxDiffClass(p.diferencia_cambiaria)">
-																			{{ p.diferencia_cambiaria !== null ? formatSignedMoney(p.diferencia_cambiaria) : '-' }}
-																		</td>
+																		<template v-if="fx.es_extranjera">
+																			<td class="fx-num">
+																				{{ formatMoney(p.importe) }}
+																			</td>
+																			<td class="fx-num">
+																				{{ p.tipo_cambio_factura !== null ? formatRate(p.tipo_cambio_factura) : '-' }}
+																			</td>
+																			<td class="fx-num">
+																				{{ p.importe_mxn_factura !== null ? formatMoney(p.importe_mxn_factura) : '-' }}
+																			</td>
+																			<td class="fx-num">
+																				{{ p.tipo_cambio_pago !== null ? formatRate(p.tipo_cambio_pago) : '-' }}
+																			</td>
+																			<td class="fx-num fx-num--strong">
+																				{{ p.importe_mxn_pago !== null ? formatMoney(p.importe_mxn_pago) : '-' }}
+																			</td>
+																			<td class="fx-num fx-num--strong" :class="fxDiffClass(p.diferencia_cambiaria)">
+																				{{ p.diferencia_cambiaria !== null ? formatSignedMoney(p.diferencia_cambiaria) : '-' }}
+																			</td>
+																		</template>
+																		<template v-else>
+																			<td class="fx-num fx-num--strong">
+																				{{ formatMoney(p.importe) }}
+																			</td>
+																			<td>{{ estadoLabel(p.estado_key) }}</td>
+																		</template>
 																	</tr>
 																</tbody>
 															</table>
 														</div>
-													</div>
 
-													<p v-if="fx.detalle_truncado" class="fx-note">
-														{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.mostradas }) }}
-													</p>
-													<p v-if="fx.sin_tipo_cambio > 0" class="fx-note">
-														{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
-													</p>
+														<p v-if="fx.es_extranjera && fx.sin_tipo_cambio > 0" class="fx-note">
+															{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
+														</p>
+													</div>
 												</section>
 											</div>
 										</div>
@@ -1163,6 +1218,15 @@ export default {
 			return String(moneda || 'MXN').toUpperCase() !== 'MXN'
 		},
 
+		estadoLabel(key) {
+			const map = {
+				pendiente: t('empleados', 'Pending'),
+				facturada: t('empleados', 'Invoiced'),
+				pagada: t('empleados', 'Paid'),
+			}
+			return map[key] || key
+		},
+
 		toggleFx(id) {
 			this.fxAbierto = {
 				...this.fxAbierto,
@@ -1422,8 +1486,8 @@ export default {
 	background: var(--color-background-hover);
 }
 
-.status-complete { border-left-color: var(--color-success); }
-.status-warning { border-left-color: var(--color-warning); }
+.status-complete { border-left-color: #1a9c4a; }
+.status-warning { border-left-color: #e0a400; }
 .status-neutral { border-left-color: var(--color-text-maxcontrast); }
 
 .compliance-card__heading {
@@ -1478,11 +1542,11 @@ export default {
 
 .status-complete .progress-value,
 .distribution-value--complete {
-	background: var(--color-success);
+	background: #1a9c4a;
 }
 
 .status-warning .progress-value {
-	background: var(--color-warning);
+	background: #e0a400;
 }
 
 .ranking-list,
@@ -1855,6 +1919,16 @@ export default {
 	border-left: 3px solid var(--color-primary-element);
 	border-radius: 12px;
 	background: var(--color-background-hover);
+}
+
+.fx-block {
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.fx-block:last-child {
+	padding-bottom: 0;
+	border-bottom: none;
 }
 
 .fx-block__head {
@@ -2459,5 +2533,35 @@ export default {
 	margin-left: 0.4rem;
 	background: #fff1e0;
 	color: #a35400;
+}
+
+.clientes-total-card {
+	max-width: 22rem;
+}
+
+.fx-legend {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin: 0 0 0.5rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+}
+
+.fx-legend__dot {
+	display: inline-block;
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+}
+
+.fx-note-inline {
+	color: var(--color-text-maxcontrast);
+	font-weight: 400;
+}
+
+.compliance-card__title h3 {
+	font-size: 18px;
+	font-weight: 700;
 }
 </style>
