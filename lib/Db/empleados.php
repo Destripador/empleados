@@ -40,6 +40,7 @@ class empleados extends Entity {
 	protected string $contactoemergencia = '';
 	protected string $numeroemergencia = '';
 	protected string $notas = '';
+	protected ?string $fechabaja = null;
 
 	public function __construct() {
 		$this->addType('Id_empleados', 'integer');
@@ -72,6 +73,7 @@ class empleados extends Entity {
 		$this->addType('Contacto_emergencia', 'string');
 		$this->addType('Numero_emergencia', 'string');
 		$this->addType('Notas', 'string');
+		$this->addType('Fecha_baja', 'string');
 	}
 
 	public function read(): array {
@@ -106,6 +108,7 @@ class empleados extends Entity {
 			'Contacto_emergencia' => $this->contactoemergencia,
 			'Numero_emergencia' => $this->numeroemergencia,
 			'Notas' => $this->notas,
+			'Fecha_baja' => $this->fechabaja,
 		];
 	}
 }

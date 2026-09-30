@@ -69,7 +69,8 @@ class equiposMapper extends QBMapper {
 			'e.Id_departamento',
 			'e.Ingreso',
 			'e.Estado',
-			'e.Sueldo'
+			'e.Sueldo',
+			'e.Fecha_baja'
 		)
 			->selectAlias('u.displayname', 'displayname')
 			->from('empleados', 'e')

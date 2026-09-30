@@ -78,10 +78,10 @@
 				</div>
 
 				<dl class="team-card__metrics">
-					<div class="team-card__metric">
+					<!--<div class="team-card__metric">
 						<dt>{{ t('empleados', 'Expected') }}</dt>
 						<dd>{{ formatHours(team.horas_esperadas) }}</dd>
-					</div>
+					</div>-->
 					<div class="team-card__metric">
 						<dt>{{ t('empleados', 'Accounted') }}</dt>
 						<dd>{{ formatHours(team.horas_contabilizadas) }}</dd>

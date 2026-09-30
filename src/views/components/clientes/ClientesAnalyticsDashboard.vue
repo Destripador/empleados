@@ -140,10 +140,10 @@
 												<span class="service-client__bar">
 													<span class="ranking-track service-client__track">
 														<span class="ranking-value ranking-value--client"
-															:style="{ width: `${sharePercent(cliente.displayTotal, card.displayTotal)}%` }" />
+															:style="{ width: `${sharePercent(cliente.displayTotal, serviceGrandTotal)}%` }" />
 													</span>
 													<small class="service-client__percent">
-														{{ formatPercent(sharePercent(cliente.displayTotal, card.displayTotal)) }}
+														{{ formatPercent(sharePercent(cliente.displayTotal, serviceGrandTotal)) }}
 													</small>
 												</span>
 												<small v-if="card.showDescription && cliente.descripcion" class="service-client__desc" :title="cliente.descripcion">
@@ -320,23 +320,39 @@
 			</section>
 
 			<section class="rankings-grid" :aria-label="t('empleados', 'Customer fee rankings')">
-				<article class="ranking-card">
+				<article ref="pendingRankingCard" class="ranking-card">
 					<header class="section-heading section-heading--compact">
 						<div>
 							<p class="section-eyebrow">
 								{{ t('empleados', 'Outstanding fees') }}
 							</p>
-							<h2>{{ t('empleados', 'Customers with the highest outstanding balance') }}</h2>
+							<h2>{{ t('empleados', 'Customers with an outstanding balance') }}</h2>
+						</div>
+
+						<div v-if="rankingCurrencyOptions.length > 1"
+							class="currency-tabs"
+							role="tablist"
+							:aria-label="t('empleados', 'Currency')">
+							<button v-for="option in rankingCurrencyOptions"
+								:key="option"
+								type="button"
+								role="tab"
+								class="currency-tab"
+								:class="{ 'currency-tab--active': option === activeRankingCurrency }"
+								:aria-selected="String(option === activeRankingCurrency)"
+								@click="selectedRankingCurrency = option">
+								{{ option }}
+							</button>
 						</div>
 					</header>
 
-					<ol v-if="pendingRanking.length > 0" class="ranking-list">
+					<ol v-if="pendingRankingPage.length > 0" class="ranking-list">
 						<li
-							v-for="(item, index) in pendingRanking"
+							v-for="(item, index) in pendingRankingPage"
 							:key="item.id"
 							class="ranking-item ranking-item--clickable"
 							@click="selectClient(item.id)">
-							<span class="ranking-position">{{ index + 1 }}</span>
+							<span class="ranking-position">{{ pendingRankingOffset + index + 1 }}</span>
 							<ClienteLogo :id="item.id"
 								:logo="item.logo"
 								size="sm"
@@ -344,10 +360,13 @@
 							<div class="ranking-item__content">
 								<div class="ranking-item__heading">
 									<strong>{{ item.nombre }}</strong>
-									<span>{{ formatMoney(item.pendiente) }}</span>
+									<span class="ranking-item__figures">
+										{{ formatMoney(item.pendiente) }}
+										<small class="ranking-item__percent">{{ formatPercent(item.percent) }}</small>
+									</span>
 								</div>
 								<div class="ranking-track">
-									<div class="ranking-value ranking-value--client" :style="{ width: `${item.relativeWidth}%` }" />
+									<div class="ranking-value ranking-value--client" :style="{ width: `${item.barWidth}%` }" />
 								</div>
 								<small>{{ t('empleados', 'Collected') }}: {{ formatMoney(item.pagado) }}</small>
 							</div>
@@ -356,6 +375,28 @@
 					<div v-else class="inline-state inline-state--compact">
 						{{ t('empleados', 'No outstanding fees for this selection.') }}
 					</div>
+
+					<footer v-if="pendingRankingAll.length > 0" class="ranking-pager">
+						<button type="button"
+							class="ranking-pager__arrow"
+							:disabled="rankingPage <= 1"
+							:aria-label="t('empleados', 'Previous page')"
+							@click="goToRankingPage(rankingPage - 1)">
+							<ChevronLeft :size="18" />
+						</button>
+
+						<span class="ranking-pager__label">
+							{{ pendingRankingOffset + 1 }}–{{ pendingRankingOffset + pendingRankingPage.length }} / {{ pendingRankingAll.length }}
+						</span>
+
+						<button type="button"
+							class="ranking-pager__arrow"
+							:disabled="rankingPage >= pendingRankingPageCount"
+							:aria-label="t('empleados', 'Next page')"
+							@click="goToRankingPage(rankingPage + 1)">
+							<ChevronRight :size="18" />
+						</button>
+					</footer>
 				</article>
 			</section>
 
@@ -454,7 +495,10 @@
 												<ChevronRight :size="16" />
 											</button>
 											<span v-else-if="item.level > 0" class="employee-indent-marker">›</span>
-											<strong>{{ item.nombre }}</strong>
+											<strong :class="{ 'client-special': hasTrabajoEspecial(item.id) }"
+												:title="hasTrabajoEspecial(item.id) ? t('empleados', 'Has a Special Work fee') : null">
+												{{ item.nombre }}
+											</strong>
 										</span>
 										<span role="cell" class="employee-metric">
 											<span v-for="m in item.montos" :key="m.moneda" class="money-line">
@@ -530,6 +574,10 @@
 															<div class="fx-stat">
 																<span>{{ t('empleados', 'Collected') }}</span>
 																<strong>{{ formatMoney(fx.pagado) }}</strong>
+															</div>
+															<div class="fx-stat fx-stat--billed">
+																<span>{{ t('empleados', 'Invoiced, not collected') }}</span>
+																<strong>{{ formatMoney(fxInvoicedUnpaid(fx)) }}</strong>
 															</div>
 															<div class="fx-stat">
 																<span>{{ t('empleados', 'Outstanding') }}</span>
@@ -672,7 +720,10 @@
 											@click.stop="toggleFx(row.id)">
 											<ChevronRight :size="16" />
 										</button>
-										<strong>{{ row.nombre }}</strong>
+										<strong :class="{ 'client-special': hasTrabajoEspecial(row.id) }"
+											:title="hasTrabajoEspecial(row.id) ? t('empleados', 'Has a Special Work fee') : null">
+											{{ row.nombre }}
+										</strong>
 									</td>
 									<td :data-label="t('empleados', 'Total')" class="employee-metric">
 										<span v-for="m in row.montos" :key="m.moneda" class="money-line">
@@ -799,10 +850,6 @@
 																</table>
 															</div>
 														</div>
-
-														<p v-if="fx.detalle_truncado" class="fx-note">
-															{{ t('empleados', 'Showing the {n} most recent payments.', { n: fx.mostradas }) }}
-														</p>
 														<p v-if="fx.sin_tipo_cambio > 0" class="fx-note">
 															{{ t('empleados', '{n} installment(s) have no exchange rate recorded and are not included in the MXN totals.', { n: fx.sin_tipo_cambio }) }}
 														</p>
@@ -829,6 +876,7 @@
 import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
+import ChevronLeft from 'vue-material-design-icons/ChevronLeft.vue'
 import ClienteLogo from '../../../components/clientes/ClienteLogo.vue'
 
 export default {
@@ -838,6 +886,7 @@ export default {
 		NcButton,
 		NcLoadingIcon,
 		ChevronRight,
+		ChevronLeft,
 		ClienteLogo,
 	},
 
@@ -871,6 +920,8 @@ export default {
 			serviceOpen: {},
 			selectedServiceCurrency: 'MXN',
 			revisionFilter: 'review',
+			rankingPage: 1,
+			selectedRankingCurrency: 'MXN',
 		}
 	},
 
@@ -897,10 +948,17 @@ export default {
 			return this.revision
 		},
 
-		especiales() {
-			return Array.isArray(this.resumen?.especiales) ? this.resumen.especiales : []
+		specialClientIds() {
+			const ids = new Set()
+			this.servicios.forEach((group) => {
+				(group.items || []).forEach((item) => {
+					if (item.servicio === 'Trabajos Especiales') {
+						(item.clientes || []).forEach((c) => ids.add(Number(c.id)))
+					}
+				})
+			})
+			return ids
 		},
-
 		monedas() {
 			return Array.isArray(this.resumen?.monedas) ? this.resumen.monedas : []
 		},
@@ -1016,6 +1074,10 @@ export default {
 			]
 		},
 
+		serviceGrandTotal() {
+			return this.serviceCards.reduce((sum, card) => sum + card.displayTotal, 0)
+		},
+
 		serviceCards() {
 			const items = this.serviceItemsDisplay
 			const defs = [
@@ -1070,13 +1132,65 @@ export default {
 			return this.clampPercentage((Number(this.activeCurrency?.pagado || 0) / total) * 100)
 		},
 
-		pendingRanking() {
-			const rows = Array.isArray(this.resumen?.ranking_pendiente) ? this.resumen.ranking_pendiente : []
-			const max = Math.max(...rows.map((row) => Number(row.pendiente || 0)), 0)
-			return rows.map((row) => ({
-				...row,
-				relativeWidth: max > 0 ? Math.max(6, (Number(row.pendiente || 0) / max) * 100) : 0,
-			}))
+		rankingCurrencyOptions() {
+			const rows = Array.isArray(this.resumen?.tabla) ? this.resumen.tabla : []
+			const set = new Set()
+			rows.forEach((row) => {
+				(row.monedas || []).forEach((m) => {
+					if (m.moneda) set.add(m.moneda)
+				})
+			})
+			return Array.from(set).sort((a, b) => {
+				if (a === 'MXN') return -1
+				if (b === 'MXN') return 1
+				return a.localeCompare(b)
+			})
+		},
+
+		activeRankingCurrency() {
+			return this.rankingCurrencyOptions.includes(this.selectedRankingCurrency)
+				? this.selectedRankingCurrency
+				: (this.rankingCurrencyOptions[0] || 'MXN')
+		},
+
+		pendingRankingAll() {
+			const rows = Array.isArray(this.resumen?.tabla) ? this.resumen.tabla : []
+			const moneda = this.activeRankingCurrency
+
+			const totalFees = rows.reduce((sum, row) => {
+				const m = (row.monedas || []).find((x) => x.moneda === moneda)
+				return sum + Number(m?.total || 0)
+			}, 0)
+
+			return rows
+				.map((row) => {
+					const m = (row.monedas || []).find((x) => x.moneda === moneda)
+					const pendiente = Number(m?.pendiente || 0)
+					const percent = totalFees > 0 ? (pendiente / totalFees) * 100 : 0
+					return {
+						id: row.id,
+						nombre: row.nombre,
+						logo: row.logo,
+						pendiente,
+						pagado: Number(m?.pagado || 0),
+						percent,
+						barWidth: percent > 0 ? Math.max(1.5, this.clampPercentage(percent)) : 0,
+					}
+				})
+				.filter((row) => row.pendiente > 0.009)
+				.sort((a, b) => b.pendiente - a.pendiente)
+		},
+
+		pendingRankingPageCount() {
+			return Math.max(1, Math.ceil(this.pendingRankingAll.length / 10))
+		},
+
+		pendingRankingOffset() {
+			return (this.rankingPage - 1) * 10
+		},
+
+		pendingRankingPage() {
+			return this.pendingRankingAll.slice(this.pendingRankingOffset, this.pendingRankingOffset + 10)
 		},
 
 		evolucion() {
@@ -1208,6 +1322,27 @@ export default {
 				this.selectedServiceYear = 'all'
 			}
 		},
+
+		resumen() {
+			this.rankingPage = 1
+		},
+		pendingRankingPageCount(count) {
+			if (this.rankingPage > count) {
+				this.rankingPage = count
+			}
+		},
+
+		rankingCurrencyOptions: {
+			immediate: true,
+			handler(options) {
+				if (!options.includes(this.selectedRankingCurrency)) {
+					this.selectedRankingCurrency = options[0] || 'MXN'
+				}
+			},
+		},
+		activeRankingCurrency() {
+			this.rankingPage = 1
+		},
 	},
 
 	methods: {
@@ -1225,6 +1360,10 @@ export default {
 				pagada: t('empleados', 'Paid'),
 			}
 			return map[key] || key
+		},
+
+		hasTrabajoEspecial(id) {
+			return this.specialClientIds.has(Number(id))
 		},
 
 		toggleFx(id) {
@@ -1252,6 +1391,14 @@ export default {
 
 		fxExpectedMxn(fx) {
 			return Number(fx.importe_mxn || 0) - Number(fx.ganancia_cambiaria || 0)
+		},
+
+		fxInvoicedUnpaid(fx) {
+			return (fx.servicios || []).reduce((sum, grupo) => {
+				return sum + (grupo.parcialidades || [])
+					.filter((p) => p.estado_key === 'facturada')
+					.reduce((s, p) => s + Number(p.importe || 0), 0)
+			}, 0)
 		},
 
 		fxDiffClass(value) {
@@ -1371,6 +1518,21 @@ export default {
 			}
 			return servicio
 		},
+
+		goToRankingPage(page) {
+			const target = Math.min(Math.max(1, page), this.pendingRankingPageCount)
+			if (target === this.rankingPage) {
+				return
+			}
+			this.rankingPage = target
+
+			this.$nextTick(() => {
+				this.$refs.pendingRankingCard?.scrollIntoView({
+					behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+					block: 'start',
+				})
+			})
+		},
 	},
 }
 </script>
@@ -1395,6 +1557,10 @@ export default {
 .dashboard-content {
 	display: grid;
 	gap: var(--dash-gap);
+}
+
+.ranking-card {
+	scroll-margin-top: 1rem;
 }
 
 .dashboard-state,
@@ -1540,8 +1706,7 @@ export default {
 	background: var(--color-primary-element);
 }
 
-.status-complete .progress-value,
-.distribution-value--complete {
+.status-complete .progress-value {
 	background: #1a9c4a;
 }
 
@@ -1596,22 +1761,11 @@ export default {
 	font-size: 0.85rem;
 }
 
-.distribution-item__label {
-	display: flex;
-	align-items: center;
-	gap: 0.4rem;
-}
-
 .distribution-dot {
 	width: 0.55rem;
 	height: 0.55rem;
 	border-radius: 50%;
 	background: var(--color-primary-element);
-}
-
-.distribution-dot--suma,
-.distribution-value--suma {
-	background: #ec5700;
 }
 
 .distribution-dot--complete,
@@ -2117,10 +2271,6 @@ export default {
 	outline-offset: 2px;
 }
 
-.service-list {
-	gap: 0.35rem;
-}
-
 .service-chevron--open {
 	transform: rotate(90deg);
 	color: var(--color-primary-element);
@@ -2136,60 +2286,12 @@ export default {
 	transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
 }
 
-.service-toggle:not(:disabled):hover .service-chevron {
+.service-card__toggle:not(:disabled):hover .service-chevron {
 	color: var(--color-primary-element);
 }
 
 .service-chevron--hidden {
 	visibility: hidden;
-}
-
-.service-toggle__main {
-	display: flex;
-	flex-direction: column;
-	gap: 0.15rem;
-	min-width: 0;
-}
-
-.service-toggle__title {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.45rem;
-	min-width: 0;
-}
-
-.service-toggle__title strong {
-	font-weight: 600;
-	line-height: 1.4;
-	overflow-wrap: anywhere;
-}
-
-.service-toggle__title .distribution-dot {
-	flex: 0 0 auto;
-	margin-top: 0.42rem;
-}
-
-.service-count {
-	padding-left: 1rem;
-	color: var(--color-text-maxcontrast);
-	font-size: 0.72rem;
-	white-space: nowrap;
-}
-
-.service-toggle__amount {
-	font-weight: 600;
-	font-variant-numeric: tabular-nums;
-	line-height: 1.4;
-	text-align: right;
-	white-space: nowrap;
-}
-
-.service-currency {
-	margin-left: 0.25rem;
-	color: var(--color-text-maxcontrast);
-	font-size: 0.68rem;
-	font-weight: 600;
-	letter-spacing: 0.03em;
 }
 
 .service-collapse {
@@ -2303,10 +2405,6 @@ export default {
 }
 
 @container services (max-width: 24rem) {
-	.service-item {
-		padding: 0.65rem 0.55rem;
-	}
-
 	.service-clients {
 		margin-left: 0.3rem;
 		padding-left: 0.5rem;
@@ -2333,7 +2431,8 @@ export default {
 @media (prefers-reduced-motion: reduce) {
 	.service-collapse,
 	.service-chevron,
-	.service-item {
+	.fx-collapse,
+	.employee-collapse {
 		transition: none;
 	}
 }
@@ -2539,22 +2638,6 @@ export default {
 	max-width: 22rem;
 }
 
-.fx-legend {
-	display: flex;
-	align-items: center;
-	gap: 0.35rem;
-	margin: 0 0 0.5rem;
-	color: var(--color-text-maxcontrast);
-	font-size: 0.72rem;
-}
-
-.fx-legend__dot {
-	display: inline-block;
-	width: 0.55rem;
-	height: 0.55rem;
-	border-radius: 50%;
-}
-
 .fx-note-inline {
 	color: var(--color-text-maxcontrast);
 	font-weight: 400;
@@ -2563,5 +2646,71 @@ export default {
 .compliance-card__title h3 {
 	font-size: 18px;
 	font-weight: 700;
+}
+
+.ranking-pager {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--color-border);
+}
+
+.ranking-pager__arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	border: 1px solid var(--color-border);
+	border-radius: 50%;
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.ranking-pager__arrow:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.ranking-pager__arrow:hover:not(:disabled) {
+	border-color: var(--color-primary-element);
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
+}
+
+.ranking-pager__label {
+	min-width: 5.5rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.8rem;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+
+.ranking-item__figures {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.ranking-item__percent {
+	min-width: 3rem;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-align: right;
+}
+
+.client-special {
+	padding: 0.1rem 0.6rem;
+	border-radius: 999px;
+	background: #ffefae;
+	color: #000000;
 }
 </style>

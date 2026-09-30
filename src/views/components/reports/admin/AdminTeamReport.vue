@@ -128,19 +128,27 @@
 						v-for="member in sortedMembers"
 						:key="member.id_empleado"
 						class="member-card"
-						:class="{ 'member-card--expanded': expandedMemberId === member.id_empleado }">
+						:class="{
+							'member-card--expanded': expandedMemberId === member.id_empleado,
+							'member-card--inactive': member.inactivo_desde,
+						}">
 						<header class="member-card__header">
 							<div class="member-identity">
-								<NcAvatar
-									disable-menu
-									aria-hidden="true"
-									:user="member.id_user || member.Id_user || ''"
-									:display-name="member.nombre"
-									:size="36"
-									:show-user-status="false"
-									:show-user-status-compact="false" />
-								<span>
-									<strong>{{ member.nombre }}</strong>
+								<div class="member-card__avatar">
+									<NcAvatar
+										disable-menu
+										aria-hidden="true"
+										:user="member.id_user || member.Id_user || ''"
+										:display-name="member.nombre"
+										:size="36"
+										:show-user-status="false"
+										:show-user-status-compact="false" />
+								</div>
+								<span class="member-card__name-wrapper">
+									<strong class="member-card__name">{{ member.nombre }}</strong>
+									<span v-if="member.inactivo_desde" class="member-card__badge">
+										{{ t('empleados', 'Inactivo') }}
+									</span>
 									<small v-if="memberArea(member)">{{ memberArea(member) }}</small>
 								</span>
 							</div>
@@ -153,10 +161,10 @@
 						</header>
 
 						<dl v-if="hasMemberAccountedTime(member)" class="member-card__metrics">
-							<div class="member-card__metric">
+							<!--<div class="member-card__metric">
 								<dt>{{ t('empleados', 'Expected') }}</dt>
 								<dd>{{ formatHours(member.horas_esperadas) }}</dd>
-							</div>
+							</div>-->
 							<div class="member-card__metric">
 								<dt>{{ t('empleados', 'Accounted') }}</dt>
 								<dd>{{ formatHours(member.horas_contabilizadas) }}</dd>
@@ -167,10 +175,10 @@
 							</div>
 						</dl>
 						<dl v-else class="member-card__empty-metrics">
-							<div class="member-card__empty-metric">
+							<!-- <div class="member-card__empty-metric">
 								<dt>{{ t('empleados', 'Expected') }}</dt>
 								<dd>{{ formatHours(member.horas_esperadas) }}</dd>
-							</div>
+							</div>-->
 							<div class="member-card__empty-metric">
 								<dt>{{ t('empleados', 'Pending') }}</dt>
 								<dd>{{ formatHours(member.horas_pendientes) }}</dd>
@@ -573,5 +581,46 @@ export default {
 	.period-grid,
 	.metrics-grid,
 	.ranking-grid { grid-template-columns: 1fr; }
+}
+
+.member-card--inactive {
+	background: var(--color-background-dark);
+}
+
+.member-card--inactive .member-card__name {
+	font-style: italic;
+	color: var(--color-text-maxcontrast);
+}
+
+.member-card--inactive .member-card__metrics,
+.member-card--inactive .member-card__mix {
+	filter: grayscale(1);
+}
+
+.member-card__avatar {
+	display: flex;
+	flex: 0 0 auto;
+}
+
+.member-card--inactive .member-card__avatar {
+	filter: grayscale(1);
+	opacity: 0.65;
+}
+
+.member-card__name-wrapper {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+}
+
+.member-card__badge {
+	width: fit-content;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--color-background-darker);
+	color: var(--color-text-maxcontrast);
+	font-size: 0.72rem;
+	font-weight: 600;
+	line-height: 1.4;
 }
 </style>

@@ -8,8 +8,9 @@
 				v-for="member in visibleMembers"
 				:key="memberKey(member)"
 				class="member-preview__person"
-				:title="memberName(member)"
-				:aria-label="memberName(member)">
+				:class="{ 'member-preview__person--inactive': member.inactivo_desde }"
+				:title="memberTitle(member)"
+				:aria-label="memberTitle(member)">
 				<NcAvatar
 					disable-menu
 					aria-hidden="true"
@@ -76,6 +77,14 @@ export default {
 		memberName(member) {
 			return String(member.nombre ?? member.displayname ?? this.memberUid(member) ?? t('empleados', 'Employee'))
 		},
+		memberTitle(member) {
+			return member.inactivo_desde
+				? t('empleados', '{name} — inactivo desde {date}', {
+					name: this.memberName(member),
+					date: member.inactivo_desde,
+				})
+				: this.memberName(member)
+		},
 	},
 }
 </script>
@@ -103,12 +112,9 @@ export default {
 	gap: calc(var(--default-grid-baseline) * 1.5);
 }
 
-.member-preview--list .member-preview__person {
-	max-width: 100%;
-	padding: 2px calc(var(--default-grid-baseline) * 2) 2px 2px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-pill, 999px);
-	background: var(--color-main-background);
+.member-preview__person--inactive {
+	filter: grayscale(1);
+	opacity: 0.65;
 }
 
 .member-preview__name {
@@ -117,6 +123,19 @@ export default {
 	line-height: 1.2;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.member-preview__person--inactive .member-preview__name {
+	font-style: italic;
+	color: var(--color-text-maxcontrast);
+}
+
+.member-preview--list .member-preview__person {
+	max-width: 100%;
+	padding: 2px calc(var(--default-grid-baseline) * 2) 2px 2px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-pill, 999px);
+	background: var(--color-main-background);
 }
 
 .member-preview__more {

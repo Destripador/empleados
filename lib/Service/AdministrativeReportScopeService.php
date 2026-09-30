@@ -34,11 +34,12 @@ final class AdministrativeReportScopeService {
 	 *   members_by_team:array<int,array<int,array<string,mixed>>>
 	 * }
 	 */
-	public function getScope(string $uid, bool $global): array {
+	public function getScope(string $uid, bool $global, ?string $periodStart = null): array {
 		$allEmployees = $this->normalizeEmployees($this->empleadosMapper->getReportingDirectory(false));
 		$activeEmployees = array_filter(
 			$allEmployees,
-			static fn (array $employee): bool => self::isActive($employee),
+			static fn (array $employee): bool => self::isActive($employee)
+				|| self::leftOnOrAfter($employee, $periodStart),
 		);
 		$employeeById = [];
 		$currentEmployeeId = null;
@@ -91,7 +92,10 @@ final class AdministrativeReportScopeService {
 			}
 		}
 
-		foreach ($this->normalizeEmployees($this->equiposMapper->getReportingMembers($teamIds)) as $member) {
+		foreach ($this->normalizeEmployees($this->equiposMapper->getReportingMembers($teamIds, false)) as $member) {
+			if (!self::isActive($member) && !self::leftOnOrAfter($member, $periodStart)) {
+				continue;
+			}
 			$teamId = (int)($member['id_equipo'] ?? 0);
 			if (!isset($membersByTeam[$teamId])) {
 				continue;
@@ -123,6 +127,15 @@ final class AdministrativeReportScopeService {
 			'teams' => array_values($teams),
 			'members_by_team' => $membersByTeam,
 		];
+	}
+
+	/** Inactivo cuya baja ocurrió dentro o después del inicio del periodo. */
+		private static function leftOnOrAfter(array $employee, ?string $periodStart): bool {
+		if ($periodStart === null || self::isActive($employee)) {
+			return false;
+		}
+		$baja = $employee['Fecha_baja'] ?? null;
+		return is_string($baja) && $baja !== '' && substr($baja, 0, 10) >= $periodStart;
 	}
 
 	/**
@@ -285,6 +298,7 @@ final class AdministrativeReportScopeService {
 				'Id_departamento' => self::nullablePositiveInt($row['Id_departamento'] ?? $row['id_departamento'] ?? null),
 				'Ingreso' => $row['Ingreso'] ?? $row['ingreso'] ?? null,
 				'Estado' => $row['Estado'] ?? $row['estado'] ?? null,
+				'Fecha_baja' => $row['Fecha_baja'] ?? $row['fecha_baja'] ?? null,
 				'Sueldo' => (float)($row['Sueldo'] ?? $row['sueldo'] ?? 0),
 			];
 		}

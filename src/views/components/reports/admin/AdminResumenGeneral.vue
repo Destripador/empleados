@@ -37,10 +37,10 @@
 				</div>
 
 				<div class="compliance-kpi-grid">
-					<article class="compliance-kpi">
+					<!--<article class="compliance-kpi">
 						<span>{{ t('empleados', 'Expected hours') }}</span>
 						<strong>{{ cumplimientoFmt.horas_esperadas }}</strong>
-					</article>
+					</article>-->
 					<article class="compliance-kpi">
 						<span>{{ t('empleados', 'Reported hours') }}</span>
 						<strong>{{ cumplimientoFmt.horas_reportadas }}</strong>

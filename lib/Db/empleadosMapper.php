@@ -86,7 +86,7 @@ class empleadosMapper extends QBMapper {
 	 *
 	 * @return array<int,array<string,mixed>>
 	 */
-	public function getReportingDirectory(bool $activeOnly = true): array {
+	public function getReportingDirectory(bool $activeOnly = true, ?string $desde = null): array {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select(
 			'e.Id_empleados',
@@ -95,7 +95,8 @@ class empleadosMapper extends QBMapper {
 			'e.Id_departamento',
 			'e.Ingreso',
 			'e.Estado',
-			'e.Sueldo'
+			'e.Sueldo',
+			'e.Fecha_baja'
 		)
 			->selectAlias('u.displayname', 'displayname')
 			->from($this->getTableName(), 'e')
@@ -106,6 +107,11 @@ class empleadosMapper extends QBMapper {
 			$qb->where($qb->expr()->eq(
 				'e.Estado',
 				$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+			));
+		} elseif ($desde !== null) {
+			$qb->where($qb->expr()->orX(
+				$qb->expr()->eq('e.Estado', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)),
+				$qb->expr()->gte('e.Fecha_baja', $qb->createNamedParameter($desde))
 			));
 		}
 
@@ -210,25 +216,23 @@ class empleadosMapper extends QBMapper {
 	public function DesactivarByIdEmpleado(int $id_empleados): void {
 		$timestamp = date('Y-m-d');
 		$qb = $this->db->getQueryBuilder();
-
 		$qb->update($this->getTableName())
-		->set('Estado', $qb->createNamedParameter(0))
-		->set('updated_at', $qb->createNamedParameter($timestamp))
-		->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
-			
-		$result = $qb->executeStatement();
+			->set('Estado', $qb->createNamedParameter(0))
+			->set('Fecha_baja', $qb->createNamedParameter($timestamp))
+			->set('updated_at', $qb->createNamedParameter($timestamp))
+			->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
+		$qb->executeStatement();
 	}
 
 	public function ActivarByIdEmpleado(int $id_empleados): void {
 		$timestamp = date('Y-m-d');
 		$qb = $this->db->getQueryBuilder();
-
 		$qb->update($this->getTableName())
-		->set('Estado', $qb->createNamedParameter(1))
-		->set('updated_at', $qb->createNamedParameter($timestamp))
-		->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
-			
-		$result = $qb->executeStatement();
+			->set('Estado', $qb->createNamedParameter(1))
+			->set('Fecha_baja', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->set('updated_at', $qb->createNamedParameter($timestamp))
+			->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
+		$qb->executeStatement();
 	}
 
 	public function updateEmpleado(
@@ -314,10 +318,17 @@ class empleadosMapper extends QBMapper {
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
+				if ((string)$Estado === '0') {
+					$query->set('Fecha_baja', $query->createFunction(
+						'COALESCE(Fecha_baja, ' . $query->createNamedParameter($timestamp) . ')'
+					));
+				} else {
+					$query->set('Fecha_baja', $query->createNamedParameter(null, IQueryBuilder::PARAM_NULL));
+				}
 			$query->executeStatement();
 		}
-		catch(Exception $e){
-			console.log($e);
+		catch (Exception $e) {
+			error_log((string) $e);
 		}
 	}
 
@@ -336,8 +347,8 @@ class empleadosMapper extends QBMapper {
 	
 			$query->executeStatement();
 		}
-		catch(Exception $e){
-			console.log($e);
+		catch (Exception $e) {
+			error_log((string) $e);
 		}
 	}
 

@@ -72,7 +72,7 @@ class reportetiempoController extends BaseController {
 	private ReporteTiempoComplianceService $reporteTiempoComplianceService;
 	private AdministrativeReportScopeService $administrativeReportScopeService;
 	private festivosMapper $festivosMapper;
-	private ?array $adminReportScope = null;
+	private array $adminReportScopes = [];
 
 	public function __construct(
 		IRequest $request,
@@ -218,7 +218,7 @@ class reportetiempoController extends BaseController {
 		} else {
 			$this->requireAdminReportsAccess();
 
-			if (!in_array($idEmpleadoConsultado, $this->getIdsEmpleadosVisibles(), true)) {
+			if (!in_array($idEmpleadoConsultado, $this->getIdsEmpleadosVisibles('1900-01-01'), true)) {
 				return new DataResponse([
 					'error' => 'El empleado solicitado no está dentro de tu alcance visible.',
 				], Http::STATUS_FORBIDDEN);
@@ -522,7 +522,7 @@ class reportetiempoController extends BaseController {
 			);
 			$areaContext = $this->resolveAreaReporteContext($id_departamento);
 			$this->assertAdminAreaFilters($areaContext, $filters);
-			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
+			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado'], $filters['fecha_inicio']);
 			$rows = $this->reportetiempoMapper->getAdminHoursByEmployee(
 				$filters['fecha_inicio'],
 				$filters['fecha_fin'],
@@ -531,7 +531,7 @@ class reportetiempoController extends BaseController {
 			);
 
 			return new DataResponse(
-				$this->mergeAdminEmployeeHours($employees, $rows),
+				$this->mergeAdminEmployeeHours($employees, $rows, $filters['fecha_inicio'], $filters['fecha_fin']),
 				Http::STATUS_OK,
 			);
 		} catch (\InvalidArgumentException $e) {
@@ -575,14 +575,12 @@ class reportetiempoController extends BaseController {
 			);
 			$areaContext = $this->resolveAreaReporteContext($id_departamento);
 			$this->assertAdminAreaFilters($areaContext, $filters);
-			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
+			$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado'], $filters['fecha_inicio']);
 			$data = $this->buildAdminReportsData($filters, $employees, $areaContext);
-			$data['equipos'] = $this->buildAdminTeamSummaries(
-				$data['empleados'],
-				$this->getCurrentAdminReportScope(),
-			);
+			$scope = $this->getCurrentAdminReportScope($filters['fecha_inicio']);
+			$data['equipos'] = $this->buildAdminTeamSummaries($data['empleados'], $scope);
 			$data['alcance'] = [
-				'global' => (bool)$this->getCurrentAdminReportScope()['global'],
+				'global' => (bool)$scope['global'],
 				'equipos' => count($data['equipos']),
 				'empleados' => count($employees),
 			];
@@ -612,7 +610,16 @@ class reportetiempoController extends BaseController {
 		$id_actividad = null
 	): DataResponse {
 		$this->requireAdminReportsAccess();
-		$scope = $this->getCurrentAdminReportScope();
+		try {
+			$filters = $this->normalizeAdminReportFilters(
+				$fecha_inicio, $fecha_fin, $periodo_inicio, $periodo_fin, $anio,
+				$tipo_trabajo, $id_empleado, $id_cliente, $id_actividad,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		$scope = $this->getCurrentAdminReportScope($filters['fecha_inicio']);
 		$team = $this->administrativeReportScopeService->findTeam($scope['teams'], $id_equipo);
 		if ($team === null) {
 			return new DataResponse([
@@ -621,17 +628,6 @@ class reportetiempoController extends BaseController {
 		}
 
 		try {
-			$filters = $this->normalizeAdminReportFilters(
-				$fecha_inicio,
-				$fecha_fin,
-				$periodo_inicio,
-				$periodo_fin,
-				$anio,
-				$tipo_trabajo,
-				$id_empleado,
-				$id_cliente,
-				$id_actividad,
-			);
 			$areaContext = $this->resolveAreaReporteContext($id_departamento);
 			$this->assertAdminAreaFilters($areaContext, $filters);
 			$members = $this->filterAdminEmployeeDirectory(
@@ -1011,7 +1007,7 @@ class reportetiempoController extends BaseController {
 		}
 
 		$mostrarClientes = $areaContext === null || ($areaContext['mostrar_clientes'] ?? true);
-		$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado']);
+		$employees = $this->getAdminEmployeeDirectory($id_departamento, $filters['id_empleado'], $filters['fecha_inicio']);
 		$employeeIds = $this->employeeIds($employees);
 		$hoursRows = $this->reportetiempoMapper->getAdminHoursByEmployee(
 			$filters['fecha_inicio'],
@@ -1019,7 +1015,7 @@ class reportetiempoController extends BaseController {
 			$employeeIds,
 			$filters,
 		);
-		$empleadosData = $this->mergeAdminEmployeeHours($employees, $hoursRows);
+		$empleadosData = $this->mergeAdminEmployeeHours($employees, $hoursRows, $filters['fecha_inicio'], $filters['fecha_fin']);
 		$resumen = $this->enrichAdminSummary(
 			$this->reportetiempoMapper->getAdminSummary(
 				$filters['fecha_inicio'],
@@ -1359,9 +1355,9 @@ class reportetiempoController extends BaseController {
 	 *
 	 * @return array<int,array<string,mixed>>
 	 */
-	private function getAdminEmployeeDirectory($idDepartamento = null, $idEmpleado = null): array {
+	private function getAdminEmployeeDirectory($idDepartamento = null, $idEmpleado = null, ?string $periodStart = null): array {
 		return $this->filterAdminEmployeeDirectory(
-			$this->getCurrentAdminReportScope()['employees'],
+			$this->getCurrentAdminReportScope($periodStart)['employees'],
 			$idDepartamento,
 			$idEmpleado,
 		);
@@ -1412,6 +1408,7 @@ class reportetiempoController extends BaseController {
 				'Sueldo' => (float)($employee['Sueldo'] ?? $employee['sueldo'] ?? 0),
 				'Ingreso' => $employee['Ingreso'] ?? $employee['ingreso'] ?? null,
 				'Estado' => $employee['Estado'] ?? $employee['estado'] ?? null,
+				'Fecha_baja' => $employee['Fecha_baja'] ?? $employee['fecha_baja'] ?? null,
 			];
 		}
 
@@ -1419,14 +1416,15 @@ class reportetiempoController extends BaseController {
 	}
 
 	/** @return array<string,mixed> */
-	private function getCurrentAdminReportScope(): array {
-		if ($this->adminReportScope !== null) {
-			return $this->adminReportScope;
+	private function getCurrentAdminReportScope(?string $periodStart = null): array {
+		$key = $periodStart ?? '_active';
+		if (isset($this->adminReportScopes[$key])) {
+			return $this->adminReportScopes[$key];
 		}
 
 		$user = $this->userSession->getUser();
 		if ($user === null) {
-			return $this->adminReportScope = [
+			return $this->adminReportScopes[$key] = [
 				'global' => false,
 				'current_employee_id' => null,
 				'hierarchy_employee_ids' => [],
@@ -1439,9 +1437,10 @@ class reportetiempoController extends BaseController {
 		}
 
 		$uid = $user->getUID();
-		return $this->adminReportScope = $this->administrativeReportScopeService->getScope(
+		return $this->adminReportScopes[$key] = $this->administrativeReportScopeService->getScope(
 			$uid,
 			$this->permisosService->canSee('reporte_tiempos.admin', $uid),
+			$periodStart,
 		);
 	}
 
@@ -1458,13 +1457,13 @@ class reportetiempoController extends BaseController {
 	 * @param array<int,array<string,mixed>> $hoursRows
 	 * @return array<int,array<string,mixed>>
 	 */
-	private function mergeAdminEmployeeHours(array $employees, array $hoursRows): array {
+	private function mergeAdminEmployeeHours(array $employees, array $hoursRows, ?string $start = null, ?string $end = null): array {
 		$hoursByEmployee = [];
 		foreach ($hoursRows as $row) {
 			$hoursByEmployee[(int)($row['id_empleado'] ?? 0)] = $row;
 		}
 
-		return array_map(static function (array $employee) use ($hoursByEmployee): array {
+		return array_map(function (array $employee) use ($hoursByEmployee, $start, $end): array {
 			$id = (int)$employee['id_empleado'];
 			$hours = $hoursByEmployee[$id] ?? [];
 			$totalMinutes = (float)($hours['total_minutos'] ?? 0);
@@ -1478,6 +1477,9 @@ class reportetiempoController extends BaseController {
 				($totalMinutes / 60) * (float)($employee['Sueldo'] ?? 0),
 				2,
 			);
+			$employee['inactivo_desde'] = ($start !== null && $end !== null)
+				? $this->inactiveSince($employee, $start, $end)
+				: null;
 			return $employee;
 		}, $employees);
 	}
@@ -1652,6 +1654,11 @@ class reportetiempoController extends BaseController {
 					'quincena' => $fortnightCompliance,
 					'mes' => $monthCompliance,
 				],
+				'inactivo_desde' => $this->inactiveSince(
+					$employee,
+					$periods['periodo']['fecha_inicio'],
+					$periods['periodo']['fecha_fin'],
+				),
 			]);
 		}
 
@@ -1728,6 +1735,15 @@ class reportetiempoController extends BaseController {
 				], $dayRows),
 			],
 		];
+	}
+
+	private function inactiveSince(array $employee, ?string $start = null, ?string $end = null): ?string {
+		$estado = $employee['Estado'] ?? $employee['estado'] ?? null;
+		if (in_array($estado, [1, '1', true], true)) {
+			return null;
+		}
+		$baja = substr(trim((string)($employee['Fecha_baja'] ?? '')), 0, 10);
+		return $baja !== '' ? $baja : null;
 	}
 
 	/** @param array<int,array<string,mixed>> $rows */
@@ -1895,10 +1911,14 @@ class reportetiempoController extends BaseController {
 		$preview = array_map(static function (array $member): array {
 			$uid = trim((string)($member['id_user'] ?? $member['Id_user'] ?? ''));
 			$name = trim((string)($member['nombre'] ?? $member['displayname'] ?? $uid));
+			$estado = $member['Estado'] ?? $member['estado'] ?? null;
+			$activo = in_array($estado, [1, '1', true], true);
+			$baja = substr(trim((string)($member['Fecha_baja'] ?? '')), 0, 10);
 			return [
 				'id_empleado' => (int)($member['id_empleado'] ?? $member['Id_empleados'] ?? 0),
 				'id_user' => $uid,
 				'nombre' => $name !== '' ? $name : $uid,
+				'inactivo_desde' => (!$activo && $baja !== '') ? $baja : null,
 			];
 		}, $members);
 
@@ -2174,22 +2194,12 @@ class reportetiempoController extends BaseController {
 	/**
 	 * Extrae únicamente identificadores válidos del alcance calculado desde la sesión.
 	 */
-	private function getIdsEmpleadosVisibles(): array {
+	private function getIdsEmpleadosVisibles(?string $periodStart = null): array {
 		$ids = array_map(
-			static function (array $empleado): int {
-				return (int)(
-					$empleado['Id_empleados']
-					?? $empleado['id_empleados']
-					?? 0
-				);
-			},
-			$this->getEmpleadosVisiblesBasico()
+			static fn (array $e): int => (int)($e['Id_empleados'] ?? $e['id_empleados'] ?? 0),
+			$this->getCurrentAdminReportScope($periodStart)['employees']
 		);
-
-		return array_values(array_unique(array_filter(
-			$ids,
-			static fn (int $id): bool => $id > 0
-		)));
+		return array_values(array_unique(array_filter($ids, static fn (int $id): bool => $id > 0)));
 	}
 
 	/**
