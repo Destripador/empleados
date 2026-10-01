@@ -53,10 +53,6 @@ class ActivityProvider implements IProvider {
                 return 'La solicitud de "{tipo_ausencia}" de {nombre} fue rechazada';
 			case 'test':
 				return '{nombre} ha realizado una prueba actualizado';
-			case 'parking_maintenance_activated':
-				return '{nombre} activated parking maintenance mode';
-			case 'parking_published':
-				return '{nombre} published the parking map';
             // Puedes seguir agregando casos aquí.
             default:
                 return $subjectID; // En caso de no tener plantilla, usa el ID literal como fallback.

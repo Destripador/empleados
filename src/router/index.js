@@ -144,14 +144,6 @@ export default new Router({
 			),
 		},
 		{
-			path: '/ejemplo',
-			name: 'ejemplo',
-			component: () => import(
-				/* webpackChunkName: "ejemplo" */
-				'../views/components/ejemplo/Ejemplo.vue'
-			),
-		},
-		{
 			path: '/quick-report',
 			name: 'quick-report',
 			component: () => import(
@@ -213,14 +205,6 @@ export default new Router({
 			component: () => import(
 				/* webpackChunkName: "simulacion-oficina" */
 				'../views/components/SimulacionOficina/SimulacionOficina.vue'
-			),
-		},
-		{
-			path: '/Estacionamiento',
-			name: 'Estacionamiento',
-			component: () => import(
-				/* webpackChunkName: "estacionamiento" */
-				'../views/components/Estacionamiento/Estacionamiento.vue'
 			),
 		},
 	],

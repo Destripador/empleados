@@ -27,14 +27,6 @@
 						<AccountCog :size="20" />
 					</template>
 
-					<!-- Nueva opción Importar NOI (Visible solo cuando show es true) -->
-					<NcActionButton v-if="show" :close-after-click="true" @click="confirmarImportacionNoi">
-						<template #icon>
-							<DatabaseImport :size="20" />
-						</template>
-						{{ t('empleados', 'Importar NOI') }}
-					</NcActionButton>
-
 					<NcActionButton :close-after-click="true" @click="showEdit">
 						<template #icon>
 							<AccountEdit :size="20" />
@@ -182,18 +174,10 @@
 			:preview-url="previewUrl"
 			@confirm="handleCroppedImage"
 			@error="handleCropperError" />
-
-		<!-- Diálogo de Confirmación de Importación NOI -->
-		<NcDialog
-			:open.sync="showImportNoiDialog"
-			:name="t('empleados', 'Confirmación')"
-			:message="t('empleados', '¿Desea realizar la importación desde NOI?')"
-			:buttons="importNoiButtons" />
 	</div>
 </template>
 
 <script>
-import DatabaseImport from 'vue-material-design-icons/DatabaseImport.vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import OrganigramaNetwork from './Organigrama/OrganigramaNetwork.vue'
 import EmpleadoTab from './Tabs/EmpleadoTab.vue'
@@ -208,7 +192,7 @@ import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
 import AccountCog from 'vue-material-design-icons/AccountCog.vue'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import { showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import {
 	NcAvatar,
@@ -239,7 +223,6 @@ export default {
 		NcDialog,
 		NcButton,
 		OrganigramaNetwork,
-		DatabaseImport,
 		ArrowLeft,
 	},
 	inject: ['configuraciones'],
@@ -274,14 +257,6 @@ export default {
 			avatarVersion: 0,
 			buttons: [
 				{ label: this.t('empleados', 'OK'), type: 'primary', callback: () => this.DeactiveUser() },
-			],
-			showImportNoiDialog: false,
-			importNoiButtons: [
-				{
-					label: this.t('empleados', 'Aceptar'),
-					type: 'primary',
-					callback: () => this.ejecutarImportacionNoi(),
-				},
 			],
 		}
 	},
@@ -416,31 +391,6 @@ export default {
 		},
 		handleCropperError(msg) {
 			showError(msg)
-		},
-
-		// NOI
-		confirmarImportacionNoi() {
-			this.showImportNoiDialog = true
-		},
-
-		async ejecutarImportacionNoi() {
-			try {
-				const response = await axios.post(generateUrl(`/apps/empleados/ImportarNoiEmpleado/${this.data.Id_user}`))
-				const result = response?.data?.ocs?.data || response?.data
-
-				if (result?.status === 'success') {
-					this.$bus.emit('fill-noi-data', result.data)
-					this.$bus.emit('empleados:guardar-todo')
-					showSuccess(this.t('empleados', 'Datos importados desde NOI y guardados correctamente'))
-				} else if (result?.status === 'error') {
-					showError(this.t('empleados', 'Error en importación NOI: {error}', { error: result?.message }))
-				}
-			} catch (err) {
-				const msg = err.response?.data?.ocs?.data?.message || err.response?.data?.message || String(err)
-				showError(this.t('empleados', 'Error en importación NOI: {error}', { error: msg }))
-			} finally {
-				this.showImportNoiDialog = false
-			}
 		},
 	},
 }

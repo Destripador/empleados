@@ -45,8 +45,6 @@ use OCA\Empleados\Service\PermisosService;
 use OCA\Empleados\Service\AniversarioSyncService;
 use OCA\Empleados\Service\InventarioMovimientoService;
 
-use OCA\Empleados\Service\FirebirdSyncService;
-
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
 
@@ -72,8 +70,6 @@ class EmpleadosController extends BaseController {
     protected PermisosService $permisosService;
     private AniversarioSyncService $aniversarioSyncService;
     private InventarioMovimientoService $inventarioMovimientoService;
-    protected FirebirdSyncService $firebirdSyncService;
-
     protected IRootFolder $rootFolder;
 
     public function __construct(
@@ -97,7 +93,6 @@ class EmpleadosController extends BaseController {
         PermisosService $permisosService,
         AniversarioSyncService $aniversarioSyncService,
         InventarioMovimientoService $inventarioMovimientoService,
-        FirebirdSyncService $firebirdSyncService,
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -122,7 +117,6 @@ class EmpleadosController extends BaseController {
         $this->aniversarioSyncService = $aniversarioSyncService;
         $this->inventarioMovimientoService = $inventarioMovimientoService;
         $this->empleadosorganigramaMapper = $empleadosorganigramaMapper;
-        $this->firebirdSyncService = $firebirdSyncService;
     }
 
     /**
@@ -888,27 +882,4 @@ class EmpleadosController extends BaseController {
         return new DataResponse(['dias_derecho' => $registro], Http::STATUS_OK);
     }
 
-    // NOI
-    #[UseSession]
-    #[NoAdminRequired]
-    public function ImportarNoiEmpleado($id_user): DataResponse {
-        try {
-            $empleado = $this->empleadosMapper->GetMyEmployeeInfo($id_user);
-            $numeroEmpleado = $empleado[0]['Numero_empleado'] ?? null;
-
-            $user = $this->userManager->get($empleado[0]['Id_user']);
-                if ($user === null) {
-                return null;
-            }
-
-            // 1. Consultar datos en NOI mediante el Servicio
-            $datosNoi = $this->firebirdSyncService->obtenerDatosEmpleadoNoi($numeroEmpleado, $user->getEMailAddress());
-
-            // 2. Retornar todos los datos a Vue para que la vista evalúe las reglas de los controles
-            return new DataResponse(['status' => 'success', 'data' => $datosNoi]);
-
-        } catch (\Exception $e) {
-            return new DataResponse(['status' => 'error', 'message' => $e->getMessage()], 400);
-        }
-    }
 }

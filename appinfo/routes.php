@@ -389,25 +389,5 @@ return [
 		['name' => 'simulacionOficina#getOnboarding', 'url' => '/simulacion-oficina/onboarding', 'verb' => 'GET'],
 		['name' => 'simulacionOficina#completeOnboarding', 'url' => '/simulacion-oficina/onboarding/complete', 'verb' => 'POST'],
 
-		# IMPORTAR EMPLEADOS NOI
-		['name' => 'empleados#ImportarNoiEmpleado', 'url' => '/ImportarNoiEmpleado/{id_user}', 'verb' => 'POST'],
-
-		/************************** ESTACIONAMIENTO ************************************/
-		['name' => 'Estacionamiento#GetParkingStatus', 'url' => '/espacios/status', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#ActivateMaintenance', 'url' => '/espacios/maintenance', 'verb' => 'POST'],
-		['name' => 'Estacionamiento#PublishParking', 'url' => '/espacios/publish', 'verb' => 'POST'],
-		['name' => 'Espacio#GetEspacios', 'url' => '/GetEspacios', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#GetEmpleadosAsignados', 'url' => '/espacios/{id_espacio}/empleados', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#GuardarAsignacion', 'url' => '/espacios/guardarAsignacion', 'verb' => 'POST'],
-		['name' => 'Estacionamiento#GetEspaciosObstruyen', 'url' => '/espacios/{id_espacio}/obstruyen', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#GuardarEspaciosObstruyen', 'url' => '/espacios/guardarObstruyen', 'verb' => 'POST'],
-
-		['name' => 'Estacionamiento#GetEmpleadosConEspacio', 'url' => '/espacios/GetEmpleadosConEspacio', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#GuardarDisponibilidadTemporal', 'url' => '/espacios/liberar', 'verb' => 'POST'],
-		['name' => 'Estacionamiento#GetUser', 'url' => '/espacios/GetUser', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#GetEspaciosLiberadosHoy', 'url' => '/espacios/liberados-hoy', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#GetHistorial', 'url' => '/espacios/historial/{id_espacio_empleado}', 'verb' => 'GET'],
-		['name' => 'Estacionamiento#EliminarDisponibilidad', 'url' => '/espacios/liberar/{id}', 'verb' => 'DELETE'],
-		['name' => 'Estacionamiento#GetHistorialPublico', 'url' => '/espacios/historial-publico/{id_espacio}', 'verb' => 'GET'],
 	],
 ];

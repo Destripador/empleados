@@ -57,12 +57,6 @@
 				<VTab :title="t('empleados', 'Monedas')">
 					<MonedaSettings />
 				</VTab>
-
-				<!--VTab :title="t('empleados', 'Estacionamiento')">
-					<VTab id="settings-parking" :title="t('empleados', 'Estacionamiento')">
-						<EstacionamientoSettings />
-					</VTab>
-				</vtab-->
 			</VueTabs>
 		</div>
 	</div>
@@ -90,8 +84,6 @@ import './settings-shared.css'
 
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-// import EstacionamientoSettings from './EstacionamientoSettings.vue'
-
 export default {
 	name: 'Settings',
 	components: {
