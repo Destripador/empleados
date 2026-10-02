@@ -2563,7 +2563,7 @@ export default {
 				if (response.data.type === 'application/json') {
 					const text = await response.data.text()
 					const parsed = JSON.parse(text)
-					throw new Error(parsed?.ocs?.data?.message || parsed?.message || 'Error desconocido')
+					throw new Error(parsed?.ocs?.data?.message || parsed?.message || t('empleados', 'Unknown error'))
 				}
 
 				const url = URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }))
@@ -2797,7 +2797,7 @@ export default {
 				if (response.data.type === 'application/json') {
 					const text = await response.data.text()
 					const parsed = JSON.parse(text)
-					throw new Error(parsed?.ocs?.data?.message || parsed?.message || 'Error desconocido')
+					throw new Error(parsed?.ocs?.data?.message || parsed?.message || t('empleados', 'Unknown error'))
 				}
 
 				const url = URL.createObjectURL(new Blob([response.data], {

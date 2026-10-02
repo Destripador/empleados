@@ -147,7 +147,7 @@
 								<span class="member-card__name-wrapper">
 									<strong class="member-card__name">{{ member.nombre }}</strong>
 									<span v-if="member.inactivo_desde" class="member-card__badge">
-										{{ t('empleados', 'Inactivo') }}
+										{{ t('empleados', 'Inactive') }}
 									</span>
 									<small v-if="memberArea(member)">{{ memberArea(member) }}</small>
 								</span>

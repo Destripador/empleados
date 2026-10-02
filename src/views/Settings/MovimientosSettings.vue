@@ -99,7 +99,7 @@
 				</h3>
 
 				<div class="filtro-campo">
-					<label for="movements-filter-module">{{ t('empleados', 'Módulo') }}</label>
+					<label for="movements-filter-module">{{ t('empleados', 'Module') }}</label>
 					<NcSelect
 						v-model="borrador.modulo"
 						input-id="movements-filter-module"

@@ -16,7 +16,7 @@
 		<!-- Filtro siempre visible -->
 		<div class="filtro-bar">
 			<div class="filtro-campo">
-				<label>{{ t('empleados', 'Moneda') }}</label>
+				<label>{{ t('empleados', 'Currency') }}</label>
 				<NcSelect
 					v-model="filtro.idMoneda"
 					:options="monedas"
@@ -81,7 +81,7 @@
 				</p>
 
 				<div class="filtro-campo">
-					<label>{{ t('empleados', 'Moneda') }}</label>
+					<label>{{ t('empleados', 'Currency') }}</label>
 					<NcSelect
 						v-model="formConsulta.idMoneda"
 						:options="monedas"

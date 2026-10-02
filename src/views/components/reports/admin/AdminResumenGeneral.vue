@@ -1104,7 +1104,7 @@ export default {
 			const top = this.graficaEmpleados[0]
 			if (!top) {
 				return {
-					label: 'Sin registros',
+					label: this.t('empleados', 'No records'),
 					valor: '0 h',
 				}
 			}
@@ -1154,14 +1154,14 @@ export default {
 			const top = [...this.graficaProyectos].sort((a, b) => b.horas - a.horas)[0]
 			if (!top) {
 				return {
-					label: 'Sin registros',
+					label: this.t('empleados', 'No records'),
 					valor: '0%',
 				}
 			}
 
 			return {
 				label: top.label,
-				valor: `${top.porcentaje.toFixed(1)}% del total`,
+				valor: this.t('empleados', '{percent}% of the total', { percent: top.porcentaje.toFixed(1) }),
 			}
 		},
 
@@ -1169,14 +1169,14 @@ export default {
 			const top = [...this.graficaActividades].sort((a, b) => b.horas - a.horas)[0]
 			if (!top) {
 				return {
-					label: 'Sin registros',
+					label: this.t('empleados', 'No records'),
 					valor: '0%',
 				}
 			}
 
 			return {
 				label: top.label,
-				valor: `${top.porcentaje.toFixed(1)}% del total`,
+				valor: this.t('empleados', '{percent}% of the total', { percent: top.porcentaje.toFixed(1) }),
 			}
 		},
 	},
@@ -1714,7 +1714,7 @@ export default {
 				data: {
 					labels: datos.map(x => x.label),
 					datasets: [{
-						label: 'Reportes por día',
+						label: this.t('empleados', 'Reports per day'),
 						data: datos.map(x => x.reportes),
 						backgroundColor: '#f59e0b',
 						borderRadius: 8,

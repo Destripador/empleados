@@ -20,7 +20,7 @@
 				<article class="compliance-card status-neutral clientes-total-card">
 					<div class="compliance-card__heading">
 						<div class="compliance-card__title">
-							<h3 id="clientes-total-heading">{{ t('empleados', 'All Customers') }}</h3>
+							<h3 id="clientes-total-heading">{{ t('empleados', 'All customers') }}</h3>
 							<p>{{ t('empleados', 'Groups, sub-companies and individual companies') }}</p>
 						</div>
 						<strong class="compliance-card__percent">{{ catalog.total || 0 }}</strong>
@@ -540,7 +540,7 @@
 													<header class="fx-block__head">
 														<strong v-if="fx.es_extranjera">{{ fx.moneda }} → {{ fx.moneda_destino || 'MXN' }}</strong>
 														<strong v-else>{{ fx.moneda }}</strong>
-														<span>{{ fx.convertidas }} {{ t('empleados', 'installments') }}</span>
+														<span>{{ fx.convertidas }} {{ t('empleados', 'Installments') }}</span>
 													</header>
 
 													<div class="fx-stats">
@@ -1084,7 +1084,7 @@ export default {
 				{ key: '__suma__', label: t('empleados', 'Auditoria'), color: '#ec5700' },
 				{ key: 'Procedimientos Convenidos', label: t('empleados', 'Procedimientos Convenidos'), color: '#ff7b00' },
 				{ key: 'Trabajos Especiales', label: t('empleados', 'Trabajos Especiales'), color: 'var(--color-primary-element)', showDescription: true },
-				{ key: 'Contabilidad', label: t('empleados', 'Contabilidad'), color: '#2e9e5b' },
+				{ key: 'Contabilidad', label: t('empleados', 'Accounting'), color: '#2e9e5b' },
 			]
 
 			const cards = defs.map((def) => {

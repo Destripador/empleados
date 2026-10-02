@@ -266,11 +266,11 @@ export default {
 
 			buttons: [
 				{
-					label: 'Cancelar',
+					label: this.t('empleados', 'Cancel'),
 					callback: () => { this.lastResponse = 'Pressed "Cancel"' },
 				},
 				{
-					label: 'Eliminar',
+					label: this.t('empleados', 'Delete'),
 					type: 'primary',
 					callback: () => { this.eliminarEquipo(this.data.Id_equipo) },
 				},

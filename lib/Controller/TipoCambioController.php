@@ -12,6 +12,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\IL10N;
 use OCP\IRequest;
 
 class TipoCambioController extends Controller {
@@ -22,6 +23,7 @@ class TipoCambioController extends Controller {
 		private TipoCambioMapper $tipoCambioMapper,
 		private MonedaMapper $monedaMapper,
 		private BanxicoService $banxicoService,
+		private IL10N $l10n,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -40,7 +42,7 @@ class TipoCambioController extends Controller {
 		try {
 			$moneda = $this->monedaMapper->find($idMoneda);
 		} catch (DoesNotExistException $e) {
-			return new DataResponse(['error' => 'Moneda no encontrada'], Http::STATUS_NOT_FOUND);
+			return new DataResponse(['error' => $this->l10n->t('Currency not found')], Http::STATUS_NOT_FOUND);
 		}
 
 		try {

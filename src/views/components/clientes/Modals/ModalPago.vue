@@ -1,7 +1,7 @@
 <template>
 	<NcModal v-if="open"
 		size="small"
-		:name="t('empleados', 'Register Payment')"
+		:name="t('empleados', 'Register payment')"
 		@close="$emit('close')">
 		<div class="payment-modal">
 			<div class="payment-icon-wrapper payment-icon-wrapper--pago">
@@ -9,7 +9,7 @@
 					💳
 				</div>
 			</div>
-			<h2>{{ t('empleados', 'Register Payment') }}</h2>
+			<h2>{{ t('empleados', 'Register payment') }}</h2>
 			<p class="payment-subtitle">
 				{{ t('empleados', 'Select the payment date for this installment.') }}
 			</p>

@@ -15,7 +15,6 @@
 							<template #icon>
 								<FilterVariant :size="20" />
 							</template>
-							{{ t('empleados') }}
 							<span v-if="showDeactivated" class="filter-badge">1</span>
 						</NcButton>
 

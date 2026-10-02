@@ -3,6 +3,7 @@
  * Se calcula solo en carga/resize, nunca dentro del frame de simulación.
  */
 
+import { translate as t } from '@nextcloud/l10n'
 import { SIMULATION_CONFIG } from './officeSimulationConfig.js'
 
 const AREA_COLORS = [
@@ -30,11 +31,11 @@ export const FUNCTIONAL_ROOM_SIZES = Object.freeze({
 })
 
 const COMMON_ROOM_META = [
-	{ id: 'reception', emoji: '🚪', label: 'Reception', color: '#8C9AA8' },
-	{ id: 'coffee', emoji: '☕', label: 'Coffee area', color: '#C4A35A' },
-	{ id: 'meeting', emoji: '📅', label: 'Meeting room', color: '#6B7B8C' },
-	{ id: 'lounge', emoji: '🛋️', label: 'Lounge', color: '#7A6B8C' },
-	{ id: 'printer', emoji: '🖨️', label: 'Printer / hall', color: '#4A8C7A' },
+	{ id: 'reception', emoji: '🚪', label: t('empleados', 'Reception'), color: '#8C9AA8' },
+	{ id: 'coffee', emoji: '☕', label: t('empleados', 'Coffee area'), color: '#C4A35A' },
+	{ id: 'meeting', emoji: '📅', label: t('empleados', 'Meeting room'), color: '#6B7B8C' },
+	{ id: 'lounge', emoji: '🛋️', label: t('empleados', 'Lounge / rest'), color: '#7A6B8C' },
+	{ id: 'printer', emoji: '🖨️', label: t('empleados', 'Printer / hall'), color: '#4A8C7A' },
 ]
 
 /** Límites de áreas de trabajo (px). */
@@ -460,7 +461,7 @@ export function buildOfficeLayout(employees, width, height) {
 	const areaStats = new Map()
 	for (const emp of employees) {
 		const id = resolveEmployeeAreaKey(emp)
-		const name = emp.area?.nombre || emp.areaName || (id === 'none' ? 'Sin área' : `Área ${id}`)
+		const name = emp.area?.nombre || emp.areaName || (id === 'none' ? t('empleados', 'No area') : t('empleados', 'Area {id}', { id }))
 		if (!areaStats.has(id)) areaStats.set(id, { id, name, count: 0, activitySum: 0 })
 		const row = areaStats.get(id)
 		row.count += 1
@@ -474,7 +475,7 @@ export function buildOfficeLayout(employees, width, height) {
 			...computeWorkAreaSize(area.count, { isFallback: fallback }),
 			kind: 'work',
 			emoji: '',
-			label: fallback ? (area.name || 'Sin área') : area.name,
+			label: fallback ? (area.name || t('empleados', 'No area')) : area.name,
 			color: colorForArea(area.id),
 			isFallback: fallback,
 			employeeCount: area.count,
@@ -483,9 +484,9 @@ export function buildOfficeLayout(employees, width, height) {
 
 	const topBandH = clamp(H * cfg.topBandRatio, cfg.topBandMin, cfg.topBandMax)
 	const topDefs = [
-		{ id: 'coffee', emoji: '☕', label: 'Coffee area', color: '#C4A35A', ...FUNCTIONAL_ROOM_SIZES.coffee },
-		{ id: 'reception', emoji: '🚪', label: 'Reception', color: '#8C9AA8', ...FUNCTIONAL_ROOM_SIZES.reception },
-		{ id: 'meeting', emoji: '📅', label: 'Meeting room', color: '#6B7B8C', ...FUNCTIONAL_ROOM_SIZES.meeting },
+		{ id: 'coffee', emoji: '☕', label: t('empleados', 'Coffee area'), color: '#C4A35A', ...FUNCTIONAL_ROOM_SIZES.coffee },
+		{ id: 'reception', emoji: '🚪', label: t('empleados', 'Reception'), color: '#8C9AA8', ...FUNCTIONAL_ROOM_SIZES.reception },
+		{ id: 'meeting', emoji: '📅', label: t('empleados', 'Meeting room'), color: '#6B7B8C', ...FUNCTIONAL_ROOM_SIZES.meeting },
 	]
 	const topAvailableW = W - margin * 2
 	const topNaturalW = topDefs.reduce((sum, room) => sum + room.w, 0)
@@ -519,7 +520,7 @@ export function buildOfficeLayout(employees, width, height) {
 			id: 'lounge',
 			kind: 'common',
 			emoji: '🛋️',
-			label: 'Lounge',
+			label: t('empleados', 'Lounge / rest'),
 			color: '#7A6B8C',
 			...FUNCTIONAL_ROOM_SIZES.lounge,
 			employeeCount: 0,
@@ -529,7 +530,7 @@ export function buildOfficeLayout(employees, width, height) {
 			id: 'printer',
 			kind: 'common',
 			emoji: '🖨️',
-			label: 'Printer / hall',
+			label: t('empleados', 'Printer / hall'),
 			color: '#4A8C7A',
 			...FUNCTIONAL_ROOM_SIZES.printer,
 			employeeCount: 0,

@@ -10,6 +10,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\IL10N;
 use OCP\IRequest;
 
 class MonedaController extends Controller {
@@ -18,6 +19,7 @@ class MonedaController extends Controller {
 		string $appName,
 		IRequest $request,
 		private MonedaMapper $monedaMapper,
+		private IL10N $l10n,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -37,11 +39,11 @@ class MonedaController extends Controller {
 		$serie = trim($serie);
 
 		if ($tipoMoneda === '' || $serie === '') {
-			return new DataResponse(['error' => 'tipo_moneda y serie son obligatorios'], Http::STATUS_BAD_REQUEST);
+			return new DataResponse(['error' => $this->l10n->t('Currency type and series are required')], Http::STATUS_BAD_REQUEST);
 		}
 
 		if ($this->monedaMapper->existeTipo($tipoMoneda)) {
-			return new DataResponse(['error' => 'Ya existe una moneda con ese tipo'], Http::STATUS_CONFLICT);
+			return new DataResponse(['error' => $this->l10n->t('A currency with that type already exists')], Http::STATUS_CONFLICT);
 		}
 
 		$moneda = new Moneda();
@@ -60,15 +62,15 @@ class MonedaController extends Controller {
 		try {
 			$moneda = $this->monedaMapper->find($id);
 		} catch (DoesNotExistException $e) {
-			return new DataResponse(['error' => 'Moneda no encontrada'], Http::STATUS_NOT_FOUND);
+			return new DataResponse(['error' => $this->l10n->t('Currency not found')], Http::STATUS_NOT_FOUND);
 		}
 
 		if ($tipoMoneda === '' || $serie === '') {
-			return new DataResponse(['error' => 'tipo_moneda y serie son obligatorios'], Http::STATUS_BAD_REQUEST);
+			return new DataResponse(['error' => $this->l10n->t('Currency type and series are required')], Http::STATUS_BAD_REQUEST);
 		}
 
 		if ($this->monedaMapper->existeTipo($tipoMoneda, $id)) {
-			return new DataResponse(['error' => 'Ya existe otra moneda con ese tipo'], Http::STATUS_CONFLICT);
+			return new DataResponse(['error' => $this->l10n->t('Another currency with that type already exists')], Http::STATUS_CONFLICT);
 		}
 
 		$moneda->setTipoMoneda($tipoMoneda);
@@ -83,7 +85,7 @@ class MonedaController extends Controller {
 		try {
 			$moneda = $this->monedaMapper->find($id);
 		} catch (DoesNotExistException $e) {
-			return new DataResponse(['error' => 'Moneda no encontrada'], Http::STATUS_NOT_FOUND);
+			return new DataResponse(['error' => $this->l10n->t('Currency not found')], Http::STATUS_NOT_FOUND);
 		}
 
 		$this->monedaMapper->delete($moneda);

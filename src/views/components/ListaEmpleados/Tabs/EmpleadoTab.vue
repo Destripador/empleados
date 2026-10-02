@@ -325,7 +325,7 @@
 						<!-- Department and Position -->
 						<div class="main">
 							<div class="divider">
-								<span>{{ t('empleados', 'Ubication') }}</span>
+								<span>{{ t('empleados', 'Location') }}</span>
 							</div>
 							<div class="label-input-trabajo">
 								<NcSelect id="Id_departamento"

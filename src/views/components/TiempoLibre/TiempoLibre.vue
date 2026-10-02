@@ -902,7 +902,15 @@ export default {
 			mobileExpanded: true,
 			mobileEvents: [],
 			mobileRangeStart: null,
-			mobileWeekDayLabels: ['do.', 'lu.', 'ma.', 'mi.', 'ju.', 'vi.', 'sá.'],
+			mobileWeekDayLabels: [
+				this.t('empleados', 'Sun.'),
+				this.t('empleados', 'Mon.'),
+				this.t('empleados', 'Tue.'),
+				this.t('empleados', 'Wed.'),
+				this.t('empleados', 'Thu.'),
+				this.t('empleados', 'Fri.'),
+				this.t('empleados', 'Sat.'),
+			],
 			touchStartX: null,
 		}
 	},

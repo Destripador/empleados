@@ -28,7 +28,7 @@
 				<table v-else class="tabla-monedas">
 					<thead>
 						<tr>
-							<th>{{ t('empleados', 'Tipo') }}</th>
+							<th>{{ t('empleados', 'Type') }}</th>
 							<th>{{ t('empleados', 'Serie Banxico') }}</th>
 							<th class="col-acciones" />
 						</tr>
@@ -48,13 +48,13 @@
 										<template #icon>
 											<PencilOutlineIcon :size="18" />
 										</template>
-										{{ t('empleados', 'Editar') }}
+										{{ t('empleados', 'Edit') }}
 									</NcActionButton>
 									<NcActionButton @click="confirmarEliminar(moneda)">
 										<template #icon>
 											<DeleteOutlineIcon :size="18" />
 										</template>
-										{{ t('empleados', 'Eliminar') }}
+										{{ t('empleados', 'Delete') }}
 									</NcActionButton>
 								</NcActions>
 							</td>
@@ -99,10 +99,10 @@
 
 					<div class="modal-acciones">
 						<NcButton type="tertiary" @click="cerrarModal">
-							{{ t('empleados', 'Cancelar') }}
+							{{ t('empleados', 'Cancel') }}
 						</NcButton>
 						<NcButton type="primary" :disabled="guardando" @click="guardar">
-							{{ guardando ? t('empleados', 'Guardando...') : t('empleados', 'Guardar') }}
+							{{ guardando ? t('empleados', 'Saving...') : t('empleados', 'Save') }}
 						</NcButton>
 					</div>
 				</div>
@@ -119,7 +119,7 @@
 					</p>
 					<div class="modal-acciones">
 						<NcButton type="tertiary" @click="monedaAEliminar = null">
-							{{ t('empleados', 'Cancelar') }}
+							{{ t('empleados', 'Cancel') }}
 						</NcButton>
 						<NcButton
 							class="btn-eliminar"
