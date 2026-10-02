@@ -82,7 +82,10 @@
 								{{ t('empleados', 'Restricted') }}
 							</span>
 
-							<span v-if="!item.exists" class="status-badge status-badge--missing">
+							<span v-if="item.exists" class="status-badge status-badge--enabled">
+								{{ t('empleados', 'Exists') }}
+							</span>
+							<span v-else class="status-badge status-badge--missing">
 								{{ t('empleados', 'Group does not exist') }}
 							</span>
 						</div>
