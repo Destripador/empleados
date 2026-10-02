@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OCA\Empleados\Controller;
 
 use OCA\Empleados\AppInfo\Application;
+use OCA\Empleados\Config\PermissionCatalog;
 use OCA\Empleados\Db\PermisoGrupoMapper;
+use OCA\Empleados\Service\PermissionCatalogInitializer;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\AdminRequired;
@@ -15,67 +17,11 @@ use OCP\IGroupManager;
 use OCP\IRequest;
 
 class PermisoGruposController extends Controller {
-
-	private const BASE_GROUPS = [
-		[
-			'id' => 'empleados',
-			'label' => 'Empleados',
-			'description' => 'Grupo base para usuarios que pueden interactuar con el módulo de empleados.',
-		],
-		[
-			'id' => 'recursos_humanos',
-			'label' => 'Recursos Humanos',
-			'description' => 'Grupo base para administración de recursos humanos.',
-		],
-	];
-
-	private const REQUIRED_PERMISSION_GROUPS = [
-		[
-			'module' => 'clientes',
-			'permission' => 'admin',
-			'group_id' => 'clientes_admin',
-			'label' => 'Administradores de clientes',
-			'description' => 'Permite crear, editar, eliminar, importar y exportar clientes.',
-			'restricted' => true,
-			'enabled' => true,
-			'sort_order' => 300,
-		],
-		[
-			'module' => 'clientes',
-			'permission' => 'view',
-			'group_id' => 'clientes_view',
-			'label' => 'Consulta de clientes',
-			'description' => 'Permite consultar y ver clientes sin administrar el catálogo.',
-			'restricted' => false,
-			'enabled' => true,
-			'sort_order' => 310,
-		],
-		[
-			'module' => 'reporte_tiempos',
-			'permission' => 'admin',
-			'group_id' => 'reportes_admin',
-			'label' => 'Reportes - Administradores',
-			'description' => 'Puede consultar reportes administrativos y seguimiento de cumplimiento.',
-			'restricted' => true,
-			'enabled' => true,
-			'sort_order' => 80,
-		],
-		[
-			'module' => 'reporte_tiempos',
-			'permission' => 'view',
-			'group_id' => 'reportes_view',
-			'label' => 'Reportes - Consulta',
-			'description' => 'Puede consultar reportes administrativos de todos los empleados y seguimiento de cumplimiento.',
-			'restricted' => false,
-			'enabled' => true,
-			'sort_order' => 81,
-		],
-	];
-
 	public function __construct(
 		IRequest $request,
 		private PermisoGrupoMapper $permisoGrupoMapper,
-		private IGroupManager $groupManager
+		private IGroupManager $groupManager,
+		private PermissionCatalogInitializer $catalogInitializer,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -295,7 +241,7 @@ class PermisoGruposController extends Controller {
 		$missingCatalogEntries = [];
 		$catalogEntryKeys = [];
 
-		foreach (self::BASE_GROUPS as $baseGroup) {
+		foreach (PermissionCatalog::baseGroups() as $baseGroup) {
 			$groupId = $baseGroup['id'];
 			$exists = $this->groupManager->get($groupId) !== null;
 
@@ -322,8 +268,8 @@ class PermisoGruposController extends Controller {
 				(string)$row['group_id']
 			)] = true;
 		}
-		
-		foreach (self::REQUIRED_PERMISSION_GROUPS as $requiredPermission) {
+
+		foreach (PermissionCatalog::entries() as $requiredPermission) {
 			$key = $this->catalogKey(
 				$requiredPermission['module'],
 				$requiredPermission['permission'],
@@ -406,45 +352,23 @@ class PermisoGruposController extends Controller {
 		$created = [];
 		$alreadyExists = [];
 		$failed = [];
-		$createdCatalogEntries = [];
 		$alreadyExistingCatalogEntries = [];
 
-		foreach (self::REQUIRED_PERMISSION_GROUPS as $requiredPermission) {
-			$module = $requiredPermission['module'];
-			$permission = $requiredPermission['permission'];
-			$groupId = $requiredPermission['group_id'];
-
-			if ($this->permisoGrupoMapper->catalogEntryExists($module, $permission, $groupId)) {
-				$alreadyExistingCatalogEntries[] = $requiredPermission;
-			} else {
-				$this->permisoGrupoMapper->createCatalogEntry(
-					$module,
-					$permission,
-					$groupId,
-					$requiredPermission['label'],
-					$requiredPermission['description'],
-					$requiredPermission['restricted'] ? 1 : 0,
-					$requiredPermission['enabled'] ? 1 : 0,
-					$requiredPermission['sort_order']
-				);
-
-				$createdCatalogEntries[] = $requiredPermission;
-			}
-
-			if ($requiredPermission['enabled']) {
-				$groupsToCheck[$groupId] = [
-					'id' => $groupId,
-					'label' => $requiredPermission['label'],
-					'type' => 'permission',
-					'module' => $module,
-					'permission' => $permission,
-				];
+		$createdCatalogEntries = $this->catalogInitializer->initialize();
+		$createdCatalogKeys = [];
+		foreach ($createdCatalogEntries as $entry) {
+			$createdCatalogKeys[PermissionCatalog::key($entry['module'], $entry['permission'], $entry['group_id'])] = true;
+		}
+		foreach (PermissionCatalog::entries() as $entry) {
+			$key = PermissionCatalog::key($entry['module'], $entry['permission'], $entry['group_id']);
+			if (!isset($createdCatalogKeys[$key])) {
+				$alreadyExistingCatalogEntries[] = $entry;
 			}
 		}
 
 		$groupsToCheck = [];
 
-		foreach (self::BASE_GROUPS as $baseGroup) {
+		foreach (PermissionCatalog::baseGroups() as $baseGroup) {
 			$groupsToCheck[$baseGroup['id']] = [
 				'id' => $baseGroup['id'],
 				'label' => $baseGroup['label'],
@@ -525,6 +449,6 @@ class PermisoGruposController extends Controller {
 	}
 
 	private function catalogKey(string $module, string $permission, string $groupId): string {
-		return $module . '::' . $permission . '::' . $groupId;
+		return PermissionCatalog::key($module, $permission, $groupId);
 	}
 }

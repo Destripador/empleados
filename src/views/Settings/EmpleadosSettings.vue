@@ -438,16 +438,6 @@ import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 
-const COMPRAS_GROUPS = [
-	'compras_solicitantes',
-	'compras_autorizadores',
-	'compras_admin',
-	'compras_contabilidad',
-]
-
-const COMPRAS_ADMIN_GROUP = 'compras_admin'
-const GLOBAL_ADMIN_GROUP = 'admin'
-
 export default {
 	name: 'EmpleadosSettings',
 	components: {
@@ -574,8 +564,20 @@ export default {
 		},
 
 		hasAdminPermissionSelected() {
-			return this.selectedPermisosGroups.includes(GLOBAL_ADMIN_GROUP)
-				|| this.selectedPermisosGroups.includes(COMPRAS_ADMIN_GROUP)
+			return this.comprasAdminGroup !== ''
+				&& this.selectedPermisosGroups.includes(this.comprasAdminGroup)
+		},
+
+		comprasPermissionGroups() {
+			return this.permisosGrupos
+				.filter(group => group.module === 'compras')
+				.map(group => group.id)
+		},
+
+		comprasAdminGroup() {
+			return this.permisosGrupos.find(group => (
+				group.module === 'compras' && group.permission === 'admin'
+			))?.id || ''
 		},
 	},
 
@@ -870,15 +872,9 @@ export default {
 		normalizeSelectedPermisosGroups(groups) {
 			const normalized = [...new Set(groups.filter(Boolean))]
 
-			if (normalized.includes(GLOBAL_ADMIN_GROUP)) {
+			if (this.comprasAdminGroup && normalized.includes(this.comprasAdminGroup)) {
 				return normalized.filter((id) => {
-					return id === GLOBAL_ADMIN_GROUP || !COMPRAS_GROUPS.includes(id)
-				})
-			}
-
-			if (normalized.includes(COMPRAS_ADMIN_GROUP)) {
-				return normalized.filter((id) => {
-					return id === COMPRAS_ADMIN_GROUP || !COMPRAS_GROUPS.includes(id)
+					return id === this.comprasAdminGroup || !this.comprasPermissionGroups.includes(id)
 				})
 			}
 
@@ -886,44 +882,16 @@ export default {
 		},
 
 		isPermissionDisabled(groupId) {
-			if (this.selectedPermisosGroups.includes(GLOBAL_ADMIN_GROUP)) {
-				return COMPRAS_GROUPS.includes(groupId)
-			}
-
-			if (this.selectedPermisosGroups.includes(COMPRAS_ADMIN_GROUP)) {
-				return COMPRAS_GROUPS.includes(groupId) && groupId !== COMPRAS_ADMIN_GROUP
+			if (this.comprasAdminGroup && this.selectedPermisosGroups.includes(this.comprasAdminGroup)) {
+				return this.comprasPermissionGroups.includes(groupId) && groupId !== this.comprasAdminGroup
 			}
 
 			return false
 		},
 
 		getPermisoDescription(group) {
-			const groupId = typeof group === 'string' ? group : group?.id
 			const moduleName = typeof group === 'string' ? '' : group?.module
 			const permissionName = typeof group === 'string' ? '' : group?.permission
-
-			const descriptions = {
-				admin: t('empleados', 'Global Nextcloud administrator. This role already has full access and should be assigned only when strictly necessary.'),
-				compras_admin: t('empleados', 'Full control of the purchases module: view all requests, create requests, select requester, approve, reject and process purchases.'),
-				compras_solicitantes: t('empleados', 'Can access the purchases module, create own purchase requests, edit drafts, send them for approval and follow their own requests.'),
-				compras_autorizadores: t('empleados', 'Can view purchase requests from all users and approve or reject requests pending approval.'),
-				compras_contabilidad: t('empleados', 'Can view purchase requests from all users for accounting review and tracking. Cannot approve or reject requests.'),
-				recursos_humanos: t('empleados', 'Can manage employee-related information in the employees module. This does not grant purchase approval permissions.'),
-				clientes_admin: t('empleados', 'Can create, edit, delete, import and export customers.'),
-				clientes_view: t('empleados', 'Can view customers without editing the customer catalog.'),
-				reportes_admin: t('empleados', 'Can open administrative time reports for all active employees and follow compliance.'),
-				reportes_view: t('empleados', 'Can open administrative time reports only for the current employee and their team.'),
-				empleados_admin: t('empleados', 'Can manage employees, areas, positions and teams without full Human Resources access.'),
-				ti_admin: t('empleados', 'Can administer inventory, equipment and support requests.'),
-				ti_tecnicos: t('empleados', 'Can attend and update assigned maintenance work.'),
-				ti_consulta: t('empleados', 'Can view inventory, calendar and maintenance progress.'),
-				ahorro_admin: t('empleados', 'Can manage savings requests and the savings panel.'),
-				ausencias_admin: t('empleados', 'Can manage absences, vacations and the work calendar.'),
-			}
-
-			if (descriptions[groupId]) {
-				return descriptions[groupId]
-			}
 
 			if (moduleName && permissionName) {
 				return t(
@@ -940,26 +908,7 @@ export default {
 		},
 
 		getPermisoRestriction(group) {
-			const groupId = typeof group === 'string' ? group : group?.id
 			const restricted = typeof group === 'string' ? false : Boolean(group?.restricted)
-
-			const restrictions = {
-				admin: t('empleados', 'Do not combine with purchase groups unless there is a specific reason.'),
-				compras_admin: t('empleados', 'Includes requester, approver and accounting purchase permissions. Other purchase groups will be ignored.'),
-				compras_solicitantes: t('empleados', 'Does not allow viewing requests from other users.'),
-				compras_autorizadores: t('empleados', 'Does not allow selecting another requester when creating a request.'),
-				compras_contabilidad: t('empleados', 'Read-only for approvals: approval and rejection actions are hidden.'),
-				recursos_humanos: t('empleados', 'Independent from purchase permissions.'),
-				clientes_admin: t('empleados', 'Administrative customer permission. Assign only to users who should maintain the customer catalog.'),
-				clientes_view: t('empleados', 'Read-only customer permission.'),
-				reportes_admin: t('empleados', 'Sees all active employees in administrative time reports. Assign only when necessary.'),
-				reportes_view: t('empleados', 'Does not show employees outside the current user team.'),
-				empleados_admin: t('empleados', 'Restricted permission. Assign only when necessary.'),
-			}
-
-			if (restrictions[groupId]) {
-				return restrictions[groupId]
-			}
 
 			if (restricted) {
 				return t('empleados', 'Restricted permission. Assign only when necessary.')
