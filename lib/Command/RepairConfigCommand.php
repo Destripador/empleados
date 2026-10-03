@@ -1,9 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace OCA\Empleados\Command;
 
-use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCA\Empleados\Config\DefaultConfig;
+use OCA\Empleados\Service\DefaultConfigInitializer;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use Symfony\Component\Console\Command\Command;
@@ -13,35 +15,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 final class RepairConfigCommand extends Command {
 	protected static $defaultName = 'empleados:repair-config';
-
-	private const APP_ID = 'empleados';
-	private const CONFIG_TABLE = 'empleados_conf';
-
-	/** Configuraciones almacenadas en oc_empleados_conf. */
-	private const REQUIRED_CONFIG = [
-		'usuario_almacenamiento' => null,
-		'automatic_save_note' => 'false',
-		'acumular_vacaciones' => 'false',
-		'modulo_ahorro' => 'false',
-		'modulo_ausencias' => 'false',
-		'ausencias_readonly' => 'false',
-		'modulo_clientes' => 'false',
-		'modulo_reporte_tiempos' => 'false',
-		'modulo_inventario' => 'false',
-		'modulo_soporte' => 'false',
-		'modulo_compras' => 'false',
-	];
-
-	/** Configuraciones almacenadas en oc_appconfig. */
-	private const REQUIRED_APP_CONFIG = [
-		'reportes_recordatorios_enabled' => 'true',
-		'reportes_recordatorios_grupo' => 'empleados',
-		'reportes_recordatorios_hora' => '17',
-		'reportes_recordatorios_zona_horaria' => 'America/Mexico_City',
-		'reportes_recordatorios_email' => 'true',
-		'reportes_horas_minimas' => '0',
-		'reportes_admin_reports_group' => 'recursos_humanos',
-	];
 
 	/**
 	 * Esquema crítico esperado después de ejecutar todas las migraciones.
@@ -201,7 +174,7 @@ final class RepairConfigCommand extends Command {
 			$qb = $this->db->getQueryBuilder();
 			$qb->select('version')
 				->from('migrations')
-				->where($qb->expr()->eq('app', $qb->createNamedParameter(self::APP_ID)));
+				->where($qb->expr()->eq('app', $qb->createNamedParameter(DefaultConfig::APP_ID)));
 
 			$result = $qb->executeQuery();
 			$rows = $result->fetchAll();
@@ -259,21 +232,22 @@ final class RepairConfigCommand extends Command {
 		$output->writeln('<info>Verificando configuraciones...</info>');
 		$errors = [];
 
-		foreach (self::REQUIRED_CONFIG as $key => $defaultValue) {
+		foreach (DefaultConfig::TABLE_DEFAULTS as $key => $defaultValue) {
 			$count = $this->countConfigKey($key);
 			if ($count === 0) {
-				$errors[] = 'Falta en ' . $this->prefixedTable(self::CONFIG_TABLE) . ': ' . $key;
+				$errors[] = 'Falta en ' . $this->prefixedTable(DefaultConfig::TABLE) . ': ' . $key;
 				$output->writeln('<error>FALTA:</error> ' . $key);
 			} elseif ($count > 1) {
-				$errors[] = 'Clave duplicada en ' . $this->prefixedTable(self::CONFIG_TABLE) . ': ' . $key . ' (' . $count . ' filas)';
+				$errors[] = 'Clave duplicada en ' . $this->prefixedTable(DefaultConfig::TABLE) . ': ' . $key . ' (' . $count . ' filas)';
 				$output->writeln('<error>DUPLICADA:</error> ' . $key . ' (' . $count . ')');
 			} else {
 				$output->writeln('<info>OK:</info> ' . $key);
 			}
 		}
 
-		foreach (self::REQUIRED_APP_CONFIG as $key => $defaultValue) {
-			if ($this->config->getAppValue(self::APP_ID, $key, '') === '') {
+		$appKeys = array_fill_keys($this->config->getAppKeys(DefaultConfig::APP_ID), true);
+		foreach (DefaultConfig::APP_DEFAULTS as $key => $defaultValue) {
+			if (!isset($appKeys[$key])) {
 				$errors[] = 'Falta en appconfig: ' . $key;
 				$output->writeln('<error>FALTA appconfig:</error> ' . $key);
 			} else {
@@ -285,30 +259,17 @@ final class RepairConfigCommand extends Command {
 	}
 
 	private function repairTableConfiguration(OutputInterface $output): void {
-		$this->db->beginTransaction();
-		try {
-			foreach (self::REQUIRED_CONFIG as $key => $defaultValue) {
-				if ($this->countConfigKey($key) !== 0) {
-					continue;
-				}
-
-				$this->insertConfigKey($key, $defaultValue);
-				$output->writeln('<info>INSERT:</info> ' . $key . ' -> ' . ($defaultValue ?? 'NULL'));
-			}
-			$this->db->commit();
-		} catch (\Throwable $e) {
-			$this->db->rollBack();
-			throw $e;
+		$initializer = new DefaultConfigInitializer($this->db, $this->config);
+		foreach ($initializer->initializeTableDefaults() as $key) {
+			$defaultValue = DefaultConfig::TABLE_DEFAULTS[$key];
+			$output->writeln('<info>INSERT:</info> ' . $key . ' -> ' . ($defaultValue ?? 'NULL'));
 		}
 	}
 
 	private function repairAppConfiguration(OutputInterface $output): void {
-		foreach (self::REQUIRED_APP_CONFIG as $key => $defaultValue) {
-			if ($this->config->getAppValue(self::APP_ID, $key, '') !== '') {
-				continue;
-			}
-
-			$this->config->setAppValue(self::APP_ID, $key, $defaultValue);
+		$initializer = new DefaultConfigInitializer($this->db, $this->config);
+		foreach ($initializer->initializeAppDefaults() as $key) {
+			$defaultValue = DefaultConfig::APP_DEFAULTS[$key];
 			$output->writeln('<info>INSERT appconfig:</info> ' . $key . ' -> ' . $defaultValue);
 		}
 	}
@@ -340,27 +301,13 @@ final class RepairConfigCommand extends Command {
 	private function countConfigKey(string $key): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select($qb->createFunction('COUNT(*)'))
-			->from(self::CONFIG_TABLE)
+			->from(DefaultConfig::TABLE)
 			->where($qb->expr()->eq('Nombre', $qb->createNamedParameter($key)));
 
 		$result = $qb->executeQuery();
 		$count = (int)$result->fetchOne();
 		$result->closeCursor();
 		return $count;
-	}
-
-	private function insertConfigKey(string $key, ?string $value): void {
-		$qb = $this->db->getQueryBuilder();
-		$parameter = $value === null
-			? $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL)
-			: $qb->createNamedParameter($value, IQueryBuilder::PARAM_STR);
-
-		$qb->insert(self::CONFIG_TABLE)
-			->values([
-				'Nombre' => $qb->createNamedParameter($key, IQueryBuilder::PARAM_STR),
-				'Data' => $parameter,
-			])
-			->executeStatement();
 	}
 
 	private function prefixedTable(string $table): string {

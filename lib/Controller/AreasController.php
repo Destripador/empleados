@@ -20,6 +20,7 @@ use OCA\Empleados\Db\empleados;
 use OCA\Empleados\Db\departamentos;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
+use OCA\Empleados\Service\BitacoraService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 
@@ -42,6 +43,7 @@ class AreasController extends BaseController {
     protected $l10n;
     protected PermisosService $permisosService;
     protected CompraPermisosService $compraPermisosService;
+    private BitacoraService $bitacoraService;
 
     public function __construct(
         IRequest $request,
@@ -53,7 +55,8 @@ class AreasController extends BaseController {
         IL10N $l10n,
         IGroupManager $groupManager,
         PermisosService $permisosService,
-        CompraPermisosService $compraPermisosService
+        CompraPermisosService $compraPermisosService,
+        BitacoraService $bitacoraService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -65,6 +68,20 @@ class AreasController extends BaseController {
         $this->l10n = $l10n;
         $this->permisosService = $permisosService;
         $this->compraPermisosService = $compraPermisosService;
+        $this->bitacoraService = $bitacoraService;
+    }
+
+    /**
+     * Registra un movimiento del módulo "areas" en la bitácora general.
+     */
+    private function registrarMovimiento(
+        ?string $uidActor,
+        ?int $idReferencia,
+        ?string $nombreAfectado,
+        string $tipo,
+        string $mensaje
+    ): void {
+        $this->bitacoraService->registrar('areas', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
     }
 
     /**
@@ -128,10 +145,15 @@ class AreasController extends BaseController {
     public function ImportListAreas(): DataResponse {
         $this->requireHumanResourcesAccess();
         $file = $this->getUploadedFile('AreafileXLSX');
+
+        $creados = 0;
+        $actualizados = 0;
+
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
                 if (!empty($row[0])) {
                     $this->departamentosMapper->updateAreas((string) $row[0], (string) $row[1], (string) $row[2]);
+                    $actualizados++;
                 } else {
                     $timestamp = date('Y-m-d');
                     $area = new departamentos();
@@ -140,8 +162,24 @@ class AreasController extends BaseController {
                     $area->setcreated_at($timestamp);
                     $area->setupdated_at($timestamp);
                     $this->departamentosMapper->insert($area);
+                    $creados++;
                 }
             }
+
+            // --- Movimiento (bitácora) ---
+            if ($creados > 0 || $actualizados > 0) {
+                $actor = $this->userSession->getUser();
+                $uidActor = $actor ? $actor->getUID() : null;
+                $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+                $mensaje = sprintf(
+                    '%s ha importado áreas desde un archivo XLSX: %d creada(s), %d actualizada(s).',
+                    $nombreActor, $creados, $actualizados
+                );
+
+                $this->registrarMovimiento($uidActor, null, null, 'importacion', $mensaje);
+            }
+
             return new DataResponse(['status' => 'error'], Http::STATUS_BAD_REQUEST);
         }
         return new DataResponse(Http::STATUS_OK);
@@ -155,7 +193,24 @@ class AreasController extends BaseController {
     public function EliminarArea(int $id_departamento): DataResponse {
         $this->requireHumanResourcesAccess();
         try {
+            $area = $this->departamentosMapper->getById((string) $id_departamento);
+            $nombreArea = $area['Nombre'] ?? $area['nombre'] ?? ('Área ' . $id_departamento);
+
             $this->departamentosMapper->EliminarArea((string) $id_departamento);
+
+            // --- Movimiento (bitácora) ---
+            $actor = $this->userSession->getUser();
+            $uidActor = $actor ? $actor->getUID() : null;
+            $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+            $mensaje = sprintf(
+                '%s ha eliminado el área "%s".',
+                $nombreActor,
+                $nombreArea
+            );
+
+            $this->registrarMovimiento($uidActor, $id_departamento, $nombreArea, 'eliminacion', $mensaje);
+
             return new DataResponse(Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse("Error al eliminar el área: " . $e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -175,6 +230,9 @@ class AreasController extends BaseController {
         $mostrar_ausencias = null
     ): DataResponse {
         $this->requireHumanResourcesAccess();
+
+        $old = $this->departamentosMapper->getById((string) $id_departamento);
+
         $this->departamentosMapper->updateAreas(
             (string) $id_departamento,
             $padre,
@@ -182,6 +240,56 @@ class AreasController extends BaseController {
             $this->normalizeOptionalBool($mostrar_clientes),
             $this->normalizeOptionalBool($mostrar_ausencias)
         );
+
+        if ($old) {
+            $nombreAnterior = $old['Nombre'] ?? $old['nombre'] ?? '';
+            $padreAnteriorId = $old['Id_padre'] ?? $old['id_padre'] ?? null;
+
+            $cambioNombre = $nombreAnterior !== $nombre;
+            // Normalizamos '' / '0' / null como "sin padre" para comparar correctamente
+            $padreAnteriorNormalizado = ($padreAnteriorId === null || $padreAnteriorId === '' || $padreAnteriorId === '0') ? null : (string) $padreAnteriorId;
+            $padreNuevoNormalizado = ($padre === '' || $padre === '0') ? null : $padre;
+            $cambioPadre = $padreAnteriorNormalizado !== $padreNuevoNormalizado;
+
+            if ($cambioNombre || $cambioPadre) {
+                $actor = $this->userSession->getUser();
+                $uidActor = $actor ? $actor->getUID() : null;
+                $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+                $partes = [];
+
+                if ($cambioNombre) {
+                    $partes[] = sprintf('cambió el nombre de "%s" a **%s**', $nombreAnterior, $nombre);
+                }
+
+                if ($cambioPadre) {
+                    $nombrePadreAnterior = $this->resolverNombrePadre($padreAnteriorNormalizado);
+                    $nombrePadreNuevo = $this->resolverNombrePadre($padreNuevoNormalizado);
+
+                    if ($padreAnteriorNormalizado === null && $padreNuevoNormalizado !== null) {
+                        $partes[] = sprintf('asignó **%s** como área padre', $nombrePadreNuevo ?? $padreNuevoNormalizado);
+                    } elseif ($padreAnteriorNormalizado !== null && $padreNuevoNormalizado === null) {
+                        $partes[] = sprintf('quitó el área padre (antes: %s)', $nombrePadreAnterior ?? $padreAnteriorNormalizado);
+                    } else {
+                        $partes[] = sprintf(
+                            'cambió el área padre de %s a **%s**',
+                            $nombrePadreAnterior ?? $padreAnteriorNormalizado,
+                            $nombrePadreNuevo ?? $padreNuevoNormalizado
+                        );
+                    }
+                }
+
+                $mensaje = sprintf(
+                    '%s ha actualizado el área "%s": %s.',
+                    $nombreActor,
+                    $nombreAnterior,
+                    implode(' y ', $partes)
+                );
+
+                $this->registrarMovimiento($uidActor, $id_departamento, $nombre, 'edicion', $mensaje);
+            }
+        }
+
         return new DataResponse(Http::STATUS_OK);
     }
 
@@ -201,6 +309,23 @@ class AreasController extends BaseController {
         $area->setMostrarClientes(1);
         $area->setMostrarAusencias(1);
         $this->departamentosMapper->insert($area);
+
+        // --- Movimiento (bitácora) ---
+        $actor = $this->userSession->getUser();
+        $uidActor = $actor ? $actor->getUID() : null;
+        $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+        $nombrePadre = $this->resolverNombrePadre($padre);
+
+        $mensaje = sprintf(
+            '%s ha creado el área "%s"%s.',
+            $nombreActor,
+            $nombre,
+            $nombrePadre !== null ? sprintf(' con "%s" como área padre', $nombrePadre) : ''
+        );
+
+        $this->registrarMovimiento($uidActor, $area->getId(), $nombre, 'creacion', $mensaje);
+
         return new DataResponse(Http::STATUS_OK);
     }
 
@@ -280,10 +405,22 @@ class AreasController extends BaseController {
         $user = $this->userSession->getUser();
         $uid = $user?->getUID();
 
-        if ($uid !== null && $uid !== '' && $this->permisosService->canSee('reporte_tiempos.admin', $uid)) {
+        if ($uid !== null && $uid !== '' && $this->permisosService->canSeeAny([
+            'reporte_tiempos.admin',
+            'reporte_tiempos.view',
+        ], $uid)) {
             return;
         }
 
         $this->requireCatalogReadAccess();
+    }
+
+    private function resolverNombrePadre(?string $idPadre): ?string {
+        if ($idPadre === null || $idPadre === '' || $idPadre === '0') {
+            return null;
+        }
+
+        $padre = $this->departamentosMapper->getById($idPadre);
+        return $padre['Nombre'] ?? $padre['nombre'] ?? null;
     }
 }

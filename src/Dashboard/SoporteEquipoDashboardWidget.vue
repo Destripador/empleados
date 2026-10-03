@@ -106,14 +106,21 @@
 import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { showError } from '@nextcloud/dialogs'
-import { NcButton, NcLoadingIcon, NcModal, NcTextField } from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import Close from 'vue-material-design-icons/Close.vue'
 import Laptop from 'vue-material-design-icons/Laptop.vue'
 import Magnify from 'vue-material-design-icons/Magnify.vue'
 import Wrench from 'vue-material-design-icons/Wrench.vue'
 
-import RegistrarSoporteForm from '../components/Inventario/RegistrarSoporteForm.vue'
 import inventarioService from '../services/inventarioService.js'
+
+const RegistrarSoporteForm = () => import(
+	/* webpackChunkName: "dashboard-support-form" */
+	'../components/Inventario/RegistrarSoporteForm.vue'
+)
 
 export default {
 	name: 'SoporteEquipoDashboardWidget',

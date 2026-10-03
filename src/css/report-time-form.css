@@ -1,0 +1,103 @@
+/* Shared layout for time-report modals (dashboard + Mis reportes).
+   NcModal is 600/900px; never set a wider inner width or the form clips. */
+.report-time-form {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	padding: 20px 24px 24px;
+	overflow-x: hidden;
+}
+
+.report-time-form__fields {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.report-time-form__banner {
+	margin: 0 0 4px;
+	padding: 10px 12px;
+	border-radius: var(--border-radius-large, 12px);
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.report-time-form__label {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.report-time-form__hint {
+	margin: -4px 0 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.report-time-form__meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+.report-time-form__link {
+	border: 0;
+	background: transparent;
+	color: var(--color-primary-element);
+	cursor: pointer;
+	font-weight: 700;
+}
+
+.report-time-form__work-type,
+.report-time-form__units {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	min-width: 0;
+}
+
+.report-time-form__row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 12px;
+	width: 100%;
+	min-width: 0;
+	align-items: end;
+}
+
+.report-time-form__actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 8px;
+}
+
+.report-time-form .fit,
+.report-time-form .v-select,
+.report-time-form .input-field,
+.report-time-form .textarea-field,
+.report-time-form .mx-datepicker,
+.report-time-form .mx-input-wrapper {
+	width: 100% !important;
+	max-width: 100% !important;
+	min-width: 0 !important;
+	box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+	.report-time-form {
+		padding: 16px;
+	}
+
+	.report-time-form__row {
+		grid-template-columns: 1fr;
+	}
+}

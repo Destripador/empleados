@@ -3,6 +3,14 @@
 	<div class="contacts-list__item-wrapper">
 		<div v-if="Object.keys(data).length === 0">
 			<div class="teams-empty-state teams-empty-state--network">
+				<button
+					type="button"
+					class="mobile-back-btn"
+					:aria-label="t('empleados', 'Back to list')"
+					@click="$root.$emit('mobile-back')">
+					<ArrowLeft :size="20" />
+					<span>{{ t('empleados', 'Back') }}</span>
+				</button>
 				<EntityCountNetwork
 					:items="items"
 					entity-type="team"
@@ -12,6 +20,16 @@
 
 		<div v-else>
 			<div class="team-details">
+				<div class="mobile-back-bar">
+					<button
+						type="button"
+						class="mobile-back-btn"
+						:aria-label="t('empleados', 'Back to list')"
+						@click="$root.$emit('mobile-back')">
+						<ArrowLeft :size="20" />
+						<span>{{ t('empleados', 'Back') }}</span>
+					</button>
+				</div>
 				<div class="team-hero">
 					<div class="team-hero__content">
 						<span class="team-hero__eyebrow">
@@ -181,6 +199,7 @@
 import DeleteAlert from 'vue-material-design-icons/DeleteAlert.vue'
 import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
 import AccountCog from 'vue-material-design-icons/AccountCog.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -210,6 +229,7 @@ export default {
 		NcActions,
 		AccountCog,
 		AccountEdit,
+		ArrowLeft,
 		NcActionButton,
 		DeleteAlert,
 		NcDialog,
@@ -246,11 +266,11 @@ export default {
 
 			buttons: [
 				{
-					label: 'Cancelar',
+					label: this.t('empleados', 'Cancel'),
 					callback: () => { this.lastResponse = 'Pressed "Cancel"' },
 				},
 				{
-					label: 'Eliminar',
+					label: this.t('empleados', 'Delete'),
 					type: 'primary',
 					callback: () => { this.eliminarEquipo(this.data.Id_equipo) },
 				},
@@ -344,7 +364,7 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/GuardarCambioEquipo'), {
 					Id_Equipo: this.data.Id_equipo,
 					Id_jefe_equipo: idJefe,
-					Nombre: this.equipo_nombre,
+					nombre: this.equipo_nombre,
 				})
 
 				showSuccess(t('empleados', 'Equipo actualizado exitosamente'))
@@ -711,6 +731,66 @@ export default {
 
 	.teams-empty-item {
 		text-align: center;
+	}
+}
+
+.mobile-back-bar {
+	display: none;
+}
+
+.mobile-back-btn {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: fit-content;
+	min-width: 0;
+	height: auto;
+	box-sizing: border-box;
+	padding: 8px 14px;
+	border: 1px solid var(--color-border);
+	border-radius: 20px;
+	background: #e6eef3;
+	color: var(--color-main-text);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+@media (max-width: 900px) {
+	.mobile-back-bar {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		width: 100%;
+		height: 52px;
+		padding: 8px 10px 12px;
+		box-sizing: border-box;
+	}
+
+	.mobile-back-btn {
+		display: inline-flex;
+		flex: 0 0 auto;
+		width: fit-content;
+		min-width: 0;
+		max-width: max-content;
+		height: auto;
+		margin: 0;
+		padding: 8px 14px;
+		border-radius: 20px;
+		background: #e6eef3;
+	}
+
+	.teams-empty-state--network {
+		position: relative;
+		padding-top: 56px;
+	}
+
+	.teams-empty-state--network > .mobile-back-btn {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		left: auto;
 	}
 }
 </style>

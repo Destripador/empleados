@@ -18,11 +18,13 @@ class clientes extends Entity {
 	protected ?string $nombre_contacto = null;
 	protected ?string $telefono = null;
 	protected ?string $correo = null;
+	protected ?string $rfc = null;
 	protected ?string $ubicacion = null;
 	/* BANDERAS / GRUPOS */
 	protected bool $especial = false;
 	protected ?int $cliente_padre = null;
 	protected bool $estado = true;
+	protected ?string $logo = null;
 
 	public function __construct() {
 		$this->addType('id', 'integer');
@@ -37,11 +39,13 @@ class clientes extends Entity {
 		$this->addType('nombre_contacto', 'string');
 		$this->addType('telefono', 'string');
 		$this->addType('correo', 'string');
+		$this->addType('rfc', 'string');
 		$this->addType('ubicacion', 'string');
 
 		$this->addType('especial', 'boolean');
 		$this->addType('cliente_padre', 'integer');
 		$this->addType('estado', 'boolean');
+		$this->addType('logo', 'string');
 	}
 
 	public function read(): array {
@@ -58,11 +62,13 @@ class clientes extends Entity {
 			'nombre_contacto' => $this->nombre_contacto,
 			'telefono' => $this->telefono,
 			'correo' => $this->correo,
+			'rfc' => $this->rfc,
 			'ubicacion' => $this->ubicacion,
 
 			'especial' => $this->especial,
 			'cliente_padre' => $this->cliente_padre,
 			'estado' => $this->estado,
+			'logo' => $this->logo,
 		];
 	}
 }

@@ -1,5 +1,9 @@
 <template>
-	<section v-if="empleado" class="employee-summary" aria-labelledby="employee-summary-title">
+	<section
+		v-if="empleado"
+		class="employee-summary"
+		:class="{ 'employee-summary--inactive': empleado.inactivo_desde }"
+		aria-labelledby="employee-summary-title">
 		<header class="employee-header">
 			<div>
 				<p class="eyebrow">
@@ -17,6 +21,10 @@
 			</span>
 		</header>
 
+		<p v-if="empleado.inactivo_desde" class="inactive-notice" role="status">
+			{{ t('empleados', 'El empleado dejó de estar activo desde el {date}', { date: formatDate(empleado.inactivo_desde) }) }}
+		</p>
+
 		<div class="period-grid">
 			<article v-for="item in periodCards" :key="item.key" class="period-card">
 				<span>{{ item.label }}</span>
@@ -27,13 +35,17 @@
 		</div>
 
 		<div class="metric-grid">
-			<div class="metric">
+			<!-- <div class="metric">
 				<span>{{ t('empleados', 'Expected hours') }}</span>
 				<strong>{{ formatHours(periodo.horas_esperadas) }}</strong>
-			</div>
+			</div> -->
 			<div class="metric">
 				<span>{{ t('empleados', 'Reported hours') }}</span>
 				<strong>{{ formatHours(periodo.horas_reportadas) }}</strong>
+			</div>
+			<div class="metric">
+				<span>{{ t('empleados', 'Accounted hours') }}</span>
+				<strong>{{ formatHours(periodo.horas_contabilizadas) }}</strong>
 			</div>
 			<div class="metric metric--pending">
 				<span>{{ t('empleados', 'Pending hours') }}</span>
@@ -240,5 +252,30 @@ export default {
 	.highlights-grid {
 		grid-template-columns: 1fr;
 	}
+}
+
+.inactive-notice {
+	margin: 0;
+	padding: 10px 14px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-warning-hover);
+	color: var(--color-warning-text);
+	font-weight: 600;
+}
+
+.employee-summary--inactive {
+	background: var(--color-background-dark);
+}
+
+.employee-summary--inactive h3 {
+	font-style: italic;
+	color: var(--color-text-maxcontrast);
+}
+
+.employee-summary--inactive .status-pill,
+.employee-summary--inactive .period-card,
+.employee-summary--inactive .metric,
+.employee-summary--inactive .highlight {
+	filter: grayscale(1);
 }
 </style>

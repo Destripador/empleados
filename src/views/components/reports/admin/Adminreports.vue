@@ -1,33 +1,29 @@
 <template id="content">
 	<NcAppContent :name="t('empleados', 'Employees - Activities')">
-		<List
-			:loading="loading"
-			:listas="sidebarEmployees"
-			:select="select"
-			:details-active="selectedEmployeeId !== null"
-			:defaultbuttons="false"
-			:custom="true">
-			<template #custombuttons>
-				<div class="button-container">
-					<NcActions>
-						<template #icon>
-							<DatabaseExport :size="20" />
-						</template>
-						<NcActionButton :disabled="exporting" @click="Exportar()">
-							<template #icon>
-								<DatabaseExport :size="20" />
-							</template>
-							{{ t('empleados', 'Export period report') }}
-						</NcActionButton>
-					</NcActions>
+		<div class="admin-report-shell">
+			<div class="report-header">
+				<NcBreadcrumbs :aria-label="t('empleados', 'Administrative report navigation')">
+					<NcBreadcrumb
+						v-for="crumb in breadcrumbItems"
+						:key="crumb.key"
+						:name="crumb.name"
+						:to="crumb.to" />
+				</NcBreadcrumbs>
+				<div
+					v-if="showMobileBack"
+					class="report-back-mobile">
+					<NcButton type="tertiary" @click="goBackOneLevel">
+						{{ mobileBackLabel }}
+					</NcButton>
 				</div>
-			</template>
-			<template #custom>
-				<div class="periodo-details">
-					<header class="report-context">
+			</div>
+
+			<div class="periodo-details">
+				<header class="report-context">
+					<div class="report-context__topline">
 						<div class="report-context__heading">
 							<h2 class="report-context__title">
-								{{ t('empleados', 'Time reports') }}
+								{{ t('empleados', 'Administrative reports') }}
 							</h2>
 							<p class="report-context__meta">
 								<span>{{ selectedPeriodLabel }}</span>
@@ -38,153 +34,179 @@
 								<span>{{ viewModeLabel }}</span>
 							</p>
 						</div>
+						<NcActions>
+							<template #icon>
+								<DatabaseExport :size="20" />
+							</template>
+							<NcActionButton :disabled="exporting" @click="Exportar()">
+								<template #icon>
+									<DatabaseExport :size="20" />
+								</template>
+								{{ t('empleados', 'Export period report') }}
+							</NcActionButton>
+						</NcActions>
+					</div>
 
-						<div class="report-toolbar" :class="{ 'report-toolbar--expanded': moreFiltersOpen }">
-							<div class="report-toolbar__row report-toolbar__row--main">
-								<div
-									class="report-field report-field--period"
-									role="group"
-									:aria-label="t('empleados', 'Period')">
-									<span class="report-field__label">{{ t('empleados', 'Period') }}</span>
-									<div class="report-period">
-										<NcDateTimePicker
-											v-model="fechaInicio"
-											type="date"
-											:placeholder="t('empleados', 'From date')"
-											class="report-period__picker" />
-										<span class="report-period__sep" aria-hidden="true">—</span>
-										<NcDateTimePicker
-											v-model="fechaFin"
-											type="date"
-											:placeholder="t('empleados', 'To date')"
-											class="report-period__picker" />
-									</div>
-								</div>
-
-								<div class="report-field report-field--area">
-									<span id="admin-report-area-label" class="report-field__label">
-										{{ t('empleados', 'Area') }}
-									</span>
-									<NcSelect
-										v-model="areaSeleccionada"
-										:options="areasOptions"
-										:clearable="true"
-										:aria-labelledby="'admin-report-area-label'"
-										:placeholder="t('empleados', 'Area')"
-										class="report-field__control" />
-								</div>
-
-								<div class="report-field report-field--employee">
-									<span id="admin-report-employee-label" class="report-field__label">
-										{{ t('empleados', 'Employee') }}
-									</span>
-									<NcSelect
-										v-model="empleadoSeleccionado"
-										:options="empleadosOptions"
-										:clearable="true"
-										:aria-labelledby="'admin-report-employee-label'"
-										:placeholder="t('empleados', 'Employee')"
-										class="report-field__control" />
-								</div>
-
-								<div class="report-field report-field--type">
-									<span id="admin-report-type-label" class="report-field__label">
-										{{ t('empleados', 'Work type') }}
-									</span>
-									<NcSelect
-										v-model="tipoTrabajoSeleccionado"
-										:options="workTypeOptions"
-										:clearable="false"
-										:aria-labelledby="'admin-report-type-label'"
-										:placeholder="t('empleados', 'Work type')"
-										class="report-field__control" />
-								</div>
-
-								<div class="report-toolbar__actions">
-									<NcButton
-										type="tertiary"
-										:aria-expanded="moreFiltersOpen ? 'true' : 'false'"
-										:title="moreFiltersButtonLabel"
-										@click="toggleMoreFilters">
-										{{ moreFiltersButtonLabel }}
-										<template #icon>
-											<ChevronUp v-if="moreFiltersOpen" :size="16" />
-											<ChevronDown v-else :size="16" />
-										</template>
-									</NcButton>
-									<NcButton type="primary" :disabled="loadingResumen" @click="applyFilters">
-										{{ t('empleados', 'Apply filters') }}
-									</NcButton>
+					<div class="report-toolbar" :class="{ 'report-toolbar--expanded': moreFiltersOpen }">
+						<div class="report-toolbar__row report-toolbar__row--main">
+							<div
+								class="report-field report-field--period"
+								role="group"
+								:aria-label="t('empleados', 'Period')">
+								<span class="report-field__label">{{ t('empleados', 'Period') }}</span>
+								<div class="report-period">
+									<NcDateTimePicker
+										v-model="fechaInicio"
+										type="date"
+										:placeholder="t('empleados', 'From date')"
+										class="report-period__picker" />
+									<span class="report-period__sep" aria-hidden="true">—</span>
+									<NcDateTimePicker
+										v-model="fechaFin"
+										type="date"
+										:placeholder="t('empleados', 'To date')"
+										class="report-period__picker" />
 								</div>
 							</div>
 
-							<div v-if="moreFiltersOpen" class="report-toolbar__row report-toolbar__row--advanced">
-								<div
-									v-if="showClientFilter"
-									class="report-field report-field--client">
-									<span id="admin-report-client-label" class="report-field__label">
-										{{ t('empleados', 'Client') }}
-									</span>
-									<NcSelect
-										v-model="clienteSeleccionado"
-										:options="clientesOptions"
-										:clearable="true"
-										:aria-labelledby="'admin-report-client-label'"
-										:placeholder="t('empleados', 'Client')"
-										class="report-field__control" />
-								</div>
+							<div class="report-field report-field--area">
+								<span id="admin-report-area-label" class="report-field__label">
+									{{ t('empleados', 'Area') }}
+								</span>
+								<NcSelect
+									v-model="areaSeleccionada"
+									:options="areasOptions"
+									:clearable="true"
+									:aria-labelledby="'admin-report-area-label'"
+									:placeholder="t('empleados', 'Area')"
+									class="report-field__control" />
+							</div>
 
-								<div class="report-field report-field--activity">
-									<span id="admin-report-activity-label" class="report-field__label">
-										{{ t('empleados', 'Activity') }}
-									</span>
-									<NcSelect
-										v-model="actividadSeleccionada"
-										:options="activityFilterOptions"
-										:clearable="true"
-										:aria-labelledby="'admin-report-activity-label'"
-										:placeholder="t('empleados', 'Activity')"
-										class="report-field__control" />
-								</div>
+							<div class="report-field report-field--employee">
+								<span id="admin-report-employee-label" class="report-field__label">
+									{{ t('empleados', 'Employee') }}
+								</span>
+								<NcSelect
+									v-model="empleadoSeleccionado"
+									:options="empleadosOptions"
+									:clearable="true"
+									:aria-labelledby="'admin-report-employee-label'"
+									:placeholder="t('empleados', 'Employee')"
+									class="report-field__control" />
+							</div>
 
-								<div class="report-toolbar__actions report-toolbar__actions--secondary">
-									<NcButton
-										type="tertiary"
-										:disabled="loadingResumen"
-										@click="clearReportFilters">
-										{{ t('empleados', 'Clear') }}
-									</NcButton>
-								</div>
+							<div class="report-field report-field--type">
+								<span id="admin-report-type-label" class="report-field__label">
+									{{ t('empleados', 'Work type') }}
+								</span>
+								<NcSelect
+									v-model="tipoTrabajoSeleccionado"
+									:options="workTypeOptions"
+									:clearable="false"
+									:aria-labelledby="'admin-report-type-label'"
+									:placeholder="t('empleados', 'Work type')"
+									class="report-field__control" />
+							</div>
+
+							<div class="report-toolbar__actions">
+								<NcButton
+									type="tertiary"
+									:aria-expanded="moreFiltersOpen ? 'true' : 'false'"
+									:title="moreFiltersButtonLabel"
+									@click="toggleMoreFilters">
+									{{ moreFiltersButtonLabel }}
+									<template #icon>
+										<ChevronUp v-if="moreFiltersOpen" :size="16" />
+										<ChevronDown v-else :size="16" />
+									</template>
+								</NcButton>
+								<NcButton type="primary" :disabled="loadingResumen" @click="applyFilters">
+									{{ t('empleados', 'Apply filters') }}
+								</NcButton>
 							</div>
 						</div>
-					</header>
 
+						<div v-if="moreFiltersOpen" class="report-toolbar__row report-toolbar__row--advanced">
+							<div
+								v-if="showClientFilter"
+								class="report-field report-field--client">
+								<span id="admin-report-client-label" class="report-field__label">
+									{{ t('empleados', 'Client') }}
+								</span>
+								<NcSelect
+									v-model="clienteSeleccionado"
+									:options="clientesOptions"
+									:clearable="true"
+									:aria-labelledby="'admin-report-client-label'"
+									:placeholder="t('empleados', 'Client')"
+									class="report-field__control" />
+							</div>
+
+							<div class="report-field report-field--activity">
+								<span id="admin-report-activity-label" class="report-field__label">
+									{{ t('empleados', 'Activity') }}
+								</span>
+								<NcSelect
+									v-model="actividadSeleccionada"
+									:options="activityFilterOptions"
+									:clearable="true"
+									:aria-labelledby="'admin-report-activity-label'"
+									:placeholder="t('empleados', 'Activity')"
+									class="report-field__control" />
+							</div>
+
+							<div class="report-toolbar__actions report-toolbar__actions--secondary">
+								<NcButton
+									type="tertiary"
+									:disabled="loadingResumen"
+									@click="clearReportFilters">
+									{{ t('empleados', 'Clear') }}
+								</NcButton>
+							</div>
+						</div>
+					</div>
+				</header>
+
+				<template v-if="selectedEmployeeId !== null">
+					<AdminEmpleadoResumen
+						:empleado="selectedEmployeeSummary"
+						:mostrar-clientes="mostrarClientes"
+						:mostrar-ausencias="mostrarAusencias" />
+					<AdminDetalles :select="select"
+						:sueldo="sueldo"
+						:actividades-list="actividades"
+						:proyectos-list="temp_listas"
+						:mostrar-clientes="mostrarClientes"
+						:mostrar-ausencias="mostrarAusencias" />
+				</template>
+
+				<AdminTeamReport
+					v-else-if="selectedTeamId"
+					:report="teamReport"
+					:loading="loadingTeam"
+					:mostrar-clientes="mostrarClientes"
+					:mostrar-ausencias="mostrarAusencias"
+					@select-team="openTeamDetails"
+					@select-employee="openEmployeeDetails" />
+
+				<template v-else>
 					<AdminAnalyticsDashboard
 						:resumen="resumenGeneral"
 						:loading="loadingResumen"
 						:mostrar-clientes="mostrarClientes"
 						:mostrar-ausencias="mostrarAusencias"
-						@select-employee="openEmployeeDetails" />
-				</div>
-			</template>
-			<template #details>
-				<div class="details-toolbar">
-					<NcButton type="tertiary" @click="closeEmployeeDetails">
-						{{ t('empleados', 'Back to administrative report') }}
-					</NcButton>
-				</div>
-				<AdminEmpleadoResumen
-					:empleado="selectedEmployeeSummary"
-					:mostrar-clientes="mostrarClientes"
-					:mostrar-ausencias="mostrarAusencias" />
-				<AdminDetalles :select="select"
-					:sueldo="sueldo"
-					:actividades-list="actividades"
-					:proyectos-list="temp_listas"
-					:mostrar-clientes="mostrarClientes"
-					:mostrar-ausencias="mostrarAusencias" />
-			</template>
-		</List>
+						@select-employee="openEmployeeDetails">
+						<template #teams>
+							<AdminTeamsOverview
+								:teams="responsibleTeams"
+								:mostrar-clientes="mostrarClientes"
+								:mostrar-ausencias="mostrarAusencias"
+								@select-team="openTeamDetails" />
+						</template>
+					</AdminAnalyticsDashboard>
+				</template>
+			</div>
+		</div>
 	</NcAppContent>
 </template>
 
@@ -199,11 +221,14 @@ import { showError /*, showSuccess */ } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
+import NcBreadcrumbs from '@nextcloud/vue/components/NcBreadcrumbs'
+import NcBreadcrumb from '@nextcloud/vue/components/NcBreadcrumb'
 
-import List from '../../Helpers/Lists/List.vue'
 import AdminDetalles from './AdminDetalles.vue'
 import AdminAnalyticsDashboard from './AdminAnalyticsDashboard.vue'
 import AdminEmpleadoResumen from './AdminEmpleadoResumen.vue'
+import AdminTeamReport from './AdminTeamReport.vue'
+import AdminTeamsOverview from './AdminTeamsOverview.vue'
 import debounce from 'debounce'
 import {
 	PREFERENCE_KEYS,
@@ -249,10 +274,13 @@ export default {
 	name: 'Adminreports',
 	components: {
 		NcAppContent,
-		List,
+		NcBreadcrumbs,
+		NcBreadcrumb,
 		NcButton,
 		AdminDetalles,
 		AdminEmpleadoResumen,
+		AdminTeamReport,
+		AdminTeamsOverview,
 		NcActions,
 		NcActionButton,
 		DatabaseExport,
@@ -287,7 +315,9 @@ export default {
 			],
 			anios: Array.from({ length: Math.max(0, new Date().getFullYear() - 2025 + 1) }, (_, i) => 2025 + i),
 			resumenGeneral: null,
+			teamReport: null,
 			loadingResumen: false,
+			loadingTeam: false,
 			sueldo: 0,
 			temp_listas: [],
 			areasOptions: [],
@@ -302,6 +332,7 @@ export default {
 			exporting: false,
 			reportRequestId: 0,
 			detailRequestId: 0,
+			teamRequestId: 0,
 			moreFiltersOpen: false,
 		}
 	},
@@ -382,12 +413,73 @@ export default {
 			}))
 		},
 
-		sidebarEmployees() {
-			const employeeId = this.optionId(this.empleadoSeleccionado)
-			if (employeeId === null) {
-				return this.listas
+		selectedTeamId() {
+			const id = Number(this.$route.params.teamId)
+			return Number.isInteger(id) && id > 0 ? id : null
+		},
+
+		responsibleTeams() {
+			return Array.isArray(this.resumenGeneral?.equipos) ? this.resumenGeneral.equipos : []
+		},
+
+		selectedTeamName() {
+			return this.teamReport?.equipo?.nombre
+				|| this.responsibleTeams.find(team => Number(team.id_equipo) === this.selectedTeamId)?.nombre
+				|| t('empleados', 'Team')
+		},
+
+		teamAncestorCrumbs() {
+			const ancestors = Array.isArray(this.teamReport?.equipos_ancestros)
+				? this.teamReport.equipos_ancestros
+				: []
+			return ancestors
+				.filter(team => Number(team?.id_equipo) > 0)
+				.map(team => ({
+					key: `team-${team.id_equipo}`,
+					name: team.nombre || t('empleados', 'Team'),
+					to: { name: 'AdminReportTeam', params: { teamId: String(team.id_equipo) } },
+				}))
+		},
+
+		breadcrumbItems() {
+			const crumbs = [{
+				key: 'admin-reports',
+				name: t('empleados', 'Administrative reports'),
+				to: this.selectedTeamId || this.selectedEmployeeId !== null
+					? { name: 'Adminreports' }
+					: undefined,
+			}]
+
+			if (this.selectedTeamId) {
+				crumbs.push(...this.teamAncestorCrumbs)
+				crumbs.push({
+					key: `team-${this.selectedTeamId}`,
+					name: this.selectedTeamName,
+					to: this.selectedEmployeeId !== null
+						? { name: 'AdminReportTeam', params: { teamId: String(this.selectedTeamId) } }
+						: undefined,
+				})
 			}
-			return this.listas.filter(employee => String(employee.id) === String(employeeId))
+
+			if (this.selectedEmployeeId !== null) {
+				crumbs.push({
+					key: `employee-${this.selectedEmployeeId}`,
+					name: this.selectedEmployeeName,
+				})
+			}
+
+			return crumbs
+		},
+
+		showMobileBack() {
+			return this.selectedTeamId !== null || this.selectedEmployeeId !== null
+		},
+
+		mobileBackLabel() {
+			if (this.selectedEmployeeId !== null && this.selectedTeamId) {
+				return t('empleados', 'Back to team report')
+			}
+			return t('empleados', 'Back to administrative report')
 		},
 
 		selectedPeriodLabel() {
@@ -397,10 +489,20 @@ export default {
 		},
 
 		selectedEmployeeSummary() {
-			const employees = Array.isArray(this.resumenGeneral?.empleados)
+			const teamEmployees = Array.isArray(this.teamReport?.integrantes)
+				? this.teamReport.integrantes
+				: []
+			const generalEmployees = Array.isArray(this.resumenGeneral?.empleados)
 				? this.resumenGeneral.empleados
 				: []
+			const employees = [...teamEmployees, ...generalEmployees]
 			return employees.find(employee => Number(employee.id_empleado) === Number(this.selectedEmployeeId)) || null
+		},
+
+		selectedEmployeeName() {
+			return this.selectedEmployeeSummary?.nombre
+				|| this.listas.find(employee => Number(employee.id) === this.selectedEmployeeId)?.name
+				|| t('empleados', 'Employee')
 		},
 
 		areaLabel() {
@@ -443,6 +545,11 @@ export default {
 	},
 
 	watch: {
+		'$route.fullPath'() {
+			if (this._prefsReady) {
+				this.syncRouteContext()
+			}
+		},
 		areaSeleccionada() {
 			this.onAreaFilterChange()
 		},
@@ -476,12 +583,7 @@ export default {
 	},
 
 	async mounted() {
-		this._onDetails = (id) => this.gethistorial(id)
-		this._onExport = () => this.Exportar()
 		window.addEventListener('keydown', this.onKeyDown)
-
-		this.$root.$on('details', this._onDetails)
-		this.$root.$on('exportlist', this._onExport)
 		try {
 			const prefs = this.loadReportPreferences()
 			this.applyDateFiltersFromPrefs(prefs.filters)
@@ -510,20 +612,21 @@ export default {
 		window.removeEventListener('keydown', this.onKeyDown)
 		this._debouncedSavePrefs?.flush?.()
 		this._debouncedSavePrefs?.clear?.()
-
-		this.$root.$off('details', this._onDetails)
-		this.$root.$off('exportlist', this._onExport)
 	},
 
 	methods: {
 		t,
 
-		 onKeyDown(e) {
+		onKeyDown(e) {
 			if (e.key === 'Escape') this.onEsc()
 		},
 
 		onEsc() {
-			this.closeEmployeeDetails()
+			if (this.selectedEmployeeId !== null) {
+				this.closeEmployeeDetails()
+			} else if (this.selectedTeamId) {
+				this.goToGeneral()
+			}
 		},
 
 		async GetAreasOptions() {
@@ -595,15 +698,15 @@ export default {
 
 							// Lista para tu <List>
 							this.temp_listas = data.map(o => ({
-								id: o.id_cliente,
-								name: o.nombre,
+								id: o.id ?? o.id_cliente,
+								name: o.nombre || o.name || o.label,
 								count: o.child_count,
 							}))
 
 							// Opciones para <NcSelect>
 							this.empresasOptions = data.map(o => ({
-								id: o.id_cliente,
-								label: o.nombre,
+								id: o.id ?? o.id_cliente,
+								label: o.nombre || o.name || o.label,
 							}))
 
 						},
@@ -686,13 +789,15 @@ export default {
 
 		async reloadReportFilters() {
 			const requestId = ++this.reportRequestId
-			this.closeEmployeeDetails()
 			this.loadingResumen = true
 			try {
 				await Promise.all([
 					this.GetEmpleadosReports(requestId),
 					this.GetAdminReportsSummary(requestId),
 				])
+				if (requestId === this.reportRequestId) {
+					await this.syncRouteContext()
+				}
 			} finally {
 				if (requestId === this.reportRequestId) {
 					this.loadingResumen = false
@@ -738,6 +843,28 @@ export default {
 			return defaultValue
 		},
 
+		async syncRouteContext() {
+			const rawEmployeeId = Number(this.$route.params.employeeId)
+			const employeeId = Number.isInteger(rawEmployeeId) && rawEmployeeId > 0
+				? rawEmployeeId
+				: null
+
+			if (!this.selectedTeamId) {
+				this.teamRequestId++
+				this.teamReport = null
+				this.loadingTeam = false
+			}
+
+			if (employeeId === null) {
+				this.resetEmployeeDetail()
+			}
+
+			await Promise.all([
+				this.selectedTeamId ? this.GetAdminTeamReport(this.selectedTeamId) : Promise.resolve(),
+				employeeId !== null ? this.gethistorial(employeeId) : Promise.resolve(),
+			])
+		},
+
 		async gethistorial(id) {
 			const requestId = ++this.detailRequestId
 			this.selectedEmployeeId = Number(id)
@@ -762,14 +889,88 @@ export default {
 		},
 
 		openEmployeeDetails(id) {
-			return this.gethistorial(id)
+			const employeeId = Number(id)
+			if (!Number.isInteger(employeeId) || employeeId <= 0) return
+			const route = this.selectedTeamId
+				? {
+					name: 'AdminReportTeamEmployee',
+					params: { teamId: String(this.selectedTeamId), employeeId: String(employeeId) },
+				}
+				: { name: 'AdminReportEmployee', params: { employeeId: String(employeeId) } }
+			this.navigateTo(route)
 		},
 
 		closeEmployeeDetails() {
+			const route = this.selectedTeamId
+				? { name: 'AdminReportTeam', params: { teamId: String(this.selectedTeamId) } }
+				: { name: 'Adminreports' }
+			this.navigateTo(route)
+		},
+
+		resetEmployeeDetail() {
 			this.detailRequestId++
 			this.selectedEmployeeId = null
 			this.select = []
 			this.sueldo = 0
+		},
+
+		openTeamDetails(id) {
+			const teamId = Number(id)
+			if (!Number.isInteger(teamId) || teamId <= 0) return
+			this.navigateTo({ name: 'AdminReportTeam', params: { teamId: String(teamId) } })
+		},
+
+		goToTeam(id) {
+			this.openTeamDetails(id)
+		},
+
+		goToGeneral() {
+			this.navigateTo({ name: 'Adminreports' })
+		},
+
+		goBackOneLevel() {
+			if (this.selectedEmployeeId !== null) {
+				this.closeEmployeeDetails()
+				return
+			}
+			const ancestors = this.teamAncestorCrumbs
+			if (ancestors.length > 0) {
+				this.navigateTo(ancestors[ancestors.length - 1].to)
+				return
+			}
+			this.goToGeneral()
+		},
+
+		navigateTo(route) {
+			this.$router.push(route).catch((error) => {
+				if (error?.name !== 'NavigationDuplicated') throw error
+			})
+		},
+
+		async GetAdminTeamReport(id, requestId = ++this.teamRequestId) {
+			this.loadingTeam = true
+			try {
+				const response = await axios.post(
+					generateUrl(`/apps/empleados/reportes/administrativos/equipos/${Number(id)}`),
+					this.normalizedPeriod,
+				)
+				if (requestId !== this.teamRequestId || Number(id) !== this.selectedTeamId) return
+				if (response?.data?.ocs?.meta?.status !== 'ok') {
+					this.teamReport = null
+					showError(response?.data?.ocs?.meta?.message || t('empleados', 'Team report is not available.'))
+					return
+				}
+				this.teamReport = response?.data?.ocs?.data ?? null
+			} catch (error) {
+				if (requestId === this.teamRequestId) {
+					this.teamReport = null
+					showError(t('empleados', 'Team report is not available.'))
+				}
+			} finally {
+				if (requestId === this.teamRequestId) {
+					this.loadingTeam = false
+				}
+			}
 		},
 
 		async GetAdminReportsSummary(requestId = this.reportRequestId) {
@@ -1088,6 +1289,32 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.admin-report-shell {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	padding: calc(var(--default-grid-baseline) * 2);
+	padding-inline-start: calc(var(--default-clickable-area) + var(--default-grid-baseline) * 3);
+	overflow: auto;
+}
+
+.report-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--default-grid-baseline);
+	min-width: 0;
+	min-height: var(--default-clickable-area);
+	margin: 0 0 calc(var(--default-grid-baseline) * 2);
+}
+
+.report-header :deep(.breadcrumb) {
+	min-width: 0;
+}
+
+.report-back-mobile {
+	display: none;
+}
+
 .periodo-details {
 	margin-bottom: 8px;
 	text-align: left;
@@ -1109,6 +1336,13 @@ export default {
 	flex-direction: column;
 	gap: 2px;
 	min-width: 0;
+}
+
+.report-context__topline {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
 }
 
 .report-context__title {
@@ -1258,12 +1492,6 @@ export default {
 	margin: 0;
 }
 
-.details-toolbar {
-	display: flex;
-	justify-content: flex-start;
-	margin: 8px 0 14px;
-}
-
 .area-period-label {
 	font-weight: 600;
 	color: var(--color-text-maxcontrast);
@@ -1303,6 +1531,10 @@ export default {
 }
 
 @media (max-width: 720px) {
+	.report-back-mobile {
+		display: block;
+	}
+
 	.report-field--period,
 	.report-field--area,
 	.report-field--employee,
@@ -1321,6 +1553,15 @@ export default {
 }
 
 @media (max-width: 480px) {
+	.admin-report-shell {
+		padding: calc(var(--default-grid-baseline) * 1.5);
+		padding-inline-start: calc(var(--default-clickable-area) + var(--default-grid-baseline) * 2);
+	}
+
+	.report-context__topline {
+		align-items: center;
+	}
+
 	.report-field--period,
 	.report-field--area,
 	.report-field--employee,

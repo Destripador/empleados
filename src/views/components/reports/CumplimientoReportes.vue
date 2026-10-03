@@ -46,7 +46,7 @@
 
 					<div class="kpi-card ok">
 						<div class="kpi-label">
-							{{ t('empleados', 'Reported') }}
+							{{ t('empleados', 'Complied') }}
 						</div>
 						<div class="kpi-value">
 							{{ kpis.reportados }}
@@ -59,6 +59,15 @@
 						</div>
 						<div class="kpi-value">
 							{{ kpis.pendientes }}
+						</div>
+					</div>
+
+					<div class="kpi-card incomplete">
+						<div class="kpi-label">
+							{{ t('empleados', 'Incomplete') }}
+						</div>
+						<div class="kpi-value">
+							{{ kpis.incompletos || 0 }}
 						</div>
 					</div>
 
@@ -102,7 +111,7 @@
 								<td>{{ empleado.id_user }}</td>
 								<td>
 									<span class="badge" :class="empleado.estado">
-										{{ empleado.estado === 'reportado' ? t('empleados', 'Reported') : t('empleados', 'Pending') }}
+										{{ statusLabel(empleado.estado) }}
 									</span>
 								</td>
 								<td>{{ empleado.registros }}</td>
@@ -156,6 +165,8 @@ export default {
 				total_minutos: 0,
 				total_horas: 0,
 				porcentaje_cumplimiento: 0,
+				incompletos: 0,
+				sin_reportar: 0,
 			},
 			empleados: [],
 			sendingReminder: false,
@@ -168,6 +179,11 @@ export default {
 
 	methods: {
 		t,
+		statusLabel(status) {
+			if (status === 'cumplido') return t('empleados', 'Complied')
+			if (status === 'incompleto') return t('empleados', 'Incomplete')
+			return t('empleados', 'Not reported')
+		},
 		formatFecha(fecha) {
 			const date = fecha instanceof Date ? fecha : new Date(fecha)
 
@@ -349,14 +365,20 @@ export default {
 	font-weight: 700;
 }
 
-.badge.reportado {
+.badge.cumplido {
 	background-color: rgba(70, 186, 97, .15);
 	color: #2f8f46;
 }
 
-.badge.pendiente {
+.badge.sin_reportar {
 	background-color: rgba(233, 50, 45, .15);
 	color: #c4211d;
+}
+
+.badge.incompleto,
+.kpi-card.incomplete {
+	background-color: rgba(224, 156, 0, .12);
+	color: var(--color-warning-text);
 }
 
 .empty {

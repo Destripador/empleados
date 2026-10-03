@@ -70,7 +70,6 @@ class EmpleadosController extends BaseController {
     protected PermisosService $permisosService;
     private AniversarioSyncService $aniversarioSyncService;
     private InventarioMovimientoService $inventarioMovimientoService;
-
     protected IRootFolder $rootFolder;
 
     public function __construct(
@@ -93,7 +92,7 @@ class EmpleadosController extends BaseController {
         empleadosorganigramaMapper $empleadosorganigramaMapper,
         PermisosService $permisosService,
         AniversarioSyncService $aniversarioSyncService,
-        InventarioMovimientoService $inventarioMovimientoService
+        InventarioMovimientoService $inventarioMovimientoService,
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -882,4 +881,5 @@ class EmpleadosController extends BaseController {
         $registro = $this->historialvacacionesMapper->getByEmpleadoYAnio($id_empleado, $anio);
         return new DataResponse(['dias_derecho' => $registro], Http::STATUS_OK);
     }
+
 }

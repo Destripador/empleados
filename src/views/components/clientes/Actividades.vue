@@ -11,34 +11,29 @@
 					<NcButton
 						class="filter-icon-button"
 						type="tertiary"
+						:aria-label="t('empleados', 'Filters')"
 						:title="t('empleados', 'Filters')"
 						@click.stop="toggleFilters">
 						<template #icon>
 							<FilterVariant :size="23" />
 						</template>
-
-						{{ t('empleados') }}
-
-						<span
-							v-if="activeFilterCount > 0"
-							class="filter-badge">
-							{{ activeFilterCount }}
-						</span>
 					</NcButton>
 
-					<div v-if="showFilters"
-						class="filter-dropdown"
-						@click.stop>
+					<span v-if="activeFilterCount > 0" class="filter-badge">
+						{{ activeFilterCount }}
+					</span>
+
+					<div v-if="showFilters" class="filter-dropdown" @click.stop>
 						<div class="filter-section">
 							<p class="filter-section-label">
 								{{ t('empleados', 'Sort') }}
 							</p>
 							<select v-model="sortOrder">
 								<option value="az">
-									A to Z
+									{{ t('empleados', 'A to Z') }}
 								</option>
 								<option value="za">
-									Z to A
+									{{ t('empleados', 'Z to A') }}
 								</option>
 							</select>
 						</div>
@@ -53,7 +48,7 @@
 				</div>
 			</template>
 			<template #details>
-				<ActividadesDetalles :select="select" />
+				<ActividadesDetalles :select="select" @close="closeActivityDetails" />
 			</template>
 		</List>
 
@@ -338,6 +333,10 @@ export default {
 			this.select = []
 		},
 
+		closeActivityDetails() {
+			this.select = []
+		},
+
 		openModal() {
 			this.editing = false
 			this.name_activity = ''
@@ -360,7 +359,7 @@ export default {
 				const response = await axios.post(generateUrl('/apps/empleados/GetActividad'), { id })
 				this.select = response?.data?.ocs?.data
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -397,7 +396,7 @@ export default {
 				})
 				this.loading = false
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [01] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [01] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -426,7 +425,7 @@ export default {
 					alcance: this.activity_scope,
 					area_ids: this.selected_areas.map(area => Number(area.id)),
 				})
-				showSuccess(t('empleados', 'Actividad creada exitosamente'))
+				showSuccess(t('empleados', 'Activity created successfully'))
 				this.GetActividades()
 				this.closeModal()
 			} catch (err) {
@@ -443,7 +442,7 @@ export default {
 				await axios.post(generateUrl('/apps/empleados/DeleteActividad'), {
 					id: this.select[0].id_actividad,
 				})
-				showSuccess(t('empleados', 'Actividad eliminada exitosamente'))
+				showSuccess(t('empleados', 'Activity deleted successfully'))
 				this.GetActividades()
 				this.closeModal()
 				this.select = []
@@ -465,7 +464,7 @@ export default {
 					alcance: this.activity_scope,
 					area_ids: this.selected_areas.map(area => Number(area.id)),
 				})
-				showSuccess(t('empleados', 'Modificación exitosa'))
+				showSuccess(t('empleados', 'Updated successfully'))
 				// Actualizar select con valores frescos (en minutos, ya convertidos)
 				const minutos = this.type_time === 'horas'
 					? Number(this.time_activity) * 60
@@ -510,9 +509,9 @@ export default {
 					headers: { 'Content-Type': 'multipart/form-data' },
 				})
 				this.GetActividades()
-				showSuccess(t('empleados', 'Base de datos actualizada exitosamente'))
+				showSuccess(t('empleados', 'Database updated successfully'))
 			} catch (err) {
-				showError(t('empleados', 'Se ha producido una excepcion [03] [{error}]', { error: String(err) }))
+				showError(t('empleados', 'An exception occurred [03] [{error}]', { error: String(err) }))
 			}
 		},
 
@@ -529,7 +528,7 @@ export default {
 					link.click()
 				})
 				.catch((err) => {
-					showError(t('empleados', 'Error al exportar: {error}', { error: String(err) }))
+					showError(t('empleados', 'Error exporting: {error}', { error: String(err) }))
 				})
 		},
 		backendError(error) {
@@ -627,18 +626,21 @@ export default {
 }
 
 .filter-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--color-primary-element);
-  color: var(--color-primary-element-text);
-  font-size: 0.7rem;
-  font-weight: 700;
-  margin-left: 4px;
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background: var(--color-primary-element);
+	color: var(--color-primary-element-text);
+	font-size: 0.7rem;
+	font-weight: 700;
+	pointer-events: none;
 }
 
 .filter-dropdown {
@@ -710,5 +712,7 @@ export default {
 	min-width: unset !important;
 	padding-left: 4px !important;
 	padding-right: 4px !important;
+	flex-shrink: 0;
+	width: 34px;
 }
 </style>

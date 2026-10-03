@@ -7,24 +7,28 @@ namespace OCA\Empleados\Migration;
 use Closure;
 use OCP\DB\ISchemaWrapper;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 class Version2032Date20260803190000 extends SimpleMigrationStep {
+	public function __construct(
+		private IDBConnection $db,
+	) {
+	}
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		return null;
 	}
 
 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-		$db = \OC::$server->getDatabaseConnection();
 		$counts = ['migrados' => 0, 'correctos' => 0, 'conflictos' => 0, 'inexistentes' => 0];
 
-		$select = $db->getQueryBuilder();
+		$select = $this->db->getQueryBuilder();
 		$result = $select->select('Id_empleados', 'Equipo_asignado')
 			->from('empleados')
 			->where($select->expr()->isNotNull('Equipo_asignado'))
 			->executeQuery();
-		$rows = $result->fetchAll();
+		$rows = $result->fetchAllAssociative();
 		$result->closeCursor();
 
 		foreach ($rows as $row) {
@@ -39,13 +43,13 @@ class Version2032Date20260803190000 extends SimpleMigrationStep {
 
 			$idEquipo = (int)$legacyId;
 			$idEmpleado = (int)$row['Id_empleados'];
-			$check = $db->getQueryBuilder();
+			$check = $this->db->getQueryBuilder();
 			$checkResult = $check->select('id_empleado')
 				->from('inventario_computo')
 				->where($check->expr()->eq('id_equipo', $check->createNamedParameter($idEquipo, IQueryBuilder::PARAM_INT)))
 				->setMaxResults(1)
 				->executeQuery();
-			$equipment = $checkResult->fetch();
+			$equipment = $checkResult->fetchAssociative();
 			$checkResult->closeCursor();
 
 			if ($equipment === false) {
@@ -63,7 +67,7 @@ class Version2032Date20260803190000 extends SimpleMigrationStep {
 				continue;
 			}
 
-			$update = $db->getQueryBuilder();
+			$update = $this->db->getQueryBuilder();
 			$updated = $update->update('inventario_computo')
 				->set('id_empleado', $update->createNamedParameter($idEmpleado, IQueryBuilder::PARAM_INT))
 				->where($update->expr()->eq('id_equipo', $update->createNamedParameter($idEquipo, IQueryBuilder::PARAM_INT)))

@@ -61,7 +61,9 @@ export default {
 
 <style lang="scss" scoped>
 .envelope {
-	.app-content-list-item-icon { height: 40px; }
+	.app-content-list-item-icon {
+		height: 40px;
+	}
 	&--inactive {
 		opacity: 0.55;
 	}
@@ -76,19 +78,43 @@ export default {
 		}
 	}
 }
+
+// Fila con buen alto de toque para dedo (mínimo 44px recomendado)
+::v-deep(.list-item) {
+	min-height: 56px;
+	padding: 6px 10px;
+}
+
+::v-deep(.list-item-content__name) {
+	font-size: 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .inactive-badge {
 	display: inline-flex;
 	align-items: center;
 	margin-left: 6px;
-	padding: 1px 7px;
+	padding: 2px 8px;
 	border-radius: 999px;
 	background-color: var(--color-background-dark);
 	color: var(--color-text-maxcontrast);
 	font-size: 10px;
 	font-weight: 700;
 	text-transform: uppercase;
+	white-space: nowrap;
 }
-.list-item-style { list-style: none; }
+
+.list-item-style {
+	list-style: none;
+}
+
+@media (max-width: 480px) {
+	::v-deep(.list-item) {
+		min-height: 60px;
+	}
+}
 </style>
 
 <style lang="scss">

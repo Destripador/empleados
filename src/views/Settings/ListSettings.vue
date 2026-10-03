@@ -1,29 +1,29 @@
 <!-- eslint-disable vue/require-v-for-key -->
 <template>
-	<div v-if="loading">
-		<!-- Loading section -->
-		<div class="center-screen">
-			<NcLoadingIcon :size="64" appearance="dark" name="Loading on light background" />
-		</div>
+	<div v-if="loading" class="app-settings-loading" role="status">
+		<NcLoadingIcon :size="40" :name="t('empleados', 'Loading...')" />
 	</div>
 
-	<div v-else id="admin">
-		<!-- Main title -->
-		<div>
-			<h2 class="board-title">
-				<AccountGroup :size="20" decorative class="icon" />
-				<span>{{ t('empleados', 'Global settings') }}</span>
+	<div v-else class="app-settings-page global-settings">
+		<header class="app-settings-header">
+			<p class="app-settings-eyebrow">
+				{{ t('empleados', 'Configuration') }}
+			</p>
+			<h2 class="app-settings-title">
+				{{ t('empleados', 'Global settings') }}
 			</h2>
-		</div>
+			<p class="app-settings-description">
+				{{ t('empleados', 'Settings that affect core employee workflows and shared files.') }}
+			</p>
+		</header>
 
 		<div class="settings-layout">
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'General') }}
 					</p>
 					<h3>{{ t('empleados', 'Base behavior') }}</h3>
-					<p>{{ t('empleados', 'Settings that affect core employee workflows and shared files.') }}</p>
 				</div>
 
 				<div class="settings-grid">
@@ -61,9 +61,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Modules') }}
 					</p>
 					<h3>{{ t('empleados', 'Available app areas') }}</h3>
@@ -178,9 +178,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Purchases') }}
 					</p>
 					<h3>{{ t('empleados', 'Purchase document logo') }}</h3>
@@ -227,9 +227,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Time reports') }}
 					</p>
 					<h3>{{ t('empleados','Report times settings') }}</h3>
@@ -275,10 +275,24 @@
 							min="0"
 							:label="t('empleados', 'Minimum hours to consider reported')" />
 
+						<NcTextField
+							:value.sync="reportes_horas_esperadas_jornada"
+							type="number"
+							min="0.01"
+							max="24"
+							:label="t('empleados', 'Expected hours per workday')" />
+
 						<NcSelect
 							v-model="selected_admin_reports_group"
 							:input-label="t('empleados', 'Group with access to admin reports and compliance tracking')"
 							:options="optionsGroups"
+							class="fit" />
+
+						<NcSelect
+							v-model="selected_honorarios_group"
+							:input-label="t('empleados', 'Groups with access to honorarios')"
+							:options="optionsGroups"
+							:multiple="true"
 							class="fit" />
 					</div>
 
@@ -293,9 +307,9 @@
 				</div>
 			</section>
 
-			<section class="settings-category settings-category-wide">
+			<section class="app-settings-panel settings-category settings-category-wide">
 				<div class="category-header">
-					<p class="section-label">
+					<p class="app-settings-eyebrow">
 						{{ t('empleados', 'Files and security') }}
 					</p>
 					<h3>{{ t('empleados', 'Data manager and provisioning') }}</h3>
@@ -347,18 +361,15 @@
 
 <script>
 // Icons
-import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
 
 // @nextcloud/vue components
-import {
-	NcButton,
-	NcLoadingIcon,
-	NcSelect,
-	NcNoteCard,
-	NcCheckboxRadioSwitch,
-	NcPasswordField,
-	NcTextField,
-} from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcPasswordField from '@nextcloud/vue/dist/Components/NcPasswordField.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 // Nextcloud utils
 import { showError, showSuccess } from '@nextcloud/dialogs'
@@ -369,7 +380,6 @@ import { translate as t } from '@nextcloud/l10n'
 export default {
 	name: 'ListSettings',
 	components: {
-		AccountGroup,
 		NcSelect,
 		NcButton,
 		NcNoteCard,
@@ -408,9 +418,12 @@ export default {
 			reportes_recordatorios_zona_horaria: 'America/Mexico_City',
 			reportes_recordatorios_email: true,
 			reportes_horas_minimas: 0,
+			reportes_horas_esperadas_jornada: 8,
 			optionsGroups: [],
 			selected_admin_reports_group: null,
 			reportes_admin_reports_group: '',
+			selected_honorarios_group: [],
+			reportes_honorarios_group: [],
 			modulo_compras: false,
 			logoDocumentoUrl: '',
 			loadingLogoDocumento: false,
@@ -458,6 +471,7 @@ export default {
 				this.reportes_recordatorios_zona_horaria = reportes.recordatorios_zona_horaria || 'America/Mexico_City'
 				this.reportes_recordatorios_email = String(reportes.recordatorios_email ?? 'true') === 'true'
 				this.reportes_horas_minimas = Number(reportes.horas_minimas ?? 0)
+				this.reportes_horas_esperadas_jornada = Number(reportes.horas_esperadas_jornada ?? 8)
 				this.optionsGroups = (response.data.Groups || []).map(group => ({
 					id: group.id,
 					label: group.label || group.id,
@@ -473,6 +487,11 @@ export default {
 						label: this.reportes_admin_reports_group,
 					}
 					: null)
+				this.reportes_honorarios_group = reportes.honorarios_group || []
+
+				this.selected_honorarios_group = this.optionsGroups.filter(
+					group => this.reportes_honorarios_group.includes(group.id),
+				)
 
 				this.loading = false
 			} catch (err) {
@@ -684,7 +703,9 @@ export default {
 					recordatorios_zona_horaria: this.reportes_recordatorios_zona_horaria,
 					recordatorios_email: this.reportes_recordatorios_email.toString(),
 					horas_minimas: Number(this.reportes_horas_minimas),
+					horas_esperadas_jornada: Number(this.reportes_horas_esperadas_jornada),
 					admin_reports_group: this.selected_admin_reports_group?.id || this.reportes_admin_reports_group,
+					honorarios_group: (this.selected_honorarios_group || []).map(group => group.id),
 				})
 
 				showSuccess(t('empleados', 'Configuration updated'))
@@ -829,40 +850,15 @@ export default {
 </script>
 
 <style scoped>
-/* Board title */
-.board-title {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	margin: 14px 20px 18px;
-	color: var(--color-main-text);
-	font-size: 25px;
-	font-weight: bold;
-}
-
-/* Centered loading */
-.center-screen {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 55vh;
-	text-align: center;
-}
-
 .settings-layout {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: 1fr;
 	gap: 18px;
-	padding: 0 20px 28px;
 }
 
 .settings-category {
 	min-width: 0;
 	padding: 18px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .settings-category-wide {
@@ -871,15 +867,6 @@ export default {
 
 .category-header {
 	margin-bottom: 16px;
-}
-
-.section-label {
-	margin: 0 0 4px;
-	color: var(--color-primary-element);
-	font-size: 12px;
-	font-weight: 700;
-	letter-spacing: .04em;
-	text-transform: uppercase;
 }
 
 .category-header h3 {
@@ -904,11 +891,11 @@ export default {
 }
 
 .settings-grid {
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
 }
 
 .modules-grid {
-	grid-template-columns: repeat(3, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
 }
 
 .settings-card {
@@ -967,7 +954,7 @@ export default {
 
 .switch-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(220px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 	gap: 10px 16px;
 	margin-bottom: 16px;
 }
@@ -978,21 +965,9 @@ export default {
 	margin-top: 16px;
 }
 
-@media (max-width: 1100px) {
-	.modules-grid {
-		grid-template-columns: repeat(2, minmax(220px, 1fr));
-	}
-}
-
 @media (max-width: 700px) {
-	.board-title {
-		margin: 10px 14px 14px;
-		font-size: 22px;
-	}
-
 	.settings-layout {
-		grid-template-columns: 1fr;
-		padding: 0 14px 20px;
+		gap: 14px;
 	}
 
 	.settings-category-wide {

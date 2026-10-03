@@ -9,7 +9,9 @@ use OCA\Empleados\Db\empleadosMapper;
 use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\honorariosMapper;
 use OCA\Empleados\Db\honorariosParcialidadesMapper;
+use OCA\Empleados\Db\clientesMapper;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\BitacoraService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -24,7 +26,9 @@ class HonorariosParcialidadesController extends BaseController {
 
 	protected honorariosMapper $honorariosMapper;
 	protected honorariosParcialidadesMapper $honorariosParcialidadesMapper;
+	protected clientesMapper $clientesMapper;
 	private PermisosService $permisosService;
+	private BitacoraService $bitacoraService;
 
 	public function __construct(
 		IRequest $request,
@@ -34,7 +38,9 @@ class HonorariosParcialidadesController extends BaseController {
 		configuracionesMapper $configuracionesMapper,
 		honorariosMapper $honorariosMapper,
 		honorariosParcialidadesMapper $honorariosParcialidadesMapper,
-		PermisosService $permisosService
+		clientesMapper $clientesMapper,
+		PermisosService $permisosService,
+		BitacoraService $bitacoraService
 	) {
 		parent::__construct(
 			Application::APP_ID,
@@ -47,7 +53,9 @@ class HonorariosParcialidadesController extends BaseController {
 
 		$this->honorariosMapper = $honorariosMapper;
 		$this->honorariosParcialidadesMapper = $honorariosParcialidadesMapper;
+		$this->clientesMapper = $clientesMapper;
 		$this->permisosService = $permisosService;
+		$this->bitacoraService = $bitacoraService;
 	}
 
 	private function requireClientesAccess(): void {
@@ -56,6 +64,65 @@ class HonorariosParcialidadesController extends BaseController {
 
 	private function requireClientesAdminAccess(): void {
 		$this->permisosService->requireCanSee('clientes.admin');
+	}
+
+	/**
+	 * Registra un movimiento del módulo "honorarios_parcialidades" en la bitácora general.
+	 */
+	private function registrarMovimiento(
+		?string $uidActor,
+		?int $idReferencia,
+		?string $nombreAfectado,
+		string $tipo,
+		string $mensaje
+	): void {
+		$this->bitacoraService->registrar('honorarios_parcialidades', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
+	}
+
+	/**
+	 * Devuelve [uidActor, nombreActor] del usuario en sesión, con fallback a "Sistema".
+	 */
+	private function getActorInfo(): array {
+		$actor = $this->userSession->getUser();
+		$uidActor = $actor ? $actor->getUID() : null;
+		$nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+		return [$uidActor, $nombreActor];
+	}
+
+	/**
+	 * Arma el contexto (cliente, número de parcialidad, monto) que se usa
+	 * para dar detalle en los mensajes de bitácora. Recibe la parcialidad
+	 * ya cargada (antes de modificarla) para no perder su estado previo.
+	 *
+	 * @return array{nombreCliente:string, idCliente:?int, etiqueta:string, montoTxt:string}
+	 */
+	private function getContextoParcialidad(array $parcialidad): array {
+		$idHonorario = (int)($parcialidad['id_honorario'] ?? 0);
+		$honorario = $idHonorario > 0 ? $this->honorariosMapper->findById($idHonorario) : null;
+
+		$idCliente = $honorario ? (int)($honorario['id_cliente'] ?? 0) : null;
+		$nombreCliente = 'Cliente desconocido';
+
+		if ($idCliente) {
+			$cliente = $this->clientesMapper->findById($idCliente);
+			$nombreCliente = $cliente['nombre'] ?? $nombreCliente;
+		}
+
+		$numeroParcialidad = $parcialidad['numero_parcialidad'] ?? null;
+		$etiqueta = $numeroParcialidad !== null
+			? sprintf('parcialidad #%s', $numeroParcialidad)
+			: 'la parcialidad';
+
+		$monto = $parcialidad['monto'] ?? $parcialidad['importe'] ?? null;
+		$montoTxt = $monto !== null ? number_format((float)$monto, 2) : null;
+
+		return [
+			'nombreCliente' => $nombreCliente,
+			'idCliente' => $idCliente,
+			'etiqueta' => $etiqueta,
+			'montoTxt' => $montoTxt,
+		];
 	}
 
 	#[UseSession]
@@ -80,62 +147,233 @@ class HonorariosParcialidadesController extends BaseController {
 		);
 	}
 
+	/**
+	 * Marca parcialidad como pagada. Si el honorario queda completado, lo desactiva.
+	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function marcarPagada(
+	public function marcarPagada(int $id_parcialidad, string $fecha_pago, ?int $id_moneda = null): DataResponse {
+		$this->requireClientesAdminAccess();
+
+		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
+
+		$idHonorarioFinalizado = $this->honorariosParcialidadesMapper
+			->marcarPagada($id_parcialidad, $fecha_pago, $id_moneda);
+
+		if ($idHonorarioFinalizado !== null) {
+			$this->honorariosMapper->desactivarHonorario($idHonorarioFinalizado);
+			$this->honorariosMapper->registrarCambioMonedaTotal($idHonorarioFinalizado);
+		}
+
+		// --- Movimiento (bitácora) ---
+		if ($parcialidad) {
+			$ctx = $this->getContextoParcialidad($parcialidad);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s marcó la %s del cliente "%s" como **pagada** el %s%s.',
+				$nombreActor,
+				$ctx['etiqueta'],
+				$ctx['nombreCliente'],
+				$fecha_pago,
+				$ctx['montoTxt'] !== null ? sprintf(' (monto: %s)', $ctx['montoTxt']) : ''
+			);
+
+			$this->registrarMovimiento($uidActor, $id_parcialidad, $ctx['nombreCliente'], 'pago', $mensaje);
+
+			if ($idHonorarioFinalizado !== null) {
+				$mensajeFin = sprintf(
+					'%s completó el pago de todas las parcialidades del honorario del cliente "%s"; el honorario quedó finalizado automáticamente.',
+					$nombreActor,
+					$ctx['nombreCliente']
+				);
+
+				$this->registrarMovimiento($uidActor, $idHonorarioFinalizado, $ctx['nombreCliente'], 'honorario_completado', $mensajeFin);
+			}
+		}
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function findPagadasPorCliente(int $id_cliente): DataResponse {
+		$this->requireClientesAccess();
+
+		return new DataResponse(
+			$this->honorariosParcialidadesMapper->findPagadasPorCliente($id_cliente),
+			Http::STATUS_OK
+		);
+	}
+
+	/**
+	 * Marcar parcialidad como facturada. Si se indica $id_moneda, registra
+	 * el tipo de cambio vigente a la fecha de factura. Si con esto todas
+	 * las parcialidades del honorario quedan facturadas (o pagadas), se
+	 * cierra el total convertido a MXN de la factura.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function marcarFacturada(
 		int $id_parcialidad,
-		string $fecha_pago
+		string $fecha_factura,
+		?int $id_cliente_pagador = null,
+		?int $id_moneda = null
 	): DataResponse {
 		$this->requireClientesAdminAccess();
 
-		$idHonorarioFinalizado = $this->honorariosParcialidadesMapper
-			->marcarPagada(
-				$id_parcialidad,
-				$fecha_pago
-			);
+		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
 
-		if ($idHonorarioFinalizado !== null) {
-			$this->honorariosMapper
-				->desactivarHonorario($idHonorarioFinalizado);
+		$idHonorarioFacturado = $this->honorariosParcialidadesMapper
+			->marcarFacturada($id_parcialidad, $fecha_factura, $id_cliente_pagador, $id_moneda);
+
+		if ($idHonorarioFacturado !== null) {
+			$this->honorariosMapper->registrarCambioMonedaFacturaTotal($idHonorarioFacturado);
 		}
 
-		return new DataResponse(
-			['status' => 'ok'],
-			Http::STATUS_OK
-		);
+		// --- Movimiento (bitácora) ---
+		if ($parcialidad) {
+			$ctx = $this->getContextoParcialidad($parcialidad);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$nombrePagador = null;
+			if ($id_cliente_pagador !== null && $id_cliente_pagador !== $ctx['idCliente']) {
+				$clientePagador = $this->clientesMapper->findById($id_cliente_pagador);
+				$nombrePagador = $clientePagador['nombre'] ?? null;
+			}
+
+			$mensaje = sprintf(
+				'%s marcó la %s del cliente "%s" como **facturada** el %s%s.',
+				$nombreActor,
+				$ctx['etiqueta'],
+				$ctx['nombreCliente'],
+				$fecha_factura,
+				$nombrePagador ? sprintf(' (facturada a "%s")', $nombrePagador) : ''
+			);
+
+			$this->registrarMovimiento($uidActor, $id_parcialidad, $ctx['nombreCliente'], 'facturacion', $mensaje);
+		}
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
 
+	/**
+	 * Ajusta manualmente el importe de una parcialidad pendiente
+	 */
 	#[UseSession]
 	#[NoAdminRequired]
-	public function marcarFacturada(int $id_parcialidad): DataResponse {
+	public function ajustarImporteParcialidad(int $id_parcialidad, float $nuevo_importe): DataResponse {
 		$this->requireClientesAdminAccess();
 
-		$this->honorariosParcialidadesMapper
-			->marcarFacturada($id_parcialidad);
+		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
+		$importeAnterior = $parcialidad['importe_parcialidad'] ?? null;
 
-		return new DataResponse(
-			['status' => 'ok'],
-			Http::STATUS_OK
-		);
+		try {
+			$this->honorariosParcialidadesMapper->ajustarImporteManual($id_parcialidad, $nuevo_importe);
+		} catch (\Exception $e) {
+			return new DataResponse(
+				['status' => 'error', 'message' => $e->getMessage()],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
+		// --- Movimiento (bitácora) ---
+		if ($parcialidad) {
+			$ctx = $this->getContextoParcialidad($parcialidad);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s ajustó manualmente el importe de la %s del cliente "%s" de %s a **%s**; el resto se redistribuyó automáticamente entre las demás parcialidades pendientes.',
+				$nombreActor,
+				$ctx['etiqueta'],
+				$ctx['nombreCliente'],
+				$importeAnterior !== null ? number_format((float)$importeAnterior, 2) : '-',
+				number_format($nuevo_importe, 2)
+			);
+
+			$this->registrarMovimiento($uidActor, $id_parcialidad, $ctx['nombreCliente'], 'ajuste_importe', $mensaje);
+		}
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
 
+	/**
+	 * Revierte pagada -> facturada. La fecha de factura se conserva intacta.
+	 */
 	#[UseSession]
 	#[NoAdminRequired]
 	public function cancelarPago(int $id_parcialidad): DataResponse {
 		$this->requireClientesAdminAccess();
 
-		$idHonorario = $this->honorariosParcialidadesMapper
-			->cancelarPago($id_parcialidad);
+		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
+		$fechaPagoAnterior = $parcialidad['fecha_pago'] ?? null;
+
+		// En HonorariosParcialidadesController::cancelarPago()
+		$idHonorario = $this->honorariosParcialidadesMapper->cancelarPago($id_parcialidad);
 
 		if ($idHonorario !== null) {
-			$this->honorariosMapper
-				->reactivarHonorario($idHonorario);
+			$this->honorariosMapper->reactivarHonorario($idHonorario);
 		}
 
-		return new DataResponse(
-			['status' => 'ok'],
-			Http::STATUS_OK
-		);
+		// --- Movimiento (bitácora) ---
+		if ($parcialidad) {
+			$ctx = $this->getContextoParcialidad($parcialidad);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s canceló el pago de la %s del cliente "%s"%s, regresándola a estado facturada.',
+				$nombreActor,
+				$ctx['etiqueta'],
+				$ctx['nombreCliente'],
+				$fechaPagoAnterior ? sprintf(' (pago registrado el %s)', $fechaPagoAnterior) : ''
+			);
+
+			$this->registrarMovimiento($uidActor, $id_parcialidad, $ctx['nombreCliente'], 'cancelacion_pago', $mensaje);
+
+			if ($idHonorario !== null) {
+				$mensajeReact = sprintf(
+					'%s reactivó automáticamente el honorario del cliente "%s" al cancelar un pago.',
+					$nombreActor,
+					$ctx['nombreCliente']
+				);
+
+				$this->registrarMovimiento($uidActor, $idHonorario, $ctx['nombreCliente'], 'honorario_reactivado', $mensajeReact);
+			}
+		}
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
+	}
+
+	/**
+	 * Revierte facturada -> pendiente.
+	 */
+	#[UseSession]
+	#[NoAdminRequired]
+	public function cancelarFactura(int $id_parcialidad): DataResponse {
+		$this->requireClientesAdminAccess();
+
+		$parcialidad = $this->honorariosParcialidadesMapper->findById($id_parcialidad);
+		$fechaFacturaAnterior = $parcialidad['fecha_factura'] ?? null;
+
+		$this->honorariosParcialidadesMapper->cancelarFactura($id_parcialidad);
+
+		// --- Movimiento (bitácora) ---
+		if ($parcialidad) {
+			$ctx = $this->getContextoParcialidad($parcialidad);
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s canceló la factura de la %s del cliente "%s"%s, regresándola a estado pendiente.',
+				$nombreActor,
+				$ctx['etiqueta'],
+				$ctx['nombreCliente'],
+				$fechaFacturaAnterior ? sprintf(' (facturada el %s)', $fechaFacturaAnterior) : ''
+			);
+
+			$this->registrarMovimiento($uidActor, $id_parcialidad, $ctx['nombreCliente'], 'cancelacion_factura', $mensaje);
+		}
+
+		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
 	}
 
 	#[UseSession]
@@ -145,6 +383,25 @@ class HonorariosParcialidadesController extends BaseController {
 
 		$this->honorariosParcialidadesMapper
 			->agregarParcialidadIguala($id_honorario);
+
+		// --- Movimiento (bitácora) ---
+		$honorario = $this->honorariosMapper->findById($id_honorario);
+
+		if ($honorario) {
+			$idCliente = (int)($honorario['id_cliente'] ?? 0);
+			$cliente = $idCliente > 0 ? $this->clientesMapper->findById($idCliente) : null;
+			$nombreCliente = $cliente['nombre'] ?? 'Cliente desconocido';
+
+			[$uidActor, $nombreActor] = $this->getActorInfo();
+
+			$mensaje = sprintf(
+				'%s agregó una nueva parcialidad de iguala al honorario del cliente "%s".',
+				$nombreActor,
+				$nombreCliente
+			);
+
+			$this->registrarMovimiento($uidActor, $id_honorario, $nombreCliente, 'creacion', $mensaje);
+		}
 
 		return new DataResponse(
 			['status' => 'ok'],

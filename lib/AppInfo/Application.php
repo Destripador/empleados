@@ -10,6 +10,7 @@ use OCA\Empleados\Listener\MovimientoArchivoListener;
 use OCP\IDBConnection;
 use OCA\Empleados\Cron\RecordatorioReportesTiempo;
 use OCA\Empleados\Cron\RecordatorioPrimaVacacional;
+use OCA\Empleados\Cron\RecordatorioAprobadoresPendientes;
 use OCA\Empleados\BackgroundJob\RecalcularVacacionesJob;
 use OCA\Empleados\Service\AniversarioSyncService;
 use OCA\Empleados\Db\historialvacacionesMapper;
@@ -29,6 +30,7 @@ use OCP\Files\Events\Node\NodeDeletedEvent;
 use OCP\Files\Events\Node\NodeRenamedEvent;
 use OCP\Files\Events\Node\NodeWrittenEvent;
 use OCP\Security\CSP\AddContentSecurityPolicyEvent;
+use OCA\Empleados\Cron\ActualizarAniversarios;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'empleados';
@@ -85,6 +87,18 @@ class Application extends App implements IBootstrap {
 
 			if (!$jobList->has(RecordatorioPrimaVacacional::class, null)) {
 				$jobList->add(RecordatorioPrimaVacacional::class);
+			}
+
+			if (!$jobList->has(RecordatorioAprobadoresPendientes::class, null)) {
+				$jobList->add(RecordatorioAprobadoresPendientes::class);
+			}
+
+			if (!$jobList->has(ActualizarAniversarios::class, null)) {
+				$jobList->add(ActualizarAniversarios::class);
+			}
+
+			if (!$jobList->has(\OCA\Empleados\BackgroundJob\SincronizarTipoCambioJob::class, null)) {
+				$jobList->add(\OCA\Empleados\BackgroundJob\SincronizarTipoCambioJob::class);
 			}
 		});
 	}

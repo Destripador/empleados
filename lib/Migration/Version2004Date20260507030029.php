@@ -77,7 +77,7 @@ class Version2004Date20260507030029 extends SimpleMigrationStep {
 			->setMaxResults(1);
 
 		$result = $qb->executeQuery();
-		$row = $result->fetch();
+		$row = $result->fetchAssociative();
 		$result->closeCursor();
 
 		if (

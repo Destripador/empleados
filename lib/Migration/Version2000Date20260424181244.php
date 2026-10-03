@@ -477,10 +477,10 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 			->setMaxResults(1);
 
 		$result = $qb->executeQuery();
-		$exists = $result->fetch();
+		$exists = $result->fetchOne();
 		$result->closeCursor();
 
-		if ($exists) {
+		if ($exists !== false) {
 			return false;
 		}
 
@@ -497,11 +497,7 @@ class Version2000Date20260424181244 extends SimpleMigrationStep {
 		$qb->insert('empleados_conf')
 			->values($values);
 
-		if (method_exists($qb, 'executeStatement')) {
-			$qb->executeStatement();
-		} else {
-			$qb->execute();
-		}
+		$qb->executeStatement();
 
 		return true;
 	}

@@ -6,9 +6,10 @@
 			</template>
 		</NcEmptyContent>
 	</NcAppContent>
+
 	<NcAppContent v-else :name="t('empleados', 'Loading')">
 		<!-- contacts list -->
-		<template #list>
+		<template v-if="!isMobile" #list>
 			<PuestosFullList
 				:list="puestosList"
 				:contacts="Puestos"
@@ -17,7 +18,29 @@
 		</template>
 
 		<!-- main contacts details -->
-		<PuestosDetails :data="data_puestos" :people-area="peopleArea" :items="Puestos" />
+		<PuestosDetails
+			v-if="!isMobile"
+			:data="data_puestos"
+			:people-area="peopleArea"
+			:items="Puestos" />
+
+		<!-- Móvil: una sola vista a la vez, con navegación -->
+		<template v-if="isMobile">
+			<PuestosFullList
+				v-show="mobileView === 'list'"
+				:list="puestosList"
+				:contacts="Puestos"
+				:search-query="searchQuery"
+				:reload-bus="reloadBus"
+				class="mobile-pane" />
+			<PuestosDetails
+				v-show="mobileView !== 'list'"
+				:data="data_puestos"
+				:people-area="peopleArea"
+				:items="Puestos"
+				class="mobile-pane" />
+		</template>
+
 		<FloatingHelpButton
 			:open.sync="modalMensajePuestos"
 			:title="t('empleados', 'Puestos information')"
@@ -72,17 +95,35 @@ export default {
 			peopleArea: {},
 			modalMensajePuestos: false,
 			AccountGroup,
+			isMobile: false,
+			mobileView: 'list', // 'list' | 'detail'
+			mql: null,
 		}
 	},
 
 	async mounted() {
 		this.getall()
+
+		this.mql = window.matchMedia('(max-width: 900px)')
+		this.updateIsMobile()
+		if (this.mql.addEventListener) {
+			this.mql.addEventListener('change', this.updateIsMobile)
+		} else {
+			this.mql.addListener(this.updateIsMobile)
+		}
+
 		this.$root.$on('send-data-puestos', (data) => {
 			this.data_puestos = data || {}
 			if (data && data.Id_puestos) {
 				this.getallpuesto(data.Id_puestos)
+				if (this.isMobile) {
+					this.mobileView = 'detail'
+				}
 			} else {
 				this.peopleArea = {}
+				if (this.isMobile) {
+					this.mobileView = 'list'
+				}
 			}
 		})
 		this.$root.$on('delete-puestos', () => {
@@ -91,11 +132,23 @@ export default {
 		this.$root.$on('reload', () => {
 			this.getall()
 		})
+		this.$root.$on('mobile-back', () => {
+			this.mobileView = 'list'
+			this.data_puestos = {}
+			this.peopleArea = {}
+		})
 		window.addEventListener('keydown', this.onKeyDown)
 	},
 
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onKeyDown)
+		if (this.mql) {
+			if (this.mql.removeEventListener) {
+				this.mql.removeEventListener('change', this.updateIsMobile)
+			} else {
+				this.mql.removeListener(this.updateIsMobile)
+			}
+		}
 	},
 
 	methods: {
@@ -107,9 +160,19 @@ export default {
 			}
 		},
 
+		updateIsMobile() {
+			this.isMobile = this.mql ? this.mql.matches : window.innerWidth <= 900
+			if (!this.isMobile) {
+				this.mobileView = 'list'
+			}
+		},
+
 		onEsc() {
 			this.data_puestos = {}
 			this.peopleArea = {}
+			if (this.isMobile) {
+				this.mobileView = 'list'
+			}
 		},
 
 		async getallpuesto(puesto) {
@@ -163,6 +226,11 @@ export default {
 		.icon {
 			margin-right: 8px;
 		}
+	}
+
+	.mobile-pane {
+		width: 100%;
+		height: 100%;
 	}
 
 </style>

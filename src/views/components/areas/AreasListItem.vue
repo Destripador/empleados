@@ -58,18 +58,20 @@ export default {
 <style lang="scss" scoped>
 .envelope {
 	.app-content-list-item-icon {
-		height: 40px; // evita espacio extra bajo el avatar
+		height: 40px;
 	}
 
 	&__subtitle {
 		display: flex;
 		gap: 4px;
+		min-width: 0; // permite que text-overflow funcione dentro de flex
 
 		&__subject {
 			color: var(--color-main-text);
 			line-height: 130%;
 			overflow: hidden;
 			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 	}
 }

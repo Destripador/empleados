@@ -51,6 +51,77 @@ class empleadosMapper extends QBMapper {
 		return $users;
 	}
 
+	public function GetEmpleadosActivosBasico(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select(
+			'e.Id_empleados',
+			'e.Id_user',
+			'u.displayname',
+			'e.Sueldo',
+			'e.Id_departamento',
+			'e.Ingreso',
+			'e.Estado'
+		)
+			->from('empleados', 'e')
+			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->where(
+				$qb->expr()->eq(
+					'e.estado',
+					$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->orderBy('u.displayname', 'ASC');
+
+		$result = $qb->executeQuery();
+		$users = $result->fetchAll();
+		$result->closeCursor();
+
+		return $users;
+	}
+
+	/**
+	 * Directorio minimo para alcance jerarquico y reportes de equipo.
+	 * El LEFT JOIN conserva referencias a empleados cuyo usuario fue eliminado.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function getReportingDirectory(bool $activeOnly = true, ?string $desde = null): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(
+			'e.Id_empleados',
+			'e.Id_user',
+			'e.Id_equipo',
+			'e.Id_departamento',
+			'e.Ingreso',
+			'e.Estado',
+			'e.Sueldo',
+			'e.Fecha_baja'
+		)
+			->selectAlias('u.displayname', 'displayname')
+			->from($this->getTableName(), 'e')
+			->leftJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->orderBy('u.displayname', 'ASC');
+
+		if ($activeOnly) {
+			$qb->where($qb->expr()->eq(
+				'e.Estado',
+				$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+			));
+		} elseif ($desde !== null) {
+			$qb->where($qb->expr()->orX(
+				$qb->expr()->eq('e.Estado', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)),
+				$qb->expr()->gte('e.Fecha_baja', $qb->createNamedParameter($desde))
+			));
+		}
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
     public function GetMyEmployeeInfo($id): array {
 		$qb = $this->db->getQueryBuilder();
 
@@ -145,25 +216,23 @@ class empleadosMapper extends QBMapper {
 	public function DesactivarByIdEmpleado(int $id_empleados): void {
 		$timestamp = date('Y-m-d');
 		$qb = $this->db->getQueryBuilder();
-
 		$qb->update($this->getTableName())
-		->set('Estado', $qb->createNamedParameter(0))
-		->set('updated_at', $qb->createNamedParameter($timestamp))
-		->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
-			
-		$result = $qb->executeStatement();
+			->set('Estado', $qb->createNamedParameter(0))
+			->set('Fecha_baja', $qb->createNamedParameter($timestamp))
+			->set('updated_at', $qb->createNamedParameter($timestamp))
+			->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
+		$qb->executeStatement();
 	}
 
 	public function ActivarByIdEmpleado(int $id_empleados): void {
 		$timestamp = date('Y-m-d');
 		$qb = $this->db->getQueryBuilder();
-
 		$qb->update($this->getTableName())
-		->set('Estado', $qb->createNamedParameter(1))
-		->set('updated_at', $qb->createNamedParameter($timestamp))
-		->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
-			
-		$result = $qb->executeStatement();
+			->set('Estado', $qb->createNamedParameter(1))
+			->set('Fecha_baja', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->set('updated_at', $qb->createNamedParameter($timestamp))
+			->where($qb->expr()->eq('Id_empleados', $qb->createNamedParameter($id_empleados)));
+		$qb->executeStatement();
 	}
 
 	public function updateEmpleado(
@@ -249,10 +318,17 @@ class empleadosMapper extends QBMapper {
 				->set('updated_at', $query->createNamedParameter($timestamp))
 				->where($query->expr()->eq('Id_empleados', $query->createNamedParameter($Id_empleados)));
 	
+				if ((string)$Estado === '0') {
+					$query->set('Fecha_baja', $query->createFunction(
+						'COALESCE(Fecha_baja, ' . $query->createNamedParameter($timestamp) . ')'
+					));
+				} else {
+					$query->set('Fecha_baja', $query->createNamedParameter(null, IQueryBuilder::PARAM_NULL));
+				}
 			$query->executeStatement();
 		}
-		catch(Exception $e){
-			console.log($e);
+		catch (Exception $e) {
+			error_log((string) $e);
 		}
 	}
 
@@ -271,8 +347,8 @@ class empleadosMapper extends QBMapper {
 	
 			$query->executeStatement();
 		}
-		catch(Exception $e){
-			console.log($e);
+		catch (Exception $e) {
+			error_log((string) $e);
 		}
 	}
 
@@ -495,6 +571,96 @@ class empleadosMapper extends QBMapper {
 			];
 		}, $rows);
 	}
+
+	/**
+	 * Datos laborales mínimos para la simulación visual de oficina.
+	 * Incluye fechas solo para calcular eventos del día en backend.
+	 * No expone sueldo ni datos privados.
+	 *
+	 * @return list<array{
+	 *   id: int,
+	 *   uid: string,
+	 *   displayName: string,
+	 *   ingreso: string|null,
+	 *   fechaNacimiento: string|null,
+	 *   area: array{id: int|null, nombre: string|null},
+	 *   puesto: array{id: int|null, nombre: string|null}
+	 * }>
+	 */
+	public function getSimulacionOficinaLookup(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->selectAlias('e.Id_empleados', 'id')
+			->selectAlias('u.uid', 'uid')
+			->selectAlias('u.displayname', 'displayname')
+			->selectAlias('e.Ingreso', 'ingreso')
+			->selectAlias('e.Fecha_nacimiento', 'fecha_nacimiento')
+			->selectAlias('e.Id_departamento', 'area_id')
+			->selectAlias('d.Nombre', 'area_nombre')
+			->selectAlias('e.Id_puesto', 'puesto_id')
+			->selectAlias('p.Nombre', 'puesto_nombre')
+			->from($this->getTableName(), 'e')
+			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
+			->leftJoin(
+				'e',
+				'departamentos',
+				'd',
+				$qb->expr()->eq('d.Id_departamento', 'e.Id_departamento')
+			)
+			->leftJoin(
+				'e',
+				'puestos',
+				'p',
+				$qb->expr()->eq('p.Id_puestos', 'e.Id_puesto')
+			)
+			->where(
+				$qb->expr()->eq(
+					'e.estado',
+					$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+				)
+			)
+			->orderBy('u.displayname', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return array_map(static function (array $row): array {
+			$areaId = isset($row['area_id']) && $row['area_id'] !== '' && $row['area_id'] !== null
+				? (int)$row['area_id']
+				: null;
+			$puestoId = isset($row['puesto_id']) && $row['puesto_id'] !== '' && $row['puesto_id'] !== null
+				? (int)$row['puesto_id']
+				: null;
+			$displayName = (string)($row['displayname'] ?? $row['displayName'] ?? $row['uid'] ?? '');
+			$ingreso = isset($row['ingreso']) && $row['ingreso'] !== '' && $row['ingreso'] !== null
+				? (string)$row['ingreso']
+				: null;
+			$nacimiento = isset($row['fecha_nacimiento']) && $row['fecha_nacimiento'] !== '' && $row['fecha_nacimiento'] !== null
+				? (string)$row['fecha_nacimiento']
+				: null;
+
+			return [
+				'id' => (int)$row['id'],
+				'uid' => (string)$row['uid'],
+				'displayName' => $displayName !== '' ? $displayName : (string)$row['uid'],
+				'ingreso' => $ingreso,
+				'fechaNacimiento' => $nacimiento,
+				'area' => [
+					'id' => $areaId,
+					'nombre' => $row['area_nombre'] !== null && $row['area_nombre'] !== ''
+						? (string)$row['area_nombre']
+						: null,
+				],
+				'puesto' => [
+					'id' => $puestoId,
+					'nombre' => $row['puesto_nombre'] !== null && $row['puesto_nombre'] !== ''
+						? (string)$row['puesto_nombre']
+						: null,
+				],
+			];
+		}, $rows);
+	}
 	
 	public function getDisplayNameById(int $idEmpleado): ?string {
 		$qb = $this->db->getQueryBuilder();
@@ -515,5 +681,74 @@ class empleadosMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $nombre !== false ? $nombre : null;
+	}
+
+	/**
+	 * UIDs de empleados activos (consulta mínima para polling de estados).
+	 *
+	 * @return list<string>
+	 */
+	public function getActiveEmployeeUids(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('e.Id_user')
+			->from($this->getTableName(), 'e')
+			->where(
+				$qb->expr()->eq(
+					'e.estado',
+					$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+				)
+			);
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$uids = [];
+		foreach ($rows as $row) {
+			$uid = (string)($row['Id_user'] ?? $row['id_user'] ?? '');
+			if ($uid !== '') {
+				$uids[] = $uid;
+			}
+		}
+
+		return array_values(array_unique($uids));
+	}
+
+	/**
+	 * Último login (unix ts) por uid, en una sola consulta a preferences.
+	 *
+	 * @param list<string> $uids
+	 * @return array<string, int>
+	 */
+	public function getLastLoginByUids(array $uids): array {
+		$uids = array_values(array_unique(array_filter(array_map('strval', $uids))));
+		if ($uids === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('userid', 'configvalue')
+			->from('preferences')
+			->where($qb->expr()->eq('appid', $qb->createNamedParameter('login')))
+			->andWhere($qb->expr()->eq('configkey', $qb->createNamedParameter('lastLogin')))
+			->andWhere($qb->expr()->in(
+				'userid',
+				$qb->createNamedParameter($uids, IQueryBuilder::PARAM_STR_ARRAY)
+			));
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		$map = [];
+		foreach ($rows as $row) {
+			$uid = (string)($row['userid'] ?? '');
+			if ($uid === '') {
+				continue;
+			}
+			$map[$uid] = (int)($row['configvalue'] ?? 0);
+		}
+
+		return $map;
 	}
 }

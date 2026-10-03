@@ -1,133 +1,155 @@
 <template>
-	<div class="group-settings">
-		<div class="settings-header">
-			<div class="settings-header__icon">
-				<AccountGroup :size="28" />
-			</div>
-			<div class="settings-header__content">
-				<p class="section-label">
-					{{ t('empleados', 'Access control') }}
-				</p>
-				<h2 class="board-title">
-					{{ t('empleados', 'Groups and permissions') }}
-				</h2>
-				<p class="settings-description">
-					{{ t('empleados', 'Manage the Nextcloud groups that can be assigned from the employees app. User membership is still stored in Nextcloud groups  this catalog only controls which groups are manageable from this module.') }}
-				</p>
-			</div>
-		</div>
+	<div class="group-settings app-settings-page">
+		<header class="app-settings-header">
+			<p class="app-settings-eyebrow">
+				{{ t('empleados', 'Access control') }}
+			</p>
+			<h2 class="app-settings-title">
+				{{ t('empleados', 'Groups and permissions') }}
+			</h2>
+			<p class="app-settings-description">
+				{{ t('empleados', 'Manage the Nextcloud groups that can be assigned from the employees app. User membership is still stored in Nextcloud groups  this catalog only controls which groups are manageable from this module.') }}
+			</p>
+		</header>
 
 		<NcNoteCard type="info" class="group-settings__note">
 			{{ t('empleados', 'Restricted permissions should only be assigned or removed by a Nextcloud administrator.')
 			}}
 		</NcNoteCard>
 
-		<div class="group-settings__toolbar">
-			<NcTextField class="group-settings__search"
-				:value.sync="search"
-				:label="t('empleados', 'Search groups or modules')" />
+		<section class="app-settings-panel group-settings__catalog">
+			<div class="app-settings-panel__body">
+				<div class="group-settings__toolbar">
+					<NcTextField class="group-settings__search"
+						:value.sync="search"
+						:label="t('empleados', 'Search groups or modules')" />
 
-			<NcButton @click="checkStructure">
-				<template #icon>
-					<ShieldCheck :size="20" />
-				</template>
-				{{ t('empleados', 'Check group structure') }}
-			</NcButton>
+					<NcButton @click="checkStructure">
+						<template #icon>
+							<ShieldCheck :size="20" />
+						</template>
+						{{ t('empleados', 'Check group structure') }}
+					</NcButton>
 
-			<NcButton type="primary" @click="openCreateDialog">
-				<template #icon>
-					<Plus :size="20" />
-				</template>
-				{{ t('empleados', 'Add permission group') }}
-			</NcButton>
-		</div>
-
-		<div v-if="loading" class="group-settings__loading">
-			<NcLoadingIcon :size="64" />
-		</div>
-
-		<NcEmptyContent v-else-if="filteredGroups.length === 0"
-			:name="search ? t('empleados', 'No permission groups match the search') : t('empleados', 'No permission groups configured')"
-			:description="t('empleados', 'Create the first permission group to start managing module access dynamically.')">
-			<template #icon>
-				<AccountGroup :size="28" />
-			</template>
-		</NcEmptyContent>
-
-		<div v-else class="group-settings__list">
-			<div v-for="item in filteredGroups"
-				:key="item.id"
-				class="permission-card"
-				:class="{
-					'permission-card--disabled': !item.enabled,
-					'permission-card--restricted': item.restricted,
-				}">
-				<div class="permission-card__main">
-					<div class="permission-card__icon">
-						<AccountGroup :size="22" />
-					</div>
-
-					<div class="permission-card__content">
-						<div class="permission-card__title-row">
-							<h3>{{ item.label }}</h3>
-
-							<span v-if="item.enabled" class="status-badge status-badge--enabled">
-								{{ t('empleados', 'Enabled') }}
-							</span>
-							<span v-else class="status-badge status-badge--disabled">
-								{{ t('empleados', 'Disabled') }}
-							</span>
-
-							<span v-if="item.restricted" class="status-badge status-badge--restricted">
-								{{ t('empleados', 'Restricted') }}
-							</span>
-
-							<span v-if="!item.exists" class="status-badge status-badge--missing">
-								{{ t('empleados', 'Group does not exist') }}
-							</span>
-						</div>
-
-						<div class="permission-card__meta">
-							<code>{{ item.group_id }}</code>
-							<span>·</span>
-							<span>{{ item.module }}</span>
-							<span>·</span>
-							<span>{{ item.permission }}</span>
-						</div>
-
-						<p v-if="item.description" class="permission-card__description">
-							{{ item.description }}
-						</p>
-						<p v-else class="permission-card__description permission-card__description--empty">
-							{{ t('empleados', 'No description provided.') }}
-						</p>
-					</div>
+					<NcButton type="primary" @click="openCreateDialog">
+						<template #icon>
+							<Plus :size="20" />
+						</template>
+						{{ t('empleados', 'Add permission group') }}
+					</NcButton>
 				</div>
 
-				<NcActions>
-					<NcActionButton close-after-click @click="openEditDialog(item)">
-						<template #icon>
-							<Pencil :size="20" />
-						</template>
-						{{ t('empleados', 'Edit') }}
-					</NcActionButton>
+				<div
+					v-if="loading"
+					class="group-settings__loading"
+					role="status"
+					aria-live="polite">
+					<NcLoadingIcon
+						:size="40"
+						:name="t('empleados', 'Loading...')" />
+				</div>
 
-					<NcActionButton v-if="item.enabled" close-after-click @click="disableGroup(item)">
-						<template #icon>
-							<EyeOff :size="20" />
-						</template>
-						{{ t('empleados', 'Disable') }}
-					</NcActionButton>
+				<NcEmptyContent v-else-if="filteredGroups.length === 0"
+					:name="search ? t('empleados', 'No permission groups match the search') : t('empleados', 'No permission groups configured')"
+					:description="t('empleados', 'Create the first permission group to start managing module access dynamically.')">
+					<template #icon>
+						<AccountGroup :size="28" />
+					</template>
+				</NcEmptyContent>
 
-					<NcActionButton v-else close-after-click @click="enableGroup(item)">
-						<template #icon>
-							<Eye :size="20" />
-						</template>
-						{{ t('empleados', 'Enable') }}
-					</NcActionButton>
-				</NcActions>
+				<div v-else class="group-settings__list">
+					<section v-for="section in groupedFilteredGroups"
+						:key="section.id"
+						class="group-settings__module">
+						<header class="group-settings__module-header">
+							<div>
+								<p class="app-settings-eyebrow">
+									{{ t('empleados', 'Module') }}
+								</p>
+								<h3>{{ section.label }}</h3>
+							</div>
+							<span class="group-settings__module-count">{{ section.groups.length }}</span>
+						</header>
+
+						<div v-for="item in section.groups"
+							:key="item.id"
+							class="permission-card"
+							:class="{
+								'permission-card--disabled': !item.enabled,
+								'permission-card--restricted': item.restricted,
+							}">
+							<div class="permission-card__main">
+								<div class="permission-card__icon">
+									<AccountGroup :size="22" />
+								</div>
+
+								<div class="permission-card__content">
+									<div class="permission-card__title-row">
+										<h3>{{ item.label }}</h3>
+
+										<span v-if="item.enabled" class="status-badge status-badge--enabled">
+											{{ t('empleados', 'Enabled') }}
+										</span>
+										<span v-else class="status-badge status-badge--disabled">
+											{{ t('empleados', 'Disabled') }}
+										</span>
+
+										<span v-if="item.restricted" class="status-badge status-badge--restricted">
+											{{ t('empleados', 'Restricted') }}
+										</span>
+
+										<span v-if="item.exists" class="status-badge status-badge--enabled">
+											{{ t('empleados', 'Exists') }}
+										</span>
+										<span v-else class="status-badge status-badge--missing">
+											{{ t('empleados', 'Group does not exist') }}
+										</span>
+									</div>
+
+									<div class="permission-card__meta">
+										<code>{{ item.group_id }}</code>
+										<span>·</span>
+										<span>{{ moduleLabel(item.module) }}</span>
+										<span>·</span>
+										<span>{{ permissionLevelLabel(item.permission) }}</span>
+									</div>
+
+									<p v-if="item.description" class="permission-card__description">
+										{{ item.description }}
+									</p>
+									<p v-else class="permission-card__description permission-card__description--empty">
+										{{ t('empleados', 'No description provided.') }}
+									</p>
+								</div>
+							</div>
+
+							<NcActions :aria-label="`${t('empleados', 'Actions')}: ${item.label}`">
+								<NcActionButton close-after-click @click="openEditDialog(item)">
+									<template #icon>
+										<Pencil :size="20" />
+									</template>
+									{{ t('empleados', 'Edit') }}
+								</NcActionButton>
+
+								<NcActionButton v-if="item.enabled" close-after-click @click="disableGroup(item)">
+									<template #icon>
+										<EyeOff :size="20" />
+									</template>
+									{{ t('empleados', 'Disable') }}
+								</NcActionButton>
+
+								<NcActionButton v-else close-after-click @click="enableGroup(item)">
+									<template #icon>
+										<Eye :size="20" />
+									</template>
+									{{ t('empleados', 'Enable') }}
+								</NcActionButton>
+							</NcActions>
+						</div>
+					</section>
+				</div>
 			</div>
-		</div>
+		</section>
 
 		<NcModal v-if="showDialog"
 			size="large"
@@ -386,18 +408,16 @@ import ContentSave from 'vue-material-design-icons/ContentSave.vue'
 
 import ShieldCheck from 'vue-material-design-icons/ShieldCheck.vue'
 
-import {
-	NcActions,
-	NcActionButton,
-	NcButton,
-	NcCheckboxRadioSwitch,
-	NcEmptyContent,
-	NcLoadingIcon,
-	NcModal,
-	NcNoteCard,
-	NcTextField,
-	NcSelect,
-} from '@nextcloud/vue'
+import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
+import NcActions from '@nextcloud/vue/dist/Components/NcActions.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
@@ -486,6 +506,7 @@ export default {
 				{ id: 'approve', label: t('empleados', 'Approver') },
 				{ id: 'accounting', label: t('empleados', 'Accounting') },
 				{ id: 'hr', label: t('empleados', 'Human resources') },
+				{ id: 'technician', label: t('empleados', 'Technician') },
 			],
 			nextcloudGroups: [],
 			selectedModule: null,
@@ -514,6 +535,55 @@ export default {
 			})
 		},
 
+		groupedFilteredGroups() {
+			const sections = new Map()
+			this.filteredGroups.forEach((item) => {
+				const moduleId = item.module || 'other'
+				if (!sections.has(moduleId)) {
+					sections.set(moduleId, [])
+				}
+				sections.get(moduleId).push(item)
+			})
+
+			const order = [
+				'empleados',
+				'reporte_tiempos',
+				'clientes',
+				'compras',
+				'inventario',
+				'soporte',
+				'ahorro',
+				'ausencias',
+			]
+
+			return Array.from(sections.keys())
+				.sort((a, b) => {
+					const indexA = order.indexOf(a)
+					const indexB = order.indexOf(b)
+					const rankA = indexA === -1 ? order.length : indexA
+					const rankB = indexB === -1 ? order.length : indexB
+					if (rankA !== rankB) {
+						return rankA - rankB
+					}
+					return String(a).localeCompare(String(b))
+				})
+				.map((moduleId) => ({
+					id: moduleId,
+					label: this.moduleLabel(moduleId),
+					groups: sections.get(moduleId).slice().sort((a, b) => {
+						const permissionOrder = ['view', 'request', 'technician', 'approve', 'accounting', 'hr', 'admin']
+						const rankA = permissionOrder.indexOf(a.permission)
+						const rankB = permissionOrder.indexOf(b.permission)
+						const valueA = rankA === -1 ? permissionOrder.length : rankA
+						const valueB = rankB === -1 ? permissionOrder.length : rankB
+						if (valueA !== valueB) {
+							return valueA - valueB
+						}
+						return Number(a.sort_order || 0) - Number(b.sort_order || 0)
+					}),
+				}))
+		},
+
 		dialogTitle() {
 			return this.formMode === 'edit'
 				? t('empleados', 'Edit permission group')
@@ -535,6 +605,33 @@ export default {
 
 	methods: {
 		t,
+
+		moduleLabel(moduleId) {
+			const modules = {
+				empleados: t('empleados', 'Employees / HR'),
+				reporte_tiempos: t('empleados', 'Time reports'),
+				clientes: t('empleados', 'Customers'),
+				compras: t('empleados', 'Purchases'),
+				inventario: t('empleados', 'IT inventory'),
+				soporte: t('empleados', 'Support'),
+				ahorro: t('empleados', 'Savings'),
+				ausencias: t('empleados', 'Working time'),
+			}
+			return modules[moduleId] || t('empleados', 'Other permissions')
+		},
+
+		permissionLevelLabel(permission) {
+			const labels = {
+				view: t('empleados', 'View only'),
+				request: t('empleados', 'Requester'),
+				technician: t('empleados', 'Technician'),
+				approve: t('empleados', 'Approver'),
+				accounting: t('empleados', 'Accounting'),
+				hr: t('empleados', 'Human resources'),
+				admin: t('empleados', 'Administrator'),
+			}
+			return labels[permission] || permission || t('empleados', 'Permission level')
+		},
 
 		async loadGroups() {
 			this.loading = true
@@ -862,59 +959,8 @@ export default {
     color: var(--color-main-text);
 }
 
-.settings-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    margin: 0 0 16px;
-    padding: 18px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-large);
-    background: var(--color-main-background);
-}
-
-.settings-header__icon {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: var(--border-radius-large);
-    background: var(--color-background-hover);
-    color: var(--color-primary-element);
-}
-
-.settings-header__content {
-    min-width: 0;
-}
-
-.section-label {
-    margin: 0 0 4px;
-    color: var(--color-primary-element);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
-
-.board-title {
-    margin: 0;
-    color: var(--color-main-text);
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.settings-description {
-    max-width: 900px;
-    margin: 8px 0 0;
-    color: var(--color-text-maxcontrast);
-    font-size: 14px;
-    line-height: 1.4;
-}
-
 .group-settings__note {
-    margin-bottom: 16px;
+	margin: 0;
 }
 
 .group-settings__toolbar {
@@ -923,7 +969,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 16px;
+	margin-bottom: 16px;
 }
 
 .group-settings__search {
@@ -940,22 +986,55 @@ export default {
 
 .group-settings__list {
     display: grid;
+    gap: 22px;
+}
+
+.group-settings__module {
+    display: grid;
     gap: 12px;
+}
+
+.group-settings__module-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.group-settings__module-header h3 {
+    margin: 0;
+    font-size: 18px;
+    overflow-wrap: anywhere;
+}
+
+.group-settings__module-header > div {
+	min-width: 0;
+}
+
+.group-settings__module-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--color-background-hover);
+    color: var(--color-text-maxcontrast);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .permission-card {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    min-width: 0;
     gap: 12px;
     padding: 16px;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-large);
     background: var(--color-main-background);
-}
-
-.permission-card--disabled {
-    opacity: .72;
 }
 
 .permission-card--restricted {
@@ -964,8 +1043,13 @@ export default {
 
 .permission-card__main {
     display: flex;
+    flex: 1 1 auto;
     min-width: 0;
     gap: 12px;
+}
+
+.permission-card--disabled .permission-card__main {
+    opacity: .72;
 }
 
 .permission-card__icon {
@@ -992,9 +1076,11 @@ export default {
 }
 
 .permission-card__title-row h3 {
+    min-width: 0;
     margin: 0;
     font-size: 16px;
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 .permission-card__meta {
@@ -1007,10 +1093,19 @@ export default {
 }
 
 .permission-card__meta code {
+    min-width: 0;
+    max-width: 100%;
     padding: 1px 6px;
     border-radius: var(--border-radius);
     background: var(--color-background-dark);
     color: var(--color-main-text);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.permission-card__meta > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .permission-card__description {
@@ -1036,8 +1131,8 @@ export default {
 }
 
 .status-badge--enabled {
-    background: var(--color-success);
-    color: var(--color-primary-text);
+    background: var(--color-success-hover);
+    color: var(--color-success-text);
 }
 
 .status-badge--disabled {
@@ -1047,8 +1142,8 @@ export default {
 
 .status-badge--restricted,
 .status-badge--missing {
-    background: var(--color-warning);
-    color: var(--color-primary-text);
+    background: var(--color-warning-hover);
+    color: var(--color-warning-text);
 }
 
 .permission-form {
@@ -1114,25 +1209,27 @@ export default {
     margin-top: 24px;
 }
 
+@container (max-width: 45rem) {
+	.permission-card {
+		flex-direction: column;
+	}
+
+	.group-settings__toolbar {
+		align-items: stretch;
+	}
+
+	.group-settings__search {
+		max-width: none;
+	}
+}
+
 @media (max-width: 720px) {
+	.permission-form__actions {
+		flex-direction: column-reverse;
+	}
+}
 
-    .settings-header,
-    .permission-card {
-        flex-direction: column;
-    }
-
-    .group-settings__toolbar {
-        align-items: stretch;
-    }
-
-    .group-settings__search {
-        max-width: none;
-    }
-
-    .permission-form__actions {
-        flex-direction: column-reverse;
-    }
-}.structure-check {
+.structure-check {
 	padding: 20px;
 }
 
@@ -1177,16 +1274,29 @@ export default {
 	background: var(--color-main-background);
 }
 
-.structure-row--disabled {
+.structure-row--disabled > div {
 	opacity: .65;
+}
+
+.structure-row > div {
+	min-width: 0;
+}
+
+.structure-row strong {
+	overflow-wrap: anywhere;
 }
 
 .structure-row code {
 	display: inline-block;
+	box-sizing: border-box;
+	min-width: 0;
+	max-width: calc(100% - 8px);
 	margin-left: 8px;
 	padding: 1px 6px;
 	border-radius: var(--border-radius);
 	background: var(--color-background-dark);
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .structure-row p {

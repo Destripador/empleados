@@ -1,16 +1,19 @@
 <template>
-	<NcModal :name="t('empleados', 'Add new activity')" @close="closeModal">
-		<div class="modal__content">
-			<div class="form-group">
+	<NcModal
+		size="normal"
+		:name="t('empleados', 'Add new activity')"
+		@close="closeModal">
+		<div class="report-time-form">
+			<div class="report-time-form__fields">
 				<input ref="trapFocus"
 					type="text"
 					style="position:absolute;opacity:0;height:0;width:0;pointer-events:none;">
 
-				<span class="field-label">
+				<p class="report-time-form__label">
 					{{ t('empleados', 'Work type') }}
-				</span>
+				</p>
 
-				<div class="radios work-type-radios">
+				<div class="report-time-form__work-type">
 					<NcCheckboxRadioSwitch v-model="workType"
 						value="cliente"
 						type="radio"
@@ -26,7 +29,7 @@
 					</NcCheckboxRadioSwitch>
 				</div>
 
-				<p v-if="workType === 'interno'" class="internal-hint">
+				<p v-if="workType === 'interno'" class="report-time-form__hint">
 					{{ t('empleados', 'Internal activities are non-billable') }}
 				</p>
 
@@ -37,44 +40,39 @@
 					:disabled="loadingCatalogs || saving"
 					class="fit" />
 
-				<div class="time-selector">
-					<div class="wrapper">
-						<NcDateTimePicker v-model="reportDate"
-							class="date-picker"
-							type="date"
-							:disabled="saving" />
-					</div>
+				<div class="report-time-form__row">
+					<NcDateTimePicker v-model="reportDate"
+						type="date"
+						:disabled="saving" />
 
-					<div class="estimatetime">
-						<NcTextField required
-							:value.sync="reportedTime"
-							type="number"
-							min="1"
-							:disabled="saving"
-							:label="t('empleados', 'Estimate time')" />
-					</div>
+					<NcTextField required
+						:value.sync="reportedTime"
+						type="number"
+						min="1"
+						:disabled="saving"
+						:label="t('empleados', 'Estimate time')" />
+				</div>
 
-					<div class="radios time-unit-radios">
-						<NcCheckboxRadioSwitch v-model="timeUnit"
-							:button-variant="true"
-							value="minutos"
-							:name="t('empleados', 'Minutes')"
-							type="radio"
-							:disabled="saving"
-							button-variant-grouped="horizontal">
-							{{ t('empleados', 'Minutes') }}
-						</NcCheckboxRadioSwitch>
+				<div class="report-time-form__units">
+					<NcCheckboxRadioSwitch v-model="timeUnit"
+						:button-variant="true"
+						value="minutos"
+						:name="t('empleados', 'Minutes')"
+						type="radio"
+						:disabled="saving"
+						button-variant-grouped="horizontal">
+						{{ t('empleados', 'Minutes') }}
+					</NcCheckboxRadioSwitch>
 
-						<NcCheckboxRadioSwitch v-model="timeUnit"
-							:button-variant="true"
-							value="horas"
-							:name="t('empleados', 'Hours')"
-							type="radio"
-							:disabled="saving"
-							button-variant-grouped="horizontal">
-							{{ t('empleados', 'Hours') }}
-						</NcCheckboxRadioSwitch>
-					</div>
+					<NcCheckboxRadioSwitch v-model="timeUnit"
+						:button-variant="true"
+						value="horas"
+						:name="t('empleados', 'Hours')"
+						type="radio"
+						:disabled="saving"
+						button-variant-grouped="horizontal">
+						{{ t('empleados', 'Hours') }}
+					</NcCheckboxRadioSwitch>
 				</div>
 
 				<NcSelect v-model="selectedActivity"
@@ -87,10 +85,9 @@
 					resize="vertical"
 					:value.sync="description"
 					:disabled="saving"
-					class="top"
 					:label="t('empleados', 'Description activity')" />
 
-				<div class="save top">
+				<div class="report-time-form__actions">
 					<NcButton :aria-label="t('empleados', 'Create Activity')"
 						type="primary"
 						:disabled="saving || loadingCatalogs || !isFormValid"
@@ -111,15 +108,14 @@ import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 
-import {
-	NcButton,
-	NcModal,
-	NcSelect,
-	NcDateTimePicker,
-	NcTextField,
-	NcTextArea,
-	NcCheckboxRadioSwitch,
-} from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcDateTimePicker from '@nextcloud/vue/dist/Components/NcDateTimePicker.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextArea from '@nextcloud/vue/dist/Components/NcTextArea.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
+import '../../../css/report-time-form.css'
 
 export default {
 	name: 'ReportTimeModal',
@@ -351,94 +347,3 @@ export default {
 	},
 }
 </script>
-
-<style scoped>
-.modal__content {
-    padding: 20px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.field-label {
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.fit {
-    width: 100%;
-}
-
-.time-selector {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin: 12px 0;
-}
-
-.radios {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.work-type-radios {
-    margin-bottom: 4px;
-}
-
-.time-unit-radios {
-    margin: 0;
-}
-
-.estimatetime {
-    flex: 1;
-    min-width: 150px;
-}
-
-.wrapper {
-    display: flex;
-    flex-direction: column;
-}
-
-.date-picker {
-    min-width: 180px;
-}
-
-.internal-hint {
-    margin: -6px 0 0;
-    color: var(--color-text-maxcontrast);
-    font-size: 13px;
-}
-
-.top {
-    margin-top: 4px;
-}
-
-.save {
-    display: flex;
-    justify-content: flex-end;
-}
-
-@media (max-width: 600px) {
-    .modal__content {
-        width: calc(100vw - 20px);
-        min-width: 0;
-        padding: 16px;
-    }
-
-    .time-selector {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .estimatetime,
-    .date-picker {
-        width: 100%;
-        min-width: 0;
-    }
-}
-</style>

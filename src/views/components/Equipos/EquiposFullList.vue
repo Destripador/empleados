@@ -18,7 +18,6 @@
 							<template #icon>
 								<FilterVariant :size="20" />
 							</template>
-							{{ t('empleados') }}
 							<span v-if="hideEmpty" class="filter-badge">1</span>
 						</NcButton>
 
@@ -56,6 +55,16 @@
 						</div>
 					</div>
 					<div class="button-container">
+						<NcButton
+							class="map-mobile-button"
+							type="tertiary"
+							:aria-label="t('empleados', 'View teams map')"
+							:title="t('empleados', 'View teams map')"
+							@click="$root.$emit('show-map')">
+							<template #icon>
+								<Sitemap :size="20" />
+							</template>
+						</NcButton>
 						<NcActions
 							:open="button"
 							@click="toggle">
@@ -150,6 +159,7 @@ import AccountMultiplePlusOutline from 'vue-material-design-icons/AccountMultipl
 import Upload from 'vue-material-design-icons/Upload.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import FilterVariant from 'vue-material-design-icons/FilterVariant.vue'
+import Sitemap from 'vue-material-design-icons/Sitemap.vue'
 
 import {
 	NcAppContentList as AppContentList,
@@ -184,6 +194,7 @@ export default {
 		NcTextField,
 		NcButton,
 		NcSelect,
+		Sitemap,
 	},
 
 	mixins: [createListFiltersMixin(PREFERENCE_KEYS.EQUIPMENT)],
@@ -365,19 +376,19 @@ export default {
 
 <style lang="scss" scoped>
 .container-search {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas: "input filters button";
-    align-items: center;
-    gap: 6px 4px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	grid-template-areas: "input filters button";
+	align-items: center;
+	gap: 6px 4px;
 }
 .filters-container {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    grid-area: filters;
-    margin: 0;
-    overflow: visible;
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	grid-area: filters;
+	margin: 0;
+	overflow: visible;
 }
 
 .filter-badge {
@@ -401,6 +412,7 @@ export default {
 	right: 0;
 	z-index: 100000;
 	width: 190px;
+	max-width: calc(100vw - 24px);
 	box-sizing: border-box;
 	padding: 6px 0;
 	overflow: hidden;
@@ -465,7 +477,9 @@ export default {
 // Make virtual scroller scrollable
 .contacts-list {
 	max-height: calc(100vh - var(--header-height) - 48px);
+	max-height: calc(100dvh - var(--header-height) - 48px);
 	overflow: auto;
+	-webkit-overflow-scrolling: touch;
 }
 
 // Add empty header to contacts-list that solves overlapping of contacts with app-navigation-toogle
@@ -475,7 +489,7 @@ export default {
 
 // Search field
 .search-contacts-field {
-	padding: 5px 10px 5px 50px;
+	padding: 5px 10px;
 	margin-top: 4px;
 
 	> input {
@@ -490,15 +504,30 @@ export default {
 
 .input-container {
 	grid-area: input;
+	min-width: 0;
 }
 .input-container input {
 	width: 100%;
+	box-sizing: border-box;
+	min-width: 0;
 }
 .button-container {
 	grid-area: button;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
 }
-.button-container button {
-	width: 100%;
+
+.map-mobile-button {
+	display: none;
+	flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+	.map-mobile-button {
+		display: inline-flex;
+	}
 }
 
 .modal__content {
@@ -518,6 +547,7 @@ export default {
 	min-width: unset !important;
 	padding-left: 4px !important;
 	padding-right: 4px !important;
+	flex-shrink: 0;
 }
 
 .filter-reset-button {
@@ -536,5 +566,30 @@ export default {
 .filter-reset-button:hover {
 	background: var(--color-background-hover);
 	color: var(--color-main-text);
+}
+
+// ============ RESPONSIVE ============
+@media (max-width: 600px) {
+	.search-contacts-field {
+		padding: 5px 8px 5px 46px;
+	}
+
+	.container-search {
+		gap: 6px 4px;
+	}
+
+	.filter-dropdown {
+		// centrado y con ancho más generoso en pantallas chicas
+		right: -8px;
+		width: min(240px, calc(100vw - 16px));
+	}
+
+	.modal__content {
+		margin: 16px;
+	}
+
+	.form-group {
+		align-items: stretch;
+	}
 }
 </style>

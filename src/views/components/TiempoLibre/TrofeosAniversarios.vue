@@ -38,7 +38,7 @@ import TrophyOutline from 'vue-material-design-icons/TrophyOutline.vue'
 /**
  * Parse YYYY-MM-DD (or ISO datetime) as a local calendar date at midnight.
  *
- * @param {string|null|undefined} value
+ * @param {string|null|undefined} value pendiente-descripcion
  * @return {Date|null}
  */
 function parseLocalDate(value) {
@@ -70,7 +70,7 @@ function parseLocalDate(value) {
 /**
  * Format a Date as MM-DD for holiday lookups.
  *
- * @param {Date} date
+ * @param {Date} date pendiente-descripcion
  * @return {string}
  */
 function toMonthDay(date) {

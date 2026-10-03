@@ -19,23 +19,27 @@ class Version2038Date20260807183307 extends SimpleMigrationStep {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
 
-		$empleadosTable = $schema->getTable('empleados');
+		if ($schema->hasTable('empleados')) {
+			$empleadosTable = $schema->getTable('empleados');
 
-		if ($empleadosTable->hasColumn('Id_supervisor')) {
-			$empleadosTable->dropColumn('Id_supervisor');
+			if ($empleadosTable->hasColumn('Id_supervisor')) {
+				$empleadosTable->dropColumn('Id_supervisor');
+			}
+
+			$empleadosTable->addColumn('Id_supervisor', Types::STRING, [
+				'length' => 64,
+				'notnull' => false,
+			]);
 		}
 
-		$empleadosTable->addColumn('Id_supervisor', Types::STRING, [
-			'length' => 64,
-			'notnull' => false,
-		]);
-
-		$historialTable = $schema->getTable('historial_ausencias');
-		if (!$historialTable->hasColumn('a_supervisor')) {
-			$historialTable->addColumn('a_supervisor', Types::BOOLEAN, [
-				'notnull' => false,
-				'default' => false,
-			]);
+		if ($schema->hasTable('historial_ausencias')) {
+			$historialTable = $schema->getTable('historial_ausencias');
+			if (!$historialTable->hasColumn('a_supervisor')) {
+				$historialTable->addColumn('a_supervisor', Types::BOOLEAN, [
+					'notnull' => false,
+					'default' => false,
+				]);
+			}
 		}
 
 		return $schema;

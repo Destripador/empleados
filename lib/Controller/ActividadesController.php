@@ -23,6 +23,7 @@ use OCP\Http\Client\IClientService;
 use OCP\Group\ISubAdmin;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
+use OCA\Empleados\Service\BitacoraService;
 
 require_once 'SimpleXLSXGen.php';
 require_once 'SimpleXLSX.php';
@@ -44,6 +45,7 @@ class actividadesController extends BaseController {
 	protected $clientService;
 	protected $subAdmin;
 	protected PermisosService $permisosService;
+	protected BitacoraService $bitacoraService;
 
 	public function __construct(
 		IRequest $request,
@@ -59,6 +61,7 @@ class actividadesController extends BaseController {
 		IClientService $clientService,
 		ISubAdmin $subAdmin,
 		PermisosService $permisosService,
+		BitacoraService $bitacoraService,
 	) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -74,14 +77,41 @@ class actividadesController extends BaseController {
 		$this->clientService = $clientService;
 		$this->subAdmin = $subAdmin;
 		$this->permisosService = $permisosService;
+		$this->bitacoraService = $bitacoraService;
 	}
 
 	private function requireClientesAccess(): void {
 		$this->permisosService->requireCanSee('clientes');
 	}
 
+	private function requireClientesCatalogAccess(): void {
+		$uid = $this->permisosService->getCurrentUserId();
+
+		if (
+			$this->permisosService->canSee('clientes', $uid)
+			|| $this->permisosService->canReadTimeReportsCatalog($uid)
+		) {
+			return;
+		}
+
+		$this->requireClientesAccess();
+	}
+
 	private function requireClientesAdminAccess(): void {
 		$this->permisosService->requireCanSee('clientes.admin');
+	}
+
+	/**
+	 * Registra un movimiento del módulo "actividades" en la bitácora general.
+	 */
+	private function registrarMovimiento(
+		?string $uidActor,
+		?int $idReferencia,
+		?string $nombreAfectado,
+		string $tipo,
+		string $mensaje
+	): void {
+		$this->bitacoraService->registrar('actividades', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
 	}
 
 	/**
@@ -90,7 +120,7 @@ class actividadesController extends BaseController {
 	#[UseSession]
 	#[NoAdminRequired]
 	public function GetActividades(mixed $manual = false): DataResponse {
-		$this->requireClientesAccess();
+		$this->requireClientesCatalogAccess();
 		$manual = $manual === true || $manual === 1 || $manual === '1' || $manual === 'true';
 		if (!$manual) return new DataResponse($this->actividadesMapper->findAll(), Http::STATUS_OK);
 		$user = $this->userSession->getUser();
@@ -120,11 +150,24 @@ class actividadesController extends BaseController {
 	#[NoAdminRequired]
 	public function deleteById($id): DataResponse {
 		$this->requireClientesAdminAccess();
+
+		// --- Capturamos el nombre ANTES de eliminar, para la bitácora ---
+		$existente = $this->actividadesMapper->findById((int) $id);
+		$nombreActividad = $existente[0]['nombre'] ?? ('Actividad ' . $id);
+
 		try {
 			$this->actividadesMapper->deleteById((int)$id);
 		} catch (\RuntimeException $e) {
 			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_CONFLICT);
 		}
+
+		// --- Movimiento (bitácora) ---
+		$user = $this->userSession->getUser();
+		$uid = $user->getUID();
+
+		$mensaje = sprintf('%s ha eliminado la actividad "%s".', $user->getDisplayName(), $nombreActividad);
+		$this->registrarMovimiento($uid, (int) $id, $nombreActividad, 'eliminacion', $mensaje);
+
 		return new DataResponse('ok', Http::STATUS_OK);
 	}
 
@@ -151,6 +194,10 @@ class actividadesController extends BaseController {
 			$tiempoestimado *= 60;
 		}
 
+		// --- Capturamos el estado ANTES de editar, para el diff en bitácora ---
+		$antesRows = $this->actividadesMapper->findById($id_actividad);
+		$antes = $antesRows[0] ?? null;
+
 		try {
 			$this->actividadesMapper->updateActividad(
 				$id_actividad, $nombre, $detalles, $tiempoestimado, $cargable,
@@ -159,6 +206,38 @@ class actividadesController extends BaseController {
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
+
+		// --- Movimiento (bitácora) ---
+		$user = $this->userSession->getUser();
+		$uid = $user->getUID();
+
+		$cambios = [];
+		if ($antes) {
+			if (($antes['nombre'] ?? '') !== $nombre) {
+				$cambios[] = sprintf('nombre "%s" → "%s"', $antes['nombre'] ?? '', $nombre);
+			}
+			if ((float) ($antes['tiempo_estimado'] ?? 0) !== $tiempoestimado) {
+				$cambios[] = sprintf('tiempo estimado %s → %s min', $antes['tiempo_estimado'] ?? 0, $tiempoestimado);
+			}
+			if ((bool) ($antes['cargable'] ?? false) !== $cargable) {
+				$cambios[] = $cargable ? 'ahora es cargable' : 'ya no es cargable';
+			}
+			if (($antes['tipo_actividad'] ?? actividades::TIPO_CLIENTE) !== $tipo_actividad) {
+				$cambios[] = sprintf('tipo "%s" → "%s"', $antes['tipo_actividad'] ?? '', $tipo_actividad);
+			}
+			if (($antes['alcance'] ?? actividades::ALCANCE_GLOBAL) !== $alcance) {
+				$cambios[] = sprintf('alcance "%s" → "%s"', $antes['alcance'] ?? '', $alcance);
+			}
+		}
+
+		$mensaje = sprintf(
+			'%s ha editado la actividad "%s"%s.',
+			$user->getDisplayName(),
+			$nombre,
+			!empty($cambios) ? (': ' . implode(', ', $cambios)) : ''
+		);
+
+		$this->registrarMovimiento($uid, $id_actividad, $nombre, 'edicion', $mensaje);
 
 		return new DataResponse('ok', Http::STATUS_OK);
 	}
@@ -193,6 +272,21 @@ class actividadesController extends BaseController {
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
+
+		// --- Movimiento (bitácora) ---
+		$user = $this->userSession->getUser();
+		$uid = $user->getUID();
+
+		$mensaje = sprintf(
+			'%s ha creado la actividad "%s" (%s, %s min%s).',
+			$user->getDisplayName(),
+			trim($nombre),
+			$tipo_actividad,
+			(string) $tiempoestimado,
+			$cargable ? ', cargable' : ''
+		);
+
+		$this->registrarMovimiento($uid, $id, trim($nombre), 'creacion', $mensaje);
 
 		return new DataResponse(['status' => 'ok', 'id_actividad' => $id], Http::STATUS_OK);
 	}
@@ -231,83 +325,279 @@ class actividadesController extends BaseController {
 	public function ImportarActividades(): DataResponse {
 		$this->requireClientesAdminAccess();
 
-		$file = $this->getUploadedFile('ActividadesfileXLSX');
+		$file = $this->request->getUploadedFile('ActividadesfileXLSX');
+
+		if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+			return new DataResponse([
+				'status' => 'error',
+				'message' => 'Error en la subida del archivo.'
+			], Http::STATUS_BAD_REQUEST);
+		}
+
 		$xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name']);
 
 		if (!$xlsx) {
-			return new DataResponse(['status' => 'error'], Http::STATUS_BAD_REQUEST);
+			return new DataResponse([
+				'status' => 'error',
+				'message' => 'No se pudo leer el archivo XLSX.'
+			], Http::STATUS_BAD_REQUEST);
 		}
 
 		$rows = $xlsx->rows();
-		$headers = array_map(static fn($value): string => strtolower(trim((string)$value)), $rows[0] ?? []);
-		$column = static function (string $name, int $fallback) use ($headers): int {
-			$index = array_search($name, $headers, true);
-			return $index === false ? $fallback : (int)$index;
-		};
-		$hasTypeColumn = in_array('tipo_actividad', $headers, true);
-		$hasScopeColumn = in_array('alcance', $headers, true);
-		$hasAreasColumn = in_array('area_ids', $headers, true) || in_array('areas', $headers, true);
-		foreach (array_slice($rows, 1) as $offset => $row) {
-			$type = (string)($row[$column('tipo_actividad', 6)] ?? actividades::TIPO_CLIENTE);
-			$scope = (string)($row[$column('alcance', 7)] ?? actividades::ALCANCE_GLOBAL);
-			$areaIds = array_values(array_filter(array_map(
-				'intval',
-				preg_split('/\s*,\s*/', trim((string)($row[$column('area_ids', $column('areas', 8))] ?? ''))) ?: [],
-			)));
-			$billableValue = strtolower(trim((string)($row[$column('cargable', 5)] ?? '0')));
-			$billable = in_array($billableValue, ['1', 'true', 'si', 'sí', 'yes'], true);
-			$name = trim((string)($row[$column('nombre', 1)] ?? ''));
-			if ($name === '') continue;
-			try {
-			if (!empty($row[0])) {
-				$existing = $this->actividadesMapper->findById((int)$row[0]);
-				if ($existing === []) throw new \InvalidArgumentException('La actividad seleccionada no existe.');
-				$type = $hasTypeColumn ? $type : (string)($existing[0]['tipo_actividad'] ?? actividades::TIPO_CLIENTE);
-				$scope = $hasScopeColumn ? $scope : (string)($existing[0]['alcance'] ?? actividades::ALCANCE_GLOBAL);
-				$areaIds = $hasAreasColumn ? $areaIds : ($existing[0]['area_ids'] ?? []);
-				$this->actividadesMapper->updateActividad(
-					(int)$row[0],
-					$name,
-					$row[$column('detalles', 2)] ?? null,
-					(float)($row[$column('tiempo_estimado', 3)] ?? 0),
-					$billable,
-					$type,
-					$scope,
-					$areaIds,
-				);
-			} else {
-				$this->actividadesMapper->createActivity(
-					$name,
-					$row[$column('detalles', 2)] ?? null,
-					(float)($row[$column('tiempo_estimado', 3)] ?? 0),
-					$billable,
-					$type,
-					$scope,
-					$areaIds,
-				);
-			}
-			} catch (\InvalidArgumentException $e) {
+
+		if (empty($rows)) {
+			return new DataResponse([
+				'status' => 'error',
+				'message' => 'El archivo está vacío.'
+			], Http::STATUS_BAD_REQUEST);
+		}
+
+		$headers = array_map(
+			static fn($value): string =>
+				strtolower(trim((string)$value)),
+			$rows[0]
+		);
+
+		$requiredHeaders = [
+			'id_actividad',
+			'nombre',
+			'detalles',
+			'tiempo_estimado',
+			'cargable',
+		];
+
+		foreach ($requiredHeaders as $required) {
+			if (!in_array($required, $headers, true)) {
 				return new DataResponse([
 					'status' => 'error',
-					'message' => 'Fila ' . ($offset + 2) . ': ' . $e->getMessage(),
+					'message' => "Falta la columna '{$required}' en el archivo."
 				], Http::STATUS_BAD_REQUEST);
 			}
 		}
 
-		return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
-	}
+		$column = static function (
+			string $name,
+			?int $fallback = null
+		) use ($headers): ?int {
 
-	/**
-	 * Obtiene un archivo subido y maneja posibles errores.
-	 */
-	private function getUploadedFile(string $key): array {
-		$this->requireClientesAdminAccess();
+			$index = array_search($name, $headers, true);
 
-		$file = $this->request->getUploadedFile($key);
-		if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-			throw new UploadException($this->l10n->t('Error en la subida del archivo.'));
+			if ($index !== false) {
+				return (int)$index;
+			}
+
+			return $fallback;
+		};
+
+		$hasTypeColumn = $column('tipo_actividad') !== null;
+		$hasScopeColumn = $column('alcance') !== null;
+		$hasAreasColumn = $column('area_ids') !== null;
+
+		$created = 0;
+		$updated = 0;
+		$skipped = 0;
+
+		foreach (array_slice($rows, 1) as $offset => $row) {
+
+			$excelRow = $offset + 2;
+
+			$idValue = $column('id_actividad') !== null
+				? ($row[$column('id_actividad')] ?? null)
+				: null;
+
+			$id = null;
+
+			if ($idValue !== null && trim((string)$idValue) !== '') {
+				$id = (int)$idValue;
+			}
+			$name = trim(
+				(string)(
+					$row[$column('nombre')] ?? ''
+				)
+			);
+
+			if ($name === '') {
+				$skipped++;
+				continue;
+			}
+
+			$detalles = null;
+
+			if ($column('detalles') !== null) {
+				$detallesValue = $row[$column('detalles')] ?? null;
+
+				if ($detallesValue !== null && trim((string)$detallesValue) !== '') {
+					$detalles = (string)$detallesValue;
+				}
+			}
+
+			$tiempoEstimado = 0;
+
+			if ($column('tiempo_estimado') !== null) {
+				$value = $row[$column('tiempo_estimado')] ?? 0;
+
+				if ($value !== null && trim((string)$value) !== '') {
+					$tiempoEstimado = (float)$value;
+				}
+			}
+			
+			$billableValue = strtolower(
+				trim(
+					(string)(
+						$row[$column('cargable')] ?? '0'
+					)
+				)
+			);
+
+			$billable = in_array(
+				$billableValue,
+				['1', 'true', 'si', 'sí', 'yes'],
+				true
+			);
+
+			$type = actividades::TIPO_CLIENTE;
+
+			if ($hasTypeColumn) {
+				$typeValue = trim(
+					(string)(
+						$row[$column('tipo_actividad')] ?? ''
+					)
+				);
+
+				if ($typeValue !== '') {
+					$type = $typeValue;
+				}
+			}
+
+			$scope = actividades::ALCANCE_GLOBAL;
+
+			if ($hasScopeColumn) {
+				$scopeValue = trim(
+					(string)(
+						$row[$column('alcance')] ?? ''
+					)
+				);
+
+				if ($scopeValue !== '') {
+					$scope = $scopeValue;
+				}
+			}
+
+			$areaIds = [];
+
+			if ($hasAreasColumn) {
+				$areasValue = trim(
+					(string)(
+						$row[$column('area_ids')] ?? ''
+					)
+				);
+
+				if ($areasValue !== '') {
+					$areaIds = array_values(
+						array_filter(
+							array_map(
+								'intval',
+								preg_split(
+									'/\s*,\s*/',
+									$areasValue
+								) ?: []
+							),
+							static fn($id) => $id > 0
+						)
+					);
+				}
+			}
+
+			try {
+
+				if ($id !== null && $id > 0) {
+
+					$existing = $this->actividadesMapper->findById($id);
+
+					if (empty($existing)) {
+						return new DataResponse([
+							'status' => 'error',
+							'message' =>
+								"Fila {$excelRow}: la actividad con ID {$id} no existe."
+						], Http::STATUS_BAD_REQUEST);
+					}
+
+					if (!$hasTypeColumn) {
+						$type = (string)(
+							$existing[0]['tipo_actividad']
+							?? actividades::TIPO_CLIENTE
+						);
+					}
+
+					if (!$hasScopeColumn) {
+						$scope = (string)(
+							$existing[0]['alcance']
+							?? actividades::ALCANCE_GLOBAL
+						);
+					}
+
+					if (!$hasAreasColumn) {
+						$areaIds = $existing[0]['area_ids'] ?? [];
+					}
+
+					$this->actividadesMapper->updateActividad(
+						$id,
+						$name,
+						$detalles,
+						$tiempoEstimado,
+						$billable,
+						$type,
+						$scope,
+						$areaIds
+					);
+
+					$updated++;
+				} else {
+					$this->actividadesMapper->createActivity(
+						$name,
+						$detalles,
+						$tiempoEstimado,
+						$billable,
+						$type,
+						$scope,
+						$areaIds
+					);
+
+					$created++;
+				}
+
+			} catch (\InvalidArgumentException $e) {
+
+				return new DataResponse([
+					'status' => 'error',
+					'message' =>
+						"Fila {$excelRow}: {$e->getMessage()}"
+				], Http::STATUS_BAD_REQUEST);
+			}
 		}
 
-		return $file;
+		// --- Movimiento (bitácora) ---
+		if ($created > 0 || $updated > 0) {
+			$user = $this->userSession->getUser();
+			$uid = $user->getUID();
+
+			$mensaje = sprintf(
+				'%s ha importado actividades desde un archivo XLSX: %d creada(s), %d actualizada(s)%s.',
+				$user->getDisplayName(),
+				$created,
+				$updated,
+				$skipped > 0 ? sprintf(', %d omitida(s)', $skipped) : ''
+			);
+
+			$this->registrarMovimiento($uid, null, null, 'importacion', $mensaje);
+		}
+
+		return new DataResponse([
+			'status' => 'ok',
+			'message' => 'Importación completada correctamente.',
+			'created' => $created,
+			'updated' => $updated,
+			'skipped' => $skipped,
+		], Http::STATUS_OK);
 	}
 }

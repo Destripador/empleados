@@ -2,7 +2,7 @@
 	<NcAppContent :name="t('empleados', 'Employees - Activities')">
 		<div v-if="loading">
 			<div class="center">
-				<NcLoadingIcon :size="64" appearance="dark" name="Loading on light background" />
+				<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
 			</div>
 		</div>
 
@@ -420,6 +420,7 @@ export default {
 						reporte.descripcion,
 						reporte.clienteNombre,
 						reporte.actividadNombre,
+						reporte.nombre_dispositivo,
 						reporte.fecha_registro,
 						reporte.tiempo_registrado,
 					].join(' ').toLowerCase()
@@ -524,11 +525,11 @@ export default {
 			}
 		},
 
-		horasMinimasDiarias() {
+		horasEsperadasDiarias() {
 			const configured = Number(
-				this.configuraciones?.Reportes?.horas_minimas
-				?? this.configuraciones?.reportes_horas_minimas
-				?? 0,
+				this.configuraciones?.Reportes?.horas_esperadas_jornada
+					?? this.configuraciones?.reportes_horas_esperadas_jornada
+					?? 8,
 			)
 
 			return Number.isFinite(configured) && configured > 0
@@ -538,7 +539,7 @@ export default {
 
 		cumplimientoMetaMinutos() {
 			return Math.round(
-				this.horasMinimasDiarias
+				this.horasEsperadasDiarias
 				* this.diasHabilesFiltrados
 				* 60,
 			)
@@ -737,7 +738,7 @@ export default {
 								? `${t('empleados', 'Absence -')} ${tipoAusenciaTexto || t('empleados', 'Vacation')}`
 								: (clientesMap.get(Number(idCliente)) || `Cliente ${idCliente ?? ''}`.trim())
 						const actividadNombre = esSoporte
-							? (r.actividad_nombre || t('empleados', 'Support TI'))
+							? (r.actividad_nombre || r.nombre_dispositivo || t('empleados', 'Support TI'))
 							: esAusencia
 								? t('empleados', 'No Cargable')
 								: (actividadesMap.get(Number(idActividad)) || `Actividad ${idActividad ?? ''}`.trim())

@@ -9,6 +9,7 @@ export const PREFERENCE_KEYS = Object.freeze({
 	AREAS: 'areas',
 	POSITIONS: 'puestos',
 	EQUIPMENT: 'equipos',
+	CLIENTS_DASHBOARD: 'clientes-dashboard',
 })
 
 const APP_PREFIX = 'empleados'

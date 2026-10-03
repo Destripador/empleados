@@ -2,7 +2,7 @@
 	<NcAppContent>
 		<div v-if="loading">
 			<div class="center-screen">
-				<NcLoadingIcon :size="64" appearance="dark" name="Loading on light background" />
+				<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
 			</div>
 		</div>
 		<div v-else class="panel-page">

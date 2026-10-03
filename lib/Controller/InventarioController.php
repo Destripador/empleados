@@ -193,6 +193,7 @@ class InventarioController extends BaseController {
 		?int $id_empleado = null,
 		?string $asignacion = null,
 		?int $id_modelo = null,
+		?string $gid = null,
 		int $limit = 25,
 		int $offset = 0
 	): DataResponse {
@@ -208,8 +209,10 @@ class InventarioController extends BaseController {
 			}
 
 			$limit = min(100, $limit);
-			$items = $this->computoMapper->findAll($search, $estado, $id_empleado, $asignacion, $id_modelo, $limit, $offset);
-			$total = $this->computoMapper->countAll($search, $estado, $id_empleado, $asignacion, $id_modelo);
+			$gid = $gid !== null ? trim($gid) : null;
+			$gid = $gid === '' ? null : $gid;
+			$items = $this->computoMapper->findAll($search, $estado, $id_empleado, $asignacion, $id_modelo, $limit, $offset, $gid);
+			$total = $this->computoMapper->countAll($search, $estado, $id_empleado, $asignacion, $id_modelo, $gid);
 
 			return new DataResponse([
 				'success' => true,
@@ -219,6 +222,7 @@ class InventarioController extends BaseController {
 				'offset' => $offset,
 				'filter_options' => [
 					'empleados' => $this->computoMapper->findAssignedEmployees(),
+					'grupos' => $this->computoMapper->findAssignedGroups(),
 				],
 			], Http::STATUS_OK);
 		} catch (\Throwable $e) {
@@ -340,13 +344,61 @@ class InventarioController extends BaseController {
 
 	#[UseSession]
 	#[NoAdminRequired]
+	public function AsignarEquipoGrupo(int $id_equipo, string $gid): DataResponse {
+		if (!$this->permisosService->canSee('inventario.admin')) {
+			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para asignar equipos.'], Http::STATUS_FORBIDDEN);
+		}
+		try {
+			$gid = trim($gid);
+			if ($gid === '') {
+				return new DataResponse(['success' => false, 'message' => 'Identificador de grupo inválido.'], Http::STATUS_BAD_REQUEST);
+			}
+			$anterior = $this->computoMapper->findById($id_equipo);
+			$sinCambios = $anterior !== null && trim((string)($anterior['gid'] ?? '')) === $gid;
+			$this->movimientoService->asignarEquipoAGrupo($id_equipo, $gid);
+			return new DataResponse([
+				'success' => true,
+				'message' => $sinCambios ? 'El equipo ya estaba asignado al grupo.' : 'Equipo asignado al grupo correctamente.',
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->assignmentErrorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
+	public function GetInventarioGrupos(?string $search = null): DataResponse {
+		try {
+			$this->requireInventarioAccess();
+			$groups = $this->groupManager->search(trim((string)$search), 200);
+			$data = [];
+			foreach ($groups as $group) {
+				$gid = $group->getGID();
+				$data[] = [
+					'gid' => $gid,
+					'displayname' => $group->getDisplayName() ?: $gid,
+				];
+			}
+			usort($data, static fn(array $a, array $b): int => strcasecmp($a['displayname'], $b['displayname']));
+
+			return new DataResponse([
+				'success' => true,
+				'data' => $data,
+			], Http::STATUS_OK);
+		} catch (\Throwable $e) {
+			return $this->errorResponse($e);
+		}
+	}
+
+	#[UseSession]
+	#[NoAdminRequired]
 	public function DesasignarEquipoEmpleado(int $id_equipo): DataResponse {
 		if (!$this->permisosService->canSee('inventario.admin')) {
 			return new DataResponse(['success' => false, 'message' => 'No tienes permiso para desasignar equipos.'], Http::STATUS_FORBIDDEN);
 		}
 		try {
 			$anterior = $this->computoMapper->findById($id_equipo);
-			$sinCambios = $anterior !== null && empty($anterior['id_empleado']);
+			$sinCambios = $anterior !== null && empty($anterior['id_empleado']) && empty($anterior['gid']);
 			$idEmpleadoAnterior = (int)($anterior['id_empleado'] ?? 0);
 			$this->movimientoService->desasignarEquipo($id_equipo);
 			return new DataResponse([
@@ -380,6 +432,7 @@ class InventarioController extends BaseController {
 	#[NoAdminRequired]
 	public function CrearInventarioEquipo(
 		?int $id_empleado = null,
+		?string $gid = null,
 		?int $id_modelo = null,
 		?string $nombre_dispositivo = null,
 		?string $nombre_sistema = null,
@@ -392,6 +445,7 @@ class InventarioController extends BaseController {
 
 			$id = $this->movimientoService->crearEquipo([
 				'id_empleado' => $id_empleado,
+				'gid' => $gid,
 				'id_modelo' => $id_modelo,
 				'nombre_dispositivo' => $nombre_dispositivo,
 				'nombre_sistema' => $nombre_sistema,
@@ -414,6 +468,7 @@ class InventarioController extends BaseController {
 	public function ActualizarInventarioEquipo(
 		int $id_equipo,
 		?int $id_empleado = null,
+		?string $gid = null,
 		?int $id_modelo = null,
 		?string $nombre_dispositivo = null,
 		?string $nombre_sistema = null,
@@ -438,6 +493,9 @@ class InventarioController extends BaseController {
 			];
 			if ($this->request->getParam('id_empleado', '__missing__') !== '__missing__') {
 				$data['id_empleado'] = $id_empleado;
+			}
+			if ($this->request->getParam('gid', '__missing__') !== '__missing__') {
+				$data['gid'] = $gid;
 			}
 			$actualizado = $this->movimientoService->actualizarEquipo($id_equipo, $data);
 

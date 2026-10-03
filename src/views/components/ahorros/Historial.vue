@@ -1,7 +1,7 @@
 <template>
 	<div v-if="loading">
 		<div class="center">
-			<NcLoadingIcon :size="64" appearance="dark" name="Loading on light background" />
+			<NcLoadingIcon :size="64" appearance="dark" :name="t('empleados', 'Loading...')" />
 		</div>
 	</div>
 

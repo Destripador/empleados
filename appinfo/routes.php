@@ -125,6 +125,15 @@ return [
 		['name' => 'capitalhumano#GetCapitalHumano', 'url' => '/GetCapitalHumano', 'verb' => 'GET'],
 		['name' => 'capitalhumano#UpdateCapitalHumano', 'url' => '/UpdateCapitalHumano', 'verb' => 'POST'],
 
+		/********************************* MONEDAS ******************************************/
+		['name' => 'moneda#GetMonedas', 'url' => '/GetMonedas', 'verb' => 'GET'],
+		['name' => 'moneda#AgregarMoneda', 'url' => '/AgregarMoneda', 'verb' => 'POST'],
+		['name' => 'moneda#ModificarMoneda', 'url' => '/ModificarMoneda', 'verb' => 'POST'],
+		['name' => 'moneda#EliminarMoneda', 'url' => '/EliminarMoneda', 'verb' => 'POST'],
+
+		/***************************** TIPO DE CAMBIO ***************************************/
+		['name' => 'tipo_cambio#GetTipoCambio', 'url' => '/GetTipoCambio', 'verb' => 'GET'],
+		['name' => 'tipo_cambio#SincronizarTipoCambio', 'url' => '/SincronizarTipoCambio', 'verb' => 'POST'],
 
 		/****************************** ANIVERSARIOS ****************************************/
 		['name' => 'aniversarios#Getaniversarios', 'url' => '/Getaniversarios', 'verb' => 'GET'],
@@ -159,8 +168,13 @@ return [
 
 		['name' => 'ausencias#AprobarAusencia', 'url' => '/AprobarAusencia', 'verb' => 'POST'],
 		['name' => 'ausencias#RechazarAusencia', 'url' => '/RechazarAusencia', 'verb' => 'POST'],
+		['name' => 'ausencias#NotificarRecordatorioAprobacion', 'url' => '/NotificarRecordatorioAprobacion', 'verb' => 'POST'],
 
 		['name' => 'ausencias#DescargarReportePeriodosExcel', 'url' => '/reporte-periodos-excel', 'verb' => 'GET'],
+		
+		/***************************** MOVIMIENTOS ****************************************/
+		['name' => 'movimientos#get_movimientos', 'url' => '/GetMovimientos', 'verb' => 'GET'],
+		['name' => 'movimientos#get_opciones_filtro', 'url' => '/GetOpcionesFiltro', 'verb' => 'GET'],
 
 		/**************************** TIPO AUSENCIAS **************************************/
 		['name' => 'tipoausencias#getTipo', 'url' => '/getTipo', 'verb' => 'GET'],
@@ -193,6 +207,11 @@ return [
 		['name' => 'clientes#deleteById',          'url' => '/deleteCliente',       'verb' => 'POST'],
 		['name' => 'clientes#importarClientes',    'url' => '/importarClientes',    'verb' => 'POST'],
 		['name' => 'clientes#Exportarclientes',    'url' => '/Exportarclientes',    'verb' => 'GET'],
+		['name' => 'clientes#GetDashboardSummary', 'url' => '/GetClientesDashboard', 'verb' => 'POST'],
+		['name' => 'clientes#GetDashboardCliente', 'url' => '/GetClientesDashboardCliente', 'verb' => 'POST'],
+		['name' => 'cliente_logo#show', 'url' => '/clientes/{id}/logo', 'verb' => 'GET'],
+		['name' => 'cliente_logo#upload', 'url' => '/clientes/{id}/logo', 'verb' => 'POST'],
+		['name' => 'cliente_logo#delete', 'url' => '/clientes/{id}/logo', 'verb' => 'DELETE'],
 
 		/******************************* HONORARIOS ***************************************/
 		['name' => 'honorarios#getHonorarios',     'url' => '/getHonorarios',       'verb' => 'GET'],
@@ -205,14 +224,20 @@ return [
 		['name' => 'honorariosParcialidades#findByHonorario', 'url' => '/findParcialidadesByHonorario', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#marcarPagada', 'url' => '/marcarParcialidadPagada', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#findById', 'url' => '/findParcialidadesById', 'verb' => 'POST'],
-		['name' => 'honorariosParcialidades#actualizarFechaPago', 'url' => '/actualizarFechaPagoParcialidad', 'verb' => 'POST'],
-		['name' => 'honorariosParcialidades#marcar_facturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#marcarFacturada', 'url' => '/marcarParcialidadFacturada', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#cancelarFactura', 'url' => '/cancelarFacturaParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#cancelarPago', 'url' => '/cancelarPagoParcialidad', 'verb' => 'POST'],
 		['name' => 'honorariosParcialidades#agregarParcialidadIguala', 'url' => '/agregarParcialidadIguala', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#findPagadasPorCliente', 'url' => '/findParcialidadesPagadasPorCliente', 'verb' => 'POST'],
+		['name' => 'honorariosParcialidades#ajustarImporteParcialidad', 'url' => '/ajustarImporteParcialidad', 'verb' => 'POST'],
 		['name' => 'honorarios#finalizarHonorario', 'url' => '/finalizarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#reactivarHonorario', 'url' => '/reactivarHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#actualizarMetadatos', 'url' => '/actualizarMetadatosHonorario', 'verb' => 'POST'],
 		['name' => 'honorarios#generarSolicitudRecibo', 'url' => '/generarSolicitudRecibo', 'verb' => 'GET'],
+		['name' => 'honorarios#enviarSolicitudRecibo', 'url' => '/enviarSolicitudRecibo', 'verb' => 'POST'],
+		['name' => 'honorarios#descargarSolicitudesMultiples', 'url' => '/descargarSolicitudesMultiples', 'verb' => 'POST'],
+		['name' => 'honorarios#notificarHonorariosPendientes', 'url' => '/notificarHonorariosPendientes', 'verb' => 'POST'],
+		
 
 		/****************************** ACTIVIDADES ***************************************/
 		['name' => 'actividades#crearActividad', 'url' => '/crearActividad', 'verb' => 'POST'],
@@ -262,6 +287,7 @@ return [
 		['name' => 'reportetiempo#GetEmpleadosReports', 'url' => '/GetEmpleadosReports', 'verb' => 'POST'],
 		['name' => 'reportetiempo#ExportarReportes', 'url' => '/ExportarReportes', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetAdminReportsSummary', 'url' => '/GetAdminReportsSummary', 'verb' => 'POST',],
+		['name' => 'reportetiempo#GetAdminTeamReport', 'url' => '/reportes/administrativos/equipos/{id_equipo}', 'verb' => 'POST',],
 		['name' => 'reportetiempo#GetCostosLideres', 'url' => '/GetCostosLideres', 'verb' => 'POST'],
 		['name' => 'reportetiempo#GetCostosActividades', 'url' => '/GetCostosActividades', 'verb' => 'GET'],
 		['name' => 'reportetiempo#GetCostosCandidatos', 'url' => '/GetCostosCandidatos', 'verb' => 'POST'],
@@ -293,6 +319,8 @@ return [
 		['name' => 'inventario#CrearInventarioNota', 'url' => '/inventario/equipos/{id_equipo}/historial/notas', 'verb' => 'POST'],
 		['name' => 'inventario#GetEquiposEmpleado', 'url' => '/inventario/empleados/{id_empleado}/equipos', 'verb' => 'GET'],
 		['name' => 'inventario#AsignarEquipoEmpleado', 'url' => '/inventario/equipos/{id_equipo}/asignar', 'verb' => 'POST'],
+		['name' => 'inventario#AsignarEquipoGrupo', 'url' => '/inventario/equipos/{id_equipo}/asignar-grupo', 'verb' => 'POST'],
+		['name' => 'inventario#GetInventarioGrupos', 'url' => '/inventario/grupos', 'verb' => 'GET'],
 		['name' => 'inventario#DesasignarEquipoEmpleado', 'url' => '/inventario/equipos/{id_equipo}/asignacion', 'verb' => 'DELETE'],
 		['name' => 'inventario#SincronizarEquiposEmpleado', 'url' => '/inventario/empleados/{id_empleado}/equipos', 'verb' => 'PUT'],
 		// Historial de soporte
@@ -354,5 +382,12 @@ return [
 		['name' => 'tutorial#status', 'url' => '/tutoriales/{lessonId}', 'verb' => 'GET'],
 		['name' => 'tutorial#complete', 'url' => '/tutoriales/{lessonId}/complete', 'verb' => 'POST'],
 		['name' => 'tutorial#reset', 'url' => '/tutoriales/{lessonId}', 'verb' => 'DELETE'],
+
+		/************************** SIMULACIÓN DE OFICINA **********************************/
+		['name' => 'simulacionOficina#getEmpleados', 'url' => '/simulacion-oficina/empleados', 'verb' => 'GET'],
+		['name' => 'simulacionOficina#getStatuses', 'url' => '/simulacion-oficina/statuses', 'verb' => 'GET'],
+		['name' => 'simulacionOficina#getOnboarding', 'url' => '/simulacion-oficina/onboarding', 'verb' => 'GET'],
+		['name' => 'simulacionOficina#completeOnboarding', 'url' => '/simulacion-oficina/onboarding/complete', 'verb' => 'POST'],
+
 	],
 ];

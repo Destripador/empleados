@@ -42,6 +42,52 @@ class TutorialProgressService {
 		);
 	}
 
+	/**
+	 * @return array{completed: bool, completedVersion: int, requiredVersion: int}
+	 */
+	public function getVersionStatus(string $userId, string $lessonId): array {
+		$this->validateVersionedLesson($lessonId);
+
+		$value = $this->config->getUserValue(
+			$userId,
+			Application::APP_ID,
+			TutorialCatalog::versionConfigKey($lessonId),
+			''
+		);
+		$completedVersion = ctype_digit($value) ? (int)$value : 0;
+		$requiredVersion = TutorialCatalog::requiredVersion($lessonId);
+
+		return [
+			'completed' => $completedVersion >= $requiredVersion,
+			'completedVersion' => $completedVersion,
+			'requiredVersion' => $requiredVersion,
+		];
+	}
+
+	/**
+	 * @return array{completed: bool, completedVersion: int, requiredVersion: int}
+	 */
+	public function completeVersion(string $userId, string $lessonId, int $version): array {
+		$status = $this->getVersionStatus($userId, $lessonId);
+
+		if ($version !== $status['requiredVersion']) {
+			throw new \InvalidArgumentException('Versión de tutorial no válida.');
+		}
+
+		if ($status['completedVersion'] < $version) {
+			$this->config->setUserValue(
+				$userId,
+				Application::APP_ID,
+				TutorialCatalog::versionConfigKey($lessonId),
+				(string)$version
+			);
+			$status['completedVersion'] = $version;
+		}
+
+		$status['completed'] = true;
+		return $status;
+	}
+
 	public function reset(string $userId, string $lessonId): void {
 		$this->validateLesson($lessonId);
 
@@ -81,6 +127,27 @@ class TutorialProgressService {
 			$reset++;
 		}
 
+		foreach (TutorialCatalog::VERSIONED_LESSONS as $lesson) {
+			$key = (string)$lesson['configKey'];
+			$current = $this->config->getUserValue(
+				$userId,
+				Application::APP_ID,
+				$key,
+				''
+			);
+
+			if ($current === '') {
+				continue;
+			}
+
+			$this->config->deleteUserValue(
+				$userId,
+				Application::APP_ID,
+				$key
+			);
+			$reset++;
+		}
+
 		return $reset;
 	}
 
@@ -89,6 +156,12 @@ class TutorialProgressService {
 	 */
 	private function validateLesson(string $lessonId): void {
 		if (!TutorialCatalog::isValid($lessonId)) {
+			throw new TutorialLessonNotFoundException('Lección no encontrada.');
+		}
+	}
+
+	private function validateVersionedLesson(string $lessonId): void {
+		if (!TutorialCatalog::isVersioned($lessonId)) {
 			throw new TutorialLessonNotFoundException('Lección no encontrada.');
 		}
 	}

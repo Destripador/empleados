@@ -19,7 +19,10 @@ use OCA\Empleados\Db\configuracionesMapper;
 use OCA\Empleados\Db\clientes;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
+use OCA\Empleados\Service\ClienteLogoService;
+use OCA\Empleados\Service\ClientesDashboardService;
 use OCA\Empleados\Service\PermisosService;
+use OCA\Empleados\Service\BitacoraService;
 use OCP\IGroupManager;
 use OCP\IConfig;
 use OCP\IURLGenerator;
@@ -42,10 +45,13 @@ class ClientesController extends BaseController {
     protected $l10n;
     protected $groupManager;
     protected PermisosService $permisosService;
+    protected ClientesDashboardService $dashboardService;
+    protected ClienteLogoService $clienteLogoService;
     private IConfig $config;
     private IClientService $clientService;
     private ISubAdmin $subAdmin;
     private IURLGenerator $urlGenerator;
+    private BitacoraService $bitacoraService;
 
     public function __construct(
         IRequest $request,
@@ -62,6 +68,9 @@ class ClientesController extends BaseController {
         IClientService $clientService,
         ISubAdmin $subAdmin,
         PermisosService $permisosService,
+        BitacoraService $bitacoraService,
+        ClientesDashboardService $dashboardService,
+        ClienteLogoService $clienteLogoService,
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -78,20 +87,60 @@ class ClientesController extends BaseController {
         $this->clientService = $clientService;
         $this->subAdmin = $subAdmin;
         $this->permisosService = $permisosService;
+        $this->bitacoraService = $bitacoraService;
+        $this->dashboardService = $dashboardService;
+        $this->clienteLogoService = $clienteLogoService;
     }
 
     private function requireClientesAccess(): void {
         $this->permisosService->requireCanSee('clientes');
     }
 
+    private function requireClientesCatalogAccess(): void {
+        $uid = $this->permisosService->getCurrentUserId();
+
+        if (
+            $this->permisosService->canSee('clientes', $uid)
+            || $this->permisosService->canReadTimeReportsCatalog($uid)
+        ) {
+            return;
+        }
+
+        $this->requireClientesAccess();
+    }
+
     private function requireClientesAdminAccess(): void {
         $this->permisosService->requireCanSee('clientes.admin');
+    }
+
+    /**
+     * Registra un movimiento del módulo "clientes" en la bitácora general.
+     */
+    private function registrarMovimiento(
+        ?string $uidActor,
+        ?int $idReferencia,
+        ?string $nombreAfectado,
+        string $tipo,
+        string $mensaje
+    ): void {
+        $this->bitacoraService->registrar('clientes', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
+    }
+
+    /**
+     * Devuelve [uidActor, nombreActor] del usuario en sesión, con fallback a "Sistema".
+     */
+    private function getActorInfo(): array {
+        $actor = $this->userSession->getUser();
+        $uidActor = $actor ? $actor->getUID() : null;
+        $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+        return [$uidActor, $nombreActor];
     }
 
     #[UseSession]
     #[NoAdminRequired]
     public function GetCompaniesGroups(): DataResponse {
-        $this->requireClientesAccess();
+        $this->requireClientesCatalogAccess();
 
         $clientes = $this->clientesMapper->findAll();
 
@@ -124,8 +173,23 @@ class ClientesController extends BaseController {
     public function deleteById($id): DataResponse {
         $this->requireClientesAdminAccess();
 
+        $cliente = $this->clientesMapper->findById((int)$id);
+        $nombreCliente = $cliente['nombre'] ?? ('Cliente ' . $id);
+
         $this->honorariosMapper->deleteByCliente((int)$id);
+        $this->clienteLogoService->deleteLogo((int)$id);
         $this->clientesMapper->deleteById((int)$id);
+
+        // --- Movimiento (bitácora) ---
+        [$uidActor, $nombreActor] = $this->getActorInfo();
+
+        $mensaje = sprintf(
+            '%s ha eliminado el cliente "%s".',
+            $nombreActor,
+            $nombreCliente
+        );
+
+        $this->registrarMovimiento($uidActor, (int)$id, $nombreCliente, 'eliminacion', $mensaje);
 
         return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
     }
@@ -142,6 +206,7 @@ class ClientesController extends BaseController {
         ?string $nombre_contacto = null,
         ?string $telefono = null,
         ?string $correo = null,
+        ?string $rfc = null,
         ?string $ubicacion = null,
         ?int $especial = null,
         ?int $cliente_padre = null,
@@ -150,6 +215,8 @@ class ClientesController extends BaseController {
         $this->requireClientesAdminAccess();
 
         $colaboradoresArr = json_decode($colaboradores ?? '[]', true) ?: [];
+
+        $old = $this->clientesMapper->findById($id);
 
         $this->clientesMapper->updateClientes(
             $id,
@@ -161,11 +228,53 @@ class ClientesController extends BaseController {
             $nombre_contacto ?: null,
             $telefono ?: null,
             $correo ?: null,
+            $rfc ?: null,
             $ubicacion ?: null,
             (bool)($especial ?? 0),
             $cliente_padre,
             (bool)($estado ?? 1)
         );
+
+        // --- Movimiento (bitácora) ---
+        if ($old) {
+            $cambios = [];
+
+            $comparaciones = [
+                'nombre' => ['label' => 'nombre', 'anterior' => $old['nombre'] ?? '', 'nuevo' => $nombre],
+                'detalles' => ['label' => 'detalles', 'anterior' => $old['detalles'] ?? '', 'nuevo' => $detalles ?: ''],
+                'razon_social' => ['label' => 'razón social', 'anterior' => $old['razon_social'] ?? '', 'nuevo' => $razon_social ?: ''],
+                'nombre_contacto' => ['label' => 'contacto', 'anterior' => $old['nombre_contacto'] ?? '', 'nuevo' => $nombre_contacto ?: ''],
+                'telefono' => ['label' => 'teléfono', 'anterior' => $old['telefono'] ?? '', 'nuevo' => $telefono ?: ''],
+                'correo' => ['label' => 'correo', 'anterior' => $old['correo'] ?? '', 'nuevo' => $correo ?: ''],
+                'rfc' => ['label' => 'RFC', 'anterior' => $old['rfc'] ?? '', 'nuevo' => $rfc ?: ''],
+                'ubicacion' => ['label' => 'ubicación', 'anterior' => $old['ubicacion'] ?? '', 'nuevo' => $ubicacion ?: ''],
+                'estado' => ['label' => 'estado', 'anterior' => ($old['estado'] ?? true) ? 'activo' : 'inactivo', 'nuevo' => ((bool)($estado ?? 1)) ? 'activo' : 'inactivo'],
+            ];
+
+            foreach ($comparaciones as $campo) {
+                if ((string)$campo['anterior'] !== (string)$campo['nuevo']) {
+                    $cambios[] = sprintf(
+                        '%s de "%s" a **%s**',
+                        $campo['label'],
+                        $campo['anterior'] !== '' ? $campo['anterior'] : 'vacío',
+                        $campo['nuevo'] !== '' ? $campo['nuevo'] : 'vacío'
+                    );
+                }
+            }
+
+            if (!empty($cambios)) {
+                [$uidActor, $nombreActor] = $this->getActorInfo();
+
+                $mensaje = sprintf(
+                    '%s ha actualizado el cliente "%s": cambió %s.',
+                    $nombreActor,
+                    $old['nombre'] ?? $nombre,
+                    implode(', ', $cambios)
+                );
+
+                $this->registrarMovimiento($uidActor, $id, $nombre, 'edicion', $mensaje);
+            }
+        }
 
         return new DataResponse(['status' => 'ok'], Http::STATUS_OK);
     }
@@ -182,6 +291,7 @@ class ClientesController extends BaseController {
         ?string $nombre_contacto = null,
         ?string $telefono = null,
         ?string $correo = null,
+        ?string $rfc = null,
         ?string $ubicacion = null,
         ?int $especial = null,
         ?int $cliente_padre = null,
@@ -201,12 +311,24 @@ class ClientesController extends BaseController {
             $cliente->setNombre_contacto($nombre_contacto ?: null);
             $cliente->setTelefono($telefono ?: null);
             $cliente->setCorreo($correo ?: null);
+            $cliente->setRfc($rfc ?: null);
             $cliente->setUbicacion($ubicacion ?: null);
             $cliente->setEspecial((bool)($especial ?? 0));
             $cliente->setCliente_padre($cliente_padre);
             $cliente->setEstado((bool)($estado ?? 1));
 
             $cliente = $this->clientesMapper->insert($cliente);
+
+            // --- Movimiento (bitácora) ---
+            [$uidActor, $nombreActor] = $this->getActorInfo();
+
+            $mensaje = sprintf(
+                '%s ha creado el cliente "%s".',
+                $nombreActor,
+                $nombre
+            );
+
+            $this->registrarMovimiento($uidActor, (int)$cliente->getId(), $nombre, 'creacion', $mensaje);
 
             return new DataResponse([
                 'status' => 'ok',
@@ -255,21 +377,26 @@ class ClientesController extends BaseController {
             $honorariosMap[(int)$row['id_cliente']] = $row;
         }
 
+        $header = function (string $label): string {
+            return '<style bgcolor="#DDEBF7"><b>' . $label . '</b></style>';
+        };
+
         $books[] = [
-            '<style bgcolor="#DDEBF7"><b>Empresa</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Detalles</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Razón Social</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Total Honorarios</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Moneda(s)</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Periodo</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Líder Proyecto</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Nombre Contacto</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Teléfono</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Correo</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Ubicación</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Cliente Especial</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Estado</b></style>',
-            '<style bgcolor="#DDEBF7"><b>Cliente Padre</b></style>',
+            $header($this->l10n->t('Company')),
+            $header($this->l10n->t('Details')),
+            $header($this->l10n->t('Legal Business Name')),
+            $header($this->l10n->t('Total fees')),
+            $header($this->l10n->t('Currency')),
+            $header($this->l10n->t('Period')),
+            $header($this->l10n->t('Project Manager')),
+            $header($this->l10n->t('Primary Contact')),
+            $header($this->l10n->t('Phone Number')),
+            $header($this->l10n->t('Email')),
+            $header($this->l10n->t('RFC')),
+            $header($this->l10n->t('Location')),
+            $header($this->l10n->t('Special Client')),
+            $header($this->l10n->t('Status')),
+            $header($this->l10n->t('Parent group')),
         ];
 
         foreach ($clientes as $cliente) {
@@ -306,9 +433,10 @@ class ClientesController extends BaseController {
                 $cliente['nombre_contacto'] ?? '',
                 $cliente['telefono'] ?? '',
                 $cliente['correo'] ?? '',
+                $cliente['rfc'] ?? '',
                 $cliente['ubicacion'] ?? '',
-                ($cliente['especial'] ? 'Sí' : 'No'),
-                ($cliente['estado'] ? 'Activo' : 'Inactivo'),
+                ($cliente['especial'] ? $this->l10n->t('Yes') : $this->l10n->t('No')),
+                ($cliente['estado'] ? $this->l10n->t('Active') : $this->l10n->t('Inactive')),
                 $clientesMap[(int)($cliente['cliente_padre'] ?? 0)] ?? '',
             ];
         }
@@ -318,7 +446,7 @@ class ClientesController extends BaseController {
         $xlsx->setDefaultFont('Calibri');
 
         $xlsx->downloadAs(
-            'Clientes_' . date('Y-m-d') . '.xlsx'
+            $this->l10n->t('Customers') . '_' . date('Y-m-d') . '.xlsx'
         );
 
         return new DataResponse(
@@ -340,7 +468,7 @@ class ClientesController extends BaseController {
         $rows = $xlsx->rows();
 
         if (count($rows) < 2) {
-            return new DataResponse(['status' => 'error', 'message' => 'Sin datos'], Http::STATUS_BAD_REQUEST);
+            return new DataResponse(['status' => 'error', 'message' => $this->l10n->t('No data')], Http::STATUS_BAD_REQUEST);
         }
 
         $rawHeaders = array_map(
@@ -349,17 +477,18 @@ class ClientesController extends BaseController {
         );
 
         $aliases = [
-            'nombre' => ['nombre', 'empresa', 'company', 'nombre_empresa', 'cliente'],
-            'detalles' => ['detalles', 'descripcion', 'informacion', 'info'],
-            'razon_social' => ['razon_social', 'subnombre', 'razon'],
-            'nombre_contacto' => ['nombre_contacto'],
-            'telefono' => ['telefono'],
-            'correo' => ['correo'],
-            'ubicacion' => ['ubicacion'],
-            'especial' => ['especial'],
-            'estado' => ['estado'],
-            'grupo' => ['grupo', 'group', 'cliente_padre', 'parent', 'grupo_empresarial'],
-            'importe_total' => ['importe_total', 'importe', 'honorario', 'honorarios', 'total', 'monto'],
+            'nombre' => ['nombre', 'empresa', 'company', 'nombre_empresa', 'cliente', 'client'],
+            'detalles' => ['detalles', 'descripcion', 'descripción', 'informacion', 'información', 'info', 'details'],
+            'razon_social' => ['razon_social', 'razón social', 'subnombre', 'razon', 'legal business name', 'business name'],
+            'nombre_contacto' => ['nombre_contacto', 'nombre contacto', 'primary contact', 'contacto'],
+            'telefono' => ['telefono', 'teléfono', 'phone', 'phone number'],
+            'correo' => ['correo', 'email', 'email address'],
+            'rfc' => ['rfc'],
+            'ubicacion' => ['ubicacion', 'ubicación', 'location'],
+            'especial' => ['especial', 'special client', 'cliente especial'],
+            'estado' => ['estado', 'status'],
+            'grupo' => ['grupo', 'group', 'cliente_padre', 'parent', 'grupo_empresarial', 'parent group'],
+            'importe_total' => ['importe_total', 'importe', 'honorario', 'honorarios', 'total', 'monto', 'total fees', 'total honorarios'],
         ];
 
         $colIndex = [];
@@ -374,7 +503,7 @@ class ClientesController extends BaseController {
 
         if (!isset($colIndex['nombre'])) {
             return new DataResponse(
-                ['status' => 'error', 'message' => 'No se encontró columna de nombre/empresa'],
+                ['status' => 'error', 'message' => $this->l10n->t('The company/name column was not found')],
                 Http::STATUS_BAD_REQUEST
             );
         }
@@ -411,6 +540,7 @@ class ClientesController extends BaseController {
                 $padre->setNombre_contacto(null);
                 $padre->setTelefono(null);
                 $padre->setCorreo(null);
+                $padre->setRfc(null);
                 $padre->setUbicacion(null);
                 $padre->setEspecial(false);
                 $padre->setCliente_padre(null);
@@ -431,7 +561,7 @@ class ClientesController extends BaseController {
         foreach ($dataRows as $lineaNum => $row) {
             $nombre = $get($row, 'nombre');
             if (!$nombre) {
-                $errores[] = 'Fila ' . ($lineaNum + 2) . ': nombre vacío, se omitió.';
+                $errores[] = $this->l10n->t('Row %s: empty name, skipped.', [(string)($lineaNum + 2)]);
                 continue;
             }
 
@@ -449,13 +579,14 @@ class ClientesController extends BaseController {
             $cliente->setNombre_contacto($get($row, 'nombre_contacto'));
             $cliente->setTelefono($get($row, 'telefono'));
             $cliente->setCorreo($get($row, 'correo'));
+            $cliente->setRfc($get($row, 'rfc'));
             $cliente->setUbicacion($get($row, 'ubicacion'));
 
             $especialRaw = $get($row, 'especial');
             $cliente->setEspecial($especialRaw !== null && in_array(mb_strtolower($especialRaw), ['1', 'si', 'sí', 'yes', 'true'], true));
 
             $estadoRaw = $get($row, 'estado');
-            $cliente->setEstado($estadoRaw === null || !in_array(mb_strtolower($estadoRaw), ['0', 'no', 'false', 'inactivo', 'disabled'], true));
+            $cliente->setEstado($estadoRaw === null || !in_array(mb_strtolower($estadoRaw), ['0', 'no', 'false', 'inactivo', 'inactive', 'disabled'], true));
 
             $cliente->setCliente_padre($clientePadreId);
 
@@ -477,6 +608,20 @@ class ClientesController extends BaseController {
             $creados++;
         }
 
+        // --- Movimiento (bitácora) ---
+        if ($creados > 0) {
+            [$uidActor, $nombreActor] = $this->getActorInfo();
+
+            $mensaje = sprintf(
+                '%s ha importado clientes desde un archivo XLSX: %d creado(s)%s.',
+                $nombreActor,
+                $creados,
+                !empty($errores) ? sprintf(', %d con error(es)', count($errores)) : ''
+            );
+
+            $this->registrarMovimiento($uidActor, null, null, 'importacion', $mensaje);
+        }
+
         return new DataResponse(
             ['status' => 'ok', 'creados' => $creados, 'errores' => $errores],
             Http::STATUS_OK
@@ -489,9 +634,66 @@ class ClientesController extends BaseController {
         $file = $this->request->getUploadedFile($key);
 
         if (empty($file) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            throw new UploadException($this->l10n->t('Error en la subida del archivo.'));
+            throw new UploadException($this->l10n->t('Error uploading the file.'));
         }
 
         return $file;
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetDashboardSummary(
+        $id_cliente = null,
+        $cliente_padre = null,
+        $lider_proyecto = null,
+        $estado = null,
+        $especial = null,
+        $tipo_honorario = null,
+        $solo_pendientes = null,
+        $fecha_inicio = null,
+        $fecha_fin = null
+    ): DataResponse {
+        $this->requireClientesAccess();
+
+        return new DataResponse(
+            $this->dashboardService->getSummary([
+                'id_cliente' => $id_cliente,
+                'cliente_padre' => $cliente_padre,
+                'lider_proyecto' => $lider_proyecto,
+                'estado' => $estado,
+                'especial' => $especial,
+                'tipo_honorario' => $tipo_honorario,
+                'solo_pendientes' => $solo_pendientes,
+                'fecha_inicio' => $fecha_inicio,
+                'fecha_fin' => $fecha_fin,
+            ]),
+            Http::STATUS_OK
+        );
+    }
+
+    #[UseSession]
+    #[NoAdminRequired]
+    public function GetDashboardCliente(
+        int $id,
+        $tipo_honorario = null,
+        $fecha_inicio = null,
+        $fecha_fin = null
+    ): DataResponse {
+        $this->requireClientesAccess();
+
+        $detail = $this->dashboardService->getClienteDetail($id, [
+            'tipo_honorario' => $tipo_honorario,
+            'fecha_inicio' => $fecha_inicio,
+            'fecha_fin' => $fecha_fin,
+        ]);
+
+        if ($detail === null) {
+            return new DataResponse(
+                ['status' => 'error', 'message' => $this->l10n->t('Client not found')],
+                Http::STATUS_NOT_FOUND
+            );
+        }
+
+        return new DataResponse($detail, Http::STATUS_OK);
     }
 }

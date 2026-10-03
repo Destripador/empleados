@@ -28,6 +28,15 @@ class puestosMapper extends QBMapper {
         return $users;
     }
 
+    public function getById(string $id): ?array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('Id_puestos', $qb->createNamedParameter($id)));
+        $result = $qb->executeQuery()->fetchAll();
+        return $result[0] ?? null;
+    }
+
     public function CheckExistPuestos($id_departamentos): array {
         $qb = $this->db->getQueryBuilder();
 

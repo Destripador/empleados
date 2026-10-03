@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Db;
 
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 class equiposMapper extends QBMapper {
@@ -26,6 +27,72 @@ class equiposMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $users;
+	}
+
+	/** @return array<int,array<string,mixed>> */
+	public function getReportingTeams(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('t.Id_equipo', 't.Id_jefe_equipo', 't.Nombre', 't.created_at', 't.updated_at')
+			->selectAlias('leader.Id_empleados', 'id_empleado_lider')
+			->selectAlias('leader.Estado', 'estado_lider')
+			->selectAlias('u.displayname', 'nombre_lider')
+			->from($this->getTableName(), 't')
+			->leftJoin('t', 'empleados', 'leader', 'leader.Id_user = t.Id_jefe_equipo')
+			->leftJoin('leader', 'users', 'u', 'u.uid = leader.Id_user')
+			->orderBy('t.Nombre', 'ASC');
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
+	}
+
+	/**
+	 * @param int[] $teamIds
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function getReportingMembers(array $teamIds, bool $activeOnly = true): array {
+		$teamIds = array_values(array_unique(array_filter(
+			array_map('intval', $teamIds),
+			static fn (int $id): bool => $id > 0,
+		)));
+		if ($teamIds === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(
+			'e.Id_empleados',
+			'e.Id_user',
+			'e.Id_equipo',
+			'e.Id_departamento',
+			'e.Ingreso',
+			'e.Estado',
+			'e.Sueldo',
+			'e.Fecha_baja'
+		)
+			->selectAlias('u.displayname', 'displayname')
+			->from('empleados', 'e')
+			->leftJoin('e', 'users', 'u', 'u.uid = e.Id_user')
+			->where($qb->expr()->in(
+				'e.Id_equipo',
+				$qb->createNamedParameter($teamIds, IQueryBuilder::PARAM_INT_ARRAY)
+			))
+			->orderBy('u.displayname', 'ASC');
+
+		if ($activeOnly) {
+			$qb->andWhere($qb->expr()->eq(
+				'e.Estado',
+				$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
+			));
+		}
+
+		$result = $qb->executeQuery();
+		$rows = $result->fetchAll();
+		$result->closeCursor();
+
+		return $rows;
 	}
 
 	public function GetEquipoJefe($id): array {
@@ -68,17 +135,25 @@ class equiposMapper extends QBMapper {
 		$qb->executeStatement();
 	}
 
-	public function updateEquipos($Id_equipo, $Id_jefe_equipo): void {
+	public function updateEquipos(
+		string $Id_equipo,
+		string $nombre,
+		string $Id_jefe_equipo
+	): void {
 		$timestamp = date('Y-m-d');
 
-		if (empty($Id_equipo) && $Id_equipo != 0) { $Id_equipo = null; }
-		if (empty($Id_jefe_equipo) && $Id_jefe_equipo != 0) { $Id_jefe_equipo = null; }
-
 		$query = $this->db->getQueryBuilder();
+
 		$query->update($this->getTableName())
+			->set('Nombre', $query->createNamedParameter($nombre))
 			->set('Id_jefe_equipo', $query->createNamedParameter($Id_jefe_equipo))
 			->set('updated_at', $query->createNamedParameter($timestamp))
-			->where($query->expr()->eq('Id_equipo', $query->createNamedParameter($Id_equipo)));
+			->where(
+				$query->expr()->eq(
+					'Id_equipo',
+					$query->createNamedParameter($Id_equipo)
+				)
+			);
 
 		$query->executeStatement();
 	}

@@ -7,9 +7,9 @@ namespace OCA\Empleados\Db;
 use OCP\AppFramework\Db\Entity;
 
 class honorariosParcialidades extends Entity {
-	public const NO_PAGADO = 0;
-	public const PAGADO = 1;
-	public const FACTURADO = 2;
+	public const PENDIENTE = 0;
+	public const FACTURADA = 1;
+	public const PAGADA = 2;
 
 	/*-------------- Relación ---------------*/
 	protected ?int $id_parcialidad = null;
@@ -19,12 +19,15 @@ class honorariosParcialidades extends Entity {
 	protected ?string $pfecha_inicio = null;
 	protected ?string $pfecha_fin = null;
 	protected float $importe_parcialidad = 0;
-	/*--------------- Pago -----------------*/
+	protected ?float $cambio_moneda = null;
+	protected ?float $cambio_moneda_factura = null;
+	/*--------------- Facturación / Pago -----------------*/
 	protected int $pagado = 0;
+	protected ?string $fecha_factura = null;
 	protected ?string $fecha_pago = null;
+	protected ?int $id_cliente_pagador = null;
 
 	public function __construct() {
-
 		$this->addType('id_parcialidad', 'integer');
 		$this->addType('id_honorario', 'integer');
 
@@ -32,9 +35,12 @@ class honorariosParcialidades extends Entity {
 		$this->addType('pfecha_inicio', 'string');
 		$this->addType('pfecha_fin', 'string');
 		$this->addType('importe_parcialidad', 'float');
-
+		$this->addType('cambio_moneda', 'float');
+		$this->addType('cambio_moneda_factura', 'float');
 		$this->addType('pagado', 'integer');
+		$this->addType('fecha_factura', 'string');
 		$this->addType('fecha_pago', 'string');
+		$this->addType('id_cliente_pagador', 'integer');
 	}
 
 	public function read(): array {
@@ -46,9 +52,13 @@ class honorariosParcialidades extends Entity {
 			'pfecha_inicio' => $this->pfecha_inicio,
 			'pfecha_fin' => $this->pfecha_fin,
 			'importe_parcialidad' => $this->importe_parcialidad,
+			'cambio_moneda' => $this->cambio_moneda,
+			'cambio_moneda_factura' => $this->cambio_moneda_factura,
 
 			'pagado' => $this->pagado,
+			'fecha_factura' => $this->fecha_factura,
 			'fecha_pago' => $this->fecha_pago,
+			'id_cliente_pagador' => $this->id_cliente_pagador,
 		];
 	}
 }

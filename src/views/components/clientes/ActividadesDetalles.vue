@@ -1,5 +1,14 @@
 <template>
 	<div class="activity-details">
+		<header v-if="hasActivity" class="details-toolbar">
+			<NcButton type="tertiary" @click="$emit('close')">
+				<template #icon>
+					<ArrowLeft :size="20" />
+				</template>
+				{{ t('empleados', 'Back to activities dashboard') }}
+			</NcButton>
+		</header>
+
 		<NcEmptyContent
 			v-if="!hasActivity"
 			:name="t('empleados', 'No activity selected')"
@@ -115,7 +124,7 @@
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
-import { NcEmptyContent } from '@nextcloud/vue'
+import { NcButton, NcEmptyContent } from '@nextcloud/vue'
 
 import ClipboardTextClockOutline from 'vue-material-design-icons/ClipboardTextClockOutline.vue'
 import ClockCheck from 'vue-material-design-icons/ClockCheck.vue'
@@ -126,12 +135,15 @@ import TrendingDown from 'vue-material-design-icons/TrendingDown.vue'
 import Minus from 'vue-material-design-icons/Minus.vue'
 import CurrencyUsd from 'vue-material-design-icons/CurrencyUsd.vue'
 import CurrencyUsdOff from 'vue-material-design-icons/CurrencyUsdOff.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 
 export default {
 	name: 'ActividadesDetalles',
 
 	components: {
+		NcButton,
 		NcEmptyContent,
+		ArrowLeft,
 		ClipboardTextClockOutline,
 		ClockCheck,
 		TextBoxOutline,
@@ -248,10 +260,12 @@ export default {
 			if (v >= 60) {
 				const h = Math.floor(v / 60)
 				const m = v % 60
-				const label = m > 0 ? `${h}h ${m}min` : `${h}h`
+				const label = m > 0
+					? t('empleados', '{hours}h {minutes}min', { hours: h, minutes: m })
+					: t('empleados', '{hours}h', { hours: h })
 				return value < 0 ? `-${label}` : label
 			}
-			return `${value} min`
+			return t('empleados', '{minutes} min', { minutes: value })
 		},
 	},
 }
@@ -450,17 +464,37 @@ export default {
 
 	.details-header {
 		flex-wrap: wrap;
-		align-items: flex-start;
+		align-items: center;
+		row-gap: 8px;
+	}
+
+	.details-header::after {
+		content: '';
+		order: 1;
+		flex-basis: 100%;
+		height: 0;
+	}
+
+	.badge {
+		order: 2;
+		margin: 0 0 0 auto;
+		padding: 3px 9px;
+		font-size: 10px;
+	}
+
+	.details-icon {
+		width: 44px;
+		height: 44px;
 	}
 
 	.details-header h2 {
 		font-size: 20px;
 		white-space: normal;
+		line-height: 1.25;
 	}
 
-	.badge {
-		order: -1;
-		margin-inline-start: auto;
+	.subtitle {
+		font-size: 12px;
 	}
 }
 
@@ -484,5 +518,18 @@ export default {
 .details-header--billable .badge--billable {
     background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
+}
+
+.details-toolbar {
+	display: flex;
+	align-items: center;
+	margin-bottom: 16px;
+	padding-right: 56px;
+}
+
+@media (max-width: 720px) {
+	.details-toolbar {
+		padding-right: 0;
+	}
 }
 </style>

@@ -42,6 +42,14 @@
 					</template>
 					{{ t('empleados', 'View support') }}
 				</NcActionButton>
+				<NcActionButton v-if="!editable && canViewDetails"
+					:close-after-click="true"
+					@click="edit()">
+					<template #icon>
+						<OpenInNew :size="20" />
+					</template>
+					{{ t('empleados', 'View details') }}
+				</NcActionButton>
 			</template>
 		</NcListItem>
 		<NcDialog
@@ -52,87 +60,106 @@
 		<NcModal
 			v-if="ShowEdit"
 			ref="modalRef"
-			:name="t('empleados', 'Report')"
+			size="normal"
+			:name="editModalTitle"
 			@close="closeEdit">
-			<div class="modal__content">
-				<form>
-					<div class="form-group">
-						<input
-							ref="trapFocus"
-							type="text"
-							style="position:absolute;opacity:0;height:0;width:0;pointer-events:none;">
-						<NcSelect
-							v-model="activity_selected"
-							:input-label="t('empleados', 'Proyect')"
-							:options="editActivities"
-							class="fit"
-							:open="false"
-							:disabled="true" />
-						<div class="time-selector">
-							<div class="wrapper">
-								<NcDateTimePicker
-									v-model="time"
-									class="date-picker"
-									type="date"
-									:disabled="!editable" />
-							</div>
-							<div class="estimatetime">
-								<NcTextField
-									required
-									:value.sync="time_activity"
-									type="number"
-									:label="t('empleados', 'Estimate time')"
-									:disabled="!editable" />
-							</div>
-							<div class="radios">
-								<NcCheckboxRadioSwitch
-									v-model="type_time"
-									:button-variant="true"
-									value="minutos"
-									:name="t('empleados', 'Minutes')"
-									type="radio"
-									button-variant-grouped="horizontal"
-									:disabled="!editable">
-									{{ t('empleados', 'Minutes') }}
-								</NcCheckboxRadioSwitch>
-								<NcCheckboxRadioSwitch
-									v-model="type_time"
-									:button-variant="true"
-									value="horas"
-									:name="t('empleados', 'Hours')"
-									type="radio"
-									button-variant-grouped="horizontal"
-									:disabled="!editable">
-									{{ t('empleados', 'Hours') }}
-								</NcCheckboxRadioSwitch>
-							</div>
-						</div>
-						<NcSelect
-							v-model="listas_selected"
-							:input-label="t('empleados', 'Activity')"
-							:options="editActivities"
-							class="fit"
+			<div class="report-time-form">
+				<p v-if="isSupportReport" class="report-time-form__banner">
+					{{ t('empleados', 'Technical support report') }}
+					<template v-if="supportDeviceLabel">
+						· {{ supportDeviceLabel }}
+					</template>
+				</p>
+				<div class="report-time-form__fields">
+					<input
+						ref="trapFocus"
+						type="text"
+						style="position:absolute;opacity:0;height:0;width:0;pointer-events:none;">
+
+					<NcSelect
+						v-model="activity_selected"
+						:input-label="isSupportReport ? t('empleados', 'Origin') : t('empleados', 'Proyect')"
+						:options="projectOptions"
+						class="fit"
+						:clearable="false"
+						:disabled="true" />
+
+					<div class="report-time-form__row">
+						<NcDateTimePicker
+							v-model="time"
+							type="date"
 							:disabled="!editable" />
-						<br>
-						<NcTextArea
+						<NcTextField
 							required
-							resize="vertical"
-							:value.sync="description_activity"
-							class="top"
-							:label="t('empleados', 'Description activity')"
+							:value.sync="time_activity"
+							type="number"
+							:label="t('empleados', 'Estimate time')"
 							:disabled="!editable" />
-						<div class="save top">
-							<NcButton
-								class=""
-								:aria-label="t('empleados', 'Edit Activity')"
-								type="primary"
-								:disabled="!editable"
-								@click="modify()">
-								{{ t('empleados', 'Edit Activity') }}
-							</NcButton>
-						</div>
 					</div>
-				</form>
+
+					<div class="report-time-form__units">
+						<NcCheckboxRadioSwitch
+							v-model="type_time"
+							:button-variant="true"
+							value="minutos"
+							:name="t('empleados', 'Minutes')"
+							type="radio"
+							button-variant-grouped="horizontal"
+							:disabled="!editable">
+							{{ t('empleados', 'Minutes') }}
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch
+							v-model="type_time"
+							:button-variant="true"
+							value="horas"
+							:name="t('empleados', 'Hours')"
+							type="radio"
+							button-variant-grouped="horizontal"
+							:disabled="!editable">
+							{{ t('empleados', 'Hours') }}
+						</NcCheckboxRadioSwitch>
+					</div>
+
+					<NcSelect
+						v-model="listas_selected"
+						:input-label="t('empleados', 'Activity')"
+						:options="editActivities"
+						class="fit"
+						:disabled="!editable" />
+
+					<NcTextArea
+						required
+						resize="vertical"
+						:value.sync="description_activity"
+						:label="t('empleados', 'Description activity')"
+						:disabled="!editable" />
+
+					<div v-if="isSupportReport && source.origen_id" class="report-time-form__meta">
+						<span>{{ t('empleados', 'Support') }} #{{ source.origen_id }}</span>
+						<button
+							v-if="source.id_equipo"
+							type="button"
+							class="report-time-form__link"
+							@click="viewSupport">
+							{{ t('empleados', 'View support') }}
+						</button>
+					</div>
+
+					<div class="report-time-form__actions">
+						<NcButton
+							v-if="editable"
+							type="primary"
+							@click="modify()">
+							{{ t('empleados', 'Edit Activity') }}
+						</NcButton>
+						<NcButton
+							v-else
+							type="primary"
+							@click="closeEdit">
+							{{ t('empleados', 'Close') }}
+						</NcButton>
+					</div>
+				</div>
 			</div>
 		</NcModal>
 	</div>
@@ -158,6 +185,7 @@ import {
 } from '@nextcloud/vue'
 import DeleteAlert from 'vue-material-design-icons/DeleteAlert.vue'
 import OpenInNew from 'vue-material-design-icons/OpenInNew.vue'
+import '../../../../css/report-time-form.css'
 
 const MIN_EDITABLE = 40 // minutos
 
@@ -233,6 +261,33 @@ export default {
 			if (this.minutosTranscurridos === null) return false
 			return this.minutosTranscurridos < MIN_EDITABLE
 		},
+		canViewDetails() {
+			return !this.isAbsenceReport
+		},
+		editModalTitle() {
+			if (this.isSupportReport) {
+				return t('empleados', 'Technical support report')
+			}
+			return this.editable
+				? t('empleados', 'Edit Activity')
+				: t('empleados', 'Report')
+		},
+		supportDeviceLabel() {
+			return this.source?.nombre_dispositivo
+				|| this.source?.actividad_nombre
+				|| ''
+		},
+		projectOptions() {
+			if (this.isSupportReport) {
+				return [{
+					id: 'soporte_ti',
+					label: this.supportDeviceLabel
+						? `${t('empleados', 'Support TI')} · ${this.supportDeviceLabel}`
+						: t('empleados', 'Support TI'),
+				}]
+			}
+			return this.editActivities
+		},
 		isSupportReport() {
 			return this.source?.origen === 'soporte_ti'
 		},
@@ -270,11 +325,17 @@ export default {
 			return this.source?.fecha_registro ?? this.source?.fechaRegistro ?? ''
 		},
 		titleText() {
+			if (this.isSupportReport) {
+				return `${t('empleados', 'Support TI')} · ${this.supportDeviceLabel || this.source?.actividadNombre || ''}`
+			}
 			return this.isInternalReport
 				? `${t('empleados', 'Internal work')} · ${this.source?.actividadNombre || ''}`
 				: (this.source?.clienteNombre || '')
 		},
 		subnameText() {
+			if (this.isSupportReport) {
+				return this.source?.descripcion || t('empleados', 'Technical support report')
+			}
 			if (!this.isInternalReport) return this.source?.actividadNombre || ''
 			const activity = this.listas.find(item => Number(item.id) === Number(this.source?.id_actividad))
 			const areas = (activity?.areas || []).map(area => area.nombre).filter(Boolean).join(', ')
@@ -301,7 +362,7 @@ export default {
 			this.showDialog = false
 		},
 		handleRowClick() {
-			if (!this.isAutomaticReport && !this.isAbsenceReport) this.edit()
+			if (this.canViewDetails) this.edit()
 		},
 		viewSupport() {
 			this.$router.push({ name: 'Inventario', query: { deviceId: String(this.source.id_equipo) } })
@@ -325,7 +386,16 @@ export default {
 			this.showDialog = false
 		},
 		edit() {
-			this.activity_selected = this.source.clienteNombre
+			if (this.isSupportReport) {
+				this.activity_selected = {
+					id: 'soporte_ti',
+					label: this.supportDeviceLabel
+						? `${t('empleados', 'Support TI')} · ${this.supportDeviceLabel}`
+						: t('empleados', 'Support TI'),
+				}
+			} else {
+				this.activity_selected = this.source.clienteNombre
+			}
 			this.listas_selected = this.source.actividadNombre
 			this.id_activity = this.source.id_actividad
 			this.description_activity = this.source.descripcion
@@ -381,76 +451,4 @@ export default {
 	background: var(--color-background-dark);
 	font-size: 11px;
 }
-#emptycontent, .emptycontent { margin-top: 1vh; }
-.center-screen {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	min-height: 100vh;
-}
-.center { margin: auto; width: 50%; padding: 10px; }
-.container { padding-left: 20px; }
-.board-title {
-	margin-right: 10px;
-	font-size: 25px;
-	display: flex;
-	align-items: center;
-	font-weight: bold;
-	margin-left: 20px;
-}
-.board-title .icon { margin-right: 8px; }
-.main-content-card {
-	margin-top: 10px;
-	margin-left: 20px;
-	margin-right: 20px;
-}
-.time-selector {
-	display: flex;
-	margin: .5rem 0;          /* margen arriba y abajo */
-	align-self: center;
-}
-
-.radios {
-	display: flex;
-	margin-left: 7px;
-	height: 35px;
-	margin-top: 4px;
-}
-
-.estimatetime {
-	display: flex;
-}
-
-.save {
-	display: flex;
-	margin-left: 10px;
-	align-self: center;
-}
-
-.wrapper {
-	display: flex;
-	flex-direction: column;
-}
-
-.type-select {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-}
-.date-picker {
-	margin-top: 3px;
-	margin-right: 6px;
-}
-.fit {
-	width: 100%;
-}
-.list {
-  height: calc(100vh - 260px);
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  margin: 20px;
-}
-
 </style>

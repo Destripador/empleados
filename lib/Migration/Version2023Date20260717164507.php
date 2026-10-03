@@ -15,6 +15,9 @@ class Version2023Date20260717164507 extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
+		if (!$schema->hasTable('puestos')) {
+			return $schema;
+		}
 
 		$table = $schema->getTable('puestos');
 

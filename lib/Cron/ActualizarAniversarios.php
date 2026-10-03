@@ -9,8 +9,7 @@ use Carbon\Carbon;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 use OCA\Empleados\Db\configuracionesMapper;
-
-# require_once __DIR__ . '/../../vendor/autoload.php';
+use OCA\Empleados\Service\BitacoraService;
 
 class ActualizarAniversarios extends Job {
 	protected function run($argument): void {
@@ -23,9 +22,11 @@ class ActualizarAniversarios extends Job {
 		/** @var configuracionesMapper $configuracionesMapper */
 		$configuracionesMapper = \OC::$server->query(configuracionesMapper::class);
 
+		/** @var BitacoraService $bitacoraService */
+		$bitacoraService = \OC::$server->get(BitacoraService::class);
+
 		$configMap = array_column($configuracionesMapper->GetConfig(), 'Data', 'Nombre');
         $acumularVacaciones = strtolower(trim($configMap['acumular_vacaciones'] ?? 'false')) === 'true';
-
 
 		$hoy = Carbon::now();
 		$fechaHoy = $hoy->format('m-d');
@@ -34,11 +35,12 @@ class ActualizarAniversarios extends Job {
 		$qb = $connection->getQueryBuilder();
 		$qb->select(
 				'e.Id_empleados',
+				'e.Nombre',
 				'e.Ingreso',
 				'a.id_ausencias',
 				'a.id_aniversario',
 				'a.dias_disponibles',
-				'a.timestamp' // Asegúrate de tener este campo en la tabla `ausencias`
+				'a.timestamp'
 			)
 			->from('empleados', 'e')
 			->join('e', 'ausencias', 'a', 'a.id_empleado = e.Id_empleados')
@@ -58,7 +60,6 @@ class ActualizarAniversarios extends Job {
 				$ingreso = new Carbon($row['Ingreso']);
 				$anios = $ingreso->diffInYears($hoy);
 
-				// Verifica si ya se ejecutó hoy
 				$ultimaActualizacion = isset($row['timestamp']) ? new Carbon($row['timestamp']) : Carbon::create(1970);
 				if (
 					$anios > (int)$row['id_aniversario'] &&
@@ -72,8 +73,12 @@ class ActualizarAniversarios extends Job {
 
 					if ($diasRow && isset($diasRow['dias'])) {
 						$diasAsignados = (float)$diasRow['dias'];
+						$diasAntes = (float) $row['dias_disponibles'];
+						$aniversarioAntes = (int) $row['id_aniversario'];
+						$nombreEmpleado = $row['Nombre'] ?? ('Empleado ' . $row['Id_empleados']);
+
 						$nuevoTotalDias = $acumularVacaciones
-							? ((float)$row['dias_disponibles']) + $diasAsignados
+							? $diasAntes + $diasAsignados
 							: $diasAsignados;
 
 						$update = $connection->getQueryBuilder();
@@ -86,6 +91,34 @@ class ActualizarAniversarios extends Job {
 							->executeStatement();
 
 						$logger->info("🎉 Aniversario actualizado: empleado {$row['Id_empleados']} → {$anios} años, {$nuevoTotalDias} días disponibles.");
+
+						// --- Movimiento (bitácora) ---
+						$bitacoraService->registrarSistema(
+							'vacaciones',
+							(int) $row['Id_empleados'],
+							$nombreEmpleado,
+							'aniversario_actualizado',
+							sprintf(
+								'se ha actualizado el aniversario de %s (empleado %d): antes aniversario %d, ahora aniversario %d.',
+								$nombreEmpleado, $row['Id_empleados'], $aniversarioAntes, $anios
+							)
+						);
+
+						$bitacoraService->registrarSistema(
+							'vacaciones',
+							(int) $row['Id_empleados'],
+							$nombreEmpleado,
+							'dias_actualizados',
+							sprintf(
+								'se han actualizado los días de vacaciones de %s (empleado %d): antes tenía %s, ahora tiene %s%s.',
+								$nombreEmpleado, $row['Id_empleados'],
+								$bitacoraService->formatearDiasTexto($diasAntes),
+								$bitacoraService->formatearDiasTexto($nuevoTotalDias),
+								$acumularVacaciones
+									? sprintf(' (se sumaron %s del nuevo aniversario a los días previos)', $bitacoraService->formatearDiasTexto($diasAsignados))
+									: ''
+							)
+						);
 					} else {
 						$logger->warning("⚠️ Sin días definidos para el aniversario {$anios} (empleado {$row['Id_empleados']}).");
 					}

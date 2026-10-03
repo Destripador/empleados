@@ -20,6 +20,7 @@ use OCA\Empleados\Db\puestos;
 use OCA\Empleados\Db\configuraciones;
 use OCA\Empleados\UploadException;
 use OCP\IGroupManager;
+use OCA\Empleados\Service\BitacoraService;
 
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -43,6 +44,7 @@ class PuestosController extends BaseController {
     protected $l10n;
     protected PermisosService $permisosService;
     protected CompraPermisosService $compraPermisosService;
+    private BitacoraService $bitacoraService;
 
     public function __construct(
         IRequest $request,
@@ -54,7 +56,8 @@ class PuestosController extends BaseController {
         IL10N $l10n,
 		IGroupManager $groupManager,
         PermisosService $permisosService,
-        CompraPermisosService $compraPermisosService
+        CompraPermisosService $compraPermisosService,
+        BitacoraService $bitacoraService
     ) {
 		parent::__construct(Application::APP_ID, $request, $userSession, $groupManager, $empleadosMapper, $configuracionesMapper);
 
@@ -66,6 +69,20 @@ class PuestosController extends BaseController {
         $this->l10n = $l10n;
         $this->permisosService = $permisosService;
         $this->compraPermisosService = $compraPermisosService;
+        $this->bitacoraService = $bitacoraService;
+    }
+
+    /**
+     * Registra un movimiento del módulo "puestos" en la bitácora general.
+     */
+    private function registrarMovimiento(
+        ?string $uidActor,
+        ?int $idReferencia,
+        ?string $nombreAfectado,
+        string $tipo,
+        string $mensaje
+    ): void {
+        $this->bitacoraService->registrar('puestos', $uidActor, null, $nombreAfectado, $tipo, $mensaje, $idReferencia);
     }
 
     /**
@@ -121,12 +138,17 @@ class PuestosController extends BaseController {
     public function ImportListPuestos(): DataResponse {
         $this->requireHumanResourcesAccess();
         $file = $this->getUploadedFile('puestofileXLSX');
+
+        $creados = 0;
+        $actualizados = 0;
+
         if ($xlsx = \Shuchkin\SimpleXLSX::parse($file['tmp_name'])) {
             foreach ($xlsx->rows() as $row) {
                 $nivel = isset($row[2]) && $row[2] !== '' ? (int) $row[2] : null;
 
                 if (!empty($row[0])) {
                     $this->puestosMapper->updatePuestos((string) $row[0], (string) $row[1], $nivel);
+                    $actualizados++;
                 } else {
                     $timestamp = date('Y-m-d');
                     $puesto = new puestos();
@@ -135,8 +157,24 @@ class PuestosController extends BaseController {
                     $puesto->setcreated_at($timestamp);
                     $puesto->setupdated_at($timestamp);
                     $this->puestosMapper->insert($puesto);
+                    $creados++;
                 }
             }
+
+            // --- Movimiento (bitácora) ---
+            if ($creados > 0 || $actualizados > 0) {
+                $actor = $this->userSession->getUser();
+                $uidActor = $actor ? $actor->getUID() : null;
+                $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+                $mensaje = sprintf(
+                    '%s ha importado puestos desde un archivo XLSX: %d creado(s), %d actualizado(s).',
+                    $nombreActor, $creados, $actualizados
+                );
+
+                $this->registrarMovimiento($uidActor, null, null, 'importacion', $mensaje);
+            }
+
             return new DataResponse(Http::STATUS_INTERNAL_SERVER_ERROR);
         }
         return new DataResponse(Http::STATUS_OK);
@@ -150,7 +188,24 @@ class PuestosController extends BaseController {
     public function EliminarPuesto(int $id_puesto): DataResponse {
         $this->requireHumanResourcesAccess();
         try {
+            $puesto = $this->puestosMapper->getById((string) $id_puesto);
+            $nombrePuesto = $puesto['Nombre'] ?? $puesto['nombre'] ?? ('Puesto ' . $id_puesto);
+
             $this->puestosMapper->EliminarPuesto((string) $id_puesto);
+
+            // --- Movimiento (bitácora) ---
+            $actor = $this->userSession->getUser();
+            $uidActor = $actor ? $actor->getUID() : null;
+            $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+            $mensaje = sprintf(
+                '%s ha eliminado el puesto "%s".',
+                $nombreActor,
+                $nombrePuesto
+            );
+
+            $this->registrarMovimiento($uidActor, $id_puesto, $nombrePuesto, 'eliminacion', $mensaje);
+
             return new DataResponse(Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -164,7 +219,53 @@ class PuestosController extends BaseController {
     #[NoAdminRequired]
     public function GuardarCambioPuestos(int $id_puestos, string $nombre, ?int $nivel = null): DataResponse {
         $this->requireHumanResourcesAccess();
+
+        $old = $this->puestosMapper->getById((string) $id_puestos);
+
         $this->puestosMapper->updatePuestos((string) $id_puestos, $nombre, $nivel);
+
+        if ($old) {
+            $nombreAnterior = $old['Nombre'] ?? $old['nombre'] ?? '';
+            $nivelAnterior = $old['Nivel'] ?? $old['nivel'] ?? null;
+
+            $cambioNombre = $nombreAnterior !== $nombre;
+            $cambioNivel = $nivelAnterior !== $nivel;
+
+            if ($cambioNombre || $cambioNivel) {
+                $actor = $this->userSession->getUser();
+                $uidActor = $actor ? $actor->getUID() : null;
+                $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+                if ($cambioNombre && $cambioNivel) {
+                    $mensaje = sprintf(
+                        '%s ha actualizado el puesto "%s": cambió el nombre a **%s** y el nivel de %s a **%s**.',
+                        $nombreActor,
+                        $nombreAnterior,
+                        $nombre,
+                        $nivelAnterior ?? 'sin nivel',
+                        $nivel ?? 'sin nivel'
+                    );
+                } elseif ($cambioNombre) {
+                    $mensaje = sprintf(
+                        '%s ha cambiado el nombre del puesto de "%s" a "%s".',
+                        $nombreActor,
+                        $nombreAnterior,
+                        $nombre
+                    );
+                } else {
+                    $mensaje = sprintf(
+                        '%s ha cambiado el nivel del puesto "%s" de %s a %s.',
+                        $nombreActor,
+                        $nombreAnterior,
+                        $nivelAnterior ?? 'sin nivel',
+                        $nivel ?? 'sin nivel'
+                    );
+                }
+
+                $this->registrarMovimiento($uidActor, $id_puestos, $nombre, 'edicion', $mensaje);
+            }
+        }
+
         return new DataResponse(Http::STATUS_OK);
     }
 
@@ -182,6 +283,21 @@ class PuestosController extends BaseController {
         $puesto->setcreated_at($timestamp);
         $puesto->setupdated_at($timestamp);
         $this->puestosMapper->insert($puesto);
+
+        // --- Movimiento (bitácora) ---
+        $actor = $this->userSession->getUser();
+        $uidActor = $actor ? $actor->getUID() : null;
+        $nombreActor = $actor ? $actor->getDisplayName() : 'Sistema';
+
+        $mensaje = sprintf(
+            '%s ha creado el puesto "%s"%s.',
+            $nombreActor,
+            $nombre,
+            $nivel !== null ? sprintf(' con nivel %d', $nivel) : ''
+        );
+
+        $this->registrarMovimiento($uidActor, $puesto->getId(), $nombre, 'creacion', $mensaje);
+
         return new DataResponse(Http::STATUS_OK);
     }
 

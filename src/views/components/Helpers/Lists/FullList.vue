@@ -42,12 +42,12 @@
 
 		<VirtualList
 			ref="scroller"
-			class="contacts-list"
+			class="contacts-list virtual-contacts-list"
 			data-key="id"
 			:data-sources="filteredList"
 			:data-component="ListItems"
 			:estimate-size="60"
-			:extra-props="{reloadBus}" />
+			:extra-props="{ reloadBus }" />
 	</AppContentList>
 </template>
 
@@ -143,14 +143,15 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// Make virtual scroller scrollable
 .contacts-list {
-	max-height: calc(100vh - var(--header-height) - 48px);
-	overflow: auto;
+	height: calc(100vh - var(--header-height) - 48px);
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
 }
 
-// Add empty header to contacts-list that solves overlapping of contacts with app-navigation-toogle
 .contacts-list__header {
+	flex: 0 0 auto;
 	min-height: 48px;
 	position: relative;
 	z-index: 10;
@@ -172,22 +173,55 @@ export default {
 	z-index: 20;
 	overflow: visible !important;
 	padding: 0 4px;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	height: 100%;
 }
 
 .container-search {
 	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: 6px;
 	overflow: visible;
 }
+
 .input-container {
-	flex: 1;
+	flex: 1 1 auto;
+	min-width: 0;
 	margin-right: 5px;
-	margin-left: 42px;
+	margin-left: 0;
 }
+
 .input-container input {
 	width: 100%;
 }
+
+.button-container {
+	flex: 0 0 auto;
+}
+
 .button-container button {
 	width: 100%;
+}
+
+// ============ RESPONSIVE ============
+@media (max-width: 500px) {
+	.input-container {
+		flex-basis: 100%;
+		margin-right: 0;
+	}
+
+	.button-container {
+		margin-left: auto;
+	}
+}
+
+@media (max-width: 900px) {
+	.input-container {
+		margin-left: 42px;
+	}
 }
 
 .modal__content {
@@ -201,5 +235,10 @@ export default {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
+}
+
+.virtual-contacts-list {
+	flex: 1 1 auto;
+	min-height: 0;
 }
 </style>

@@ -12,6 +12,9 @@ class Version2021Date20260710223218 extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
+		if (!$schema->hasTable('historial_ausencias')) {
+			return $schema;
+		}
 
 		$table = $schema->getTable('historial_ausencias');
 

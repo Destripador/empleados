@@ -4,6 +4,14 @@
 		<div v-if="Object.keys(data).length == 0">
 			<div class="empty">
 				<div class="areas-empty-state areas-empty-state--network">
+					<button
+						type="button"
+						class="mobile-back-btn"
+						:aria-label="t('empleados', 'Back to list')"
+						@click="$root.$emit('mobile-back')">
+						<ArrowLeft :size="20" />
+						<span>{{ t('empleados', 'Back') }}</span>
+					</button>
 					<EntityCountNetwork
 						:items="items"
 						entity-type="area"
@@ -14,6 +22,16 @@
 		</div>
 		<div v-else>
 			<div class="area-details">
+				<div class="mobile-back-bar">
+					<button
+						type="button"
+						class="mobile-back-btn"
+						:aria-label="t('empleados', 'Back to list')"
+						@click="$root.$emit('mobile-back')">
+						<ArrowLeft :size="20" />
+						<span>{{ t('empleados', 'Back') }}</span>
+					</button>
+				</div>
 				<div class="area-hero">
 					<div class="area-hero__content">
 						<span class="area-hero__eyebrow">
@@ -197,6 +215,7 @@
 import DeleteAlert from 'vue-material-design-icons/DeleteAlert.vue'
 import AccountEdit from 'vue-material-design-icons/AccountEdit.vue'
 import AccountCog from 'vue-material-design-icons/AccountCog.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -227,6 +246,7 @@ export default {
 		NcActions,
 		AccountCog,
 		AccountEdit,
+		ArrowLeft,
 		NcActionButton,
 		DeleteAlert,
 		NcDialog,
@@ -392,6 +412,7 @@ export default {
 
 <style>
 .area-details {
+	position: relative;
 	padding: 20px;
 }
 
@@ -743,6 +764,44 @@ export default {
 
 	.areas-empty-item {
 		text-align: center;
+	}
+}
+
+.mobile-back-btn {
+	display: none;
+}
+
+@media (max-width: 900px) {
+	.mobile-back-bar {
+		display: flex;
+		justify-content: flex-end;
+		padding: 8px 10px 12px;
+	}
+
+	.mobile-back-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 8px 14px;
+		border: 1px solid var(--color-border);
+		border-radius: 20px;
+		background: #e6eef3;
+		color: var(--color-main-text);
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.areas-empty-state--network {
+		position: relative;
+		padding-top: 56px;
+	}
+
+	.mobile-back-btn:not(.mobile-back-btn--inline) {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		left: auto;
 	}
 }
 </style>

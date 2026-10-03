@@ -71,6 +71,192 @@ class ReportesNotifier implements INotifier {
 
 				return $notification;
 
+			case 'ausencia_solicitada':
+				$params = $notification->getSubjectParameters();
+
+				$subject = $l->t('Nueva solicitud de ausencia por aprobar');
+				$message = $l->t(
+					'%1$s solicitó "%2$s" del %3$s al %4$s.',
+					[
+						$params['nombre_empleado'] ?? '',
+						$params['tipo_ausencia'] ?? '',
+						$params['fecha_de'] ?? '',
+						$params['fecha_hasta'] ?? '',
+					]
+				);
+
+				$notification
+					->setParsedSubject($subject)
+					->setParsedMessage($message)
+					->setIcon(
+						$this->urlGenerator->getAbsoluteURL(
+							$this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
+						)
+					)
+					->setLink(
+						$this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/ausencias-pendientes'
+					);
+
+				return $notification;
+
+			case 'ausencia_aprobada_parcial':
+				$params = $notification->getSubjectParameters();
+
+				$rolTexto = match ($params['rol'] ?? '') {
+					'gerente' => $l->t('tu gerente'),
+					'socio' => $l->t('el socio'),
+					'supervisor' => $l->t('tu supervisor'),
+					'capital_humano_como_socio' => $l->t('recursos humanos'),
+					default => $l->t('un aprobador'),
+				};
+
+				$subject = $l->t('Tu solicitud avanzó de aprobación');
+				$message = $l->t(
+					'%1$s aprobó tu solicitud de "%2$s" del %3$s al %4$s. Aún falta la aprobación de los demás.',
+					[
+						ucfirst($rolTexto),
+						$params['tipo_ausencia'] ?? '',
+						$params['fecha_de'] ?? '',
+						$params['fecha_hasta'] ?? '',
+					]
+				);
+
+				$notification
+					->setParsedSubject($subject)
+					->setParsedMessage($message)
+					->setIcon(
+						$this->urlGenerator->getAbsoluteURL(
+							$this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
+						)
+					)
+					->setLink(
+						$this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/mis-ausencias'
+					);
+
+				return $notification;
+
+			case 'ausencia_aprobada_completa':
+				$params = $notification->getSubjectParameters();
+
+				$subject = $l->t('Tu solicitud fue aprobada por completo');
+				$message = $l->t(
+					'Tu solicitud de "%1$s" del %2$s al %3$s ha sido aprobada por todos.',
+					[
+						$params['tipo_ausencia'] ?? '',
+						$params['fecha_de'] ?? '',
+						$params['fecha_hasta'] ?? '',
+					]
+				);
+
+				$notification
+					->setParsedSubject($subject)
+					->setParsedMessage($message)
+					->setIcon(
+						$this->urlGenerator->getAbsoluteURL(
+							$this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
+						)
+					)
+					->setLink(
+						$this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/mis-ausencias'
+					);
+
+				return $notification;
+
+			case 'ausencia_rechazada':
+				$params = $notification->getSubjectParameters();
+
+				$subject = $l->t('Tu solicitud fue rechazada');
+				$motivo = trim((string) ($params['motivo'] ?? ''));
+
+				$message = $motivo !== ''
+					? $l->t(
+						'Tu solicitud de "%1$s" del %2$s al %3$s fue rechazada. Motivo: %4$s',
+						[
+							$params['tipo_ausencia'] ?? '',
+							$params['fecha_de'] ?? '',
+							$params['fecha_hasta'] ?? '',
+							$motivo,
+						]
+					)
+					: $l->t(
+						'Tu solicitud de "%1$s" del %2$s al %3$s fue rechazada.',
+						[
+							$params['tipo_ausencia'] ?? '',
+							$params['fecha_de'] ?? '',
+							$params['fecha_hasta'] ?? '',
+						]
+					);
+
+				$notification
+					->setParsedSubject($subject)
+					->setParsedMessage($message)
+					->setIcon(
+						$this->urlGenerator->getAbsoluteURL(
+							$this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
+						)
+					)
+					->setLink(
+						$this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/mis-ausencias'
+					);
+
+				return $notification;
+
+			case 'ausencia_cancelada':
+				$params = $notification->getSubjectParameters();
+
+				$subject = $l->t('Una solicitud de ausencia fue cancelada');
+				$message = $l->t(
+					'%1$s canceló su solicitud de "%2$s" del %3$s al %4$s.',
+					[
+						$params['nombre_empleado'] ?? '',
+						$params['tipo_ausencia'] ?? '',
+						$params['fecha_de'] ?? '',
+						$params['fecha_hasta'] ?? '',
+					]
+				);
+
+				$notification
+					->setParsedSubject($subject)
+					->setParsedMessage($message)
+					->setIcon(
+						$this->urlGenerator->getAbsoluteURL(
+							$this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
+						)
+					)
+					->setLink(
+						$this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/ausencias-pendientes'
+					);
+
+				return $notification;
+
+			case 'ausencia_recordatorio_aprobacion':
+				$params = $notification->getSubjectParameters();
+
+				$subject = $l->t('Recordatorio: solicitud de ausencia pendiente');
+				$message = $l->t(
+					'%1$s tiene una solicitud de "%2$s" del %3$s al %4$s esperando tu aprobación.',
+					[
+						$params['nombre_empleado'] ?? '',
+						$params['tipo_ausencia'] ?? '',
+						$params['fecha_de'] ?? '',
+						$params['fecha_hasta'] ?? '',
+					]
+				);
+
+				$notification
+					->setParsedSubject($subject)
+					->setParsedMessage($message)
+					->setIcon(
+						$this->urlGenerator->getAbsoluteURL(
+							$this->urlGenerator->imagePath(Application::APP_ID, 'app.svg')
+						)
+					)
+					->setLink(
+						$this->urlGenerator->linkToRouteAbsolute('empleados.page.index') . '#/ausencias-pendientes'
+					);
+
+				return $notification;
+
 			default:
 				throw new UnknownNotificationException();
 		}
