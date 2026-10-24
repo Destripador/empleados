@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Empleados\Db;
 
 use DateTime;
+use OCA\Empleados\Service\UserDirectory;
 use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\AppFramework\Db\QBMapper;
 use OCP\DB\Exception;
@@ -15,8 +16,11 @@ use OCP\AppFramework\Db\DoesNotExistException;
 
 
 class empleadosMapper extends QBMapper {
-	public function __construct(IDBConnection $db) {
+	private UserDirectory $userDirectory;
+
+	public function __construct(IDBConnection $db, UserDirectory $userDirectory) {
 		parent::__construct($db, 'empleados', empleados::class);
+		$this->userDirectory = $userDirectory;
 	}
 
 	public function GetSubordinates($id): array {
@@ -25,14 +29,12 @@ class empleadosMapper extends QBMapper {
 		$qb->select(
 			'e.Id_empleados',
 			'e.Id_user',
-			'u.displayname',
 			'e.Sueldo',
 			'e.Id_departamento',
 			'e.Ingreso',
 			'e.Estado'
 		)
 			->from('empleados', 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where(
 				$qb->expr()->orX(
 					$qb->expr()->eq('e.Id_gerente', $qb->createNamedParameter($id)),
@@ -48,7 +50,7 @@ class empleadosMapper extends QBMapper {
 		$users = $result->fetchAll();
 		$result->closeCursor();
 
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
     public function GetMyEmployeeInfo($id): array {
@@ -56,7 +58,6 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*')
 			->from('empleados', 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('e.Id_user', $qb->createNamedParameter($id)))
 			->orderBy('e.Id_empleados', 'DESC')
 			->setMaxResults(1);
@@ -65,7 +66,7 @@ class empleadosMapper extends QBMapper {
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function GetMyEmployeeInfoByIdEmpleado($id): array {
@@ -86,9 +87,8 @@ class empleadosMapper extends QBMapper {
     public function GetUserLists(): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('u.uid', 'e.*', 'u.displayname', 'a.*', 'i.*', 'e.Id_empleados') // Solo traemos empleados sin duplicar
+		$qb->select('e.*', 'a.*', 'i.*', 'e.Id_empleados') // Solo traemos empleados sin duplicar
 			->from('empleados', 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->innerJoin('e', 'ausencias', 'a', $qb->expr()->eq('a.id_empleado', 'e.Id_empleados'))
 			->innerJoin('e', 'user_ahorro', 'i', $qb->expr()->eq('i.id_user', 'e.Id_empleados'))
 			->where($qb->expr()->eq('e.estado', $qb->createNamedParameter(1)));
@@ -99,22 +99,11 @@ class empleadosMapper extends QBMapper {
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function getAllUsers(): array {
-		$qb = $this->db->getQueryBuilder();
-
-		$qb->select('*')
-			->from('users', 'o')
-			->innerJoin('o', 'accounts', 'c', $qb->expr()->eq('o.uid', 'c.uid'));
-			
-
-		$result = $qb->executeQuery();
-		$users = $result->fetchAll();
-		$result->closeCursor();
-	
-		return $users;
+		return $this->userDirectory->listUsers();
 	}
 
 	public function GetUserListsDeactive(): array {
@@ -122,14 +111,13 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName(), 'o')
-			->innerJoin('o', 'users', 'c', $qb->expr()->eq('uid', 'id_user'))
 			->where($qb->expr()->eq('Estado', $qb->createNamedParameter(0)));
 		
 		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function deleteByIdEmpleado(int $id_empleados): void {
@@ -281,14 +269,13 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName(), 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('Id_departamento', $qb->createNamedParameter($id_area)));
 		
 		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function GetEmpleadosPuesto(string $id_puesto): array {
@@ -296,22 +283,20 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('*')
 			->from($this->getTableName(), 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('Id_puesto', $qb->createNamedParameter($id_puesto)));
 		
 		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function GetEmpleadosEquipo(string $id_equipo): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('u.uid', 'e.*', 'u.displayname', 'a.*', 'i.*', 'e.Id_empleados') // Solo traemos empleados sin duplicar
+		$qb->select('e.*', 'a.*', 'i.*', 'e.Id_empleados') // Solo traemos empleados sin duplicar
 			->from('empleados', 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->innerJoin('e', 'ausencias', 'a', $qb->expr()->eq('a.id_empleado', 'e.Id_empleados'))
 			->innerJoin('e', 'user_ahorro', 'i', $qb->expr()->eq('i.id_user', 'e.Id_empleados'))
 			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($id_equipo)));
@@ -320,7 +305,7 @@ class empleadosMapper extends QBMapper {
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function GetMyEquipo(string $id_equipo): array {
@@ -328,14 +313,13 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select('Id_empleados', 'Id_user')
 			->from($this->getTableName(), 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where($qb->expr()->eq('Id_equipo', $qb->createNamedParameter($id_equipo)));
 		
 		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 	
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function CambiosEmpleado(
@@ -442,28 +426,23 @@ class empleadosMapper extends QBMapper {
 
 		$qb->select(
 				'e.Id_empleados',
-				'u.displayname'
+				'e.Id_user'
 			)
 			->from('empleados', 'e')
-			->innerJoin(
-				'e',
-				'users',
-				'u',
-				$qb->expr()->eq('u.uid', 'e.Id_user')
-			)
 			->where(
 				$qb->expr()->eq(
 					'e.estado',
 					$qb->createNamedParameter(1)
 				)
-			)
-			->orderBy('u.displayname', 'ASC');
+			);
 
 		$result = $qb->executeQuery();
 		$data = $result->fetchAll();
 		$result->closeCursor();
 
-		return $data;
+		return $this->userDirectory->sortByDisplayName(
+			$this->userDirectory->withDisplayNames($data, 'Id_user', 'displayname', true)
+		);
 	}
 
 	public function getClientesEmployeeLookup(): array {
@@ -471,21 +450,21 @@ class empleadosMapper extends QBMapper {
 
 		$qb->selectAlias('e.Id_empleados', 'id_empleado')
 			->selectAlias('e.Id_user', 'id_user')
-			->selectAlias('u.uid', 'uid')
-			->selectAlias('u.displayname', 'displayname')
 			->from($this->getTableName(), 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where(
 				$qb->expr()->eq(
 					'e.estado',
 					$qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)
 				)
-			)
-			->orderBy('u.displayname', 'ASC');
+			);
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
 		$result->closeCursor();
+
+		$rows = $this->userDirectory->sortByDisplayName(
+			$this->userDirectory->withDisplayNames($rows, 'id_user', 'displayname', true)
+		);
 
 		return array_map(static function (array $row): array {
 			return [
@@ -499,9 +478,8 @@ class empleadosMapper extends QBMapper {
 	public function getDisplayNameById(int $idEmpleado): ?string {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('u.displayname')
+		$qb->select('e.Id_user')
 			->from($this->getTableName(), 'e')
-			->innerJoin('e', 'users', 'u', $qb->expr()->eq('u.uid', 'e.Id_user'))
 			->where(
 				$qb->expr()->eq(
 					'e.Id_empleados',
@@ -511,9 +489,9 @@ class empleadosMapper extends QBMapper {
 			->setMaxResults(1);
 
 		$result = $qb->executeQuery();
-		$nombre = $result->fetchOne();
+		$uid = $result->fetchOne();
 		$result->closeCursor();
 
-		return $nombre !== false ? $nombre : null;
+		return $uid !== false ? $this->userDirectory->getDisplayName((string)$uid) : null;
 	}
 }

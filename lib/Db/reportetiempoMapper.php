@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
+use OCA\Empleados\Service\UserDirectory;
 use OCP\IDBConnection;
 use OCP\AppFramework\Db\QBMapper;
 use OCP\DB\QueryBuilder\IQueryBuilder;
@@ -11,8 +12,11 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 class reportetiempoMapper extends QBMapper {
 	protected string $primaryKey = 'id_reporte';
 
-	public function __construct(IDBConnection $db) {
+	private UserDirectory $userDirectory;
+
+	public function __construct(IDBConnection $db, UserDirectory $userDirectory) {
 		parent::__construct($db, 'empleados_rep_tiempos', reportetiempo::class);
+		$this->userDirectory = $userDirectory;
 	}
 
 	/**
@@ -395,10 +399,8 @@ class reportetiempoMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->selectAlias('e.Id_empleados', 'id_empleado')
 			->selectAlias('e.Id_user', 'uid')
-			->selectAlias('u.displayname', 'displayname')
 			->selectAlias('e.Sueldo', 'costo_hora')
 			->from('empleados', 'e')
-			->leftJoin('e', 'users', 'u', 'u.uid = e.Id_user')
 			->where($qb->expr()->in(
 				'e.Id_empleados',
 				$qb->createNamedParameter(
@@ -410,6 +412,8 @@ class reportetiempoMapper extends QBMapper {
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
 		$result->closeCursor();
+		// Equivalente al LEFT JOIN anterior: el nombre queda null si ningún backend conoce el uid.
+		$rows = $this->userDirectory->withDisplayNames($rows, 'uid', 'displayname');
 		$directorio = [];
 
 		foreach ($rows as $row) {
@@ -979,13 +983,11 @@ class reportetiempoMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->selectAlias('e.Id_empleados', 'id_empleado')
 			->selectAlias('e.Id_user', 'uid')
-			->selectAlias('u.displayname', 'displayname')
 			->selectAlias('e.Sueldo', 'costo_hora')
 			->selectAlias('d.Nombre', 'area')
 			->selectAlias('p.Nombre', 'puesto')
 			->selectAlias('p.nivel', 'nivel_puesto')
 			->from('empleados', 'e')
-			->innerJoin('e', 'users', 'u', 'u.uid = e.Id_user')
 			->leftJoin('e', 'departamentos', 'd', 'd.Id_departamento = e.Id_departamento')
 			->leftJoin('e', 'puestos', 'p', 'p.Id_puestos = e.Id_puesto')
 			->where($qb->expr()->in(
@@ -995,12 +997,15 @@ class reportetiempoMapper extends QBMapper {
 			->andWhere($qb->expr()->eq(
 				'e.Estado',
 				$qb->createNamedParameter('1', IQueryBuilder::PARAM_STR)
-			))
-			->orderBy('u.displayname', 'ASC');
+			));
 
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
 		$result->closeCursor();
+		// Equivalente al INNER JOIN anterior: se descartan empleados sin usuario existente.
+		$rows = $this->userDirectory->sortByDisplayName(
+			$this->userDirectory->withDisplayNames($rows, 'uid', 'displayname', true)
+		);
 
 		return array_map(static function (array $row): array {
 			$costoRaw = $row['costo_hora'] ?? null;
@@ -1650,12 +1655,10 @@ class reportetiempoMapper extends QBMapper {
 			->selectAlias('e.Id_user', 'uid')
 			->selectAlias('e.Id_departamento', 'id_departamento')
 			->selectAlias('e.Sueldo', 'costo_hora')
-			->selectAlias('u.displayname', 'empleado_nombre')
 			->selectAlias('d.Nombre', 'area_nombre')
 			->from($this->getTableName(), 'r')
 			->leftJoin('r', 'empleados_actividades', 'a', 'a.id_actividad = r.id_actividad')
 			->leftJoin('r', 'empleados', 'e', 'e.Id_empleados = r.id_empleado')
-			->leftJoin('e', 'users', 'u', 'u.uid = e.Id_user')
 			->leftJoin('e', 'departamentos', 'd', 'd.Id_departamento = e.Id_departamento')
 			->where($this->internalWorkExpression($qb, 'r'))
 			->andWhere($qb->expr()->in('r.id_empleado', $qb->createNamedParameter($idEmpleados, IQueryBuilder::PARAM_INT_ARRAY)));
@@ -1674,6 +1677,8 @@ class reportetiempoMapper extends QBMapper {
 		$result = $qb->executeQuery();
 		$rows = $result->fetchAll();
 		$result->closeCursor();
+		// Equivalente al LEFT JOIN anterior: sin nombre se usa el uid como respaldo.
+		$rows = $this->userDirectory->withDisplayNames($rows, 'uid', 'empleado_nombre');
 		$groups = $empty;
 		$append = static function (array &$target, string $key, array $identity, float $minutes, float $cost): void {
 			if (!isset($target[$key])) $target[$key] = array_merge($identity, ['minutos' => 0.0, 'horas' => 0.0, 'costo_laboral' => 0.0, 'reportes' => 0]);

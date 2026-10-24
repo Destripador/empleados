@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
+use OCA\Empleados\Service\UserDirectory;
 use OCP\AppFramework\Db\QBMapper;
 use OCP\IDBConnection;
 
 class userahorroMapper extends QBMapper {
-	public function __construct(IDBConnection $db) {
+	private UserDirectory $userDirectory;
+
+	public function __construct(IDBConnection $db, UserDirectory $userDirectory) {
 		parent::__construct($db, 'user_ahorro', userahorro::class);
+		$this->userDirectory = $userDirectory;
 	}
 
 	public function getUserAhorro(): array {
@@ -24,28 +28,24 @@ class userahorroMapper extends QBMapper {
 	public function getUsersWithAhorro(): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
+		// user_ahorro.id_user holds the employee id, the Nextcloud uid lives in empleados.
+		$qb->select('o.*')
+			->addSelect('c.Id_user')
 			->from($this->getTableName(), 'o')
-			->innerJoin('o', 'users', 'c', $qb->expr()->eq('uid', 'id_user'));
+			->innerJoin('o', 'empleados', 'c', $qb->expr()->eq('c.Id_empleados', 'o.id_user'));
 
 		$result = $qb->executeQuery();
 		$users = $result->fetchAll();
 		$result->closeCursor();
 
-		return $users;
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
+	/**
+	 * @return list<array{uid: string, displayname: string}>
+	 */
 	public function getAllUsers(): array {
-		$qb = $this->db->getQueryBuilder();
-
-		$qb->select('*')
-			->from('users');
-
-		$result = $qb->executeQuery();
-		$users = $result->fetchAll();
-		$result->closeCursor();
-
-		return $users;
+		return $this->userDirectory->listUsers();
 	}
 
 	public function updateAhorroById(int $id_ahorro, string $id_permision, string $state, string $cantidad): void {

@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace OCA\Empleados\Db;
 
+use OCA\Empleados\Service\UserDirectory;
 use OCP\AppFramework\Db\QBMapper;
 use OCP\IDBConnection;
 
 class historialahorroMapper extends QBMapper {
-	public function __construct(IDBConnection $db) {
+	private UserDirectory $userDirectory;
+
+	public function __construct(IDBConnection $db, UserDirectory $userDirectory) {
 		parent::__construct($db, 'historial_ahorro', historialahorro::class);
+		$this->userDirectory = $userDirectory;
 	}
 
 	public function getahorrobyid(string $id_user): array {
@@ -29,11 +33,10 @@ class historialahorroMapper extends QBMapper {
 	public function GetHistorialPanel(string $options_fechas_value, string $options_estado_values): array {
 		$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
+		$qb->select('o.*', 'x.*', 'c.*')
 			->from($this->getTableName(), 'o')
 			->innerJoin('o', 'user_ahorro', 'x', $qb->expr()->eq('x.id_ahorro', 'o.id_ahorro'))
 			->innerJoin('x', 'empleados', 'c', $qb->expr()->eq('c.Id_empleados', 'x.id_user'))
-			->innerJoin('c', 'users', 'u', $qb->expr()->eq('u.uid', 'c.Id_user'))
 			->where($qb->expr()->eq('o.estado', $qb->createNamedParameter($options_estado_values)))
 			->andWhere($qb->expr()->like('o.fecha_solicitud', $qb->createNamedParameter('%' . $options_fechas_value)));
 
@@ -41,7 +44,9 @@ class historialahorroMapper extends QBMapper {
 		$users = $result->fetchAll();
 		$result->closeCursor();
 
-		return $users;
+		// Adds uid/displayname from every user backend and, like the old INNER
+		// JOIN on oc_users, skips employees whose account no longer exists.
+		return $this->userDirectory->withDisplayNames($users, 'Id_user', 'displayname', true);
 	}
 
 	public function EnviarSolicitud(int $id_ahorro, float $cantidad_solicitada, string $cantidad_total, string $nota): void {
